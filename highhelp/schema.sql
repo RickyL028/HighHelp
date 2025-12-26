@@ -6,9 +6,13 @@ DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  student_id TEXT UNIQUE NOT NULL, -- 9 digits
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
-  name TEXT,
   role TEXT DEFAULT 'student',
+  permission_level INTEGER DEFAULT 0,
+  tags TEXT, -- JSON string or comma-separated list
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -17,7 +21,8 @@ CREATE TABLE resources (
   title TEXT NOT NULL,
   description TEXT,
   file_key TEXT NOT NULL, -- R2 object key
-  subject TEXT,
+  subject TEXT NOT NULL,
+  type TEXT DEFAULT 'resource', -- 'resource' or 'past_paper'
   uploader_id INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (uploader_id) REFERENCES users(id)
@@ -27,6 +32,7 @@ CREATE TABLE announcements (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
+  subject TEXT DEFAULT 'General',
   priority TEXT DEFAULT 'normal', -- normal, high, urgent
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -37,7 +43,7 @@ CREATE TABLE posts (
   content TEXT NOT NULL,
   type TEXT NOT NULL, -- 'qa' or 'essay'
   author_id INTEGER,
-  subject TEXT,
+  subject TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (author_id) REFERENCES users(id)
 );

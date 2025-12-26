@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from './layout'
+import { SUBJECTS, ANNOUNCEMENT_SUBJECTS } from './constants'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -28,15 +29,22 @@ app.get('/', (c) => {
     )
 })
 
+const SubjectList = (props: { baseUrl: string }) => (
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {SUBJECTS.map((subject) => (
+            <a href={`${props.baseUrl}?subject=${encodeURIComponent(subject)}`} class="block bg-white p-4 rounded shadow hover:bg-blue-50 transition">
+                {subject}
+            </a>
+        ))}
+    </div>
+)
+
 app.get('/resources', (c) => {
     return c.html(
         <Layout title="Resources">
             <h1 class="text-3xl font-bold mb-6">Resource Sharing</h1>
-            <p class="mb-4">Upload and find notes here.</p>
-            {/* Placeholder for resource list */}
-            <div class="bg-white p-6 rounded shadow">
-                <p class="text-gray-500 italic">Coming soon: List of files from R2 storage.</p>
-            </div>
+            <p class="mb-6">Select a subject to view or upload notes.</p>
+            <SubjectList baseUrl="/resources" />
         </Layout>
     )
 })
@@ -46,6 +54,16 @@ app.get('/announcements', async (c) => {
     return c.html(
         <Layout title="Announcements">
             <h1 class="text-3xl font-bold mb-6">Announcements</h1>
+            <div class="mb-4">
+                <h2 class="text-xl font-bold mb-2">Filter by Subject</h2>
+                <div class="flex flex-wrap gap-2">
+                    {ANNOUNCEMENT_SUBJECTS.map(subject => (
+                        <a href={`/announcements?subject=${encodeURIComponent(subject)}`} class="px-3 py-1 bg-white rounded shadow text-sm hover:bg-blue-50">
+                            {subject}
+                        </a>
+                    ))}
+                </div>
+            </div>
             <div class="space-y-4">
                 {results?.length === 0 ? (
                     <p class="text-gray-500">No announcements yet.</p>
@@ -53,6 +71,7 @@ app.get('/announcements', async (c) => {
                     results.map((a: any) => (
                         <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
                             <h2 class="text-xl font-bold">{a.title}</h2>
+                            <p class="text-sm text-blue-600 mb-2">{a.subject}</p>
                             <p class="mt-2">{a.content}</p>
                             <span class="text-xs text-gray-400 block mt-2">{new Date(a.created_at).toLocaleDateString()}</span>
                         </div>
@@ -67,7 +86,8 @@ app.get('/past-papers', (c) => {
     return c.html(
         <Layout title="Past Papers">
             <h1 class="text-3xl font-bold mb-6">Past Paper Bank</h1>
-            <p>Access past papers here.</p>
+            <p class="mb-6">Select a subject to access past papers.</p>
+            <SubjectList baseUrl="/past-papers" />
         </Layout>
     )
 })
@@ -76,7 +96,8 @@ app.get('/forum', (c) => {
     return c.html(
         <Layout title="Q&A Forum">
             <h1 class="text-3xl font-bold mb-6">Q&A Forum</h1>
-            <p>Ask and answer questions here.</p>
+            <p class="mb-6">Select a subject to view the forum.</p>
+            <SubjectList baseUrl="/forum" />
         </Layout>
     )
 })
@@ -85,7 +106,8 @@ app.get('/essays', (c) => {
     return c.html(
         <Layout title="Essay Exchange">
             <h1 class="text-3xl font-bold mb-6">Essay Exchange</h1>
-            <p>Swap and review essays here.</p>
+            <p class="mb-6">Select a subject to swap essays.</p>
+            <SubjectList baseUrl="/essays" />
         </Layout>
     )
 })
