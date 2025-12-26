@@ -10,6 +10,7 @@ CREATE TABLE users (
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
+  password TEXT, -- hashed password (plain text for initial prototype if needed, but should be hashed)
   role TEXT DEFAULT 'student',
   permission_level INTEGER DEFAULT 0,
   tags TEXT, -- JSON string or comma-separated list
@@ -34,7 +35,9 @@ CREATE TABLE announcements (
   content TEXT NOT NULL,
   subject TEXT DEFAULT 'General',
   priority TEXT DEFAULT 'normal', -- normal, high, urgent
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  author_id INTEGER,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (author_id) REFERENCES users(id)
 );
 
 CREATE TABLE posts (

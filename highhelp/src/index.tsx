@@ -1,12 +1,21 @@
 import { Hono } from 'hono'
+import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { Layout } from './layout'
 import { SUBJECTS, ANNOUNCEMENT_SUBJECTS } from './constants'
 
 const app = new Hono<{ Bindings: Env }>()
 
-app.get('/', (c) => {
+// Helper to get logged-in user
+async function getUser(c: any) {
+    const userId = getCookie(c, 'user_id')
+    if (!userId) return null
+    return await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first()
+}
+
+app.get('/', async (c) => {
+    const user = await getUser(c)
     return c.html(
-        <Layout title="Home">
+        <Layout title="Home" user={user}>
             <div class="text-center py-20">
                 <h1 class="text-4xl font-bold text-primary mb-4">Welcome to HighHelp</h1>
                 <p class="text-xl text-gray-600 mb-8">The student-led platform for high school graduates.</p>
@@ -29,6 +38,69 @@ app.get('/', (c) => {
     )
 })
 
+app.get('/login', (c) => {
+    return c.html(
+        <Layout title="Login">
+            <div class="flex flex-col md:flex-row min-h-[600px]">
+                {/* Standard Login */}
+                <div class="w-full md:w-1/2 p-8 flex flex-col justify-center border-r border-gray-200">
+                    <h2 class="text-2xl font-bold mb-6 text-blue-900">Standard Login</h2>
+                    <form action="/login" method="post" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Email Address</label>
+                            <input type="email" name="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border" placeholder="student@example.com" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Password</label>
+                            <input type="password" name="password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border" placeholder="••••••••" />
+                        </div>
+                        <button type="submit" class="w-full bg-blue-800 text-white font-bold py-3 rounded hover:bg-blue-900 transition">
+                            Log In
+                        </button>
+                    </form>
+                </div>
+
+                {/* School Login */}
+                <div class="w-full md:w-1/2 p-8 flex flex-col justify-center items-center bg-gray-50">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800">School Login</h2>
+                    <p class="text-gray-600 mb-6 text-center">Log in with your institution credentials.</p>
+                    <button disabled class="w-3/4 bg-gray-300 text-gray-500 font-bold py-3 rounded cursor-not-allowed">
+                        Log In via School (Coming Soon)
+                    </button>
+                </div>
+            </div>
+        </Layout>
+    )
+})
+
+app.post('/login', async (c) => {
+    const body = await c.req.parseBody()
+    const email = body['email'] as string
+    const password = body['password'] as string
+
+    // Simple DB Check (In real app, hash passwords!)
+    const user = await c.env.DB.prepare('SELECT * FROM users WHERE email = ? AND password = ?').bind(email, password).first()
+
+    if (user) {
+        setCookie(c, 'user_id', String(user.id), { path: '/', httpOnly: true, secure: true, maxAge: 60 * 60 * 24 * 7 })
+        return c.redirect('/')
+    } else {
+        return c.html(
+            <Layout title="Login Error">
+                <div class="p-4 bg-red-100 text-red-700 rounded text-center">
+                    <p>Invalid email or password.</p>
+                    <a href="/login" class="underline mt-2 inline-block">Try Again</a>
+                </div>
+            </Layout>
+        )
+    }
+})
+
+app.get('/logout', (c) => {
+    deleteCookie(c, 'user_id')
+    return c.redirect('/')
+})
+
 const SubjectList = (props: { baseUrl: string }) => (
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {SUBJECTS.map((subject) => (
@@ -40,11 +112,12 @@ const SubjectList = (props: { baseUrl: string }) => (
 )
 
 app.get('/resources', async (c) => {
+    const user = await getUser(c)
     const subject = c.req.query('subject')
 
     if (!subject) {
         return c.html(
-            <Layout title="Resources">
+            <Layout title="Resources" user={user}>
                 <h1 class="text-3xl font-bold mb-6">Resource Sharing</h1>
                 <p class="mb-6">Select a subject to view or upload notes.</p>
                 <SubjectList baseUrl="/resources" />
@@ -52,35 +125,47 @@ app.get('/resources', async (c) => {
         )
     }
 
-    const { results } = await c.env.DB.prepare('SELECT * FROM resources WHERE subject = ? ORDER BY created_at DESC').bind(subject).all()
+    const { results } = await c.env.DB.prepare(`
+        SELECT r.*, u.first_name, u.last_name 
+        FROM resources r 
+        LEFT JOIN users u ON r.uploader_id = u.id 
+        WHERE r.subject = ? 
+        ORDER BY r.created_at DESC
+    `).bind(subject).all()
 
     return c.html(
-        <Layout title={`Resources - ${subject}`}>
+        <Layout title={`Resources - ${subject}`} user={user}>
             <div class="flex items-center justify-between mb-6">
                 <h1 class="text-3xl font-bold">{subject} Resources</h1>
                 <a href="/resources" class="text-blue-600 hover:underline">← Back to Subjects</a>
             </div>
 
             {/* Upload Form */}
-            <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8">
-                <h3 class="text-lg font-bold mb-4">Upload Resource (Test User)</h3>
-                <form action="/resources" method="post" enctype="multipart/form-data" class="space-y-4">
-                    <input type="hidden" name="subject" value={subject} />
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Title</label>
-                        <input type="text" name="title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Description</label>
-                        <textarea name="description" rows={2} class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">File</label>
-                        <input type="file" name="file" required class="mt-1 block w-full text-sm text-gray-500" />
-                    </div>
-                    <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700">Upload Resource</button>
-                </form>
-            </div>
+            {user ? (
+                <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8">
+                    <h3 class="text-lg font-bold mb-4">Upload Resource</h3>
+                    <form action="/resources" method="post" enctype="multipart/form-data" class="space-y-4">
+                        <input type="hidden" name="subject" value={subject} />
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Title</label>
+                            <input type="text" name="title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Description</label>
+                            <textarea name="description" rows={2} class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">File</label>
+                            <input type="file" name="file" required class="mt-1 block w-full text-sm text-gray-500" />
+                        </div>
+                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700">Upload Resource</button>
+                    </form>
+                </div>
+            ) : (
+                <div class="bg-blue-50 p-4 rounded mb-8 text-center text-blue-800">
+                    <a href="/login" class="font-bold underline">Log in</a> to upload resources.
+                </div>
+            )}
 
             {/* Resource List */}
             <div class="space-y-4">
@@ -89,12 +174,12 @@ app.get('/resources', async (c) => {
                 ) : (
                     results.map((r: any) => (
                         <div class="bg-white p-4 rounded shadow border-l-4 border-green-500 flex justify-between items-start">
-                            <div>
+                            <div class="flex-grow">
                                 <h2 class="text-xl font-bold">{r.title}</h2>
+                                <p class="text-xs text-gray-500 mb-1">Uploaded by {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'} on {new Date(r.created_at).toLocaleDateString()}</p>
                                 <p class="text-gray-600 mb-2">{r.description}</p>
-                                <span class="text-xs text-gray-400 block">{new Date(r.created_at).toLocaleDateString()}</span>
                             </div>
-                            <a href={`/download/${r.file_key}`} target="_blank" class="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm">Download</a>
+                            <a href={`/download/${r.file_key}`} target="_blank" class="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm ml-4 whitespace-nowrap">Download</a>
                         </div>
                     ))
                 )}
@@ -105,6 +190,9 @@ app.get('/resources', async (c) => {
 
 app.post('/resources', async (c) => {
     try {
+        const user = await getUser(c)
+        if (!user) return c.redirect('/login')
+
         const body = await c.req.parseBody()
         const title = body['title'] as string
         const description = body['description'] as string
@@ -114,8 +202,6 @@ app.post('/resources', async (c) => {
         console.log('Upload Request:', { title, subject, fileName: file?.name, fileSize: file?.size })
 
         if (title && file && subject) {
-            // Sanitize filename to avoid weird URL issues, though R2 handles most chars.
-            // Using a simple timestamp prefix.
             const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             const fileKey = `resources/${Date.now()}-${safeName}`
 
@@ -123,9 +209,8 @@ app.post('/resources', async (c) => {
             await c.env.BUCKET.put(fileKey, file)
 
             console.log('Inserting into DB')
-            // Using hardcoded uploader_id = 1 (Ricky)
-            await c.env.DB.prepare('INSERT INTO resources (title, description, file_key, subject, uploader_id, type) VALUES (?, ?, ?, ?, 1, ?)')
-                .bind(title, description, fileKey, subject, 'resource')
+            await c.env.DB.prepare('INSERT INTO resources (title, description, file_key, subject, uploader_id, type) VALUES (?, ?, ?, ?, ?, ?)')
+                .bind(title, description, fileKey, subject, user.id, 'resource')
                 .run()
             console.log('Upload successful')
         }
@@ -138,7 +223,6 @@ app.post('/resources', async (c) => {
 
 app.get('/download/*', async (c) => {
     try {
-        // Extract key from the full path. Path starts with /download/
         const path = c.req.path;
         console.log('Download path:', path);
         const prefix = '/download/';
@@ -166,41 +250,52 @@ app.get('/download/*', async (c) => {
 })
 
 app.get('/announcements', async (c) => {
-    const { results } = await c.env.DB.prepare('SELECT * FROM announcements ORDER BY created_at DESC').all()
+    const user = await getUser(c)
+    // Join with users table to get author info
+    const { results } = await c.env.DB.prepare(`
+        SELECT a.*, u.first_name, u.last_name 
+        FROM announcements a 
+        LEFT JOIN users u ON a.author_id = u.id 
+        ORDER BY a.created_at DESC
+    `).all()
     const subjectFilter = c.req.query('subject')
 
-    // Filter results in code if needed, or better, via SQL directly:
-    // For simplicity with "General" + others, let's just show all or filter if param exists.
     let filteredResults = results;
     if (subjectFilter) {
         filteredResults = results?.filter((r: any) => r.subject === subjectFilter)
     }
 
     return c.html(
-        <Layout title="Announcements">
+        <Layout title="Announcements" user={user}>
             <h1 class="text-3xl font-bold mb-6">Announcements</h1>
 
             {/* Creation Form */}
-            <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8">
-                <h3 class="text-lg font-bold mb-4">Post New Announcement (Test User)</h3>
-                <form action="/announcements" method="post" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Title</label>
-                        <input type="text" name="title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Subject</label>
-                        <select name="subject" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                            {ANNOUNCEMENT_SUBJECTS.map(s => <option value={s}>{s}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Content</label>
-                        <textarea name="content" rows={3} required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea>
-                    </div>
-                    <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700">Post Announcement</button>
-                </form>
-            </div>
+            {user ? (
+                <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8">
+                    <h3 class="text-lg font-bold mb-4">Post New Announcement</h3>
+                    <form action="/announcements" method="post" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Title</label>
+                            <input type="text" name="title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Subject</label>
+                            <select name="subject" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                                {ANNOUNCEMENT_SUBJECTS.map(s => <option value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Content</label>
+                            <textarea name="content" rows={3} required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea>
+                        </div>
+                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700">Post Announcement</button>
+                    </form>
+                </div>
+            ) : (
+                <div class="bg-blue-50 p-4 rounded mb-8 text-center text-blue-800">
+                    <p>Log in to post announcements.</p>
+                </div>
+            )}
 
             <div class="mb-4">
                 <h2 class="text-xl font-bold mb-2">Filter by Subject</h2>
@@ -221,7 +316,7 @@ app.get('/announcements', async (c) => {
                     filteredResults.map((a: any) => (
                         <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
                             <h2 class="text-xl font-bold">{a.title}</h2>
-                            <p class="text-sm text-blue-600 mb-2">{a.subject}</p>
+                            <p class="text-sm text-blue-600 mb-1">{a.subject} • Posted by {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}</p>
                             <p class="mt-2 whitespace-pre-wrap">{a.content}</p>
                             <span class="text-xs text-gray-400 block mt-2">{new Date(a.created_at).toLocaleDateString()}</span>
                         </div>
@@ -233,22 +328,26 @@ app.get('/announcements', async (c) => {
 })
 
 app.post('/announcements', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+
     const body = await c.req.parseBody()
     const title = body['title'] as string
     const subject = body['subject'] as string
     const content = body['content'] as string
 
     if (title && content) {
-        await c.env.DB.prepare('INSERT INTO announcements (title, content, subject) VALUES (?, ?, ?)')
-            .bind(title, content, subject || 'General')
+        await c.env.DB.prepare('INSERT INTO announcements (title, content, subject, author_id) VALUES (?, ?, ?, ?)')
+            .bind(title, content, subject || 'General', user.id)
             .run()
     }
     return c.redirect('/announcements')
 })
 
-app.get('/past-papers', (c) => {
+app.get('/past-papers', async (c) => {
+    const user = await getUser(c)
     return c.html(
-        <Layout title="Past Papers">
+        <Layout title="Past Papers" user={user}>
             <h1 class="text-3xl font-bold mb-6">Past Paper Bank</h1>
             <p class="mb-6">Select a subject to access past papers.</p>
             <SubjectList baseUrl="/past-papers" />
@@ -256,9 +355,10 @@ app.get('/past-papers', (c) => {
     )
 })
 
-app.get('/forum', (c) => {
+app.get('/forum', async (c) => {
+    const user = await getUser(c)
     return c.html(
-        <Layout title="Q&A Forum">
+        <Layout title="Q&A Forum" user={user}>
             <h1 class="text-3xl font-bold mb-6">Q&A Forum</h1>
             <p class="mb-6">Select a subject to view the forum.</p>
             <SubjectList baseUrl="/forum" />
@@ -266,9 +366,10 @@ app.get('/forum', (c) => {
     )
 })
 
-app.get('/essays', (c) => {
+app.get('/essays', async (c) => {
+    const user = await getUser(c)
     return c.html(
-        <Layout title="Essay Exchange">
+        <Layout title="Essay Exchange" user={user}>
             <h1 class="text-3xl font-bold mb-6">Essay Exchange</h1>
             <p class="mb-6">Select a subject to swap essays.</p>
             <SubjectList baseUrl="/essays" />

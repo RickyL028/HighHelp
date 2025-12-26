@@ -16,6 +16,7 @@
 		"wrangler": "^4.54.0"
 	},
 	"dependencies": {
+		"cookie": "^1.1.1",
 		"hono": "^4.11.2"
 	}
 }

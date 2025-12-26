@@ -1,6 +1,6 @@
 import { html } from 'hono/html'
 
-export const Layout = (props: { title: string; children: any }) => {
+export const Layout = (props: { title: string; children: any; user?: any }) => {
   return html`
     <!DOCTYPE html>
     <html lang="en">
@@ -37,6 +37,16 @@ export const Layout = (props: { title: string; children: any }) => {
                     <a href="/forum" class="hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium">Q&A</a>
                     <a href="/essays" class="hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium">Essays</a>
                   </div>
+                </div>
+              </div>
+              <div class="hidden md:block">
+                <div class="ml-4 flex items-center md:ml-6 text-sm font-medium">
+                  ${props.user ? html`
+                    <span class="mr-4">Hello, ${props.user.first_name}</span>
+                    <a href="/logout" class="bg-blue-700 hover:bg-blue-600 px-3 py-2 rounded-md">Logout</a>
+                  ` : html`
+                    <a href="/login" class="bg-blue-700 hover:bg-blue-600 px-3 py-2 rounded-md">Login</a>
+                  `}
                 </div>
               </div>
             </div>
