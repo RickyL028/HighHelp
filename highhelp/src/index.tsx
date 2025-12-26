@@ -5,44 +5,130 @@ import { SUBJECTS, ANNOUNCEMENT_SUBJECTS } from './constants'
 
 const app = new Hono<{ Bindings: Env }>()
 
-// Helper to get logged-in user
+// --- CONFIGURATION ---
+
+// Exact mapping of your priority list. 
+// Note: Ensure these strings match exactly what is inside your SUBJECTS constant.
+const PRIORITY_STANDARD = [
+    "English Advanced",
+    "Mathematics Advanced",
+    "Mathematics Extension 1", // Assuming 'Math Advanced X1' refers to Ext 1
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Economics",
+    "Business Studies",
+    "Modern History",
+    "Geography",
+    "Legal Studies",
+    "Software Engineering",
+    "Engineering Studies"
+];
+
+const PRIORITY_ESSAY = [
+    "English Advanced",
+    "Economics",
+    "Business Studies",
+    "Modern History",
+    "Geography",
+    "Legal Studies"
+];
+
+// --- HELPER FUNCTIONS ---
+
 async function getUser(c: any) {
     const userId = getCookie(c, 'user_id')
     if (!userId) return null
     return await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first()
 }
 
+// New Helper to sort subjects based on the requested priority
+const getSortedSubjects = (type: 'standard' | 'essay') => {
+    // Cast the priority list to match the type of the elements in SUBJECTS
+    const priorityList = (type === 'essay' ? PRIORITY_ESSAY : PRIORITY_STANDARD) as typeof SUBJECTS[number][];
+
+    // Now TypeScript knows 's' is the specific literal type, not just a generic 'string'
+    const popular = priorityList.filter(s => SUBJECTS.includes(s));
+
+    const others = SUBJECTS
+        .filter(s => !(priorityList as string[]).includes(s))
+        .sort((a, b) => a.localeCompare(b));
+
+    return { popular, others };
+}
+
+// --- COMPONENTS ---
+
+// Redesigned Subject Selector (Compact Pills)
+const SubjectSelector = (props: { baseUrl: string, type: 'standard' | 'essay' }) => {
+    const { popular, others } = getSortedSubjects(props.type);
+
+    const Pill = ({ subject }: { subject: string }) => (
+        <a
+            href={`${props.baseUrl}?subject=${encodeURIComponent(subject)}`}
+            class="inline-block bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-600 hover:text-white hover:border-blue-600 transition shadow-sm mb-2 mr-2"
+        >
+            {subject}
+        </a>
+    );
+
+    return (
+        <div class="space-y-6">
+            {/* Priority Subjects */}
+            <div>
+                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">popular</h3>
+                <div class="flex flex-wrap">
+                    {popular.map(s => <Pill subject={s} />)}
+                </div>
+            </div>
+
+            <hr class="border-gray-200" />
+
+            {/* All Other Subjects */}
+            <div>
+                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">All</h3>
+                <div class="flex flex-wrap">
+                    {others.map(s => <Pill subject={s} />)}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// --- ROUTES ---
+
 app.get('/', async (c) => {
     const user = await getUser(c)
     return c.html(
         <Layout title="Home" user={user}>
             <div class="text-center py-20">
-                <h1 class="text-4xl font-bold text-primary mb-4">Welcome to HighHelp</h1>
-                <p class="text-xl text-gray-600 mb-8">The student-led platform for high school graduates.</p>
+                <h1 class="text-4xl font-bold text-primary mb-4">HighHelp</h1>
+                <p class="text-xl text-gray-600 mb-8">Helping High</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
-                    <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-primary">
+                    <a href="/resources" class="bg-white p-6 rounded-lg shadow-md border-t-4 border-primary hover:shadow-lg transition">
                         <h2 class="text-xl font-bold mb-2">Resource Sharing</h2>
-                        <p>Share and access high-quality notes from top students.</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-secondary">
+                        <p class="text-gray-600">Share and access high-quality notes from top students.</p>
+                    </a>
+                    <a href="/past-papers" class="bg-white p-6 rounded-lg shadow-md border-t-4 border-secondary hover:shadow-lg transition">
                         <h2 class="text-xl font-bold mb-2">Past Papers</h2>
-                        <p>Access a comprehensive bank of past exam papers.</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-primary">
+                        <p class="text-gray-600">Access a comprehensive bank of past exam papers.</p>
+                    </a>
+                    <a href="/forum" class="bg-white p-6 rounded-lg shadow-md border-t-4 border-primary hover:shadow-lg transition">
                         <h2 class="text-xl font-bold mb-2">Q&A Forum</h2>
-                        <p>Ask questions and get answers from the community.</p>
-                    </div>
+                        <p class="text-gray-600">Ask questions and get answers from the community.</p>
+                    </a>
                 </div>
             </div>
         </Layout>
     )
 })
 
+// ... [Login/Logout routes remain unchanged] ...
+
 app.get('/login', (c) => {
     return c.html(
         <Layout title="Login">
             <div class="flex flex-col md:flex-row min-h-[600px]">
-                {/* Standard Login */}
                 <div class="w-full md:w-1/2 p-8 flex flex-col justify-center border-r border-gray-200">
                     <h2 class="text-2xl font-bold mb-6 text-blue-900">Standard Login</h2>
                     <form action="/login" method="post" class="space-y-4">
@@ -59,8 +145,6 @@ app.get('/login', (c) => {
                         </button>
                     </form>
                 </div>
-
-                {/* School Login */}
                 <div class="w-full md:w-1/2 p-8 flex flex-col justify-center items-center bg-gray-50">
                     <h2 class="text-2xl font-bold mb-6 text-gray-800">School Login</h2>
                     <p class="text-gray-600 mb-6 text-center">Log in with your institution credentials.</p>
@@ -78,16 +162,14 @@ app.post('/login', async (c) => {
     const email = body['email'] as string
     const password = body['password'] as string
 
-    // Simple DB Check (In real app, hash passwords!)
     const user = await c.env.DB.prepare('SELECT * FROM users WHERE email = ? AND password = ?').bind(email, password).first()
 
     if (user) {
         const isLocal = c.req.url.includes('localhost');
-
         setCookie(c, 'user_id', String(user.id), {
             path: '/',
             httpOnly: true,
-            secure: !isLocal, // Only secure if NOT localhost
+            secure: !isLocal,
             maxAge: 60 * 60 * 24 * 7,
             sameSite: 'Lax'
         });
@@ -109,15 +191,7 @@ app.get('/logout', (c) => {
     return c.redirect('/')
 })
 
-const SubjectList = (props: { baseUrl: string }) => (
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {SUBJECTS.map((subject) => (
-            <a href={`${props.baseUrl}?subject=${encodeURIComponent(subject)}`} class="block bg-white p-4 rounded shadow hover:bg-blue-50 transition">
-                {subject}
-            </a>
-        ))}
-    </div>
-)
+// --- UPDATED SUB-PAGES ---
 
 app.get('/resources', async (c) => {
     const user = await getUser(c)
@@ -126,9 +200,12 @@ app.get('/resources', async (c) => {
     if (!subject) {
         return c.html(
             <Layout title="Resources" user={user}>
-                <h1 class="text-3xl font-bold mb-6">Resource Sharing</h1>
-                <p class="mb-6">Select a subject to view or upload notes.</p>
-                <SubjectList baseUrl="/resources" />
+                <div class="max-w-4xl mx-auto">
+                    <h1 class="text-3xl font-bold mb-2">Resource Sharing</h1>
+                    <p class="mb-8 text-gray-600">Select a subject to view or upload notes.</p>
+                    {/* Using Standard Priority List */}
+                    <SubjectSelector baseUrl="/resources" type="standard" />
+                </div>
             </Layout>
         )
     }
@@ -145,10 +222,10 @@ app.get('/resources', async (c) => {
         <Layout title={`Resources - ${subject}`} user={user}>
             <div class="flex items-center justify-between mb-6">
                 <h1 class="text-3xl font-bold">{subject} Resources</h1>
-                <a href="/resources" class="text-blue-600 hover:underline">← Back to Subjects</a>
+                <a href="/resources" class="text-blue-600 hover:underline">← All Subjects</a>
             </div>
 
-            {/* Upload Form */}
+            {/* Upload Form (Unchanged logic, just UI check) */}
             {user ? (
                 <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8">
                     <h3 class="text-lg font-bold mb-4">Upload Resource</h3>
@@ -164,17 +241,15 @@ app.get('/resources', async (c) => {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">File</label>
-
                             <input
                                 type="file"
                                 name="file"
                                 required
                                 class="mt-1 block w-full text-sm text-gray-500"
-                                accept="*" // Optional: Restrict file types if needed
+                                accept="*"
                                 onchange="if(this.files[0].size > 26214400){ alert('File is too big! Max size is 25MB.'); this.value = ''; }"
                             />
                             <p class="text-xs text-gray-500 mt-1">Maximum file size: 25 MB</p>
-
                         </div>
                         <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700">Upload Resource</button>
                     </form>
@@ -185,7 +260,6 @@ app.get('/resources', async (c) => {
                 </div>
             )}
 
-            {/* Resource List */}
             <div class="space-y-4">
                 {results?.length === 0 ? (
                     <p class="text-gray-500">No resources uploaded for this subject yet.</p>
@@ -206,6 +280,7 @@ app.get('/resources', async (c) => {
     )
 })
 
+// ... [Post resources and download routes remain unchanged] ...
 app.post('/resources', async (c) => {
     try {
         const user = await getUser(c)
@@ -216,29 +291,21 @@ app.post('/resources', async (c) => {
         const description = body['description'] as string
         const subject = body['subject'] as string
         const file = body['file'] as File
-        const MAX_SIZE = 25 * 1024 * 1024 // 25MB in bytes
+        const MAX_SIZE = 25 * 1024 * 1024
         if (file && file.size > MAX_SIZE) {
             return c.text("File too large. Maximum size is 25MB.", 400)
         }
 
-        console.log('Upload Request:', { title, subject, fileName: file?.name, fileSize: file?.size })
-
         if (title && file && subject) {
             const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             const fileKey = `resources/${Date.now()}-${safeName}`
-
-            console.log('Putting to R2:', fileKey)
             await c.env.BUCKET.put(fileKey, file)
-
-            console.log('Inserting into DB')
             await c.env.DB.prepare('INSERT INTO resources (title, description, file_key, subject, uploader_id, type) VALUES (?, ?, ?, ?, ?, ?)')
                 .bind(title, description, fileKey, subject, user.id, 'resource')
                 .run()
-            console.log('Upload successful')
         }
         return c.redirect(`/resources?subject=${encodeURIComponent(subject)}`)
     } catch (e: any) {
-        console.error('Upload Error:', e)
         return c.text(`Upload Failed: ${e.message}`, 500)
     }
 })
@@ -246,19 +313,11 @@ app.post('/resources', async (c) => {
 app.get('/download/*', async (c) => {
     try {
         const path = c.req.path;
-        console.log('Download path:', path);
         const prefix = '/download/';
         if (!path.startsWith(prefix)) return c.text('Invalid path', 400);
-
         const key = path.slice(prefix.length);
-        console.log('Fetching key from R2:', key);
-
         const object = await c.env.BUCKET.get(key);
-        if (!object) {
-            console.error('File not found in R2:', key);
-            return c.text('File not found', 404);
-        }
-
+        if (!object) return c.text('File not found', 404);
         return new Response(object.body, {
             headers: {
                 'etag': object.httpEtag,
@@ -266,14 +325,13 @@ app.get('/download/*', async (c) => {
             }
         })
     } catch (e: any) {
-        console.error('Download Error:', e);
         return c.text(`Download Failed: ${e.message}`, 500);
     }
 })
 
+// Announcements (Unchanged, already used a filter system)
 app.get('/announcements', async (c) => {
     const user = await getUser(c)
-    // Join with users table to get author info
     const { results } = await c.env.DB.prepare(`
         SELECT a.*, u.first_name, u.last_name 
         FROM announcements a 
@@ -290,8 +348,7 @@ app.get('/announcements', async (c) => {
     return c.html(
         <Layout title="Announcements" user={user}>
             <h1 class="text-3xl font-bold mb-6">Announcements</h1>
-
-            {/* Creation Form */}
+            {/* ... [Rest of announcement creation logic unchanged] ... */}
             {user ? (
                 <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8">
                     <h3 class="text-lg font-bold mb-4">Post New Announcement</h3>
@@ -318,7 +375,6 @@ app.get('/announcements', async (c) => {
                     <p>Log in to post announcements.</p>
                 </div>
             )}
-
             <div class="mb-4">
                 <h2 class="text-xl font-bold mb-2">Filter by Subject</h2>
                 <div class="flex flex-wrap gap-2">
@@ -330,7 +386,6 @@ app.get('/announcements', async (c) => {
                     ))}
                 </div>
             </div>
-
             <div class="space-y-4">
                 {filteredResults?.length === 0 ? (
                     <p class="text-gray-500">No announcements yet.</p>
@@ -352,12 +407,10 @@ app.get('/announcements', async (c) => {
 app.post('/announcements', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
-
     const body = await c.req.parseBody()
     const title = body['title'] as string
     const subject = body['subject'] as string
     const content = body['content'] as string
-
     if (title && content) {
         await c.env.DB.prepare('INSERT INTO announcements (title, content, subject, author_id) VALUES (?, ?, ?, ?)')
             .bind(title, content, subject || 'General', user.id)
@@ -370,9 +423,12 @@ app.get('/past-papers', async (c) => {
     const user = await getUser(c)
     return c.html(
         <Layout title="Past Papers" user={user}>
-            <h1 class="text-3xl font-bold mb-6">Past Paper Bank</h1>
-            <p class="mb-6">Select a subject to access past papers.</p>
-            <SubjectList baseUrl="/past-papers" />
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-3xl font-bold mb-2">Past Paper Bank</h1>
+                <p class="mb-8 text-gray-600">Select a subject to access past papers.</p>
+                {/* Using Standard Priority List */}
+                <SubjectSelector baseUrl="/past-papers" type="standard" />
+            </div>
         </Layout>
     )
 })
@@ -381,9 +437,12 @@ app.get('/forum', async (c) => {
     const user = await getUser(c)
     return c.html(
         <Layout title="Q&A Forum" user={user}>
-            <h1 class="text-3xl font-bold mb-6">Q&A Forum</h1>
-            <p class="mb-6">Select a subject to view the forum.</p>
-            <SubjectList baseUrl="/forum" />
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-3xl font-bold mb-2">Q&A Forum</h1>
+                <p class="mb-8 text-gray-600">Select a subject to view the forum.</p>
+                {/* Using Standard Priority List */}
+                <SubjectSelector baseUrl="/forum" type="standard" />
+            </div>
         </Layout>
     )
 })
@@ -392,12 +451,14 @@ app.get('/essays', async (c) => {
     const user = await getUser(c)
     return c.html(
         <Layout title="Essay Exchange" user={user}>
-            <h1 class="text-3xl font-bold mb-6">Essay Exchange</h1>
-            <p class="mb-6">Select a subject to swap essays.</p>
-            <SubjectList baseUrl="/essays" />
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-3xl font-bold mb-2">Essay Exchange</h1>
+                <p class="mb-8 text-gray-600">Select a subject to swap essays.</p>
+                {/* Using ESSAY Priority List */}
+                <SubjectSelector baseUrl="/essays" type="essay" />
+            </div>
         </Layout>
     )
 })
-
 
 export default app

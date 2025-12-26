@@ -60,7 +60,7 @@ export const Layout = (props: { title: string; children: any; user?: any }) => {
         <footer class="bg-white-800/10 text-blue-800/10 py-6">
 
           <div class="max-w-7xl mx-auto px-4 text-center">
-            <p>&copy; 2025 HighHelp. Student led and programmed.</p>
+            <p>&copy; 2025 HighHelp</p>
           </div>
         </footer>
       </body>
