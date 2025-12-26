@@ -82,7 +82,15 @@ app.post('/login', async (c) => {
     const user = await c.env.DB.prepare('SELECT * FROM users WHERE email = ? AND password = ?').bind(email, password).first()
 
     if (user) {
-        setCookie(c, 'user_id', String(user.id), { path: '/', httpOnly: true, secure: true, maxAge: 60 * 60 * 24 * 7 })
+        const isLocal = c.req.url.includes('localhost');
+
+        setCookie(c, 'user_id', String(user.id), {
+            path: '/',
+            httpOnly: true,
+            secure: !isLocal, // Only secure if NOT localhost
+            maxAge: 60 * 60 * 24 * 7,
+            sameSite: 'Lax'
+        });
         return c.redirect('/')
     } else {
         return c.html(
@@ -156,7 +164,17 @@ app.get('/resources', async (c) => {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">File</label>
-                            <input type="file" name="file" required class="mt-1 block w-full text-sm text-gray-500" />
+
+                            <input
+                                type="file"
+                                name="file"
+                                required
+                                class="mt-1 block w-full text-sm text-gray-500"
+                                accept="*" // Optional: Restrict file types if needed
+                                onchange="if(this.files[0].size > 26214400){ alert('File is too big! Max size is 25MB.'); this.value = ''; }"
+                            />
+                            <p class="text-xs text-gray-500 mt-1">Maximum file size: 25 MB</p>
+
                         </div>
                         <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700">Upload Resource</button>
                     </form>
@@ -198,6 +216,10 @@ app.post('/resources', async (c) => {
         const description = body['description'] as string
         const subject = body['subject'] as string
         const file = body['file'] as File
+        const MAX_SIZE = 25 * 1024 * 1024 // 25MB in bytes
+        if (file && file.size > MAX_SIZE) {
+            return c.text("File too large. Maximum size is 25MB.", 400)
+        }
 
         console.log('Upload Request:', { title, subject, fileName: file?.name, fileSize: file?.size })
 
