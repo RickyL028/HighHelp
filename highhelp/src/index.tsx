@@ -103,7 +103,7 @@ app.get('/', async (c) => {
         <Layout title="Home" user={user}>
             <div class="text-center py-20">
                 <h1 class="text-4xl font-bold text-primary mb-4">HighHelp</h1>
-                <p class="text-xl text-gray-600 mb-8">Helping High</p>
+                <p class="text-xl text-gray-600 mb-8">Pull Request Testing</p> 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
                     <a href="/resources" class="bg-white p-6 rounded-lg shadow-md border-t-4 border-primary hover:shadow-lg transition">
                         <h2 class="text-xl font-bold mb-2">Resource Sharing</h2>
