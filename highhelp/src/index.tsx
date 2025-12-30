@@ -3,7 +3,7 @@ import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { Layout } from './layout'
 import { SUBJECTS, ANNOUNCEMENT_SUBJECTS } from './constants'
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<{ Bindings: Env & { PORTAL_API_CLIENT_ID: string; PORTAL_API_CLIENT_SECRET: string; APP_REDIRECT_URI: string } }>()
 
 // --- CONFIGURATION ---
 
@@ -125,6 +125,128 @@ app.get('/', async (c) => {
 
 // ... [Login/Logout routes remain unchanged] ...
 
+// --- AUTHENTICATION ROUTES ---
+
+app.get('/api/auth/login', (c) => {
+    const clientId = c.env.PORTAL_API_CLIENT_ID;
+    const redirectUri = c.env.APP_REDIRECT_URI;
+
+    if (!clientId || !redirectUri) {
+        return c.text('Configuration Error: Missing Client ID or Redirect URI', 500);
+    }
+
+    // Generate random state
+    const state = Math.random().toString(36).substring(7);
+    setCookie(c, 'oauth_state', state, {
+        path: '/',
+        httpOnly: true,
+        secure: !c.req.url.includes('localhost'),
+        maxAge: 300, // 5 minutes
+        sameSite: 'Lax'
+    });
+
+    const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'all-ro',
+        state: state
+    });
+
+    return c.redirect(`https://student.sbhs.net.au/api/authorize?${params.toString()}`);
+})
+
+app.get('/api/auth/callback', async (c) => {
+    const error = c.req.query('error');
+    if (error) return c.text(`Auth Error: ${error}`, 400);
+
+    const code = c.req.query('code');
+    const state = c.req.query('state');
+    const savedState = getCookie(c, 'oauth_state');
+
+    // Verify state to prevent CSRF
+    if (!code || !state || state !== savedState) {
+        return c.text('Invalid State or Missing Code. Please try logging in again.', 400);
+    }
+
+    // Exchange code for token
+    const clientId = c.env.PORTAL_API_CLIENT_ID;
+    const clientSecret = c.env.PORTAL_API_CLIENT_SECRET;
+    const redirectUri = c.env.APP_REDIRECT_URI;
+
+    if (!clientSecret) {
+        return c.text('Configuration Error: Missing Client Secret. Please add PORTAL_API_CLIENT_SECRET to .dev.vars or secrets.', 500);
+    }
+
+    try {
+        const tokenResponse = await fetch('https://student.sbhs.net.au/api/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                grant_type: 'authorization_code',
+                code: code,
+                client_id: clientId,
+                client_secret: clientSecret,
+                redirect_uri: redirectUri
+            })
+        });
+
+        const tokenData: any = await tokenResponse.json();
+
+        if (!tokenData.access_token) {
+            return c.text('Failed to retrieve access token: ' + JSON.stringify(tokenData), 400);
+        }
+
+        const accessToken = tokenData.access_token;
+
+        // Get User Info
+        const userResponse = await fetch('https://student.sbhs.net.au/api/details/userinfo.json', {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+
+        const userData: any = await userResponse.json();
+
+        if (!userData.studentId) {
+            return c.text('Failed to retrieve user info: ' + JSON.stringify(userData), 400);
+        }
+
+        // Check/Upsert User in DB
+        let user = await c.env.DB.prepare('SELECT * FROM users WHERE student_id = ?').bind(userData.studentId).first();
+
+        if (!user) {
+            // Create new user
+            const result = await c.env.DB.prepare(`
+                INSERT INTO users (student_id, first_name, last_name, email, role, permission_level)
+                VALUES (?, ?, ?, ?, 'student', 0)
+                RETURNING *
+            `).bind(
+                userData.studentId,
+                userData.givenName,
+                userData.surname,
+                userData.email
+            ).first();
+            user = result;
+        }
+
+        if (!user) return c.text('Database Error: Failed to create user', 500);
+
+        // Set Session Cookie
+        const isLocal = c.req.url.includes('localhost');
+        setCookie(c, 'user_id', String(user.id), {
+            path: '/',
+            httpOnly: true,
+            secure: !isLocal,
+            maxAge: 60 * 60 * 24 * 7, // 1 week
+            sameSite: 'Lax'
+        });
+
+        return c.redirect('/');
+
+    } catch (e: any) {
+        return c.text(`Authentication Failed: ${e.message}`, 500);
+    }
+})
+
 app.get('/login', (c) => {
     return c.html(
         <Layout title="Login">
@@ -146,11 +268,11 @@ app.get('/login', (c) => {
                     </form>
                 </div>
                 <div class="w-full md:w-1/2 p-8 flex flex-col justify-center items-center bg-gray-50">
-                    <h2 class="text-2xl font-bold mb-6 text-gray-800">School Login</h2>
-                    <p class="text-gray-600 mb-6 text-center">Log in with your institution credentials.</p>
-                    <button disabled class="w-3/4 bg-gray-300 text-gray-500 font-bold py-3 rounded cursor-not-allowed">
-                        Log In via School (Coming Soon)
-                    </button>
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800">Student Portal Login</h2>
+                    <p class="text-gray-600 mb-6 text-center">Log in with your school credentials.</p>
+                    <a href="/api/auth/login" class="w-3/4 bg-blue-600 text-white font-bold py-3 rounded text-center hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2">
+                        <span>Log In with Student Portal</span>
+                    </a>
                 </div>
             </div>
         </Layout>
