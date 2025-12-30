@@ -441,7 +441,9 @@ app.get('/past-papers', async (c) => {
 
     // 2. Subject Selected -> Show Topics AND Upload Form
     if (subject && !topicIdStr) {
+
         const { results: topics } = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject).all()
+
         const canUpload = user && user.permission_level >= 3;
 
         return c.html(
