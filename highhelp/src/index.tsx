@@ -117,23 +117,23 @@ app.get('/', async (c) => {
             <div class="space-y-12 py-8">
 
                 {/* Countdowns Section */}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="grid grid-cols-1 gap-8 max-w-2xl mx-auto">
                     {/* Half Yearly Countdown */}
                     <div class="bg-white p-8 rounded-lg shadow-lg border-t-8 border-primary text-center">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-4 uppercase tracking-wider">Time Till Half Yearly</h2>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 uppercase tracking-wider">Half Yearly</h2>
                         <div id="half-yearly-countdown" class="text-4xl md:text-5xl font-mono font-bold text-primary mb-2">
                             --:--:--:--
                         </div>
-                        <p class="text-gray-500 text-sm"></p>
+
                     </div>
 
                     {/* HSC Countdown */}
                     <div class="bg-white p-8 rounded-lg shadow-lg border-t-8 border-secondary text-center">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-4 uppercase tracking-wider">Time Till HSC 2027</h2>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 uppercase tracking-wider">HSC 2027</h2>
                         <div id="hsc-countdown" class="text-4xl md:text-5xl font-mono font-bold text-secondary mb-2">
                             -- Weeks
                         </div>
-                        <p class="text-gray-500 text-sm"></p>
+
                     </div>
                 </div>
 
