@@ -102,7 +102,7 @@ app.get('/', async (c) => {
 
     // Fetch latest 3 announcements
     const { results: latestAnnouncements } = await c.env.DB.prepare(`
-        SELECT a.*, u.first_name, u.last_name 
+        SELECT a.*, u.first_name, u.last_name, u.tags 
         FROM announcements a 
         LEFT JOIN users u ON a.author_id = u.id 
         ORDER BY a.created_at DESC 
@@ -155,7 +155,10 @@ app.get('/', async (c) => {
                                             <h3 class="text-xl font-bold text-gray-800 mb-1">{a.title}</h3>
                                             <div class="flex items-center gap-2 mb-3">
                                                 <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-medium">{a.subject}</span>
-                                                <span class="text-sm text-gray-500">• {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}</span>
+                                                <span class="text-sm text-gray-500 flex items-center">
+                                                    • {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}
+                                                    <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(a.tags) }}></span>
+                                                </span>
                                             </div>
                                             <p class="text-gray-600 line-clamp-2">{a.content}</p>
                                         </div>
@@ -400,6 +403,272 @@ app.get('/logout', (c) => {
     return c.redirect('/')
 })
 
+// --- PROFILE ROUTES ---
+
+// Helper to render tags pill
+const renderTags = (tagsJson: string | null) => {
+    if (!tagsJson) return '';
+    try {
+        const tags = JSON.parse(tagsJson);
+        const activeTags = Object.entries(tags)
+            .filter(([_, val]) => val === 1)
+            .map(([key, _]) => key);
+
+        if (activeTags.length === 0) return '';
+
+        return activeTags.map(tag =>
+            `<span class="inline-block bg-indigo-100 text-indigo-800 text-xs px-2 py-0.5 rounded-full font-bold border border-indigo-200 mr-1 align-middle">${tag}</span>`
+        ).join('');
+    } catch (e) {
+        return '';
+    }
+}
+
+const getFruitPermission = (level: number) => {
+    const fruits = ["Apple", "Banana", "Cherry", "Durian"];
+    return fruits[level] || "Unknown Fruit";
+}
+
+const censorEmail = (email: string) => {
+    if (!email) return "";
+    const [local, domain] = email.split('@');
+    if (!local || !domain) return email;
+    const start = local.slice(0, 3);
+    return `${start}******@${domain}`;
+}
+
+app.get('/profile', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+
+    // Parse Tags
+    let userTags: Record<string, number> = {};
+    try {
+        userTags = user.tags ? JSON.parse(user.tags) : {};
+    } catch (e) {
+        userTags = {};
+    }
+
+    const tagKeys = Object.keys(userTags);
+
+    return c.html(
+        <Layout title="My Profile" user={user}>
+            <div class="max-w-4xl mx-auto py-8">
+                <h1 class="text-3xl font-bold mb-8 text-primary border-b pb-4">My Profile</h1>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* User Info Card */}
+                    <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <h2 class="text-xl font-bold mb-4 text-gray-800">Account Details</h2>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest">Full Name</label>
+                                <p class="text-lg font-medium">
+                                    {user.first_name} {user.last_name}
+                                    {/* Show Preview of Own Tags */}
+                                    <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(user.tags) }}></span>
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest">Student ID</label>
+                                <p class="text-lg font-mono">{user.student_id || 'N/A'}</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest">Email</label>
+                                <p class="text-lg font-mono">{censorEmail(user.email)}</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest">Permission Level</label>
+                                    <span class="inline-block bg-yellow-100 text-yellow-800 text-sm px-2 py-1 rounded-full font-bold mt-1">
+                                        {getFruitPermission(user.permission_level)}
+                                    </span>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest">Role</label>
+                                    <span class="inline-block bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full font-bold mt-1 capitalize">
+                                        {user.role}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest">Joined</label>
+                                <p class="text-sm text-gray-600">{new Date(user.created_at).toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-8">
+                        {/* Tags Section */}
+                        <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                            <h2 class="text-xl font-bold mb-4 text-gray-800">Profile Tags</h2>
+                            <p class="text-sm text-gray-500 mb-4">Toggle visibility of your awarded tags.</p>
+
+                            {tagKeys.length === 0 ? (
+                                <p class="text-gray-400 italic">You don't have any tags yet.</p>
+                            ) : (
+                                <form action="/profile" method="post">
+                                    <input type="hidden" name="action" value="update_tags" />
+                                    <div class="flex flex-wrap gap-3 mb-6">
+                                        {tagKeys.map(tag => (
+                                            <label class="inline-flex items-center cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    name={`tag_${tag}`}
+                                                    value="1"
+                                                    checked={!!userTags[tag]}
+                                                    class="form-checkbox h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                                />
+                                                <span class="ml-2 text-gray-700 select-none">{tag}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-900 transition">
+                                        Save Tags
+                                    </button>
+                                </form>
+                            )}
+                        </div>
+
+                        {/* Password Change Section */}
+                        <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                            <h2 class="text-xl font-bold mb-4 text-gray-800">Security</h2>
+                            <form action="/profile" method="post" class="space-y-4">
+                                <input type="hidden" name="action" value="change_password" />
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">New Password</label>
+                                    <input type="password" name="new_password" required minLength="6" placeholder="Min 6 characters" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" />
+                                </div>
+                                <button type="submit" class="w-full bg-red-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-red-700 transition">
+                                    Update Password
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Layout>
+    )
+})
+
+app.post('/profile', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+
+    const body = await c.req.parseBody()
+    const action = body['action']
+
+    if (action === 'update_tags') {
+        // Fetch current tags to get the keys
+        let currentTags: Record<string, number> = {};
+        try {
+            currentTags = user.tags ? JSON.parse(user.tags) : {};
+        } catch (e) {
+            currentTags = {};
+        }
+
+        const newTags: Record<string, number> = {};
+
+        // Iterate only over existing keys
+        for (const tag of Object.keys(currentTags)) {
+            if (body[`tag_${tag}`] === '1') {
+                newTags[tag] = 1;
+            } else {
+                newTags[tag] = 0;
+            }
+        }
+
+        await c.env.DB.prepare('UPDATE users SET tags = ? WHERE id = ?')
+            .bind(JSON.stringify(newTags), user.id).run();
+
+    } else if (action === 'change_password') {
+        const newPassword = body['new_password'] as string;
+        if (newPassword && newPassword.length >= 6) {
+            // ideally hash this, but for now plain text as per schema comments/prototype
+            await c.env.DB.prepare('UPDATE users SET password = ? WHERE id = ?')
+                .bind(newPassword, user.id).run();
+        }
+    }
+
+    return c.redirect('/profile')
+})
+
+app.get('/profile/contributions', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+
+    const { results: myResources } = await c.env.DB.prepare('SELECT * FROM resources WHERE uploader_id = ? ORDER BY created_at DESC').bind(user.id).all();
+    const { results: myAnnouncements } = await c.env.DB.prepare('SELECT * FROM announcements WHERE author_id = ? ORDER BY created_at DESC').bind(user.id).all();
+
+    return c.html(
+        <Layout title="My Contributions" user={user}>
+            <div class="max-w-5xl mx-auto py-8">
+                <div class="flex items-center justify-between mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900">My Contributions</h1>
+                    <a href="/profile" class="text-blue-600 hover:underline">← Back to Profile</a>
+                </div>
+
+                <div class="space-y-12">
+                    {/* Resources */}
+                    <section>
+                        <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                            <span class="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full">{myResources?.length || 0}</span>
+                            Resources Shared
+                        </h2>
+                        {myResources?.length === 0 ? (
+                            <div class="bg-gray-50 border border-dashed border-gray-300 rounded p-6 text-center text-gray-500">
+                                You haven't uploaded any resources yet.
+                            </div>
+                        ) : (
+                            <div class="grid grid-cols-1 gap-4">
+                                {myResources?.map((r: any) => (
+                                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200 flex justify-between items-center group hover:border-blue-400 transition">
+                                        <div>
+                                            <h3 class="font-bold text-gray-800">{r.title}</h3>
+                                            <p class="text-sm text-gray-500">{r.subject} • {new Date(r.created_at).toLocaleDateString()}</p>
+                                        </div>
+                                        <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 text-sm hover:underline">Download</a>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    {/* Announcements */}
+                    <section>
+                        <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                            <span class="bg-purple-100 text-purple-800 text-sm px-2 py-1 rounded-full">{myAnnouncements?.length || 0}</span>
+                            Announcements Posted
+                        </h2>
+                        {myAnnouncements?.length === 0 ? (
+                            <div class="bg-gray-50 border border-dashed border-gray-300 rounded p-6 text-center text-gray-500">
+                                You haven't posted any announcements yet.
+                            </div>
+                        ) : (
+                            <div class="grid grid-cols-1 gap-4">
+                                {myAnnouncements?.map((a: any) => (
+                                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200 hover:border-purple-400 transition">
+                                        <div class="flex justify-between">
+                                            <h3 class="font-bold text-gray-800">{a.title}</h3>
+                                            <span class="text-xs text-gray-400">{new Date(a.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                        <p class="text-sm text-gray-600 mt-1 line-clamp-1">{a.content}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                </div>
+            </div>
+        </Layout>
+    )
+})
+
 // --- UPDATED SUB-PAGES ---
 
 app.get('/resources', async (c) => {
@@ -420,7 +689,7 @@ app.get('/resources', async (c) => {
     }
 
     const { results } = await c.env.DB.prepare(`
-        SELECT r.*, u.first_name, u.last_name 
+        SELECT r.*, u.first_name, u.last_name, u.tags 
         FROM resources r 
         LEFT JOIN users u ON r.uploader_id = u.id 
         WHERE r.subject = ? 
@@ -477,7 +746,11 @@ app.get('/resources', async (c) => {
                         <div class="bg-white p-4 rounded shadow border-l-4 border-green-500 flex justify-between items-start">
                             <div class="flex-grow">
                                 <h2 class="text-xl font-bold">{r.title}</h2>
-                                <p class="text-xs text-gray-500 mb-1">Uploaded by {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'} on {new Date(r.created_at).toLocaleDateString()}</p>
+                                <p class="text-xs text-gray-500 mb-1 flex items-center">
+                                    Uploaded by {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
+                                    <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
+                                    <span class="ml-1">on {new Date(r.created_at).toLocaleDateString()}</span>
+                                </p>
                                 <p class="text-gray-600 mb-2">{r.description}</p>
                             </div>
                             <a href={`/download/${r.file_key}`} target="_blank" class="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm ml-4 whitespace-nowrap">Download</a>
@@ -542,7 +815,7 @@ app.get('/download/*', async (c) => {
 app.get('/announcements', async (c) => {
     const user = await getUser(c)
     const { results } = await c.env.DB.prepare(`
-        SELECT a.*, u.first_name, u.last_name 
+        SELECT a.*, u.first_name, u.last_name, u.tags 
         FROM announcements a 
         LEFT JOIN users u ON a.author_id = u.id 
         ORDER BY a.created_at DESC
@@ -602,7 +875,10 @@ app.get('/announcements', async (c) => {
                     filteredResults.map((a: any) => (
                         <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
                             <h2 class="text-xl font-bold">{a.title}</h2>
-                            <p class="text-sm text-blue-600 mb-1">{a.subject} • Posted by {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}</p>
+                            <p class="text-sm text-blue-600 mb-1 flex items-center">
+                                {a.subject} • Posted by {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}
+                                <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(a.tags) }}></span>
+                            </p>
                             <p class="mt-2 whitespace-pre-wrap">{a.content}</p>
                             <span class="text-xs text-gray-400 block mt-2">{new Date(a.created_at).toLocaleDateString()}</span>
                         </div>
@@ -820,7 +1096,7 @@ app.get('/past-papers', async (c) => {
     if (!topic) return c.text('Topic not found', 404)
 
     const { results: questions } = await c.env.DB.prepare(`
-        SELECT q.*, u.first_name, u.last_name 
+        SELECT q.*, u.first_name, u.last_name, u.tags 
         FROM questions q 
         LEFT JOIN users u ON q.uploader_id = u.id 
         WHERE q.topic_id = ? 
@@ -857,7 +1133,10 @@ app.get('/past-papers', async (c) => {
                                             </span>
                                         )}
                                     </div>
-                                    <span class="text-xs text-gray-400">By {q.first_name}</span>
+                                    <span class="text-xs text-gray-400 flex items-center">
+                                        Uploaded by {q.first_name} {q.last_name}
+                                        <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(q.tags) }}></span>
+                                    </span>
                                 </div>
                                 <div class="p-6">
                                     <div class="mb-6">

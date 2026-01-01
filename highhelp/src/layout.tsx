@@ -44,11 +44,26 @@ export const Layout = (props: { title: string; children: any; user?: any }) => {
               <div class="hidden md:block">
                 <div class="ml-4 flex items-center md:ml-6 text-sm font-medium">
                   ${props.user ? html`
-                    <span class="mr-4">Hello, ${props.user.first_name}</span>
-                    <a href="/logout" class="bg-[#633200] hover:bg-[#b05800] px-3 py-2 rounded-md">Logout</a>
-                  ` : html`
-                    <a href="/login" class="bg-[#633200] hover:bg-[#b05800] px-3 py-2 rounded-md">Login</a>
-                  `}
+  <div class="relative group">
+      <button class="flex items-center space-x-2 text-white hover:text-blue-100 focus:outline-none py-2">
+          <span>Hello, ${props.user.first_name}</span>
+          <svg class="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+      </button>
+
+      <div class="absolute right-0 top-full pt-2 w-48 hidden group-hover:block z-50">
+          
+          <div class="bg-white rounded-md shadow-lg py-1 border border-gray-200">
+              <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">My Profile</a>
+              <a href="/profile/contributions" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">My Contributions</a>
+              <div class="border-t border-gray-100 my-1"></div>
+              <a href="/logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</a>
+          </div>
+
+      </div>
+  </div>
+` : html`
+  <a href="/login" class="bg-[#633200] hover:bg-[#b05800] px-3 py-2 rounded-md">Login</a>
+`}
                 </div>
               </div>
             </div>
