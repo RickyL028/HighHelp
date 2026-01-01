@@ -45,7 +45,7 @@
 	 */
 	"vars": {
 		"PORTAL_API_CLIENT_ID": "01kdpqeyf5eeb8nbpvwj1bp22w",
-		"APP_REDIRECT_URI": "http://localhost:8787/api/auth/callback"
+		"APP_REDIRECT_URI": "http://highhelp.notricky028.workers.dev/api/auth/callback"
 	}
 	/**
 	 * Service Bindings (communicate between multiple Workers)

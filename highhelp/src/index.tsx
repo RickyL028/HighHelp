@@ -99,25 +99,112 @@ const SubjectSelector = (props: { baseUrl: string, type: 'standard' | 'essay' })
 
 app.get('/', async (c) => {
     const user = await getUser(c)
+
+    // Fetch latest 3 announcements
+    const { results: latestAnnouncements } = await c.env.DB.prepare(`
+        SELECT a.*, u.first_name, u.last_name 
+        FROM announcements a 
+        LEFT JOIN users u ON a.author_id = u.id 
+        ORDER BY a.created_at DESC 
+        LIMIT 3
+    `).all()
+
+    // Half Yearly Date (Backend Adjustable)
+    const HALF_YEARLY_DATE = "2026-05-25T09:00:00";
+
     return c.html(
         <Layout title="Home" user={user}>
-            <div class="text-center py-20">
-                <h1 class="text-4xl font-bold text-primary mb-4">HighHelp</h1>
-                <p class="text-xl text-gray-600 mb-8">Pull Request Testing</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
-                    <a href="/resources" class="bg-white p-6 rounded-lg shadow-md border-t-4 border-primary hover:shadow-lg transition">
-                        <h2 class="text-xl font-bold mb-2">Resource Sharing</h2>
-                        <p class="text-gray-600">Share and access high-quality notes from top students.</p>
-                    </a>
-                    <a href="/past-papers" class="bg-white p-6 rounded-lg shadow-md border-t-4 border-secondary hover:shadow-lg transition">
-                        <h2 class="text-xl font-bold mb-2">Past Papers</h2>
-                        <p class="text-gray-600">Access a comprehensive bank of past exam papers.</p>
-                    </a>
-                    <a href="/forum" class="bg-white p-6 rounded-lg shadow-md border-t-4 border-primary hover:shadow-lg transition">
-                        <h2 class="text-xl font-bold mb-2">Q&A Forum</h2>
-                        <p class="text-gray-600">Ask questions and get answers from the community.</p>
-                    </a>
+            <div class="space-y-12 py-8">
+
+                {/* Countdowns Section */}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Half Yearly Countdown */}
+                    <div class="bg-white p-8 rounded-lg shadow-lg border-t-8 border-primary text-center">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 uppercase tracking-wider">Time Till Half Yearly</h2>
+                        <div id="half-yearly-countdown" class="text-4xl md:text-5xl font-mono font-bold text-primary mb-2">
+                            --:--:--:--
+                        </div>
+                        <p class="text-gray-500 text-sm"></p>
+                    </div>
+
+                    {/* HSC Countdown */}
+                    <div class="bg-white p-8 rounded-lg shadow-lg border-t-8 border-secondary text-center">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 uppercase tracking-wider">Time Till HSC 2027</h2>
+                        <div id="hsc-countdown" class="text-4xl md:text-5xl font-mono font-bold text-secondary mb-2">
+                            -- Weeks
+                        </div>
+                        <p class="text-gray-500 text-sm"></p>
+                    </div>
                 </div>
+
+                {/* Latest Announcements Section */}
+                <div class="max-w-5xl mx-auto">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-3xl font-bold text-gray-900">Latest Announcements</h2>
+                        <a href="/announcements" class="text-secondary hover:underline font-medium">View All →</a>
+                    </div>
+
+                    <div class="space-y-4">
+                        {latestAnnouncements?.length === 0 ? (
+                            <p class="text-gray-500 text-center py-6 bg-white rounded shadow-sm">No announcements yet.</p>
+                        ) : (
+                            latestAnnouncements?.map((a: any) => (
+                                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-secondary hover:shadow-lg transition">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h3 class="text-xl font-bold text-gray-800 mb-1">{a.title}</h3>
+                                            <div class="flex items-center gap-2 mb-3">
+                                                <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-medium">{a.subject}</span>
+                                                <span class="text-sm text-gray-500">• {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}</span>
+                                            </div>
+                                            <p class="text-gray-600 line-clamp-2">{a.content}</p>
+                                        </div>
+                                        <span class="text-sm text-gray-400 whitespace-nowrap ml-4">{new Date(a.created_at).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
+                {/* Countdown Script */}
+                <script dangerouslySetInnerHTML={{
+                    __html: `
+                    (function() {
+                        const halfYearlyTarget = new Date("${HALF_YEARLY_DATE}").getTime();
+                        // HSC 2027 Target: Oct 12, 2027 (Approx)
+                        const hscTarget = new Date("2027-10-12T09:00:00").getTime();
+
+                        function updateCountdowns() {
+                            const now = new Date().getTime();
+
+                            // Half Yearly Logic
+                            const distanceHY = halfYearlyTarget - now;
+                            if (distanceHY < 0) {
+                                document.getElementById("half-yearly-countdown").innerText = "EXPIRED";
+                            } else {
+                                const days = Math.floor(distanceHY / (1000 * 60 * 60 * 24));
+                                const hours = Math.floor((distanceHY % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                const minutes = Math.floor((distanceHY % (1000 * 60 * 60)) / (1000 * 60));
+                                const seconds = Math.floor((distanceHY % (1000 * 60)) / 1000);
+                                document.getElementById("half-yearly-countdown").innerText = \`\${days}d \${hours}h \${minutes}m \${seconds}s\`;
+                            }
+
+                            // HSC Logic (Weeks)
+                            const distanceHSC = hscTarget - now;
+                            if (distanceHSC < 0) {
+                                document.getElementById("hsc-countdown").innerText = "Done!";
+                            } else {
+                                const weeks = Math.ceil(distanceHSC / (1000 * 60 * 60 * 24 * 7));
+                                document.getElementById("hsc-countdown").innerText = \`\${weeks} Weeks\`;
+                            }
+                        }
+
+                        setInterval(updateCountdowns, 1000);
+                        updateCountdowns(); // Initial call
+                    })();
+                ` }} />
+
             </div>
         </Layout>
     )
@@ -500,7 +587,7 @@ app.get('/announcements', async (c) => {
             <div class="mb-4">
                 <h2 class="text-xl font-bold mb-2">Filter by Subject</h2>
                 <div class="flex flex-wrap gap-2">
-                    <a href="/announcements" class={`px-3 py-1 rounded shadow text-sm ${!subjectFilter ? 'bg-blue-600 text-white' : 'bg-white hover:bg-blue-50'}`}>All</a>
+
                     {ANNOUNCEMENT_SUBJECTS.map(subject => (
                         <a href={`/announcements?subject=${encodeURIComponent(subject)}`} class={`px-3 py-1 rounded shadow text-sm ${subjectFilter === subject ? 'bg-blue-600 text-white' : 'bg-white hover:bg-blue-50'}`}>
                             {subject}
