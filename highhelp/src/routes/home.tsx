@@ -22,6 +22,7 @@ app.get('/', async (c) => {
 
     return c.html(
         <Layout title="Home" user={user}>
+            <a class="block text-bg font-medium text-gray-1000 text-center text-2xl font-bold text-gray-800 uppercase tracking-wider">This Website is under development - All data may be erased</a>
             <div class="space-y-12 py-8">
 
                 {/* Countdowns Section */}
