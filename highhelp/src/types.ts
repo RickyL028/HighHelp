@@ -7,6 +7,7 @@ export interface User {
     role: string;
     permission_level: number;
     created_at: string;
+    tags?: string | null;
 }
 
 export interface Topic {
@@ -24,4 +25,10 @@ export interface Question {
     uploader_id: number;
     paper_tag: string | null;
     created_at: string;
+}
+
+export type Bindings = Env & {
+    PORTAL_API_CLIENT_ID: string;
+    PORTAL_API_CLIENT_SECRET: string;
+    APP_REDIRECT_URI: string;
 }
