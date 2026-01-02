@@ -33,10 +33,10 @@ app.get('/resources', async (c) => {
                                 <p class="text-gray-500 italic">No resources uploaded recently.</p>
                             ) : (
                                 recentResources?.map((r: any) => (
-                                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200 border-l-4 border-l-green-500 flex justify-between items-start">
+                                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200 border-l-4 border-l-blue-500 flex justify-between items-start">
                                         <div class="flex-grow">
                                             <div class="flex items-center gap-2 mb-1">
-                                                <span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded-full font-medium">{r.subject}</span>
+                                                <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-medium">{r.subject}</span>
                                                 <span class="text-xs text-gray-500">• {new Date(r.created_at).toLocaleDateString()}</span>
                                             </div>
                                             <h2 class="text-lg font-bold text-gray-900">{r.title}</h2>
@@ -88,15 +88,16 @@ app.get('/resources', async (c) => {
                     <form action="/resources" method="post" enctype="multipart/form-data" class="space-y-4">
                         <input type="hidden" name="subject" value={subject} />
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Title</label>
+                            <label class="block text-sm font-medium text-gray-700">Title - e.g. My Notes on Differentiation!</label>
                             <input type="text" name="title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" />
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Description</label>
-                            <textarea name="description" rows={2} class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea>
+                            <label class="block text-sm font-medium text-gray-700">Description - e.g. Some class notes from my math class 11MAX2 && my personal tips!</label>
+                            <textarea name="description" rows={4} class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea>
                         </div>
+                        <a class="block text-sm font-medium text-gray-300">Note: inappropiate content will be removed & you may be banned :/</a>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">File</label>
+                            <label class="block text-sm font-medium text-gray-500">File</label>
                             <input
                                 type="file"
                                 name="file"

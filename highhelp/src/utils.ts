@@ -1,12 +1,10 @@
 import { getCookie } from 'hono/cookie'
 import { SUBJECTS } from './constants'
 
-// Exact mapping of your priority list. 
-// Note: Ensure these strings match exactly what is inside your SUBJECTS constant.
 export const PRIORITY_STANDARD = [
     "English Advanced",
     "Mathematics Advanced",
-    "Mathematics Extension 1", // Assuming 'Math Advanced X1' refers to Ext 1
+    "Mathematics Extension 1",
     "Physics",
     "Chemistry",
     "Biology",

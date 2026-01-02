@@ -121,14 +121,17 @@ app.get('/past-papers', async (c) => {
                                                 <option value="" disabled selected>Select a Topic</option>
                                                 {topics?.map((t: any) => <option value={t.id}>{t.name}</option>)}
                                             </select>
+
                                         </div>
+                                        <p class="text-xs text-gray-500 mt-1">Which modules? e.g. Statistics</p>
+
                                     </div>
 
                                     {/* Paper Tag */}
                                     <div class="col-span-1">
                                         <label class="block text-sm font-medium text-gray-700">Paper Name</label>
                                         <input type="text" name="paper_tag" id="paperTagInput" placeholder="e.g. Sydney Boys 2023 Trial" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" />
-                                        <p class="text-xs text-gray-500 mt-1">Saved for next upload automatically.</p>
+                                        <p class="text-xs text-gray-500 mt-1">From which school/organisation & which year? e.g. sbhs 2026 yearly</p>
                                     </div>
                                 </div>
 
