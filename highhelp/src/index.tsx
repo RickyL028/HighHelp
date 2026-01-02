@@ -425,8 +425,8 @@ const renderTags = (tagsJson: string | null) => {
 }
 
 const getFruitPermission = (level: number) => {
-    const fruits = ["Apple", "Banana", "Cherry", "Durian"];
-    return fruits[level] || "Unknown Fruit";
+    const fruits = ["Apple", "Banana", "Oranges", "Watermelon", "Cherry", "Avocado"];
+    return fruits[level] || "No fruit for you :<";
 }
 
 const censorEmail = (email: string) => {
