@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags } from '../utils'
+import { getSortedSubjects, getUser, renderTags, updatePoints } from '../utils'
 import { SubjectSelector } from '../components/SubjectSelector'
+
 import { Bindings } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -163,6 +164,10 @@ app.post('/resources', async (c) => {
             await c.env.DB.prepare('INSERT INTO resources (title, description, file_key, subject, uploader_id, type) VALUES (?, ?, ?, ?, ?, ?)')
                 .bind(title, description, fileKey, subject, user.id, 'resource')
                 .run()
+
+            // Award +3 points for upload
+            await updatePoints(user.id, 3, c.env.DB);
+
         }
         return c.redirect(`/resources?subject=${encodeURIComponent(subject)}`)
     } catch (e: any) {

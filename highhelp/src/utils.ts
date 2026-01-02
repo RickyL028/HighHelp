@@ -17,6 +17,16 @@ export const PRIORITY_STANDARD = [
     "Engineering Studies"
 ];
 
+// Helper to update user points
+export async function updatePoints(userId: number, amount: number, db: D1Database) {
+    try {
+        await db.prepare('UPDATE users SET points = points + ? WHERE id = ?').bind(amount, userId).run();
+    } catch (e) {
+        console.error('Failed to update points', e);
+    }
+}
+
+
 export const PRIORITY_ESSAY = [
     "English Advanced",
     "Economics",

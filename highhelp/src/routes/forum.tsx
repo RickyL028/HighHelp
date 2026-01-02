@@ -1,7 +1,8 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags } from '../utils'
+import { getUser, renderTags, updatePoints } from '../utils'
 import { SubjectSelector } from '../components/SubjectSelector'
+
 import { Bindings, User } from '../types'
 import { ANNOUNCEMENT_SUBJECTS } from '../constants' // Reusing subject list for dropdown
 
@@ -342,7 +343,11 @@ app.post('/forum/comment', async (c) => {
         await c.env.DB.prepare('INSERT INTO comments (post_id, content, author_id) VALUES (?, ?, ?)')
             .bind(postId, content, user.id)
             .run()
+
+        // Award +0.3 points for answering
+        await updatePoints(user.id, 0.3, c.env.DB);
     }
+
 
     return c.redirect(`/forum/post/${postId}`)
 })
