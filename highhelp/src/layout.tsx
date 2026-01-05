@@ -38,6 +38,7 @@ export const Layout = (props: { title: string; children: any; user?: any }) => {
                     <a href="/past-papers" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Past Papers</a>
                     <a href="/forum" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Q&A</a>
                     <a href="/essays" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Essays</a>
+                    <a href="/about" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">About</a>
                   </div>
                 </div>
               </div>

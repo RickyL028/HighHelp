@@ -10,6 +10,7 @@ import pastPapersRoutes from './routes/pastPapers'
 import announcementsRoutes from './routes/announcements'
 import forumRoutes from './routes/forum'
 import essaysRoutes from './routes/essays'
+import aboutRoutes from './routes/about'
 
 import { getUser } from './utils'
 import { PermissionLevel } from './permissions'
@@ -40,5 +41,6 @@ app.route('/', pastPapersRoutes)
 app.route('/', announcementsRoutes)
 app.route('/', forumRoutes)
 app.route('/', essaysRoutes)
+app.route('/', aboutRoutes)
 
 export default app

@@ -18,6 +18,9 @@ interface PostDetail {
     first_name: string | null;
     last_name: string | null;
     tags: string | null;
+    // Add these missing fields:
+    is_deleted: number; // or boolean, depending on how SQLite returns it (usually 0/1)
+    author_id: number;
 }
 // 1. Forum Landing / Subject List
 app.get('/forum', async (c) => {
