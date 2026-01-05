@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags, updatePoints } from '../utils'
+import { getUser, renderTags, updatePoints, logAction } from '../utils'
+import { canPostGeneral, canViewDeleted, canCommentModeration } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 
 import { Bindings, User } from '../types'
@@ -24,16 +25,21 @@ app.get('/forum', async (c) => {
     const subject = c.req.query('subject')
 
     // View: Recent Discussions (Global)
+    // View: Recent Discussions (Global)
     if (!subject) {
         // Fetch recent posts
-        const { results: recentPosts } = await c.env.DB.prepare(`
+        const showDeleted = user && canViewDeleted(user);
+        const sql = `
             SELECT p.*, u.first_name, u.last_name, u.tags, 
-            (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comment_count
+            (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.is_deleted = 0) as comment_count
             FROM posts p 
             LEFT JOIN users u ON p.author_id = u.id 
+            WHERE p.type = 'question'
+            ${showDeleted ? '' : 'AND p.is_deleted = 0'}
             ORDER BY p.created_at DESC 
             LIMIT 10
-        `).all()
+        `;
+        const { results: recentPosts } = await c.env.DB.prepare(sql).all()
 
         return c.html(
             <Layout title="Q&A Forum" user={user}>
@@ -53,9 +59,10 @@ app.get('/forum', async (c) => {
                                 <p class="text-gray-500 italic">No discussions yet. Be the first to ask!</p>
                             ) : (
                                 recentPosts?.map((p: any) => (
-                                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200 hover:border-blue-400 transition group block">
+                                    <div class={`bg-white p-4 rounded shadow-sm border ${p.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-blue-400'} transition group block`}>
                                         <div class="flex justify-between items-start">
                                             <div class="flex-grow">
+                                                {p.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                                                 <div class="flex items-center gap-2 mb-1">
                                                     <span class="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium border border-blue-100">{p.subject}</span>
                                                     <span class="text-xs text-gray-400">• {new Date(p.created_at).toLocaleDateString()}</span>
@@ -94,14 +101,18 @@ app.get('/forum', async (c) => {
     }
 
     // View: Subject Specific Posts
-    const { results } = await c.env.DB.prepare(`
+    const showDeleted = user && canViewDeleted(user);
+    const sql = `
         SELECT p.*, u.first_name, u.last_name, u.tags,
-        (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) as comment_count
+        (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.is_deleted = 0) as comment_count
         FROM posts p 
         LEFT JOIN users u ON p.author_id = u.id 
         WHERE p.subject = ? 
+        AND p.type = 'question' 
+        ${showDeleted ? '' : 'AND p.is_deleted = 0'}
         ORDER BY p.created_at DESC
-    `).bind(subject).all()
+    `;
+    const { results } = await c.env.DB.prepare(sql).bind(subject).all()
 
     return c.html(
         <Layout title={`${subject} Forum`} user={user}>
@@ -130,9 +141,10 @@ app.get('/forum', async (c) => {
                         </div>
                     ) : (
                         results.map((p: any) => (
-                            <div class="bg-white p-4 rounded shadow-sm border border-gray-200 hover:border-blue-400 transition group">
+                            <div class={`bg-white p-4 rounded shadow-sm border ${p.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-blue-400'} transition group`}>
                                 <div class="flex justify-between items-start">
                                     <div class="flex-grow">
+                                        {p.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                                         <div class="flex items-center gap-2 mb-1">
                                             <span class="text-xs text-gray-400">{new Date(p.created_at).toLocaleDateString()}</span>
                                         </div>
@@ -212,6 +224,8 @@ app.post('/forum', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
 
+    if (!canPostGeneral(user)) return c.text("You are muted.", 403);
+
     const body = await c.req.parseBody()
     const title = body['title'] as string
     const subject = body['subject'] as string
@@ -219,9 +233,11 @@ app.post('/forum', async (c) => {
 
     if (title && subject && content) {
         // Default type to 'question'
-        await c.env.DB.prepare('INSERT INTO posts (title, content, type, author_id, subject) VALUES (?, ?, ?, ?, ?)')
+        const res = await c.env.DB.prepare('INSERT INTO posts (title, content, type, author_id, subject) VALUES (?, ?, ?, ?, ?)')
             .bind(title, content, 'question', user.id, subject)
             .run()
+
+        await logAction(c.env.DB, user.id, 'CREATE_POST', `Created question '${title}' in ${subject}`, res.meta.last_row_id, 'posts');
     }
 
     // Redirect to the subject page or the specific post (need ID to redirect to post, but simple redirect to subject is fine for MVP)
@@ -247,13 +263,17 @@ app.get('/forum/post/:id', async (c) => {
     }
 
     // Fetch Comments
-    const { results: comments } = await c.env.DB.prepare(`
+    // FIX: Filter deleted comments unless admin
+    const showDeleted = user && canViewDeleted(user);
+    const sqlComments = `
         SELECT c.*, u.first_name, u.last_name, u.tags 
         FROM comments c 
         LEFT JOIN users u ON c.author_id = u.id 
         WHERE c.post_id = ? 
+        ${showDeleted ? '' : 'AND c.is_deleted = 0'}
         ORDER BY c.created_at ASC
-    `).bind(postId).all()
+    `;
+    const { results: comments } = await c.env.DB.prepare(sqlComments).bind(postId).all()
 
     return c.html(
         // Now 'post.title' is known to be a string
@@ -265,8 +285,9 @@ app.get('/forum/post/:id', async (c) => {
                 </div>
 
                 {/* Main Post */}
-                <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-8">
+                <div class={`bg-white rounded-lg shadow-md border overflow-hidden mb-8 ${post.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
                     <div class="p-6 border-b border-gray-100">
+                        {post.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
                         <div class="flex items-center gap-2 mb-2">
                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">{post.type}</span>
                             {/* Now 'post.created_at' is known to be a string/date */}
@@ -281,6 +302,11 @@ app.get('/forum/post/:id', async (c) => {
                             {/* Now 'post.tags' is known to be string | null */}
                             <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(post.tags) }}></span>
                         </div>
+                        {!post.is_deleted && user && (canCommentModeration(user) || user.id === post.author_id) && (
+                            <form action={`/forum/post/${post.id}/delete`} method="post">
+                                <button class="text-red-500 font-bold text-sm hover:underline" onclick="return confirm('Delete this post?')">Delete Post</button>
+                            </form>
+                        )}
                     </div>
                 </div>
 
@@ -290,7 +316,8 @@ app.get('/forum/post/:id', async (c) => {
 
                     <div class="space-y-4">
                         {comments?.map((comment: any) => (
-                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                            <div class={`bg-white p-4 rounded-lg shadow-sm border ${comment.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
+                                {comment.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                                 <div class="flex justify-between items-start mb-2">
                                     <div class="flex items-center gap-2">
                                         <span class="font-bold text-gray-800">{comment.first_name ? `${comment.first_name} ${comment.last_name}` : 'Unknown'}</span>
@@ -299,6 +326,11 @@ app.get('/forum/post/:id', async (c) => {
                                     <span class="text-xs text-gray-400">{new Date(comment.created_at).toLocaleString()}</span>
                                 </div>
                                 <p class="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                                {!comment.is_deleted && user && (canCommentModeration(user) || user.id === comment.author_id) && (
+                                    <form action={`/forum/comment/${comment.id}/delete`} method="post" class="text-right mt-2">
+                                        <button class="text-red-400 text-xs hover:text-red-600" onclick="return confirm('Delete comment?')">Delete</button>
+                                    </form>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -339,10 +371,14 @@ app.post('/forum/comment', async (c) => {
     const postId = body['post_id'] as string
     const content = body['content'] as string
 
+    if (!canPostGeneral(user)) return c.text("You are muted.", 403);
+
     if (postId && content) {
-        await c.env.DB.prepare('INSERT INTO comments (post_id, content, author_id) VALUES (?, ?, ?)')
+        const res = await c.env.DB.prepare('INSERT INTO comments (post_id, content, author_id) VALUES (?, ?, ?)')
             .bind(postId, content, user.id)
             .run()
+
+        await logAction(c.env.DB, user.id, 'CREATE_COMMENT', `Commented on post ${postId}`, res.meta.last_row_id, 'comments');
 
         // Award +0.3 points for answering
         await updatePoints(user.id, 0.3, c.env.DB);
@@ -350,6 +386,45 @@ app.post('/forum/comment', async (c) => {
 
 
     return c.redirect(`/forum/post/${postId}`)
+})
+
+app.post('/forum/post/:id/delete', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+    const id = c.req.param('id')
+
+    const post = await c.env.DB.prepare('SELECT * FROM posts WHERE id = ?').bind(id).first() as any;
+    if (!post) return c.notFound();
+
+    // Allow self-delete or global comment moderator
+    if (!canCommentModeration(user) && user.id !== post.author_id) return c.text('Unauthorized', 403);
+
+    await c.env.DB.prepare('UPDATE posts SET is_deleted = 1 WHERE id = ?').bind(id).run();
+    await logAction(c.env.DB, user.id, 'DELETE_POST', `Deleted post ${id}`, Number(id), 'posts');
+
+
+
+    return c.redirect(`/forum?subject=${encodeURIComponent(post?.subject || '')}`);
+})
+
+app.post('/forum/comment/:id/delete', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+    const id = c.req.param('id')
+
+    const comment = await c.env.DB.prepare('SELECT * FROM comments WHERE id = ?').bind(id).first() as any;
+    if (!comment) return c.notFound();
+
+    // Allow self-delete or global comment moderator
+    if (!canCommentModeration(user) && user.id !== comment.author_id) return c.text('Unauthorized', 403);
+
+    await c.env.DB.prepare('UPDATE comments SET is_deleted = 1 WHERE id = ?').bind(id).run();
+    await logAction(c.env.DB, user.id, 'DELETE_COMMENT', `Deleted comment ${id}`, Number(id), 'comments');
+
+    if (comment) {
+        return c.redirect(`/forum/post/${comment.post_id}`);
+    }
+    return c.redirect('/forum');
 })
 
 export default app

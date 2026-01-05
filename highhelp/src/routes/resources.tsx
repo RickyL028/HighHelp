@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getSortedSubjects, getUser, renderTags, updatePoints } from '../utils'
+import { getSortedSubjects, getUser, renderTags, updatePoints, logAction } from '../utils'
+import { canUploadResource, canViewDeleted, canModerateSubject } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 
 import { Bindings } from '../types'
@@ -14,13 +15,17 @@ app.get('/resources', async (c) => {
     // 1. Landing Page (No Subject) -> Show Recent Resources + Subject Selector at Bottom
     if (!subject) {
         // Fetch recent resources globally
-        const { results: recentResources } = await c.env.DB.prepare(`
+        const showDeleted = user && canViewDeleted(user);
+        const sql = `
             SELECT r.*, u.first_name, u.last_name, u.tags 
             FROM resources r 
             LEFT JOIN users u ON r.uploader_id = u.id 
+            WHERE r.type = 'resource'
+            ${showDeleted ? '' : 'AND r.is_deleted = 0'}
             ORDER BY r.created_at DESC 
             LIMIT 5
-        `).all()
+        `;
+        const { results: recentResources } = await c.env.DB.prepare(sql).all()
 
         return c.html(
             <Layout title="Resources" user={user}>
@@ -34,8 +39,9 @@ app.get('/resources', async (c) => {
                                 <p class="text-gray-500 italic">No resources uploaded recently.</p>
                             ) : (
                                 recentResources?.map((r: any) => (
-                                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200 border-l-4 border-l-blue-500 flex justify-between items-start">
+                                    <div class={`bg-white p-4 rounded shadow-sm border ${r.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 border-l-4 border-l-blue-500'} flex justify-between items-start`}>
                                         <div class="flex-grow">
+                                            {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                                             <div class="flex items-center gap-2 mb-1">
                                                 <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-medium">{r.subject}</span>
                                                 <span class="text-xs text-gray-500">• {new Date(r.created_at).toLocaleDateString()}</span>
@@ -46,9 +52,16 @@ app.get('/resources', async (c) => {
                                                 <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
                                             </p>
                                         </div>
-                                        <a href={`/download/${r.file_key}`} target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-100 text-sm font-medium whitespace-nowrap ml-4">
-                                            Download
-                                        </a>
+                                        <div class="flex flex-col gap-2 ml-4">
+                                            <a href={`/download/${r.file_key}`} target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-100 text-sm font-medium whitespace-nowrap text-center">
+                                                Download
+                                            </a>
+                                            {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
+                                                <form action={`/resources/${r.id}/delete`} method="post">
+                                                    <button class="text-red-500 text-xs hover:underline mt-1">Delete</button>
+                                                </form>
+                                            )}
+                                        </div>
                                     </div>
                                 ))
                             )}
@@ -68,13 +81,16 @@ app.get('/resources', async (c) => {
     }
 
     // 2. Subject Page -> Unchanged Logic
-    const { results } = await c.env.DB.prepare(`
+    const showDeleted = user && canViewDeleted(user);
+    const sql = `
         SELECT r.*, u.first_name, u.last_name, u.tags 
         FROM resources r 
         LEFT JOIN users u ON r.uploader_id = u.id 
         WHERE r.subject = ? 
+        ${showDeleted ? '' : 'AND r.is_deleted = 0'}
         ORDER BY r.created_at DESC
-    `).bind(subject).all()
+    `;
+    const { results } = await c.env.DB.prepare(sql).bind(subject).all()
 
     return c.html(
         <Layout title={`Resources - ${subject}`} user={user}>
@@ -83,7 +99,7 @@ app.get('/resources', async (c) => {
                 <a href="/resources" class="text-blue-600 hover:underline">← All Subjects</a>
             </div>
 
-            {user ? (
+            {user && canUploadResource(user) ? (
                 <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8">
                     <h3 class="text-lg font-bold mb-4">Upload Resource</h3>
                     <form action="/resources" method="post" enctype="multipart/form-data" class="space-y-4">
@@ -114,7 +130,7 @@ app.get('/resources', async (c) => {
                 </div>
             ) : (
                 <div class="bg-blue-50 p-4 rounded mb-8 text-center text-blue-800">
-                    <a href="/login" class="font-bold underline">Log in</a> to upload resources.
+                    <p>Please agree to website guidelines before uploading resources :P</p>
                 </div>
             )}
 
@@ -123,8 +139,9 @@ app.get('/resources', async (c) => {
                     <p class="text-gray-500">No resources uploaded for this subject yet.</p>
                 ) : (
                     results.map((r: any) => (
-                        <div class="bg-white p-4 rounded shadow border-l-4 border-green-500 flex justify-between items-start">
+                        <div class={`bg-white p-4 rounded shadow border ${r.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 border-l-4 border-green-500'} flex justify-between items-start`}>
                             <div class="flex-grow">
+                                {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                                 <h2 class="text-xl font-bold">{r.title}</h2>
                                 <p class="text-xs text-gray-500 mb-1 flex items-center">
                                     Uploaded by {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
@@ -133,7 +150,14 @@ app.get('/resources', async (c) => {
                                 </p>
                                 <p class="text-gray-600 mb-2">{r.description}</p>
                             </div>
-                            <a href={`/download/${r.file_key}`} target="_blank" class="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm ml-4 whitespace-nowrap">Download</a>
+                            <div class="flex flex-col gap-2 ml-4">
+                                <a href={`/download/${r.file_key}`} target="_blank" class="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm whitespace-nowrap text-center">Download</a>
+                                {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
+                                    <form action={`/resources/${r.id}/delete`} method="post">
+                                        <button class="text-red-500 text-xs hover:underline mt-1">Delete</button>
+                                    </form>
+                                )}
+                            </div>
                         </div>
                     ))
                 )}
@@ -158,12 +182,18 @@ app.post('/resources', async (c) => {
         }
 
         if (title && file && subject) {
+            if (!canUploadResource(user)) {
+                return c.text('You are not allowed to upload resources.', 403);
+            }
+
             const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             const fileKey = `resources/${Date.now()}-${safeName}`
             await c.env.BUCKET.put(fileKey, file)
-            await c.env.DB.prepare('INSERT INTO resources (title, description, file_key, subject, uploader_id, type) VALUES (?, ?, ?, ?, ?, ?)')
+            const res = await c.env.DB.prepare('INSERT INTO resources (title, description, file_key, subject, uploader_id, type) VALUES (?, ?, ?, ?, ?, ?)')
                 .bind(title, description, fileKey, subject, user.id, 'resource')
                 .run()
+
+            await logAction(c.env.DB, user.id, 'CREATE_RESOURCE', `Uploaded resource '${title}' in ${subject}`, res.meta.last_row_id, 'resources');
 
             // Award +3 points for upload
             await updatePoints(user.id, 3, c.env.DB);
@@ -173,6 +203,24 @@ app.post('/resources', async (c) => {
     } catch (e: any) {
         return c.text(`Upload Failed: ${e.message}`, 500)
     }
+})
+
+app.post('/resources/:id/delete', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+    const id = c.req.param('id')
+
+    const resource = await c.env.DB.prepare('SELECT * FROM resources WHERE id = ?').bind(id).first() as any;
+    if (!resource) return c.notFound();
+
+    if (!canModerateSubject(user, resource.subject) && user.id !== resource.uploader_id) {
+        return c.text('Unauthorized', 403);
+    }
+
+    await c.env.DB.prepare('UPDATE resources SET is_deleted = 1 WHERE id = ?').bind(id).run();
+    await logAction(c.env.DB, user.id, 'DELETE_RESOURCE', `Deleted resource ${id}`, Number(id), 'resources');
+
+    return c.redirect(`/resources?subject=${encodeURIComponent(resource.subject)}`);
 })
 
 app.get('/download/*', async (c) => {

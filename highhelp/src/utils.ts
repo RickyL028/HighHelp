@@ -90,3 +90,13 @@ export const censorEmail = (email: string) => {
     const start = local.slice(0, 3);
     return `${start}******@${domain}`;
 }
+
+export async function logAction(db: D1Database, userId: number, actionType: string, details?: string, targetId?: number, targetTable?: string) {
+    try {
+        await db.prepare(
+            'INSERT INTO action_logs (user_id, action_type, details, target_id, target_table) VALUES (?, ?, ?, ?, ?)'
+        ).bind(userId, actionType, details || null, targetId || null, targetTable || null).run();
+    } catch (e) {
+        console.error('Failed to log action', e);
+    }
+}

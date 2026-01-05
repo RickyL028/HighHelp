@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, updatePoints, renderTags } from '../utils'
+import { getUser, updatePoints, renderTags, logAction } from '../utils'
+import { canPostGeneral, canViewDeleted, canCommentModeration } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 import { Bindings, User } from '../types'
 import { SUBJECTS } from '../constants'
@@ -13,14 +14,18 @@ app.get('/essays', async (c) => {
     const subject = c.req.query('subject')
 
     // View: Recent Essays (Global)
+    // View: Recent Essays (Global)
     if (!subject) {
-        const { results: recentEssays } = await c.env.DB.prepare(`
+        const showDeleted = user && canViewDeleted(user);
+        const sql = `
             SELECT e.*, 
-            (SELECT COUNT(*) FROM essay_comments c WHERE c.essay_id = e.id) as feedback_count
+            (SELECT COUNT(*) FROM essay_comments c WHERE c.essay_id = e.id AND c.is_deleted = 0) as feedback_count
             FROM essays e 
+            WHERE ${showDeleted ? '1=1' : 'e.is_deleted = 0'}
             ORDER BY e.created_at DESC 
             LIMIT 10
-        `).all()
+        `;
+        const { results: recentEssays } = await c.env.DB.prepare(sql).all()
 
         return c.html(
             <Layout title="Essay Exchange" user={user}>
@@ -40,9 +45,10 @@ app.get('/essays', async (c) => {
                                 <p class="text-gray-500 italic">No essays submitted yet.</p>
                             ) : (
                                 recentEssays?.map((e: any) => (
-                                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200 hover:border-blue-400 transition group block">
+                                    <div class={`bg-white p-4 rounded shadow-sm border ${e.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-blue-400'} transition group block`}>
                                         <div class="flex justify-between items-start">
                                             <div class="flex-grow">
+                                                {e.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                                                 <div class="flex items-center gap-2 mb-1">
                                                     <span class="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium border border-blue-100">{e.subject}</span>
                                                     <span class="text-xs text-gray-400">• {new Date(e.created_at).toLocaleDateString()}</span>
@@ -79,13 +85,16 @@ app.get('/essays', async (c) => {
     }
 
     // View: Subject Specific
-    const { results } = await c.env.DB.prepare(`
+    const showDeleted = user && canViewDeleted(user);
+    const sql = `
         SELECT e.*,
-        (SELECT COUNT(*) FROM essay_comments c WHERE c.essay_id = e.id) as feedback_count
+        (SELECT COUNT(*) FROM essay_comments c WHERE c.essay_id = e.id AND c.is_deleted = 0) as feedback_count
         FROM essays e 
         WHERE e.subject = ? 
+        ${showDeleted ? '' : 'AND e.is_deleted = 0'}
         ORDER BY e.created_at DESC
-    `).bind(subject).all()
+    `;
+    const { results } = await c.env.DB.prepare(sql).bind(subject).all()
 
     return c.html(
         <Layout title={`${subject} Essays`} user={user}>
@@ -114,9 +123,10 @@ app.get('/essays', async (c) => {
                         </div>
                     ) : (
                         results.map((e: any) => (
-                            <div class="bg-white p-4 rounded shadow-sm border border-gray-200 hover:border-blue-400 transition group">
+                            <div class={`bg-white p-4 rounded shadow-sm border ${e.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-blue-400'} transition group`}>
                                 <div class="flex justify-between items-start">
                                     <div class="flex-grow">
+                                        {e.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                                         <div class="flex items-center gap-2 mb-1">
                                             <span class="text-xs text-gray-400">{new Date(e.created_at).toLocaleDateString()}</span>
                                         </div>
@@ -239,6 +249,8 @@ app.post('/essays', async (c) => {
         return c.text("Insufficient points", 403)
     }
 
+    if (!canPostGeneral(user)) return c.text("You are muted.", 403);
+
     try {
         const body = await c.req.parseBody()
         const title = body['title'] as string
@@ -267,9 +279,11 @@ app.post('/essays', async (c) => {
             await updatePoints(user.id, -1, c.env.DB);
 
             // Create Essay
-            await c.env.DB.prepare('INSERT INTO essays (title, content, author_id, subject, question, full_marks, file_key) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            const res = await c.env.DB.prepare('INSERT INTO essays (title, content, author_id, subject, question, full_marks, file_key) VALUES (?, ?, ?, ?, ?, ?, ?)')
                 .bind(title, content, user.id, subject, question, fullMarks, fileKey)
                 .run()
+
+            await logAction(c.env.DB, user.id, 'SUBMIT_ESSAY', `Submitted essay '${title}' in ${subject}`, res.meta.last_row_id, 'essays');
         }
 
         return c.redirect(`/essays?subject=${encodeURIComponent(subject)}`)
@@ -293,13 +307,16 @@ app.get('/essays/view/:id', async (c) => {
     }
 
     // Fetch Feedback
-    const { results: comments } = await c.env.DB.prepare(`
+    const showDeleted = user && canViewDeleted(user);
+    const sqlComments = `
         SELECT c.*, u.first_name, u.last_name, u.tags 
         FROM essay_comments c 
         LEFT JOIN users u ON c.author_id = u.id 
         WHERE c.essay_id = ? 
+        ${showDeleted ? '' : 'AND c.is_deleted = 0'}
         ORDER BY c.created_at ASC
-    `).bind(essayId).all()
+    `;
+    const { results: comments } = await c.env.DB.prepare(sqlComments).bind(essayId).all()
 
     return c.html(
         <Layout title={essay.title} user={user}>
@@ -309,8 +326,9 @@ app.get('/essays/view/:id', async (c) => {
                 </div>
 
                 {/* Essay Container */}
-                <div class="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden mb-8">
+                <div class={`bg-white rounded-lg shadow-md border overflow-hidden mb-8 ${essay.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
                     <div class="p-6 border-b border-gray-100">
+                        {essay.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
                         <div class="flex items-center gap-2 mb-2">
                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Essay</span>
                             <span class="text-gray-400 text-sm">| {new Date(essay.created_at).toLocaleString()}</span>
@@ -348,6 +366,11 @@ app.get('/essays/view/:id', async (c) => {
                         <div class="text-sm text-gray-600 flex items-center">
                             <span class="font-bold mr-1">Posted by:</span> -
                         </div>
+                        {!essay.is_deleted && user && (canCommentModeration(user) || user.id === essay.author_id) && (
+                            <form action={`/essays/view/${essayId}/delete`} method="post">
+                                <button class="text-red-500 text-xs font-bold hover:underline" onclick="return confirm('Delete essay?')">Delete Essay</button>
+                            </form>
+                        )}
                     </div>
                 </div>
 
@@ -357,14 +380,19 @@ app.get('/essays/view/:id', async (c) => {
 
                     <div class="space-y-4">
                         {comments?.map((comment: any) => (
-                            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 relative">
+                            <div class={`bg-white p-4 rounded-lg shadow-sm border relative ${comment.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
+                                {comment.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                                 <div class="flex justify-between items-start mb-2">
                                     <div class="flex items-center gap-2">
-                                        <span class="font-bold text-gray-800">{comment.first_name ? `${comment.first_name} ${comment.last_name}` : 'Unknown'}</span>
+                                        <span class="font-bold text-gray-800">
+                                            {comment.first_name ? `${comment.first_name} ${comment.last_name}` : 'Unknown'}
+                                        </span>
                                         <span dangerouslySetInnerHTML={{ __html: renderTags(comment.tags) }}></span>
                                     </div>
                                     <div class="text-right">
-                                        <div class="text-xs text-gray-400 mb-1">{new Date(comment.created_at).toLocaleString()}</div>
+                                        <div class="text-xs text-gray-400 mb-1">
+                                            {new Date(comment.created_at).toLocaleString()}
+                                        </div>
                                         {comment.grade !== null && (
                                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-bold border border-blue-200">
                                                 Grade: {comment.grade} {essay.full_marks ? `/ ${essay.full_marks}` : ''}
@@ -372,7 +400,16 @@ app.get('/essays/view/:id', async (c) => {
                                         )}
                                     </div>
                                 </div>
+
                                 <p class="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+
+                                {!comment.is_deleted && user && (canCommentModeration(user) || user.id === comment.author_id) && (
+                                    <form action={`/essays/feedback/${comment.id}/delete`} method="post" class="text-right mt-1">
+                                        <button class="text-red-400 text-xs hover:text-red-600" onclick="return confirm('Delete feedback?')">
+                                            Delete
+                                        </button>
+                                    </form>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -407,7 +444,7 @@ app.get('/essays/view/:id', async (c) => {
                 )}
 
             </div>
-        </Layout>
+        </Layout >
     )
 })
 
@@ -422,9 +459,13 @@ app.post('/essays/feedback', async (c) => {
     const grade = body['grade'] ? parseFloat(body['grade'] as string) : null
 
     if (essayId && content) {
-        await c.env.DB.prepare('INSERT INTO essay_comments (essay_id, content, author_id, grade) VALUES (?, ?, ?, ?)')
+        if (!canPostGeneral(user)) return c.text("You are muted.", 403);
+
+        const res = await c.env.DB.prepare('INSERT INTO essay_comments (essay_id, content, author_id, grade) VALUES (?, ?, ?, ?)')
             .bind(essayId, content, user.id, grade)
             .run()
+
+        await logAction(c.env.DB, user.id, 'SUBMIT_FEEDBACK', `Feedback on essay ${essayId}`, res.meta.last_row_id, 'essay_comments');
 
         // Award +1 point for feedback
         await updatePoints(user.id, 1, c.env.DB);
@@ -434,3 +475,40 @@ app.post('/essays/feedback', async (c) => {
 })
 
 export default app
+
+app.post('/essays/view/:id/delete', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+    const id = c.req.param('id')
+
+    // Fetch essay to check author
+    const essay = await c.env.DB.prepare('SELECT * FROM essays WHERE id = ?').bind(id).first() as any;
+    if (!essay) return c.notFound();
+
+    if (!canCommentModeration(user) && user.id !== essay.author_id) return c.text('Unauthorized', 403);
+
+    await c.env.DB.prepare('UPDATE essays SET is_deleted = 1 WHERE id = ?').bind(id).run();
+    await logAction(c.env.DB, user.id, 'DELETE_ESSAY', `Deleted essay ${id}`, Number(id), 'essays');
+
+
+    return c.redirect(`/essays?subject=${encodeURIComponent(essay?.subject || '')}`);
+})
+
+app.post('/essays/feedback/:id/delete', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+    const id = c.req.param('id')
+
+    const comment = await c.env.DB.prepare('SELECT * FROM essay_comments WHERE id = ?').bind(id).first() as any;
+    if (!comment) return c.notFound();
+
+    if (!canCommentModeration(user) && user.id !== comment.author_id) return c.text('Unauthorized', 403);
+
+    await c.env.DB.prepare('UPDATE essay_comments SET is_deleted = 1 WHERE id = ?').bind(id).run();
+    await logAction(c.env.DB, user.id, 'DELETE_FEEDBACK', `Deleted feedback ${id}`, Number(id), 'essay_comments');
+
+    if (comment) {
+        return c.redirect(`/essays/view/${comment.essay_id}`);
+    }
+    return c.redirect('/essays');
+})

@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags } from '../utils'
+import { getUser, renderTags, logAction } from '../utils'
+import { canPostAnnouncement, canViewDeleted, canModerateSubject } from '../permissions'
 import { ANNOUNCEMENT_SUBJECTS } from '../constants'
 import { Bindings } from '../types'
 
@@ -8,12 +9,15 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/announcements', async (c) => {
     const user = await getUser(c)
-    const { results } = await c.env.DB.prepare(`
+    const showDeleted = user && canViewDeleted(user);
+    const sql = `
         SELECT a.*, u.first_name, u.last_name, u.tags 
         FROM announcements a 
         LEFT JOIN users u ON a.author_id = u.id 
+        ${showDeleted ? '' : 'WHERE a.is_deleted = 0'}
         ORDER BY a.created_at DESC
-    `).all()
+    `;
+    const { results } = await c.env.DB.prepare(sql).all()
     const subjectFilter = c.req.query('subject')
 
     let filteredResults = results;
@@ -24,31 +28,55 @@ app.get('/announcements', async (c) => {
     return c.html(
         <Layout title="Announcements" user={user}>
             <h1 class="text-3xl font-bold mb-6">Announcements</h1>
-            {user ? (
-                <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8">
-                    <h3 class="text-lg font-bold mb-4">Post New Announcement</h3>
-                    <form action="/announcements" method="post" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Title</label>
-                            <input type="text" name="title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Subject</label>
-                            <select name="subject" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                                {ANNOUNCEMENT_SUBJECTS.map(s => <option value={s}>{s}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Content</label>
-                            <textarea name="content" rows={3} required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea>
-                        </div>
-                        <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700">Post Announcement</button>
-                    </form>
+            {user && user.permission_level >= 2 ? (
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 overflow-hidden">
+                    <div class="bg-gray-50/50 border-b border-gray-200 px-8 py-4">
+                        <h3 class="text-lg font-bold text-gray-800">Post New Announcement</h3>
+                    </div>
+
+                    <div class="p-8">
+                        {user.permission_level === -1 ? (
+                            <div class="bg-red-50 border border-red-100 p-4 rounded-lg flex items-center gap-3">
+                                <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                                <p class="text-sm font-medium text-red-700">You are muted and cannot post.</p>
+                            </div>
+                        ) : (
+                            <form action="/announcements" method="post" class="space-y-5">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-1">Title</label>
+                                        <input type="text" name="title" required
+                                            class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                            placeholder="Announcement title e.g. English grade average dropped" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-700 mb-1">Subject</label>
+                                        <select name="subject"
+                                            class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white cursor-pointer">
+                                            {ANNOUNCEMENT_SUBJECTS.filter(s => canPostAnnouncement(user, s)).map(s => <option value={s}>{s}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1">Content</label>
+                                    <textarea name="content" rows={4} required
+                                        class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
+                                        placeholder="Write your message here... e.g. The average was 100%, Source: Ricky"></textarea>
+                                </div>
+                                <div class="flex justify-end border-t border-gray-100 pt-4">
+                                    <button type="submit"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm">
+                                        Post Announcement
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
                 </div>
             ) : (
-                <div class="bg-blue-50 p-4 rounded mb-8 text-center text-blue-800">
-                    <p>Log in to post announcements.</p>
-                </div>
+                <div></div>
             )}
             <div class="mb-4">
                 <h2 class="text-xl font-bold mb-2">Filter by Subject</h2>
@@ -61,24 +89,33 @@ app.get('/announcements', async (c) => {
                     ))}
                 </div>
             </div>
+
             <div class="space-y-4">
                 {filteredResults?.length === 0 ? (
                     <p class="text-gray-500">No announcements yet.</p>
                 ) : (
                     filteredResults.map((a: any) => (
-                        <div class="bg-white p-4 rounded shadow border-l-4 border-blue-500">
+                        <div class={`bg-white p-4 rounded shadow border-l-4 ${a.is_deleted ? 'border-red-500 bg-red-50' : 'border-blue-500'}`}>
+                            {a.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                             <h2 class="text-xl font-bold">{a.title}</h2>
                             <p class="text-sm text-blue-600 mb-1 flex items-center">
                                 {a.subject} • Posted by {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}
                                 <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(a.tags) }}></span>
                             </p>
                             <p class="mt-2 whitespace-pre-wrap">{a.content}</p>
-                            <span class="text-xs text-gray-400 block mt-2">{new Date(a.created_at).toLocaleDateString()}</span>
+                            <div class="flex justify-between items-center mt-2">
+                                <span class="text-xs text-gray-400">{new Date(a.created_at).toLocaleDateString()}</span>
+                                {!a.is_deleted && user && (canModerateSubject(user, a.subject) || user.id === a.author_id) && (
+                                    <form action={`/announcements/${a.id}/delete`} method="post" class="inline">
+                                        <button type="submit" class="text-red-500 text-xs hover:underline" onclick="return confirm('Are you sure?')">Delete</button>
+                                    </form>
+                                )}
+                            </div>
                         </div>
                     ))
                 )}
             </div>
-        </Layout>
+        </Layout >
     )
 })
 
@@ -89,12 +126,37 @@ app.post('/announcements', async (c) => {
     const title = body['title'] as string
     const subject = body['subject'] as string
     const content = body['content'] as string
+
+    if (!canPostAnnouncement(user, subject)) {
+        return c.text('You do not have permission to post in this subject.', 403)
+    }
+
     if (title && content) {
-        await c.env.DB.prepare('INSERT INTO announcements (title, content, subject, author_id) VALUES (?, ?, ?, ?)')
+        const res = await c.env.DB.prepare('INSERT INTO announcements (title, content, subject, author_id) VALUES (?, ?, ?, ?)')
             .bind(title, content, subject || 'General', user.id)
             .run()
+
+        await logAction(c.env.DB, user.id, 'CREATE_ANNOUNCEMENT', `Created announcement '${title}' in ${subject}`, res.meta.last_row_id, 'announcements');
     }
     return c.redirect('/announcements')
+})
+
+app.post('/announcements/:id/delete', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+    const id = c.req.param('id')
+
+    const ann = await c.env.DB.prepare('SELECT * FROM announcements WHERE id = ?').bind(id).first() as any;
+    if (!ann) return c.notFound();
+
+    if (!canModerateSubject(user, ann.subject) && user.id !== ann.author_id) {
+        return c.text('Unauthorized', 403);
+    }
+
+    await c.env.DB.prepare('UPDATE announcements SET is_deleted = 1 WHERE id = ?').bind(id).run();
+    await logAction(c.env.DB, user.id, 'DELETE_ANNOUNCEMENT', `Deleted announcement ${id}`, Number(id), 'announcements');
+
+    return c.redirect('/announcements');
 })
 
 export default app

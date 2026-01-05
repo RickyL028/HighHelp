@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags } from '../utils'
+import { getUser, renderTags, logAction } from '../utils'
+import { canUploadPastPaper, canCreateTopic, canModerateSubject, canViewDeleted } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 import { Bindings } from '../types'
 
@@ -12,16 +13,20 @@ app.get('/past-papers', async (c) => {
     const topicIdStr = c.req.query('topic_id')
 
     // 1. Landing Page (No Subject) -> Show Recent Questions + Subject Selector at Bottom
+    // 1. Landing Page (No Subject) -> Show Recent Questions + Subject Selector at Bottom
     if (!subject) {
         // Fetch recent questions globally
-        const { results: recentQuestions } = await c.env.DB.prepare(`
+        const showDeleted = user && canViewDeleted(user);
+        const sql = `
             SELECT q.*, t.name as topic_name, t.subject, u.first_name, u.last_name, u.tags 
             FROM questions q 
             LEFT JOIN topics t ON q.topic_id = t.id 
             LEFT JOIN users u ON q.uploader_id = u.id 
+            WHERE ${showDeleted ? '1=1' : 'q.is_deleted = 0'}
             ORDER BY q.created_at DESC 
             LIMIT 5
-        `).all()
+        `;
+        const { results: recentQuestions } = await c.env.DB.prepare(sql).all()
 
         return c.html(
             <Layout title="Past Papers" user={user}>
@@ -88,7 +93,8 @@ app.get('/past-papers', async (c) => {
 
         const { results: topics } = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject).all()
 
-        const canUpload = user && user.permission_level >= 3;
+        const canUpload = user && canUploadPastPaper(user, subject);
+        const canTopic = user && canCreateTopic(user, subject);
 
         return c.html(
             <Layout title={`Past Papers - ${subject}`} user={user}>
@@ -220,7 +226,7 @@ app.get('/past-papers', async (c) => {
                     ) : null}
 
                     {/* Quick Topic Creator (Perm 3+) */}
-                    {canUpload ? (
+                    {canTopic ? (
                         <div class="mb-8 p-4 bg-white border border-gray-200 rounded-lg">
                             <form action="/past-papers/topics" method="post" class="flex gap-2 items-center">
                                 <span class="text-sm font-bold text-gray-600 uppercase">New Topic:</span>
@@ -256,13 +262,16 @@ app.get('/past-papers', async (c) => {
 
     if (!topic) return c.text('Topic not found', 404)
 
-    const { results: questions } = await c.env.DB.prepare(`
+    const showDeleted = user && canViewDeleted(user);
+    const sql = `
         SELECT q.*, u.first_name, u.last_name, u.tags 
         FROM questions q 
         LEFT JOIN users u ON q.uploader_id = u.id 
         WHERE q.topic_id = ? 
+        ${showDeleted ? '' : 'AND q.is_deleted = 0'}
         ORDER BY q.created_at DESC
-    `).bind(topicId).all()
+    `;
+    const { results: questions } = await c.env.DB.prepare(sql).bind(topicId).all()
 
     return c.html(
         <Layout title={`${topic.name} - ${subject}`} user={user}>
@@ -284,9 +293,10 @@ app.get('/past-papers', async (c) => {
                         <p class="text-gray-500 text-center py-10">No questions in this topic yet.</p>
                     ) : (
                         questions.map((q: any) => (
-                            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div class={`bg-white rounded-xl shadow-sm border overflow-hidden ${q.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
                                 <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center bg-blue-50/50">
                                     <div class="flex items-center gap-3">
+                                        {q.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
                                         <span class="text-xs font-mono text-gray-500">#{q.id}</span>
                                         {q.paper_tag && (
                                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-medium border border-blue-200">
@@ -297,6 +307,11 @@ app.get('/past-papers', async (c) => {
                                     <span class="text-xs text-gray-400 flex items-center">
                                         Uploaded by {q.first_name} {q.last_name}
                                         <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(q.tags) }}></span>
+                                        {!q.is_deleted && user && (canModerateSubject(user, subject) || user.id === q.uploader_id) && (
+                                            <form action={`/past-papers/questions/${q.id}/delete`} method="post" class="ml-2">
+                                                <button type="submit" class="text-red-500 hover:text-red-700" onclick="return confirm('Delete question?')">✕</button>
+                                            </form>
+                                        )}
                                     </span>
                                 </div>
                                 <div class="p-6">
@@ -330,15 +345,16 @@ app.get('/past-papers', async (c) => {
 
 app.post('/past-papers/topics', async (c) => {
     const user = await getUser(c)
-    if (!user || user.permission_level < 3) return c.text("Unauthorized", 401)
-
     const body = await c.req.parseBody()
     const subject = body['subject'] as string
+
+    if (!canCreateTopic(user, subject)) return c.text("Unauthorized", 401)
     const name = body['name'] as string
 
     if (subject && name) {
         try {
-            await c.env.DB.prepare('INSERT INTO topics (subject, name) VALUES (?, ?)').bind(subject, name).run()
+            const res = await c.env.DB.prepare('INSERT INTO topics (subject, name) VALUES (?, ?)').bind(subject, name).run()
+            await logAction(c.env.DB, user.id, 'CREATE_TOPIC', `Created topic '${name}' in ${subject}`, res.meta.last_row_id, 'topics');
         } catch (e) {
             console.error('Topic creation failed', e)
         }
@@ -348,11 +364,12 @@ app.post('/past-papers/topics', async (c) => {
 
 app.post('/past-papers/questions', async (c) => {
     const user = await getUser(c)
-    if (!user || user.permission_level < 3) return c.text("Unauthorized", 401)
+    const body = await c.req.parseBody()
+    const subject = body['subject'] as string
+
+    if (!canUploadPastPaper(user, subject)) return c.text("Unauthorized", 401)
 
     try {
-        const body = await c.req.parseBody()
-        const subject = body['subject'] as string
         const topicId = body['topic_id'] as string
         const paperTag = body['paper_tag'] as string || null
         const qImage = body['question_image'] as File
@@ -371,14 +388,41 @@ app.post('/past-papers/questions', async (c) => {
             await c.env.BUCKET.put(aKey, aImage)
         }
 
-        await c.env.DB.prepare('INSERT INTO questions (topic_id, question_image_key, answer_image_key, uploader_id, paper_tag) VALUES (?, ?, ?, ?, ?)')
+        const res = await c.env.DB.prepare('INSERT INTO questions (topic_id, question_image_key, answer_image_key, uploader_id, paper_tag) VALUES (?, ?, ?, ?, ?)')
             .bind(topicId, qKey, aKey, user.id, paperTag)
             .run()
+
+        await logAction(c.env.DB, user.id, 'UPLOAD_QUESTION', `Uploaded question for ${subject} (Topic ${topicId})`, res.meta.last_row_id, 'questions');
 
         return c.redirect(`/past-papers?subject=${encodeURIComponent(subject)}`)
     } catch (e: any) {
         return c.text(`Upload Failed: ${e.message}`, 500)
     }
+})
+
+app.post('/past-papers/questions/:id/delete', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+    const id = c.req.param('id')
+
+    // Join to get subject
+    const q = await c.env.DB.prepare(`
+        SELECT q.*, t.subject 
+        FROM questions q
+        JOIN topics t ON q.topic_id = t.id
+        WHERE q.id = ?
+    `).bind(id).first() as any;
+
+    if (!q) return c.notFound();
+
+    if (!canModerateSubject(user, q.subject) && user.id !== q.uploader_id) {
+        return c.text('Unauthorized', 403);
+    }
+
+    await c.env.DB.prepare('UPDATE questions SET is_deleted = 1 WHERE id = ?').bind(id).run();
+    await logAction(c.env.DB, user.id, 'DELETE_QUESTION', `Deleted question ${id}`, Number(id), 'questions');
+
+    return c.redirect(`/past-papers?subject=${encodeURIComponent(q.subject)}&topic_id=${q.topic_id}`);
 })
 
 export default app
