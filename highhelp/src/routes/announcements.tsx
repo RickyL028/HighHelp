@@ -27,7 +27,7 @@ app.get('/announcements', async (c) => {
 
     return c.html(
         <Layout title="Announcements" user={user}>
-            <h1 class="text-3xl font-bold mb-6">Announcements</h1>
+            <h1 class="text-3xl font-bold mb-6">TESTESTING</h1>
             {user && user.permission_level >= 2 ? (
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 overflow-hidden">
                     <div class="bg-gray-50/50 border-b border-gray-200 px-8 py-4">
