@@ -142,26 +142,36 @@ app.get('/about', async (c) => {
                     <section id="application" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Applications</h2>
                         <p class="text-gray-700 leading-relaxed">
-                            not available yet because ricky is a secret ccp agent. probably a google form or smth. also need to check like two quadrillion terms and services
+                            Applications are currently in the works and will be released in future via Google Forms. If you are interested in this project, please contact Ricky via 'notricky028' on Discord, or by emailing '457297106@student.sbhs.nsw.edu.au'.
+                            The current application form is: N/A
                         </p>
                     </section>
                     <section id="faq" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">FAQs</h2>
                         <p class="text-gray-700 leading-relaxed">
-                            no one asked
+                            <h3 class="text-1xl font-bold mt-4 mb-1">How do I log in?</h3>
+                            To log into HighHelp, either create an account or log in via the SBHS portal.
+                            <br></br>
+                            <h3 class="text-1xl font-bold mt-4 mb-1">Is there support for SBHS students outside of Class of 2027?</h3>
+                            ricky please answer this question :p
+                            <br></br>
+                            <h3 class="text-1xl font-bold mt-4 mb-1">Where do I report a student breaking the guidelines?</h3>
+                            also answer this one. thakn you kind sir
+                            <br></br>
+                            <h3 class="text-1xl font-bold mt-4 mb-1">I have found a bug! Where do I report it?</h3>
+                            Please report all bugs as well as additional feedback via the <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">Google Form</a>.
                         </p>
                     </section>
                     <section id="feedback" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Feedback</h2>
                         <p class="text-gray-700 leading-relaxed">
-                            i will be listening like clash royale developers. (probably another google form)
+                            Report bugs and provide feedback via the <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">Google Form</a>.
                         </p>
                     </section>
                     <section id="contact" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Contact</h2>
                         <p class="text-gray-700 leading-relaxed">
-                            contact force is any force that happens when two objects physically touch, like pushing a door, kicking a ball, or friction between surfaces, arising from electromagnetic interactions at the atomic level, and is responsible for most everyday physical interactions, contrasting with non-contact forces like gravity. Common types include normal force (perpendicular push back from a surface) and friction (parallel resistance), but it also covers applied forces (push/pull), tension, and air resistance
-                            <br></br>
+                            Please contact Ricky via 'notricky028' on Discord, or by emailing '457297106@student.sbhs.nsw.edu.au'.
                             <br></br>
                             will have a domain email after i buy
                         </p>
