@@ -10,7 +10,7 @@ app.get('/about', async (c) => {
                 {/* --- Sidebar Navigation --- */}
                 <aside class="md:w-64 flex-shrink-0">
                     <nav class="sticky top-8 space-y-2 text-sm">
-                        <p class="font-bold mt-4 mb-6 uppercase text-gray-500">On this page</p>
+                        <p class="font-bold mt-4 mb-6 uppercase text-gray-500">On this page TEST</p>
                         <a href="#mission" class="block hover:text-blue-600 transition-colors">What is HighHelp?</a>
                         <br></br>
                         <a href="#resources" class="block hover:text-blue-600 transition-colors">Resources</a>
