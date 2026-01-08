@@ -49,7 +49,7 @@ app.get('/', async (c) => {
                 {/* Latest Announcements Section */}
                 <div class="max-w-5xl mx-auto">
                     <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-3xl font-bold text-gray-900">Latest Announcements</h2>
+                        <h2 class="text-3xl font-bold text-gray-900">Test Announcements</h2>
                         <a href="/announcements" class="text-secondary hover:underline font-medium">View All →</a>
                     </div>
 
