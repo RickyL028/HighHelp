@@ -29,7 +29,7 @@ app.get('/', async (c) => {
                 <div class="grid grid-cols-1 gap-8 max-w-2xl mx-auto">
                     {/* Half Yearly Countdown */}
                     <div class="bg-white p-8 rounded-lg shadow-lg border-t-8 border-primary text-center">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-4 uppercase tracking-wider">Half Yearly</h2>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 uppercase tracking-wider">Half Yearly 1111</h2>
                         <div id="half-yearly-countdown" class="text-4xl md:text-5xl font-mono font-bold text-primary mb-2">
                             --:--:--:--
                         </div>
