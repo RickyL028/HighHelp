@@ -43,27 +43,29 @@ export function hasSubjectTag(user: User, subject: string): boolean {
 }
 
 export function canView(user: User): boolean {
-    return user.permission_level > PermissionLevel.BANNED;
+    return Number(user.permission_level) > PermissionLevel.BANNED;
 }
 
 export function canPostGeneral(user: User): boolean {
-    return user.permission_level > PermissionLevel.MUTED;
+    return Number(user.permission_level) > PermissionLevel.MUTED;
 }
 
 export function canUploadResource(user: User): boolean {
-    if (user.permission_level <= PermissionLevel.DEFAULT) return false;
+    if (Number(user.permission_level) <= PermissionLevel.DEFAULT) return false;
     return true;
 }
 
 export function canPostAnnouncement(user: User, subject: string): boolean {
-    if (user.permission_level >= PermissionLevel.GLOBAL_MOD) return true;
-    if (user.permission_level < PermissionLevel.SUBJECT_ANNOUNCER) return false;
+    const level = Number(user.permission_level);
+    if (level >= PermissionLevel.GLOBAL_MOD) return true;
+    if (level < PermissionLevel.SUBJECT_ANNOUNCER) return false;
     // Level 2, 3: Must match subject
     return hasSubjectTag(user, subject);
 }
 
 export function canUploadPastPaper(user: User, subject: string): boolean {
-    if (user.permission_level >= PermissionLevel.GLOBAL_MOD) return true;
+    const level = Number(user.permission_level);
+    if (level >= PermissionLevel.GLOBAL_MOD) return true;
 
     const tags = getUserTags(user);
     const hasCTag = tags.includes('c');
@@ -72,26 +74,27 @@ export function canUploadPastPaper(user: User, subject: string): boolean {
         return hasSubjectTag(user, subject);
     }
 
-    if (user.permission_level < PermissionLevel.SUBJECT_MOD) return false;
+    if (level < PermissionLevel.SUBJECT_MOD) return false;
 
     return hasSubjectTag(user, subject);
 }
 
 export function canModerateSubject(user: User, subject: string): boolean {
     // Moderate means edit/delete resources, announcements, past papers
-    if (user.permission_level >= PermissionLevel.GLOBAL_MOD) return true;
-    if (user.permission_level < PermissionLevel.SUBJECT_MOD) return false;
+    const level = Number(user.permission_level);
+    if (level >= PermissionLevel.GLOBAL_MOD) return true;
+    if (level < PermissionLevel.SUBJECT_MOD) return false;
     return hasSubjectTag(user, subject);
 }
 
 export function canCommentModeration(user: User): boolean {
     // Level 4: edit/delete Q&A comments, essays, essay comments
-    return user.permission_level >= PermissionLevel.GLOBAL_MOD;
+    return Number(user.permission_level) >= PermissionLevel.GLOBAL_MOD;
 }
 
 export function canCreateTopic(user: User, subject: string): boolean {
     // Level 4 can add new topic to past papers of all subjects
-    if (user.permission_level >= PermissionLevel.GLOBAL_MOD) return true;
+    if (Number(user.permission_level) >= PermissionLevel.GLOBAL_MOD) return true;
 
     // "users with tag of 'C' can add past papers and tags in their respective subjects"
     const tags = getUserTags(user);
@@ -101,5 +104,5 @@ export function canCreateTopic(user: User, subject: string): boolean {
 }
 
 export function canViewDeleted(user: User): boolean {
-    return user.permission_level >= PermissionLevel.ADMIN;
+    return Number(user.permission_level) >= PermissionLevel.ADMIN;
 }

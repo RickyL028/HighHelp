@@ -26,7 +26,6 @@ app.get('/resources', async (c) => {
             LIMIT 5
         `;
         const { results: recentResources } = await c.env.DB.prepare(sql).all()
-
         return c.html(
             <Layout title="Resources" user={user}>
                 <div class="mx-auto space-y-12">
