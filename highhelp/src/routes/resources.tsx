@@ -77,7 +77,7 @@ app.get('/resources', async (c) => {
 
                     {/* Subject Selector at Bottom */}
                     <section>
-                        <h2 class="text-xl font-bold mb-4">Browse by Subject</h2>
+                        <h2 class="text-xl font-bold mb-4">Browse/Upload by Subject</h2>
                         <SubjectSelector baseUrl="/resources" type="standard" />
                     </section>
                 </div>
