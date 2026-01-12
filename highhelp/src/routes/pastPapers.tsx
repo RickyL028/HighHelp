@@ -30,7 +30,7 @@ app.get('/past-papers', async (c) => {
 
         return c.html(
             <Layout title="Past Papers" user={user}>
-                <div class="max-w-4xl mx-auto space-y-12">
+                <div class="mx-auto space-y-12">
 
                     {/* Recent Questions Section */}
                     <section>
@@ -40,34 +40,39 @@ app.get('/past-papers', async (c) => {
                                 <p class="text-gray-500 italic">No questions added recently.</p>
                             ) : (
                                 recentQuestions?.map((q: any) => (
-                                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200 border-l-4 border-l-blue-500 overflow-hidden">
-                                        <div class="flex justify-between items-start mb-2">
-                                            <div class="flex items-center gap-2">
-                                                <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-medium">{q.subject}</span>
-                                                <span class="text-sm font-bold text-gray-700">{q.topic_name}</span>
-                                            </div>
-                                            <span class="text-xs text-gray-400">{new Date(q.created_at).toLocaleDateString()}</span>
+                                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 flex gap-6">
+
+                                        <div class="w-32 h-32 flex-shrink-0 bg-gray-100 rounded-lg border border-gray-200 overflow-hidden relative group">
+                                            <img src={`/download/${q.question_image_key}`} class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                                         </div>
 
-                                        <div class="flex gap-4">
-                                            <div class="w-24 h-24 flex-shrink-0 bg-gray-100 rounded border border-gray-200 overflow-hidden">
-                                                <img src={`/download/${q.question_image_key}`} class="w-full h-full object-cover opacity-80" />
+                                        <div class="flex-grow flex flex-col justify-between">
+                                            <div>
+                                                <div class="flex justify-between items-start mb-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{q.subject}</span>
+                                                        <span class="text-sm font-bold text-gray-700">{q.topic_name}</span>
+                                                    </div>
+                                                    <span class="text-xs text-gray-400 local-date" data-timestamp={q.created_at}>{new Date(q.created_at).toLocaleDateString()}</span>
+                                                </div>
+
+                                                <div class="flex items-center gap-2 mb-2">
+                                                    {q.paper_tag && (
+                                                        <span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded border border-gray-200 font-mono">
+                                                            {q.paper_tag}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div class="flex-grow">
-                                                <p class="text-sm text-gray-600 mb-2">
+
+                                            <div class="flex justify-between items-end border-t border-gray-100 pt-3">
+                                                <p class="text-sm text-gray-600">
                                                     Uploaded by {q.first_name ? `${q.first_name} ${q.last_name}` : 'Unknown'}
                                                     <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(q.tags) }}></span>
                                                 </p>
-                                                {q.paper_tag && (
-                                                    <span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded border border-gray-200">
-                                                        {q.paper_tag}
-                                                    </span>
-                                                )}
-                                                <div class="mt-2">
-                                                    <a href={`/past-papers?subject=${encodeURIComponent(q.subject)}&topic_id=${q.topic_id}`} class="text-blue-600 text-sm font-medium hover:underline">
-                                                        View Question →
-                                                    </a>
-                                                </div>
+                                                <a href={`/past-papers?subject=${encodeURIComponent(q.subject)}&topic_id=${q.topic_id}`} class="text-blue-600 font-bold text-sm hover:underline">
+                                                    View Question →
+                                                </a>
                                             </div>
                                         </div>
                                     </div>
@@ -98,7 +103,7 @@ app.get('/past-papers', async (c) => {
 
         return c.html(
             <Layout title={`Past Papers - ${subject}`} user={user}>
-                <div class="max-w-4xl mx-auto">
+                <div class="mx-auto">
                     <div class="flex items-center justify-between mb-6">
                         <div>
                             <h1 class="text-3xl font-bold">{subject}</h1>
@@ -275,7 +280,7 @@ app.get('/past-papers', async (c) => {
 
     return c.html(
         <Layout title={`${topic.name} - ${subject}`} user={user}>
-            <div class="max-w-4xl mx-auto">
+            <div class="mx-auto">
                 <div class="mb-6">
                     <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
                         <a href="/past-papers" class="hover:underline">Subjects</a>
@@ -293,8 +298,8 @@ app.get('/past-papers', async (c) => {
                         <p class="text-gray-500 text-center py-10">No questions in this topic yet.</p>
                     ) : (
                         questions.map((q: any) => (
-                            <div class={`bg-white rounded-xl shadow-sm border overflow-hidden ${q.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
-                                <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center bg-blue-50/50">
+                            <div class={`bg-white rounded-xl shadow-sm border overflow-hidden mb-6 ${q.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
+                                <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                                     <div class="flex items-center gap-3">
                                         {q.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
                                         <span class="text-xs font-mono text-gray-500">#{q.id}</span>
@@ -309,7 +314,7 @@ app.get('/past-papers', async (c) => {
                                         <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(q.tags) }}></span>
                                         {!q.is_deleted && user && (canModerateSubject(user, subject) || user.id === q.uploader_id) && (
                                             <form action={`/past-papers/questions/${q.id}/delete`} method="post" class="ml-2">
-                                                <button type="submit" class="text-red-500 hover:text-red-700" onclick="return confirm('Delete question?')">✕</button>
+                                                <button type="submit" class="text-red-500 font-bold hover:text-red-700" onclick="return confirm('Delete question?')">✕</button>
                                             </form>
                                         )}
                                     </span>
@@ -322,7 +327,7 @@ app.get('/past-papers', async (c) => {
 
                                     {q.answer_image_key ? (
                                         <details class="group">
-                                            <summary class="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center gap-2 select-none">
+                                            <summary class="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center gap-2 select-none bg-blue-50 p-2 rounded -mx-2 hover:bg-blue-100 transition-colors w-fit">
                                                 <span>▶ Show Answer</span>
                                             </summary>
                                             <div class="mt-4 pt-4 border-t border-dashed border-gray-200">

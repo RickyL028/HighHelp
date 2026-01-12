@@ -20,8 +20,8 @@ export function getUserTags(user: User): string[] {
             if (Array.isArray(parsed)) {
                 return parsed.map(t => String(t).toLowerCase());
             } else if (typeof parsed === 'object' && parsed !== null) {
-                return Object.entries(parsed)
-                    .filter(([_, val]) => val === 1)
+                return Object.entries(parsed as Record<string, number>)
+                    .filter(([_, val]) => val >= 1)
                     .map(([key, _]) => key.toLowerCase());
             }
         }

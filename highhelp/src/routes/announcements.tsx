@@ -95,19 +95,26 @@ app.get('/announcements', async (c) => {
                     <p class="text-gray-500">No announcements yet.</p>
                 ) : (
                     filteredResults.map((a: any) => (
-                        <div class={`bg-white p-4 rounded shadow border-l-4 ${a.is_deleted ? 'border-red-500 bg-red-50' : 'border-blue-500'}`}>
-                            {a.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
-                            <h2 class="text-xl font-bold">{a.title}</h2>
-                            <p class="text-sm text-blue-600 mb-1 flex items-center">
-                                {a.subject} • Posted by {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}
-                                <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(a.tags) }}></span>
-                            </p>
-                            <p class="mt-2 whitespace-pre-wrap">{a.content}</p>
-                            <div class="flex justify-between items-center mt-2">
-                                <span class="text-xs text-gray-400">{new Date(a.created_at).toLocaleDateString()}</span>
+                        <div class={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 ${a.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
+                            <div class="flex justify-between items-center mb-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{a.subject}</span>
+                                    {a.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
+                                </div>
+                                <span class="text-xs text-gray-400 local-date" data-timestamp={a.created_at}>{new Date(a.created_at).toLocaleDateString()}</span>
+                            </div>
+
+                            <h2 class="text-xl font-bold text-gray-800 mb-2">{a.title}</h2>
+                            <p class="text-gray-600 leading-relaxed mb-4 whitespace-pre-wrap">{a.content}</p>
+
+                            <div class="border-t border-gray-100 pt-3 flex justify-between items-center text-sm">
+                                <span class="text-gray-500 flex items-center">
+                                    Posted by {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}
+                                    <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(a.tags) }}></span>
+                                </span>
                                 {!a.is_deleted && user && (canModerateSubject(user, a.subject) || user.id === a.author_id) && (
                                     <form action={`/announcements/${a.id}/delete`} method="post" class="inline">
-                                        <button type="submit" class="text-red-500 text-xs hover:underline" onclick="return confirm('Are you sure?')">Delete</button>
+                                        <button type="submit" class="text-red-500 text-xs font-bold hover:underline" onclick="return confirm('Are you sure?')">DELETE</button>
                                     </form>
                                 )}
                             </div>

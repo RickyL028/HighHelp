@@ -29,7 +29,7 @@ app.get('/resources', async (c) => {
 
         return c.html(
             <Layout title="Resources" user={user}>
-                <div class="max-w-4xl mx-auto space-y-12">
+                <div class="mx-auto space-y-12">
 
                     {/* Recent Resources Section */}
                     <section>
@@ -39,26 +39,32 @@ app.get('/resources', async (c) => {
                                 <p class="text-gray-500 italic">No resources uploaded recently.</p>
                             ) : (
                                 recentResources?.map((r: any) => (
-                                    <div class={`bg-white p-4 rounded shadow-sm border ${r.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 border-l-4 border-l-blue-500'} flex justify-between items-start`}>
-                                        <div class="flex-grow">
-                                            {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
-                                            <div class="flex items-center gap-2 mb-1">
-                                                <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-medium">{r.subject}</span>
-                                                <span class="text-xs text-gray-500">• {new Date(r.created_at).toLocaleDateString()}</span>
+                                    <div class={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col justify-between ${r.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
+                                        <div>
+                                            <div class="flex justify-between items-center mb-3">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{r.subject}</span>
+                                                    {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
+                                                </div>
+                                                <span class="text-xs text-gray-400 local-date" data-timestamp={r.created_at}>{new Date(r.created_at).toLocaleDateString()}</span>
                                             </div>
-                                            <h2 class="text-lg font-bold text-gray-900">{r.title}</h2>
-                                            <p class="text-xs text-gray-500 flex items-center mt-1">
+
+                                            <h2 class="text-xl font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">{r.title}</h2>
+
+                                            <div class="text-sm text-gray-500 mb-4 flex items-center">
                                                 By {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
                                                 <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
-                                            </p>
+                                            </div>
                                         </div>
-                                        <div class="flex flex-col gap-2 ml-4">
-                                            <a href={`/download/${r.file_key}`} target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-100 text-sm font-medium whitespace-nowrap text-center">
-                                                Download
+
+                                        <div class="border-t border-gray-100 pt-3 flex justify-between items-center">
+                                            <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1">
+                                                <span>Download Resource</span>
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                             </a>
                                             {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
                                                 <form action={`/resources/${r.id}/delete`} method="post">
-                                                    <button class="text-red-500 text-xs hover:underline mt-1">Delete</button>
+                                                    <button class="text-red-400 text-xs hover:text-red-600 font-medium">Delete</button>
                                                 </form>
                                             )}
                                         </div>
@@ -139,24 +145,33 @@ app.get('/resources', async (c) => {
                     <p class="text-gray-500">No resources uploaded for this subject yet.</p>
                 ) : (
                     results.map((r: any) => (
-                        <div class={`bg-white p-4 rounded shadow border ${r.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 border-l-4 border-green-500'} flex justify-between items-start`}>
-                            <div class="flex-grow">
-                                {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
-                                <h2 class="text-xl font-bold">{r.title}</h2>
-                                <p class="text-xs text-gray-500 mb-1 flex items-center">
+                        <div class={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 ${r.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
+                            <div class="flex justify-between items-center mb-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{subject}</span>
+                                    {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
+                                </div>
+                                <span class="text-xs text-gray-400 local-date" data-timestamp={r.created_at}>{new Date(r.created_at).toLocaleDateString()}</span>
+                            </div>
+
+                            <h2 class="text-xl font-bold text-gray-800 mb-2">{r.title}</h2>
+                            <p class="text-gray-600 mb-4">{r.description}</p>
+
+                            <div class="border-t border-gray-100 pt-3 flex justify-between items-center">
+                                <div class="text-sm text-gray-500 flex items-center">
                                     Uploaded by {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
                                     <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
-                                    <span class="ml-1">on {new Date(r.created_at).toLocaleDateString()}</span>
-                                </p>
-                                <p class="text-gray-600 mb-2">{r.description}</p>
-                            </div>
-                            <div class="flex flex-col gap-2 ml-4">
-                                <a href={`/download/${r.file_key}`} target="_blank" class="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm whitespace-nowrap text-center">Download</a>
-                                {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
-                                    <form action={`/resources/${r.id}/delete`} method="post">
-                                        <button class="text-red-500 text-xs hover:underline mt-1">Delete</button>
-                                    </form>
-                                )}
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1">
+                                        Download
+                                    </a>
+                                    {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
+                                        <form action={`/resources/${r.id}/delete`} method="post">
+                                            <button class="text-red-400 text-xs hover:text-red-600 font-medium">Delete</button>
+                                        </form>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     ))
