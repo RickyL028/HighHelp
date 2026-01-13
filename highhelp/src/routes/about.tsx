@@ -159,13 +159,13 @@ app.get('/about', async (c) => {
                             also answer this one. thakn you kind sir
                             <br></br>
                             <h3 class="text-1xl font-bold mt-4 mb-1">I have found a bug! Where do I report it?</h3>
-                            Please report all bugs as well as additional feedback via the <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">Google Form</a>.
+                            Please report all bugs as well as additional feedback via the <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"><u>Google Form</u></a>.
                         </p>
                     </section>
                     <section id="feedback" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Feedback</h2>
                         <p class="text-gray-700 leading-relaxed">
-                            Report bugs and provide feedback via the <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ">Google Form</a>.
+                            Report bugs and provide feedback via the <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"><u>Google Form</u></a>.
                         </p>
                     </section>
                     <section id="contact" class="mb-12 scroll-mt-20">
