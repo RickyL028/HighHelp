@@ -1,8 +1,8 @@
-DROP TABLE IF EXISTS comments;
-DROP TABLE IF EXISTS posts;
-DROP TABLE IF EXISTS announcements;
-DROP TABLE IF EXISTS resources;
-DROP TABLE IF EXISTS users;
+-- DROP TABLE IF EXISTS comments;
+-- DROP TABLE IF EXISTS posts;
+-- DROP TABLE IF EXISTS announcements;
+-- DROP TABLE IF EXISTS resources;
+-- DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,6 +57,42 @@ CREATE TABLE comments (
   content TEXT NOT NULL,
   author_id INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (post_id) REFERENCES posts(id),
   FOREIGN KEY (author_id) REFERENCES users(id)
+);
+
+CREATE TABLE papers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject TEXT NOT NULL,
+    school_name TEXT NOT NULL,
+    academic_year INTEGER NOT NULL,
+    reference_link TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE exam_questions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    paper_id INTEGER NOT NULL,
+    section_label TEXT NOT NULL,
+    segment_label TEXT,
+    question_number TEXT NOT NULL,
+    question_full_label TEXT,
+    question_type TEXT,
+    marks INTEGER,
+    question_image_key TEXT,
+    answer_image_key TEXT,
+    stimulus_image_key TEXT,
+    mc_answer TEXT,
+    uploader_id INTEGER,
+    is_deleted BOOLEAN DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (paper_id) REFERENCES papers(id),
+    FOREIGN KEY (uploader_id) REFERENCES users(id)
+);
+
+CREATE TABLE question_topics (
+    question_id INTEGER NOT NULL,
+    topic_id INTEGER NOT NULL,
+    PRIMARY KEY (question_id, topic_id),
+    FOREIGN KEY (question_id) REFERENCES exam_questions(id),
+    FOREIGN KEY (topic_id) REFERENCES topics(id)
 );
