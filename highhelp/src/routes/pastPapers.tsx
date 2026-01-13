@@ -78,7 +78,8 @@ app.get('/past-papers', async (c) => {
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="content-container">
+                {/* Grid View Container */}
+                <div id="grid-view-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {papers.results.length === 0 ? (
                         <div class="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
                             No papers found for {subject}.
@@ -106,6 +107,48 @@ app.get('/past-papers', async (c) => {
                             </a>
                         ))
                     )}
+                </div>
+
+                {/* List View Container (Table) */}
+                <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {papers.results.length === 0 ? (
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={5}>No papers found.</td>
+                                </tr>
+                            ) : (
+                                papers.results.map((p: any) => (
+                                    <tr
+                                        class="search-item hover:bg-gray-50 transition-colors cursor-pointer"
+                                        data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}
+                                        onclick={`window.location.href='/past-papers/paper/${p.id}'`}
+                                    >
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-700">
+                                            {p.academic_year}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                            {p.school_name}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            Trial Paper
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-blue-600 hover:text-blue-900">
+                                            View
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </Layout>

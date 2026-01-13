@@ -105,9 +105,12 @@ app.get('/announcements', async (c) => {
                 </div>
             </div>
 
-            <div class="space-y-4" id="content-container">
+            {/* Grid View Container */}
+            <div id="grid-view-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredResults?.length === 0 ? (
-                    <p class="text-gray-500">No announcements yet.</p>
+                    <div class="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                        No announcements yet.
+                    </div>
                 ) : (
                     filteredResults.map((a: any) => (
                         <div
@@ -141,6 +144,57 @@ app.get('/announcements', async (c) => {
                         </div>
                     ))
                 )}
+            </div>
+
+            {/* List View Container (Table) */}
+            <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Announcement</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {filteredResults?.length === 0 ? (
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={5}>No announcements yet.</td>
+                            </tr>
+                        ) : (
+                            filteredResults.map((a: any) => (
+                                <tr
+                                    class={`search-item hover:bg-gray-50 transition-colors ${a.is_deleted ? 'bg-red-50' : ''}`}
+                                    data-search-text={`${a.title} ${a.content} ${a.subject} ${a.first_name || ''} ${a.last_name || ''}`}
+                                >
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 local-date" data-timestamp={a.created_at}>
+                                        {new Date(a.created_at).toLocaleDateString()}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold uppercase">{a.subject}</span>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-900">
+                                        <div class="font-bold">{a.title}</div>
+                                        <div class="text-gray-500 text-xs truncate max-w-md">{a.content}</div>
+                                        {a.is_deleted && <div class="text-red-500 text-xs font-bold uppercase mt-1">Deleted</div>}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        {!a.is_deleted && user && (canModerateSubject(user, a.subject) || user.id === a.author_id) && (
+                                            <form action={`/announcements/${a.id}/delete`} method="post" class="inline">
+                                                <button type="submit" class="text-red-600 hover:text-red-900" onclick="return confirm('Are you sure?')">Delete</button>
+                                            </form>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
             </div>
         </Layout >
     )

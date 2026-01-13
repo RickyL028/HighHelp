@@ -154,9 +154,12 @@ app.get('/resources', async (c) => {
                 </div>
             </div>
 
-            <div class="space-y-4" id="content-container">
+            {/* Grid View Container */}
+            <div id="grid-view-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {results?.length === 0 ? (
-                    <p class="text-gray-500">No resources uploaded for this subject yet.</p>
+                    <div class="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                        No resources uploaded for this subject yet.
+                    </div>
                 ) : (
                     results.map((r: any) => (
                         <div
@@ -195,6 +198,57 @@ app.get('/resources', async (c) => {
                         </div>
                     ))
                 )}
+            </div>
+
+            {/* List View Container (Table) */}
+            <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploader</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {results?.length === 0 ? (
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={5}>No resources uploaded for this subject yet.</td>
+                            </tr>
+                        ) : (
+                            results.map((r: any) => (
+                                <tr
+                                    class={`search-item hover:bg-gray-50 transition-colors ${r.is_deleted ? 'bg-red-50' : ''}`}
+                                    data-search-text={`${r.title} ${r.description} ${r.subject} ${r.first_name || ''} ${r.last_name || ''}`}
+                                >
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 local-date" data-timestamp={r.created_at}>
+                                        {new Date(r.created_at).toLocaleDateString()}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                        {r.title}
+                                        {r.is_deleted && <span class="ml-2 text-xs text-red-600 uppercase">Deleted</span>}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 truncate max-w-xs">
+                                        {r.description}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex items-center justify-end gap-3">
+                                        <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 hover:text-blue-900">Download</a>
+                                        {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
+                                            <form action={`/resources/${r.id}/delete`} method="post">
+                                                <button class="text-red-500 hover:text-red-700">Delete</button>
+                                            </form>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
             </div>
         </Layout>
     )

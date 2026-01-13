@@ -150,14 +150,15 @@ app.get('/forum', async (c) => {
                     </div>
                 </div>
 
-                <div class="space-y-4" id="content-container">
+                {/* Grid View Container */}
+                <div id="grid-view-container" class="space-y-4">
                     {results?.length === 0 ? (
                         <div class="bg-gray-50 p-8 text-center rounded border border-dashed border-gray-300">
                             <p class="text-gray-500 mb-2">No discussions in {subject} yet.</p>
                             {user ? (
-                                <a href={`/forum/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 font-medium hover:underline">Ask a question</a>
+                                <a href={`/forum/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 hover:underline">Start the first discussion!</a>
                             ) : (
-                                <a href="/login" class="text-blue-600 font-medium hover:underline">Log in to join Q&A</a>
+                                <a href="/login" class="text-blue-600 hover:underline">Login to start a discussion!</a>
                             )}
                         </div>
                     ) : (
@@ -194,6 +195,53 @@ app.get('/forum', async (c) => {
                             </div>
                         ))
                     )}
+                </div>
+
+                {/* List View Container (Table) */}
+                <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topic</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Snippet</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Replies</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {results?.length === 0 ? (
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={5}>No discussions yet.</td>
+                                </tr>
+                            ) : (
+                                results.map((p: any) => (
+                                    <tr
+                                        class={`search-item hover:bg-gray-50 transition-colors cursor-pointer ${p.is_deleted ? 'bg-red-50' : ''}`}
+                                        data-search-text={`${p.title} ${p.content} ${p.subject} ${p.first_name || ''} ${p.last_name || ''}`}
+                                        onclick={`window.location.href='/forum/post/${p.id}'`}
+                                    >
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 local-date" data-timestamp={p.created_at}>
+                                            {new Date(p.created_at).toLocaleDateString()}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                            {p.title}
+                                            {p.is_deleted && <span class="ml-2 text-xs text-red-600 uppercase">Deleted</span>}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500 truncate max-w-xs">
+                                            {p.content}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                            {p.comment_count} 💬
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </Layout>

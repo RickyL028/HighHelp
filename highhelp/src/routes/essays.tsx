@@ -127,19 +127,20 @@ app.get('/essays', async (c) => {
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                         </button>
                         <button id="view-grid" class="p-2 rounded text-gray-500 hover:bg-gray-50 transition-colors" title="Grid View">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                         </button>
                     </div>
                 </div>
 
-                <div class="space-y-4" id="content-container">
+                {/* Grid View Container */}
+                <div id="grid-view-container" class="space-y-4">
                     {results?.length === 0 ? (
                         <div class="bg-gray-50 p-8 text-center rounded border border-dashed border-gray-300">
                             <p class="text-gray-500 mb-2">No essays in {subject} yet.</p>
                             {user ? (
-                                <a href={`/essays/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 font-medium hover:underline">Submit an essay</a>
+                                <a href={`/essays/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 hover:underline">Submit the first essay!</a>
                             ) : (
-                                <a href="/login" class="text-blue-600 font-medium hover:underline">Log in to participate</a>
+                                <a href="/login" class="text-blue-600 hover:underline">Login to submit an essay!</a>
                             )}
                         </div>
                     ) : (
@@ -177,6 +178,53 @@ app.get('/essays', async (c) => {
                             </div>
                         ))
                     )}
+                </div>
+
+                {/* List View Container (Table) */}
+                <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Question</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Marks</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Feedback</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {results?.length === 0 ? (
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={5}>No essays yet.</td>
+                                </tr>
+                            ) : (
+                                results.map((e: any) => (
+                                    <tr
+                                        class={`search-item hover:bg-gray-50 transition-colors cursor-pointer ${e.is_deleted ? 'bg-red-50' : ''}`}
+                                        data-search-text={`${e.title} ${e.subject} ${e.question || ''}`}
+                                        onclick={`window.location.href='/essays/view/${e.id}'`}
+                                    >
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 local-date" data-timestamp={e.created_at}>
+                                            {new Date(e.created_at).toLocaleDateString()}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                            {e.title}
+                                            {e.is_deleted && <span class="ml-2 text-xs text-red-600 uppercase">Deleted</span>}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500 truncate max-w-xs">
+                                            {e.question || '-'}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                            {e.full_marks ? `/${e.full_marks}` : '-'}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                            {e.feedback_count} 📝
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </Layout>
