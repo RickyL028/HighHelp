@@ -25,9 +25,9 @@ export const Layout = (props: { title: string; children: any; user?: any }) => {
               }
             </script>
           </head>
-          <body class="bg-background text-gray-800 font-sans min-h-screen flex flex-col">
+      <body class="bg-background text-gray-800 font-sans min-h-screen flex flex-col">
             <nav class="bg-primary text-white shadow-lg">
-              <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div class="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between h-14">
               <div class="flex items-center">
                 <a href="/" class="font-bold text-xl tracking-tight">HighHelp</a>
@@ -71,16 +71,79 @@ export const Layout = (props: { title: string; children: any; user?: any }) => {
           </div>
         </nav>
 
-        <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <main class="flex-grow max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
           ${props.children}
         </main>
 
         <footer class="bg-white-800/10 text-blue-800/10 py-6">
 
-          <div class="max-w-7xl mx-auto px-4 text-center">
+          <div class="max-w-[95%] mx-auto px-4 text-center">
             <p>&copy; 2025 HighHelp</p>
           </div>
         </footer>
+        <script>
+            // Client-side date hydration
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('.local-date').forEach(el => {
+                    const ts = el.getAttribute('data-timestamp');
+                    const format = el.getAttribute('data-format');
+                    if (ts) {
+                        const date = new Date(ts);
+                        if (format === 'datetime') {
+                             el.textContent = date.toLocaleString();
+                        } else {
+                             el.textContent = date.toLocaleDateString();
+                        }
+                    }
+                });
+
+                // Shared UI Logic: Search & View Toggle
+                const searchInput = document.getElementById('search-input');
+                const viewGridBtn = document.getElementById('view-grid');
+                const viewListBtn = document.getElementById('view-list');
+                const gridContainer = document.getElementById('grid-view-container');
+                const listContainer = document.getElementById('list-view-container');
+
+                // Search Logic
+                if (searchInput) {
+                    searchInput.addEventListener('input', (e) => {
+                        const term = e.target.value.toLowerCase();
+                        document.querySelectorAll('.search-item').forEach(item => {
+                            const text = item.getAttribute('data-search-text') || '';
+                            if (text.toLowerCase().includes(term)) {
+                                item.classList.remove('hidden');
+                                // If inside a table row, we might need to handle empty states, but simpler is fine for now
+                            } else {
+                                item.classList.add('hidden');
+                            }
+                        });
+                    });
+                }
+
+                // View Toggle Logic
+                if (viewGridBtn && viewListBtn && gridContainer && listContainer) {
+                    viewGridBtn.addEventListener('click', () => {
+                        gridContainer.classList.remove('hidden');
+                        listContainer.classList.add('hidden');
+                        
+                        viewGridBtn.classList.add('bg-blue-100', 'text-blue-700');
+                        viewGridBtn.classList.remove('text-gray-500', 'hover:bg-gray-50');
+                        viewListBtn.classList.remove('bg-blue-100', 'text-blue-700');
+                        viewListBtn.classList.add('text-gray-500', 'hover:bg-gray-50');
+                    });
+
+                    viewListBtn.addEventListener('click', () => {
+                        gridContainer.classList.add('hidden');
+                        listContainer.classList.remove('hidden');
+
+                        viewListBtn.classList.add('bg-blue-100', 'text-blue-700');
+                        viewListBtn.classList.remove('text-gray-500', 'hover:bg-gray-50');
+                        viewGridBtn.classList.remove('bg-blue-100', 'text-blue-700');
+                        viewGridBtn.classList.add('text-gray-500', 'hover:bg-gray-50');
+                    });
+                }
+            });
+        </script>
       </body>
     </html>
   `

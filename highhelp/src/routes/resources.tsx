@@ -26,10 +26,9 @@ app.get('/resources', async (c) => {
             LIMIT 5
         `;
         const { results: recentResources } = await c.env.DB.prepare(sql).all()
-
         return c.html(
             <Layout title="Resources" user={user}>
-                <div class="max-w-4xl mx-auto space-y-12">
+                <div class="mx-auto space-y-12">
 
                     {/* Recent Resources Section */}
                     <section>
@@ -39,26 +38,32 @@ app.get('/resources', async (c) => {
                                 <p class="text-gray-500 italic">No resources uploaded recently.</p>
                             ) : (
                                 recentResources?.map((r: any) => (
-                                    <div class={`bg-white p-4 rounded shadow-sm border ${r.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 border-l-4 border-l-blue-500'} flex justify-between items-start`}>
-                                        <div class="flex-grow">
-                                            {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
-                                            <div class="flex items-center gap-2 mb-1">
-                                                <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-medium">{r.subject}</span>
-                                                <span class="text-xs text-gray-500">• {new Date(r.created_at).toLocaleDateString()}</span>
+                                    <div class={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col justify-between ${r.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
+                                        <div>
+                                            <div class="flex justify-between items-center mb-3">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{r.subject}</span>
+                                                    {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
+                                                </div>
+                                                <span class="text-xs text-gray-400 local-date" data-timestamp={r.created_at}>{new Date(r.created_at).toLocaleDateString()}</span>
                                             </div>
-                                            <h2 class="text-lg font-bold text-gray-900">{r.title}</h2>
-                                            <p class="text-xs text-gray-500 flex items-center mt-1">
+
+                                            <h2 class="text-xl font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">{r.title}</h2>
+
+                                            <div class="text-sm text-gray-500 mb-4 flex items-center">
                                                 By {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
                                                 <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
-                                            </p>
+                                            </div>
                                         </div>
-                                        <div class="flex flex-col gap-2 ml-4">
-                                            <a href={`/download/${r.file_key}`} target="_blank" class="bg-blue-50 text-blue-700 px-3 py-1.5 rounded hover:bg-blue-100 text-sm font-medium whitespace-nowrap text-center">
-                                                Download
+
+                                        <div class="border-t border-gray-100 pt-3 flex justify-between items-center">
+                                            <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1">
+                                                <span>Download Resource</span>
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                             </a>
                                             {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
                                                 <form action={`/resources/${r.id}/delete`} method="post">
-                                                    <button class="text-red-500 text-xs hover:underline mt-1">Delete</button>
+                                                    <button class="text-red-400 text-xs hover:text-red-600 font-medium">Delete</button>
                                                 </form>
                                             )}
                                         </div>
@@ -72,7 +77,7 @@ app.get('/resources', async (c) => {
 
                     {/* Subject Selector at Bottom */}
                     <section>
-                        <h2 class="text-xl font-bold mb-4">Browse by Subject</h2>
+                        <h2 class="text-xl font-bold mb-4">Browse/Upload by Subject</h2>
                         <SubjectSelector baseUrl="/resources" type="standard" />
                     </section>
                 </div>
@@ -134,33 +139,116 @@ app.get('/resources', async (c) => {
                 </div>
             )}
 
-            <div class="space-y-4">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <div class="relative w-full md:w-96">
+                    <input type="text" id="search-input" placeholder="Search resources..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" />
+                    <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <div class="flex items-center gap-2 bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
+                    <button id="view-list" class="p-2 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors" title="List View">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <button id="view-grid" class="p-2 rounded text-gray-500 hover:bg-gray-50 transition-colors" title="Grid View">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            {/* Grid View Container */}
+            <div id="grid-view-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {results?.length === 0 ? (
-                    <p class="text-gray-500">No resources uploaded for this subject yet.</p>
+                    <div class="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                        No resources uploaded for this subject yet.
+                    </div>
                 ) : (
                     results.map((r: any) => (
-                        <div class={`bg-white p-4 rounded shadow border ${r.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 border-l-4 border-green-500'} flex justify-between items-start`}>
-                            <div class="flex-grow">
-                                {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
-                                <h2 class="text-xl font-bold">{r.title}</h2>
-                                <p class="text-xs text-gray-500 mb-1 flex items-center">
+                        <div
+                            class={`search-item bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col justify-between ${r.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
+                            data-search-text={`${r.title} ${r.description} ${r.subject} ${r.first_name || ''} ${r.last_name || ''}`}
+                        >
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{subject}</span>
+                                        {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
+                                    </div>
+                                    <span class="text-xs text-gray-400 local-date" data-timestamp={r.created_at}>{new Date(r.created_at).toLocaleDateString()}</span>
+                                </div>
+
+                                <h2 class="text-xl font-bold text-gray-800 mb-2">{r.title}</h2>
+                                <p class="text-gray-600 mb-4 line-clamp-3">{r.description}</p>
+                            </div>
+
+                            <div class="border-t border-gray-100 pt-3 flex justify-between items-center">
+                                <div class="text-sm text-gray-500 flex items-center">
                                     Uploaded by {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
                                     <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
-                                    <span class="ml-1">on {new Date(r.created_at).toLocaleDateString()}</span>
-                                </p>
-                                <p class="text-gray-600 mb-2">{r.description}</p>
-                            </div>
-                            <div class="flex flex-col gap-2 ml-4">
-                                <a href={`/download/${r.file_key}`} target="_blank" class="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm whitespace-nowrap text-center">Download</a>
-                                {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
-                                    <form action={`/resources/${r.id}/delete`} method="post">
-                                        <button class="text-red-500 text-xs hover:underline mt-1">Delete</button>
-                                    </form>
-                                )}
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1">
+                                        Download
+                                    </a>
+                                    {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
+                                        <form action={`/resources/${r.id}/delete`} method="post">
+                                            <button class="text-red-400 text-xs hover:text-red-600 font-medium">Delete</button>
+                                        </form>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     ))
                 )}
+            </div>
+
+            {/* List View Container (Table) */}
+            <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploader</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {results?.length === 0 ? (
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={5}>No resources uploaded for this subject yet.</td>
+                            </tr>
+                        ) : (
+                            results.map((r: any) => (
+                                <tr
+                                    class={`search-item hover:bg-gray-50 transition-colors ${r.is_deleted ? 'bg-red-50' : ''}`}
+                                    data-search-text={`${r.title} ${r.description} ${r.subject} ${r.first_name || ''} ${r.last_name || ''}`}
+                                >
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 local-date" data-timestamp={r.created_at}>
+                                        {new Date(r.created_at).toLocaleDateString()}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                        {r.title}
+                                        {r.is_deleted && <span class="ml-2 text-xs text-red-600 uppercase">Deleted</span>}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 truncate max-w-xs">
+                                        {r.description}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex items-center justify-end gap-3">
+                                        <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 hover:text-blue-900">Download</a>
+                                        {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
+                                            <form action={`/resources/${r.id}/delete`} method="post">
+                                                <button class="text-red-500 hover:text-red-700">Delete</button>
+                                            </form>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
             </div>
         </Layout>
     )

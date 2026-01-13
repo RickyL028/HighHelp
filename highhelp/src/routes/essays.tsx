@@ -29,7 +29,7 @@ app.get('/essays', async (c) => {
 
         return c.html(
             <Layout title="Essay Exchange" user={user}>
-                <div class="max-w-4xl mx-auto space-y-12">
+                <div class="mx-auto space-y-12">
                     <section>
                         <div class="flex justify-between items-center mb-6">
                             <h1 class="text-3xl font-bold">Essay Exchange</h1>
@@ -45,26 +45,32 @@ app.get('/essays', async (c) => {
                                 <p class="text-gray-500 italic">No essays submitted yet.</p>
                             ) : (
                                 recentEssays?.map((e: any) => (
-                                    <div class={`bg-white p-4 rounded shadow-sm border ${e.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-blue-400'} transition group block`}>
+                                    <div class={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group block ${e.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
                                         <div class="flex justify-between items-start">
                                             <div class="flex-grow">
-                                                {e.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
-                                                <div class="flex items-center gap-2 mb-1">
-                                                    <span class="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium border border-blue-100">{e.subject}</span>
-                                                    <span class="text-xs text-gray-400">• {new Date(e.created_at).toLocaleDateString()}</span>
+                                                <div class="flex items-center justify-between mb-3">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{e.subject}</span>
+                                                        {e.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
+                                                    </div>
+                                                    <span class="text-xs text-gray-400 local-date" data-timestamp={e.created_at}>{new Date(e.created_at).toLocaleDateString()}</span>
                                                 </div>
+
                                                 <a href={`/essays/view/${e.id}`} class="block">
-                                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-blue-600">{e.title}</h3>
+                                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-blue-600 transition-colors mb-2">{e.title}</h3>
                                                 </a>
-                                                <p class="text-sm text-gray-600 mt-1 line-clamp-2">By -</p>
-                                            </div>
-                                            <div class="flex flex-col items-end min-w-[60px]">
-                                                <span class="flex items-center gap-1 text-gray-500 text-sm">
-                                                    📝 {e.feedback_count}
-                                                </span>
-                                                {e.full_marks ? (
-                                                    <span class="text-xs text-gray-400 mt-1">/{e.full_marks} Marks</span>
-                                                ) : null}
+
+                                                <div class="border-t border-gray-100 pt-3 flex justify-between items-center text-sm text-gray-500">
+                                                    <span>By -</span>
+                                                    <div class="flex items-center gap-4">
+                                                        <span class="flex items-center gap-1 font-medium">
+                                                            📝 {e.feedback_count}
+                                                        </span>
+                                                        {e.full_marks ? (
+                                                            <span class="text-xs bg-gray-100 px-2 py-1 rounded">/{e.full_marks} Marks</span>
+                                                        ) : null}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -98,7 +104,7 @@ app.get('/essays', async (c) => {
 
     return c.html(
         <Layout title={`${subject} Essays`} user={user}>
-            <div class="max-w-4xl mx-auto">
+            <div class="mx-auto">
                 <div class="flex items-center justify-between mb-6">
                     <div>
                         <h1 class="text-3xl font-bold">{subject} Essays</h1>
@@ -111,42 +117,114 @@ app.get('/essays', async (c) => {
                     ) : null}
                 </div>
 
-                <div class="space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                    <div class="relative w-full md:w-96">
+                        <input type="text" id="search-input" placeholder="Search essays..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" />
+                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <div class="flex items-center gap-2 bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
+                        <button id="view-list" class="p-2 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors" title="List View">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        </button>
+                        <button id="view-grid" class="p-2 rounded text-gray-500 hover:bg-gray-50 transition-colors" title="Grid View">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Grid View Container */}
+                <div id="grid-view-container" class="space-y-4">
                     {results?.length === 0 ? (
                         <div class="bg-gray-50 p-8 text-center rounded border border-dashed border-gray-300">
                             <p class="text-gray-500 mb-2">No essays in {subject} yet.</p>
                             {user ? (
-                                <a href={`/essays/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 font-medium hover:underline">Submit an essay</a>
+                                <a href={`/essays/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 hover:underline">Submit the first essay!</a>
                             ) : (
-                                <a href="/login" class="text-blue-600 font-medium hover:underline">Log in to participate</a>
+                                <a href="/login" class="text-blue-600 hover:underline">Login to submit an essay!</a>
                             )}
                         </div>
                     ) : (
                         results.map((e: any) => (
-                            <div class={`bg-white p-4 rounded shadow-sm border ${e.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-blue-400'} transition group`}>
+                            <div
+                                class={`search-item bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group h-full flex flex-col justify-between ${e.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
+                                data-search-text={`${e.title} ${e.subject} ${e.question || ''}`}
+                            >
                                 <div class="flex justify-between items-start">
                                     <div class="flex-grow">
-                                        {e.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
-                                        <div class="flex items-center gap-2 mb-1">
-                                            <span class="text-xs text-gray-400">{new Date(e.created_at).toLocaleDateString()}</span>
+                                        <div class="flex items-center justify-between mb-3">
+                                            <div class="flex items-center gap-2">
+                                                {e.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
+                                            </div>
+                                            <span class="text-xs text-gray-400 local-date" data-timestamp={e.created_at}>{new Date(e.created_at).toLocaleDateString()}</span>
                                         </div>
+
                                         <a href={`/essays/view/${e.id}`} class="block">
-                                            <h3 class="text-lg font-bold text-gray-800 group-hover:text-blue-600">{e.title}</h3>
+                                            <h3 class="text-lg font-bold text-gray-800 group-hover:text-blue-600 transition-colors mb-2">{e.title}</h3>
                                         </a>
-                                        <p class="text-sm text-gray-600 mt-1">By -</p>
-                                    </div>
-                                    <div class="flex flex-col items-end min-w-[60px]">
-                                        <span class="flex items-center gap-1 text-gray-500 text-sm">
-                                            📝 {e.feedback_count}
-                                        </span>
-                                        {e.full_marks ? (
-                                            <span class="text-xs text-gray-400 mt-1">/{e.full_marks} Marks</span>
-                                        ) : null}
+
+                                        <div class="border-t border-gray-100 pt-3 flex justify-between items-center text-sm text-gray-500">
+                                            <span>By -</span>
+                                            <div class="flex items-center gap-4">
+                                                <span class="flex items-center gap-1 font-medium">
+                                                    📝 {e.feedback_count}
+                                                </span>
+                                                {e.full_marks ? (
+                                                    <span class="text-xs bg-gray-100 px-2 py-1 rounded">/{e.full_marks} Marks</span>
+                                                ) : null}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         ))
                     )}
+                </div>
+
+                {/* List View Container (Table) */}
+                <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Question</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Marks</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Feedback</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {results?.length === 0 ? (
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={5}>No essays yet.</td>
+                                </tr>
+                            ) : (
+                                results.map((e: any) => (
+                                    <tr
+                                        class={`search-item hover:bg-gray-50 transition-colors cursor-pointer ${e.is_deleted ? 'bg-red-50' : ''}`}
+                                        data-search-text={`${e.title} ${e.subject} ${e.question || ''}`}
+                                        onclick={`window.location.href='/essays/view/${e.id}'`}
+                                    >
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 local-date" data-timestamp={e.created_at}>
+                                            {new Date(e.created_at).toLocaleDateString()}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                            {e.title}
+                                            {e.is_deleted && <span class="ml-2 text-xs text-red-600 uppercase">Deleted</span>}
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500 truncate max-w-xs">
+                                            {e.question || '-'}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                            {e.full_marks ? `/${e.full_marks}` : '-'}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                            {e.feedback_count} 📝
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </Layout>
@@ -320,7 +398,7 @@ app.get('/essays/view/:id', async (c) => {
 
     return c.html(
         <Layout title={essay.title} user={user}>
-            <div class="max-w-4xl mx-auto">
+            <div class="mx-auto">
                 <div class="mb-4">
                     <a href={`/essays?subject=${encodeURIComponent(essay.subject)}`} class="text-blue-600 hover:underline text-sm">← Back to {essay.subject}</a>
                 </div>
@@ -331,7 +409,7 @@ app.get('/essays/view/:id', async (c) => {
                         {essay.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
                         <div class="flex items-center gap-2 mb-2">
                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Essay</span>
-                            <span class="text-gray-400 text-sm">| {new Date(essay.created_at).toLocaleString()}</span>
+                            <span class="text-gray-400 text-sm local-date" data-timestamp={essay.created_at} data-format="datetime">| {new Date(essay.created_at).toLocaleString()}</span>
                             {essay.full_marks && (
                                 <span class="text-gray-500 text-sm font-medium ml-auto">Full Marks: {essay.full_marks}</span>
                             )}
@@ -391,7 +469,7 @@ app.get('/essays/view/:id', async (c) => {
                                     </div>
                                     <div class="text-right">
                                         <div class="text-xs text-gray-400 mb-1">
-                                            {new Date(comment.created_at).toLocaleString()}
+                                            <span class="local-date" data-timestamp={comment.created_at} data-format="datetime">{new Date(comment.created_at).toLocaleString()}</span>
                                         </div>
                                         {comment.grade !== null && (
                                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-bold border border-blue-200">
