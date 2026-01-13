@@ -96,6 +96,44 @@ export const Layout = (props: { title: string; children: any; user?: any }) => {
                         }
                     }
                 });
+
+                // Shared UI Logic: Search & View Toggle
+                const searchInput = document.getElementById('search-input');
+                const viewGridBtn = document.getElementById('view-grid');
+                const viewListBtn = document.getElementById('view-list');
+                const container = document.getElementById('content-container');
+
+                if (searchInput && container) {
+                    searchInput.addEventListener('input', (e) => {
+                        const term = e.target.value.toLowerCase();
+                        document.querySelectorAll('.search-item').forEach(item => {
+                            const text = item.getAttribute('data-search-text') || '';
+                            if (text.toLowerCase().includes(term)) {
+                                item.classList.remove('hidden');
+                            } else {
+                                item.classList.add('hidden');
+                            }
+                        });
+                    });
+                }
+
+                if (viewGridBtn && viewListBtn && container) {
+                    viewGridBtn.addEventListener('click', () => {
+                        container.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'; // Grid classes
+                        viewGridBtn.classList.add('bg-blue-100', 'text-blue-700');
+                        viewGridBtn.classList.remove('text-gray-500', 'hover:bg-gray-50');
+                        viewListBtn.classList.remove('bg-blue-100', 'text-blue-700');
+                        viewListBtn.classList.add('text-gray-500', 'hover:bg-gray-50');
+                    });
+
+                    viewListBtn.addEventListener('click', () => {
+                        container.className = 'space-y-4'; // List classes
+                        viewListBtn.classList.add('bg-blue-100', 'text-blue-700');
+                        viewListBtn.classList.remove('text-gray-500', 'hover:bg-gray-50');
+                        viewGridBtn.classList.remove('bg-blue-100', 'text-blue-700');
+                        viewGridBtn.classList.add('text-gray-500', 'hover:bg-gray-50');
+                    });
+                }
             });
         </script>
       </body>
