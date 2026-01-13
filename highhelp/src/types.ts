@@ -51,7 +51,9 @@ export interface ExamQuestion {
     stimulus_image_key: string | null;
     mc_answer: string | null;
     uploader_id: number;
+    user_id: number;
     is_deleted: boolean;
+    ordering_index: number;
     created_at: string;
 }
 

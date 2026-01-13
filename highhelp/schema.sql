@@ -84,6 +84,7 @@ CREATE TABLE exam_questions (
     mc_answer TEXT,
     uploader_id INTEGER,
     is_deleted BOOLEAN DEFAULT 0,
+    ordering_index REAL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (paper_id) REFERENCES papers(id),
     FOREIGN KEY (uploader_id) REFERENCES users(id)

@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
 import { getUser, renderTags, logAction } from '../utils'
-import { canUploadPastPaper, canCreateTopic, canModerateSubject, canViewDeleted } from '../permissions'
+import { canUploadPastPaper, canCreateTopic, canModerateSubject, canViewDeleted, PermissionLevel } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 import { Bindings } from '../types'
 
@@ -203,9 +203,8 @@ app.post('/past-papers/create', async (c) => {
     // Insert Paper
     const paperRes = await c.env.DB.prepare('INSERT INTO papers (subject, school_name, academic_year, reference_link) VALUES (?, ?, ?, ?) RETURNING id')
         .bind(subject, school, year, link)
-        .first<{ id: number }>(); // FIX: Added type generic to first()
+        .first<{ id: number }>();
 
-    // FIX: Handle possible null result
     if (!paperRes) {
         return c.text('Failed to create paper', 500);
     }
@@ -214,9 +213,9 @@ app.post('/past-papers/create', async (c) => {
 
     // Process placeholders
     const statements = [];
+    let globalOrderIndex = 1;
 
     for (let i = 0; i < 20; i++) {
-        // FIX: Cast body values to string, as they are string | File
         const section = body[`segments[${i}][section]`] as string;
         const label = body[`segments[${i}][label]`] as string;
         const count = parseInt((body[`segments[${i}][count]`] as string) || '0');
@@ -230,10 +229,11 @@ app.post('/past-papers/create', async (c) => {
                 statements.push(
                     c.env.DB.prepare(`
                         INSERT INTO exam_questions 
-                        (paper_id, section_label, segment_label, question_number, question_full_label, uploader_id)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    `).bind(paperId, section, label || null, qNum, fullLabel, user.id)
+                        (paper_id, section_label, segment_label, question_number, question_full_label, uploader_id, ordering_index)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    `).bind(paperId, section, label || null, qNum, fullLabel, user.id, globalOrderIndex)
                 );
+                globalOrderIndex++;
             }
         }
     }
@@ -253,11 +253,10 @@ app.get('/past-papers/paper/:id', async (c) => {
     const paperId = c.req.param('id')
 
     // Fetch paper
-    // FIX: Typed as <any> to prevent 'unknown' errors in template literals below
     const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
     if (!paper) return c.notFound();
 
-    // Fetch questions + topics
+    // Fetch questions + topics - ORDER BY ordering_index
     const questions = await c.env.DB.prepare(`
         SELECT q.*, group_concat(t.name, ', ') as topic_names, group_concat(t.id, ',') as topic_ids
         FROM exam_questions q
@@ -265,13 +264,24 @@ app.get('/past-papers/paper/:id', async (c) => {
         LEFT JOIN topics t ON qt.topic_id = t.id
         WHERE q.paper_id = ? AND q.is_deleted = 0
         GROUP BY q.id
-        ORDER BY q.id ASC
+        ORDER BY q.ordering_index ASC
     `).bind(paperId).all();
 
     // Fetch all topics for dropdown
     const allTopics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(paper.subject).all();
 
     const canEdit = user && canUploadPastPaper(user, paper.subject);
+    const canManageTopics = user && user.permission_level >= PermissionLevel.ADMIN;
+
+    // Build question list with next_index for gap calculation
+    const qList = questions.results as any[];
+    const qWithNext = qList.map((q, i) => {
+        const nextQ = qList[i + 1];
+        return {
+            ...q,
+            next_ordering_index: nextQ ? nextQ.ordering_index : q.ordering_index + 1
+        };
+    });
 
     return c.html(
         <Layout title={`${paper.school_name} ${paper.academic_year}`} user={user}>
@@ -281,7 +291,6 @@ app.get('/past-papers/paper/:id', async (c) => {
                         <div class="flex items-center gap-2 text-sm text-gray-500 mb-1">
                             <a href="/past-papers" class="hover:underline">Papers</a>
                             <span>/</span>
-                            {/* FIX: paper.subject is now typed via first<any> */}
                             <a href={`/past-papers?subject=${encodeURIComponent(paper.subject)}`} class="hover:underline">{paper.subject}</a>
                             <span>/</span>
                         </div>
@@ -290,8 +299,37 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
                 </div>
 
+                {/* Topic Management for Admins */}
+                {canManageTopics && (
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                        <details>
+                            <summary class="font-bold text-gray-700 cursor-pointer">Topic Management (Admin)</summary>
+                            <div class="mt-4">
+                                <form action="/past-papers/topics/create" method="post" class="flex gap-2 mb-4">
+                                    <input type="hidden" name="subject" value={paper.subject} />
+                                    <input type="hidden" name="redirect_paper_id" value={paper.id} />
+                                    <input type="text" name="name" placeholder="New Topic Name" class="rounded border p-1 text-sm bg-white" required />
+                                    <button class="bg-blue-600 text-white text-xs px-2 py-1 rounded">Create</button>
+                                </form>
+                                <div class="flex flex-wrap gap-2">
+                                    {allTopics.results.map((t: any) => (
+                                        <div class="bg-white border rounded px-2 py-1 text-xs flex items-center gap-2">
+                                            {t.name}
+                                            <form action="/past-papers/topics/delete" method="post" onsubmit="return confirm('Delete topic?');">
+                                                <input type="hidden" name="topic_id" value={t.id} />
+                                                <input type="hidden" name="redirect_paper_id" value={paper.id} />
+                                                <button class="text-red-500 font-bold hover:text-red-700">×</button>
+                                            </form>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                )}
+
                 <div class="space-y-4">
-                    {questions.results.map((q: any) => (
+                    {qWithNext.map((q: any) => (
                         <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" id={`q-${q.id}`}>
                             {/* Header / Summary Mode */}
                             <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition" onclick={`toggleEdit(${q.id})`}>
@@ -317,71 +355,83 @@ app.get('/past-papers/paper/:id', async (c) => {
                                 </div>
                             </div>
 
-                            {/* Edit / Detail Mode (Hidden by default) */}
-                            <div id={`detail-${q.id}`} class="hidden border-t border-gray-100 bg-gray-50 p-6">
+                            {/* Edit / Detail Mode (Auto-expanded if canEdit is true) */}
+                            <div id={`detail-${q.id}`} class={`${canEdit ? '' : 'hidden'} border-t border-gray-100 bg-gray-50 p-6`}>
                                 {canEdit ? (
-                                    <form action={`/past-papers/question/${q.id}/update`} method="post" enctype="multipart/form-data" class="space-y-6">
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {/* Left Column: Metadata */}
-                                            <div class="space-y-4">
-                                                <div>
-                                                    <label class="block text-xs font-bold text-gray-500 uppercase">Topics</label>
-                                                    {/* FIX: size attribute expects number in JSX */}
-                                                    <select name="topic_ids" multiple size={4} class="w-full mt-1 rounded border-gray-300 text-sm">
-                                                        {allTopics.results.map((t: any) => (
-                                                            <option value={t.id} selected={q.topic_ids?.split(',').includes(String(t.id))}>{t.name}</option>
-                                                        ))}
-                                                    </select>
-                                                    <p class="text-xs text-gray-400 mt-1">Cmd/Ctrl+Click to select multiple</p>
-                                                </div>
-
-                                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="space-y-6">
+                                        <form action={`/past-papers/question/${q.id}/update`} method="post" enctype="multipart/form-data" class="space-y-6">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {/* Left Column: Metadata */}
+                                                <div class="space-y-4">
                                                     <div>
-                                                        <label class="block text-xs font-bold text-gray-500 uppercase">Type</label>
-                                                        <select name="question_type" class="w-full mt-1 rounded border-gray-300 text-sm">
-                                                            <option value="multiple_choice" selected={q.question_type === 'multiple_choice'}>Multiple Choice</option>
-                                                            <option value="short_answer" selected={q.question_type === 'short_answer'}>Short Answer</option>
-                                                            <option value="extended_response" selected={q.question_type === 'extended_response'}>Extended Response</option>
+                                                        <label class="block text-xs font-bold text-gray-500 uppercase">Topics</label>
+                                                        {/* FIX: size attribute expects number in JSX */}
+                                                        <select name="topic_ids" multiple size={4} class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                            {allTopics.results.map((t: any) => (
+                                                                <option value={t.id} selected={q.topic_ids?.split(',').includes(String(t.id))}>{t.name}</option>
+                                                            ))}
                                                         </select>
+                                                        <p class="text-xs text-gray-400 mt-1">Cmd/Ctrl+Click to select multiple</p>
                                                     </div>
-                                                    <div>
-                                                        <label class="block text-xs font-bold text-gray-500 uppercase">Marks</label>
-                                                        <input type="number" name="marks" value={q.marks} class="w-full mt-1 rounded border-gray-300 text-sm" />
-                                                    </div>
-                                                    {q.question_type === 'multiple_choice' && (
+
+                                                    <div class="grid grid-cols-2 gap-4">
                                                         <div>
-                                                            <label class="block text-xs font-bold text-gray-500 uppercase">Correct Answer</label>
-                                                            <select name="mc_answer" class="w-full mt-1 rounded border-gray-300 text-sm">
-                                                                {['A', 'B', 'C', 'D'].map(opt => (
-                                                                    <option value={opt} selected={q.mc_answer === opt}>{opt}</option>
-                                                                ))}
+                                                            <label class="block text-xs font-bold text-gray-500 uppercase">Type</label>
+                                                            <select name="question_type" class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                                <option value="multiple_choice" selected={q.question_type === 'multiple_choice'}>Multiple Choice</option>
+                                                                <option value="short_answer" selected={q.question_type === 'short_answer'}>Short Answer</option>
+                                                                <option value="extended_response" selected={q.question_type === 'extended_response'}>Extended Response</option>
                                                             </select>
                                                         </div>
-                                                    )}
-                                                </div>
-                                                <button type="submit" class="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded shadow hover:bg-blue-700">Save Changes</button>
-                                            </div>
-
-                                            {/* Right Column: Images */}
-                                            <div class="space-y-4">
-                                                {['question', 'answer', 'stimulus'].map(type => (
-                                                    <div class="bg-white p-3 rounded border border-gray-200">
-                                                        <div class="flex justify-between items-center mb-2">
-                                                            <label class="text-xs font-bold text-gray-500 uppercase">{type} Image</label>
-                                                            <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-blue-600 font-bold">📋 Paste</button>
+                                                        <div>
+                                                            <label class="block text-xs font-bold text-gray-500 uppercase">Marks</label>
+                                                            <input type="number" name="marks" value={q.marks} class="w-full mt-1 rounded border-gray-300 text-sm" />
                                                         </div>
-
-                                                        {q[`${type}_image_key`] && (
-                                                            <img src={`/download/${q[`${type}_image_key`]}`} class="max-h-32 object-contain mb-2 border rounded" />
+                                                        {q.question_type === 'multiple_choice' && (
+                                                            <div>
+                                                                <label class="block text-xs font-bold text-gray-500 uppercase">Correct Answer</label>
+                                                                <select name="mc_answer" class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                                    {['A', 'B', 'C', 'D'].map(opt => (
+                                                                        <option value={opt} selected={q.mc_answer === opt}>{opt}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
                                                         )}
-
-                                                        <input type="file" name={`${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500" />
-                                                        <img id={`${type}-preview-${q.id}`} class="max-h-32 object-contain mt-2 hidden border rounded bg-gray-50" />
                                                     </div>
-                                                ))}
+                                                    <button type="submit" class="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded shadow hover:bg-blue-700">Save Changes</button>
+                                                </div>
+
+                                                {/* Right Column: Images */}
+                                                <div class="space-y-4">
+                                                    {['question', 'answer', 'stimulus'].map(type => (
+                                                        <div class="bg-white p-3 rounded border border-gray-200">
+                                                            <div class="flex justify-between items-center mb-2">
+                                                                <label class="text-xs font-bold text-gray-500 uppercase">{type} Image</label>
+                                                                <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-blue-600 font-bold">📋 Paste</button>
+                                                            </div>
+
+                                                            {q[`${type}_image_key`] && (
+                                                                <img src={`/download/${q[`${type}_image_key`]}`} class="max-h-32 object-contain mb-2 border rounded" />
+                                                            )}
+
+                                                            <input type="file" name={`${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500" />
+                                                            <img id={`${type}-preview-${q.id}`} class="max-h-32 object-contain mt-2 hidden border rounded bg-gray-50" />
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
+                                        </form>
+
+                                        {/* Add Sub Question Button */}
+                                        <div class="border-t border-gray-200 pt-4 flex justify-end">
+                                            <form action={`/past-papers/question/${q.id}/sub-question`} method="post" class="flex gap-2 items-center">
+                                                <input type="hidden" name="ordering_index" value={q.ordering_index} />
+                                                <input type="hidden" name="next_ordering_index" value={q.next_ordering_index} />
+                                                <input type="text" name="new_number" placeholder="e.g. 1.a" class="text-xs border rounded p-1 w-20" required />
+                                                <button class="bg-green-600 text-white text-xs px-3 py-1 rounded font-bold hover:bg-green-700">+ Insert Sub-Question</button>
+                                            </form>
                                         </div>
-                                    </form>
+                                    </div>
                                 ) : (
                                     <div class="flex gap-4">
                                         {q.question_image_key && <img src={`/download/${q.question_image_key}`} class="max-w-md border rounded" />}
@@ -427,6 +477,73 @@ app.get('/past-papers/paper/:id', async (c) => {
             `}} />
         </Layout>
     );
+})
+
+// Insert Sub-Question
+app.post('/past-papers/question/:id/sub-question', async (c) => {
+    const user = await getUser(c)
+    const qId = c.req.param('id')
+
+    // Fetch parent question
+    const q = await c.env.DB.prepare('SELECT q.*, p.subject FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE q.id = ?').bind(qId).first<any>();
+    if (!q) return c.notFound();
+    if (!user || !canUploadPastPaper(user, q.subject)) return c.text('Unauthorized', 403);
+
+    const body = await c.req.parseBody();
+    const currentIdx = parseFloat(body['ordering_index'] as string);
+    const nextIdx = parseFloat(body['next_ordering_index'] as string);
+    const newNumber = body['new_number'] as string;
+
+    const newIdx = (currentIdx + nextIdx) / 2;
+
+    await c.env.DB.prepare(`
+        INSERT INTO exam_questions 
+        (paper_id, section_label, segment_label, question_number, uploader_id, ordering_index)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `).bind(
+        q.paper_id,
+        q.section_label,
+        q.segment_label,
+        newNumber,
+        user.id,
+        newIdx
+    ).run();
+
+    return c.redirect(`/past-papers/paper/${q.paper_id}#q-${qId}`);
+});
+
+// Create Topic (Admin/Subject Mod)
+app.post('/past-papers/topics/create', async (c) => {
+    const user = await getUser(c)
+    const body = await c.req.parseBody()
+    const subject = body['subject'] as string
+    const redirectId = body['redirect_paper_id']
+
+    // Permission check inside canCreateTopic
+    if (!user || !canCreateTopic(user, subject)) return c.text("Unauthorized", 401)
+
+    const name = body['name'] as string
+    if (subject && name) {
+        await c.env.DB.prepare('INSERT INTO topics (subject, name) VALUES (?, ?)').bind(subject, name).run()
+    }
+    return c.redirect(`/past-papers/paper/${redirectId}`)
+})
+
+// Delete Topic (Admin Only)
+app.post('/past-papers/topics/delete', async (c) => {
+    const user = await getUser(c)
+    if (!user || user.permission_level < PermissionLevel.ADMIN) return c.text("Unauthorized", 401)
+
+    const body = await c.req.parseBody()
+    const topicId = body['topic_id']
+    const redirectId = body['redirect_paper_id']
+
+    await c.env.DB.prepare('DELETE FROM topics WHERE id = ?').bind(topicId).run()
+
+    // Also clean up question_topics links
+    await c.env.DB.prepare('DELETE FROM question_topics WHERE topic_id = ?').bind(topicId).run()
+
+    return c.redirect(`/past-papers/paper/${redirectId}`)
 })
 
 // Update Question
