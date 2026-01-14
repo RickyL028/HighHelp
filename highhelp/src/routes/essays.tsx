@@ -45,31 +45,29 @@ app.get('/essays', async (c) => {
                                 <p class="text-gray-500 italic">No essays submitted yet.</p>
                             ) : (
                                 recentEssays?.map((e: any) => (
-                                    <div class={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group block ${e.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
+                                    <div class={`bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors group block ${e.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
                                         <div class="flex justify-between items-start">
                                             <div class="flex-grow">
-                                                <div class="flex items-center justify-between mb-3">
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{e.subject}</span>
-                                                        {e.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
-                                                    </div>
-                                                    <span class="text-xs text-gray-400 local-date" data-timestamp={e.created_at}>{new Date(e.created_at).toLocaleDateString()}</span>
-                                                </div>
-
                                                 <a href={`/essays/view/${e.id}`} class="block">
-                                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-blue-600 transition-colors mb-2">{e.title}</h3>
+                                                    <h3 class="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors mb-1 leading-snug">{e.title}</h3>
                                                 </a>
 
-                                                <div class="border-t border-gray-100 pt-3 flex justify-between items-center text-sm text-gray-500">
-                                                    <span>By -</span>
-                                                    <div class="flex items-center gap-4">
-                                                        <span class="flex items-center gap-1 font-medium">
-                                                            📝 {e.feedback_count}
+                                                <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
+                                                    <span class="font-bold text-blue-700 uppercase tracking-wide">{e.subject}</span>
+                                                    <span class="text-gray-300">•</span>
+                                                    <span class="local-date" data-timestamp={e.created_at}>{new Date(e.created_at).toLocaleDateString()}</span>
+                                                    {e.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
+                                                </div>
+
+                                                <div class="mt-2 text-xs text-gray-500 font-medium">
+                                                    <span class="flex items-center gap-4">
+                                                        <span class="flex items-center gap-1">
+                                                            📝 {e.feedback_count} Feedback
                                                         </span>
                                                         {e.full_marks ? (
-                                                            <span class="text-xs bg-gray-100 px-2 py-1 rounded">/{e.full_marks} Marks</span>
+                                                            <span class="bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded text-gray-600">Max: {e.full_marks}</span>
                                                         ) : null}
-                                                    </div>
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -146,32 +144,29 @@ app.get('/essays', async (c) => {
                     ) : (
                         results.map((e: any) => (
                             <div
-                                class={`search-item bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group h-full flex flex-col justify-between ${e.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
+                                class={`search-item bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors group h-full flex flex-col justify-between ${e.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
                                 data-search-text={`${e.title} ${e.subject} ${e.question || ''}`}
                             >
                                 <div class="flex justify-between items-start">
                                     <div class="flex-grow">
-                                        <div class="flex items-center justify-between mb-3">
-                                            <div class="flex items-center gap-2">
-                                                {e.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
-                                            </div>
-                                            <span class="text-xs text-gray-400 local-date" data-timestamp={e.created_at}>{new Date(e.created_at).toLocaleDateString()}</span>
-                                        </div>
-
                                         <a href={`/essays/view/${e.id}`} class="block">
-                                            <h3 class="text-lg font-bold text-gray-800 group-hover:text-blue-600 transition-colors mb-2">{e.title}</h3>
+                                            <h3 class="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors mb-1 leading-snug">{e.title}</h3>
                                         </a>
 
-                                        <div class="border-t border-gray-100 pt-3 flex justify-between items-center text-sm text-gray-500">
-                                            <span>By -</span>
-                                            <div class="flex items-center gap-4">
-                                                <span class="flex items-center gap-1 font-medium">
-                                                    📝 {e.feedback_count}
-                                                </span>
-                                                {e.full_marks ? (
-                                                    <span class="text-xs bg-gray-100 px-2 py-1 rounded">/{e.full_marks} Marks</span>
-                                                ) : null}
-                                            </div>
+                                        <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
+                                            <span class="font-bold text-blue-700 uppercase tracking-wide">{e.subject}</span>
+                                            <span class="text-gray-300">•</span>
+                                            <span class="local-date" data-timestamp={e.created_at}>{new Date(e.created_at).toLocaleDateString()}</span>
+                                            {e.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
+                                        </div>
+
+                                        <div class="mt-2 text-xs text-gray-500 font-medium flex items-center gap-3">
+                                            <span class="flex items-center gap-1">
+                                                📝 {e.feedback_count}
+                                            </span>
+                                            {e.full_marks ? (
+                                                <span class="bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded text-gray-600">Max: {e.full_marks}</span>
+                                            ) : null}
                                         </div>
                                     </div>
                                 </div>
@@ -237,7 +232,7 @@ app.get('/essays/create', async (c) => {
     if (!user) return c.redirect('/login')
 
     // Check Points
-    if (user.points < 0) {
+    if (user.points < -2) {
         return c.html(
             <Layout title="Insufficient Points" user={user}>
                 <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md border border-gray-200 text-center">
@@ -323,7 +318,7 @@ app.post('/essays', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
 
-    if (user.points < 0) {
+    if (user.points < -2) {
         return c.text("Insufficient points", 403)
     }
 
@@ -563,7 +558,7 @@ app.post('/essays/view/:id/delete', async (c) => {
     const essay = await c.env.DB.prepare('SELECT * FROM essays WHERE id = ?').bind(id).first() as any;
     if (!essay) return c.notFound();
 
-    if (!canCommentModeration(user) && user.id !== essay.author_id) return c.text('Unauthorized', 403);
+    if (!canCommentModeration(user) && user.id !== essay.author_id) return c.text('Unauthorised', 403);
 
     await c.env.DB.prepare('UPDATE essays SET is_deleted = 1 WHERE id = ?').bind(id).run();
     await logAction(c.env.DB, user.id, 'DELETE_ESSAY', `Deleted essay ${id}`, Number(id), 'essays');
@@ -580,7 +575,7 @@ app.post('/essays/feedback/:id/delete', async (c) => {
     const comment = await c.env.DB.prepare('SELECT * FROM essay_comments WHERE id = ?').bind(id).first() as any;
     if (!comment) return c.notFound();
 
-    if (!canCommentModeration(user) && user.id !== comment.author_id) return c.text('Unauthorized', 403);
+    if (!canCommentModeration(user) && user.id !== comment.author_id) return c.text('Unauthorised', 403);
 
     await c.env.DB.prepare('UPDATE essay_comments SET is_deleted = 1 WHERE id = ?').bind(id).run();
     await logAction(c.env.DB, user.id, 'DELETE_FEEDBACK', `Deleted feedback ${id}`, Number(id), 'essay_comments');

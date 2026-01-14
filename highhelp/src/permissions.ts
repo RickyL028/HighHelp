@@ -98,7 +98,9 @@ export function canCreateTopic(user: User, subject: string): boolean {
 
     // "users with tag of 'C' can add past papers and tags in their respective subjects"
     const tags = getUserTags(user);
+
     if (tags.includes('c') && hasSubjectTag(user, subject)) return true;
+    if (tags.includes('c*')) return true;
 
     return false;
 }

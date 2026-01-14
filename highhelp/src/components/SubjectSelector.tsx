@@ -7,7 +7,7 @@ export const SubjectSelector = (props: { baseUrl: string, type: 'standard' | 'es
     const Pill = ({ subject }: { subject: string }) => (
         <a
             href={`${props.baseUrl}?subject=${encodeURIComponent(subject)}`}
-            class="inline-block bg-white border border-gray-200 text-gray-600 px-3 py-1 rounded-full text-xs font-medium hover:bg-blue-600 hover:text-white hover:border-blue-600 transition shadow-sm mb-2 mr-2"
+            class="inline-block bg-white border border-gray-300 text-gray-700 px-3 py-1 rounded text-xs font-medium hover:bg-blue-600 hover:text-white hover:border-blue-600 transition mb-2 mr-2"
         >
             {subject}
         </a>

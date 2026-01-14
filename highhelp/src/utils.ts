@@ -3,8 +3,8 @@ import { SUBJECTS } from './constants'
 
 export const PRIORITY_STANDARD = [
     "English Advanced",
-    "Mathematics Advanced",
-    "Mathematics Extension 1",
+    "Mathematics 2U (HSC)",
+    "Mathematics 3U",
     "Physics",
     "Chemistry",
     "Biology",
