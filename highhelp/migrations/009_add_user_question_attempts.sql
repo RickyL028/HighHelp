@@ -13,3 +13,4 @@ CREATE TABLE user_question_attempts (
     FOREIGN KEY (question_id) REFERENCES exam_questions(id),
     UNIQUE(user_id, question_id)
 );
+

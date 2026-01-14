@@ -1,2 +1,3 @@
 ALTER TABLE papers ADD COLUMN paper_type TEXT DEFAULT 'Trial Paper';
 ALTER TABLE papers ADD COLUMN is_locked BOOLEAN DEFAULT 0;
+
