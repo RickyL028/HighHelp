@@ -563,7 +563,7 @@ app.post('/essays/view/:id/delete', async (c) => {
     const essay = await c.env.DB.prepare('SELECT * FROM essays WHERE id = ?').bind(id).first() as any;
     if (!essay) return c.notFound();
 
-    if (!canCommentModeration(user) && user.id !== essay.author_id) return c.text('Unauthorized', 403);
+    if (!canCommentModeration(user) && user.id !== essay.author_id) return c.text('Unauthorised', 403);
 
     await c.env.DB.prepare('UPDATE essays SET is_deleted = 1 WHERE id = ?').bind(id).run();
     await logAction(c.env.DB, user.id, 'DELETE_ESSAY', `Deleted essay ${id}`, Number(id), 'essays');
@@ -580,7 +580,7 @@ app.post('/essays/feedback/:id/delete', async (c) => {
     const comment = await c.env.DB.prepare('SELECT * FROM essay_comments WHERE id = ?').bind(id).first() as any;
     if (!comment) return c.notFound();
 
-    if (!canCommentModeration(user) && user.id !== comment.author_id) return c.text('Unauthorized', 403);
+    if (!canCommentModeration(user) && user.id !== comment.author_id) return c.text('Unauthorised', 403);
 
     await c.env.DB.prepare('UPDATE essay_comments SET is_deleted = 1 WHERE id = ?').bind(id).run();
     await logAction(c.env.DB, user.id, 'DELETE_FEEDBACK', `Deleted feedback ${id}`, Number(id), 'essay_comments');

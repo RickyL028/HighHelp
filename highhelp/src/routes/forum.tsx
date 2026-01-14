@@ -472,7 +472,7 @@ app.post('/forum/post/:id/delete', async (c) => {
     if (!post) return c.notFound();
 
     // Allow self-delete or global comment moderator
-    if (!canCommentModeration(user) && user.id !== post.author_id) return c.text('Unauthorized', 403);
+    if (!canCommentModeration(user) && user.id !== post.author_id) return c.text('Unauthorised', 403);
 
     await c.env.DB.prepare('UPDATE posts SET is_deleted = 1 WHERE id = ?').bind(id).run();
     await logAction(c.env.DB, user.id, 'DELETE_POST', `Deleted post ${id}`, Number(id), 'posts');
@@ -491,7 +491,7 @@ app.post('/forum/comment/:id/delete', async (c) => {
     if (!comment) return c.notFound();
 
     // Allow self-delete or global comment moderator
-    if (!canCommentModeration(user) && user.id !== comment.author_id) return c.text('Unauthorized', 403);
+    if (!canCommentModeration(user) && user.id !== comment.author_id) return c.text('Unauthorised', 403);
 
     await c.env.DB.prepare('UPDATE comments SET is_deleted = 1 WHERE id = ?').bind(id).run();
     await logAction(c.env.DB, user.id, 'DELETE_COMMENT', `Deleted comment ${id}`, Number(id), 'comments');

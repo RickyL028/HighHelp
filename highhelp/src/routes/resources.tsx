@@ -302,7 +302,7 @@ app.post('/resources/:id/delete', async (c) => {
     if (!resource) return c.notFound();
 
     if (!canModerateSubject(user, resource.subject) && user.id !== resource.uploader_id) {
-        return c.text('Unauthorized', 403);
+        return c.text('Unauthorised', 403);
     }
 
     await c.env.DB.prepare('UPDATE resources SET is_deleted = 1 WHERE id = ?').bind(id).run();

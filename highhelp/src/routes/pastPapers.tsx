@@ -370,11 +370,14 @@ app.get('/past-papers/paper/:id', async (c) => {
     if (!paper) return c.notFound();
 
     // Fetch questions + topics - ORDER BY ordering_index
+    // JOIN users to get uploader info
     const questions = await c.env.DB.prepare(`
-        SELECT q.*, group_concat(t.name, ', ') as topic_names, group_concat(t.id, ',') as topic_ids
+        SELECT q.*, group_concat(t.name, ', ') as topic_names, group_concat(t.id, ',') as topic_ids,
+               u.first_name as uploader_first, u.last_name as uploader_last
         FROM exam_questions q
         LEFT JOIN question_topics qt ON q.id = qt.question_id
         LEFT JOIN topics t ON qt.topic_id = t.id
+        LEFT JOIN users u ON q.uploader_id = u.id
         WHERE q.paper_id = ? AND q.is_deleted = 0
         GROUP BY q.id
         ORDER BY q.ordering_index ASC
@@ -383,8 +386,34 @@ app.get('/past-papers/paper/:id', async (c) => {
     // Fetch all topics for dropdown
     const allTopics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(paper.subject).all();
 
-    // Check for incomplete questions (missing question image)
-    const incompleteQuestions = questions.results.filter((q: any) => !q.question_image_key).length;
+    // Build question list and Validate
+    // 1. Topic (at least one)
+    // 2. Question Image
+    // 3. Type
+    // 4. Marks
+    // 5. Answer Image
+    const qList = questions.results as any[];
+    let incompleteQuestionsCount = 0;
+
+    const qWithNext = qList.map((q, i) => {
+        const nextQ = qList[i + 1];
+
+        // Validation Logic
+        const missing = [];
+        if (!q.topic_ids) missing.push("Topic");
+        if (!q.question_image_key) missing.push("Q. Img");
+        if (!q.question_type) missing.push("Type");
+        if (!q.marks) missing.push("Marks");
+        if (!q.answer_image_key) missing.push("Ans. Img");
+
+        if (missing.length > 0) incompleteQuestionsCount++;
+
+        return {
+            ...q,
+            missing_fields: missing,
+            next_ordering_index: nextQ ? nextQ.ordering_index : q.ordering_index + 1
+        };
+    });
 
     // Check permissions
     // Tag check: "C*" allows locking. 
@@ -396,7 +425,7 @@ app.get('/past-papers/paper/:id', async (c) => {
     const canUnlock = user && user.permission_level >= 5;
 
     // Validate Locking: Can only lock if 0 incomplete questions
-    const canLockValidate = canLock && incompleteQuestions === 0;
+    const canLockValidate = canLock && incompleteQuestionsCount === 0;
 
     // Normal edit permission
     const canEditSubject = user && canUploadPastPaper(user, paper.subject);
@@ -406,15 +435,7 @@ app.get('/past-papers/paper/:id', async (c) => {
 
     const canManageTopics = user && (user.permission_level >= PermissionLevel.ADMIN || hasCTag);
 
-    // Build question list with next_index for gap calculation
-    const qList = questions.results as any[];
-    const qWithNext = qList.map((q, i) => {
-        const nextQ = qList[i + 1];
-        return {
-            ...q,
-            next_ordering_index: nextQ ? nextQ.ordering_index : q.ordering_index + 1
-        };
-    });
+
 
     return c.html(
         <Layout title={`${paper.school_name} ${paper.academic_year}`} user={user}>
@@ -454,13 +475,13 @@ app.get('/past-papers/paper/:id', async (c) => {
                         ) : (
                             canLock && (
                                 <>
-                                    {incompleteQuestions > 0 ? (
+                                    {incompleteQuestionsCount > 0 ? (
                                         <div class="group relative">
                                             <button disabled class="bg-gray-100 text-gray-400 border border-gray-200 text-sm font-bold px-3 py-2 rounded cursor-not-allowed flex items-center gap-2">
-                                                Lock Paper
+                                                🔒 Lock Paper
                                             </button>
                                             <div class="absolute right-0 top-full mt-2 w-64 bg-gray-800 text-white text-xs p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
-                                                Cannot lock: {incompleteQuestions} questions are missing images.
+                                                Cannot lock: {incompleteQuestionsCount} questions have missing fields.
                                             </div>
                                         </div>
                                     ) : (
@@ -530,45 +551,62 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
                 )}
 
-                <div class="space-y-4">
-                    {qWithNext.map((q: any) => (
-                        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" id={`q-${q.id}`}>
-                            {/* Header / Summary Mode */}
-                            <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition" onclick={`toggleEdit(${q.id})`}>
-                                <div class="flex items-center gap-4">
-                                    <span class="font-mono text-gray-500 font-bold w-16 text-right">{q.section_label} {q.question_number}</span>
+                {/* Topic Management for Admins */}
+                {/* ... existing topic code ... */}
 
-                                    <div class="flex flex-col">
-                                        <div class="flex items-center gap-2">
-                                            {q.question_type === 'multiple_choice' && <span class="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded font-bold">MC</span>}
-                                            {q.marks && <span class="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded font-bold">{q.marks}m</span>}
+                {/* Batch Form Start */}
+                <form action={`/past-papers/paper/${paper.id}/update-batch`} method="post" enctype="multipart/form-data">
+                    <div class="space-y-4 pb-24">
+                        {qWithNext.map((q: any) => (
+                            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" id={`q-${q.id}`}>
+                                {/* Header / Summary Mode */}
+                                <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition" onclick={`toggleEdit(${q.id})`}>
+                                    <div class="flex items-center gap-4">
+                                        <span class="font-mono text-gray-500 font-bold w-16 text-right">{q.section_label} {q.question_number}</span>
+
+                                        <div class="flex flex-col">
+                                            <div class="flex items-center gap-2">
+                                                {q.question_type === 'multiple_choice' && <span class="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded font-bold">MCQ</span>}
+                                                {q.marks && <span class="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded font-bold">{q.marks}m</span>}
+                                            </div>
+                                            {q.topic_names ? (
+                                                <span class="text-sm font-medium text-blue-800">{q.topic_names}</span>
+                                            ) : (
+                                                <span class="text-sm text-gray-400 italic">No topics tagged</span>
+                                            )}
+                                            {/* Attribution Display */}
+                                            <span class="text-xs text-gray-400 mt-1">
+                                                Last edited by: {q.uploader_first ? `${q.uploader_first} ${q.uploader_last}` : 'Original Uploader'}
+                                            </span>
                                         </div>
-                                        {q.topic_names ? (
-                                            <span class="text-sm font-medium text-blue-800">{q.topic_names}</span>
+                                    </div>
+
+                                    <div class="flex items-center gap-4">
+                                        {q.missing_fields.length === 0 ? (
+                                            <span class="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded border border-green-200">✓ Ready</span>
                                         ) : (
-                                            <span class="text-sm text-gray-400 italic">No topics tagged</span>
+                                            <span class="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-200 cursor-help" title={`Missing: ${q.missing_fields.join(', ')}`}>
+                                                ⚠ Missing: {q.missing_fields.join(', ')}
+                                            </span>
                                         )}
+                                        <span class="text-gray-400">▼</span>
                                     </div>
                                 </div>
 
-                                <div class="flex items-center gap-4">
-                                    {q.question_image_key ? <span class="text-green-600 text-xs font-bold">✓ Has Image</span> : <span class="text-red-400 text-xs">No Image</span>}
-                                    <span class="text-gray-400">▼</span>
-                                </div>
-                            </div>
-
-                            {/* Edit / Detail Mode (Auto-expanded if canEdit is true) */}
-                            <div id={`detail-${q.id}`} class={`${canEdit ? '' : 'hidden'} border-t border-gray-100 bg-gray-50 p-6`}>
-                                {canEdit ? (
-                                    <div class="space-y-6">
-                                        <form action={`/past-papers/question/${q.id}/update`} method="post" enctype="multipart/form-data" class="space-y-6">
+                                {/* Edit / Detail Mode (Auto-expanded if canEdit is true) */}
+                                <div id={`detail-${q.id}`} class={`${canEdit ? '' : 'hidden'} border-t border-gray-100 bg-gray-50 p-6`}>
+                                    {canEdit ? (
+                                        <div class="space-y-6">
+                                            {/* Removed individual form tag */}
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 {/* Left Column: Metadata */}
                                                 <div class="space-y-4">
                                                     <div>
                                                         <label class="block text-xs font-bold text-gray-500 uppercase">Topics</label>
                                                         {/* FIX: size attribute expects number in JSX */}
-                                                        <select name="topic_ids" multiple size={4} class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                        {/* Changed name to include q ID for batch processing */}
+                                                        {/* Added [] to name to ensure multiple values are sent/parsed correctly */}
+                                                        <select name={`q_${q.id}_topic_ids[]`} multiple size={4} class="w-full mt-1 rounded border-gray-300 text-sm">
                                                             {allTopics.results.map((t: any) => (
                                                                 <option value={t.id} selected={q.topic_ids?.split(',').includes(String(t.id))}>{t.name}</option>
                                                             ))}
@@ -579,7 +617,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                     <div class="grid grid-cols-2 gap-4">
                                                         <div>
                                                             <label class="block text-xs font-bold text-gray-500 uppercase">Type</label>
-                                                            <select name="question_type" class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                            <select name={`q_${q.id}_question_type`} class="w-full mt-1 rounded border-gray-300 text-sm">
                                                                 <option value="multiple_choice" selected={q.question_type === 'multiple_choice'}>Multiple Choice</option>
                                                                 <option value="short_answer" selected={q.question_type === 'short_answer'}>Short Answer</option>
                                                                 <option value="extended_response" selected={q.question_type === 'extended_response'}>Extended Response</option>
@@ -587,12 +625,12 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                         </div>
                                                         <div>
                                                             <label class="block text-xs font-bold text-gray-500 uppercase">Marks</label>
-                                                            <input type="number" name="marks" value={q.marks} class="w-full mt-1 rounded border-gray-300 text-sm" />
+                                                            <input type="number" name={`q_${q.id}_marks`} value={q.marks} class="w-full mt-1 rounded border-gray-300 text-sm" />
                                                         </div>
                                                         {q.question_type === 'multiple_choice' && (
                                                             <div>
-                                                                <label class="block text-xs font-bold text-gray-500 uppercase">Correct Answer</label>
-                                                                <select name="mc_answer" class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                                <label class="block text-xs font-bold text-gray-500 uppercase">Correct Answer (MCQ only)</label>
+                                                                <select name={`q_${q.id}_mc_answer`} class="w-full mt-1 rounded border-gray-300 text-sm">
                                                                     {['A', 'B', 'C', 'D'].map(opt => (
                                                                         <option value={opt} selected={q.mc_answer === opt}>{opt}</option>
                                                                     ))}
@@ -600,7 +638,6 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <button type="submit" class="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded shadow hover:bg-blue-700">Save Changes</button>
                                                 </div>
 
                                                 {/* Right Column: Images */}
@@ -616,34 +653,38 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                                 <img src={`/download/${q[`${type}_image_key`]}`} class="max-h-32 object-contain mb-2 border rounded" />
                                                             )}
 
-                                                            <input type="file" name={`${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500" />
+                                                            <input type="file" name={`q_${q.id}_${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500" />
                                                             <img id={`${type}-preview-${q.id}`} class="max-h-32 object-contain mt-2 hidden border rounded bg-gray-50" />
                                                         </div>
                                                     ))}
                                                 </div>
                                             </div>
-                                        </form>
 
-                                        {/* Add Sub Question Button */}
-                                        <div class="border-t border-gray-200 pt-4 flex justify-end">
-                                            <form action={`/past-papers/question/${q.id}/sub-question`} method="post" class="flex gap-2 items-center">
-                                                <input type="hidden" name="ordering_index" value={q.ordering_index} />
-                                                <input type="hidden" name="next_ordering_index" value={q.next_ordering_index} />
-                                                <input type="text" name="new_number" placeholder="e.g. 1.a" class="text-xs border rounded p-1 w-20" required />
-                                                <button class="bg-green-600 text-white text-xs px-3 py-1 rounded font-bold hover:bg-green-700">+ Insert Sub-Question</button>
-                                            </form>
+                                            {/* Removed individual save button */}
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div class="flex gap-4">
-                                        {q.question_image_key && <img src={`/download/${q.question_image_key}`} class="max-w-md border rounded" />}
-                                        {q.answer_image_key && <img src={`/download/${q.answer_image_key}`} class="max-w-md border rounded border-green-200" />}
-                                    </div>
-                                )}
+                                    ) : (
+                                        <div class="flex gap-4">
+                                            {q.question_image_key && <img src={`/download/${q.question_image_key}`} class="max-w-md border rounded" />}
+                                            {q.answer_image_key && <img src={`/download/${q.answer_image_key}`} class="max-w-md border rounded border-green-200" />}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Floating Save Bar */}
+                    {canEdit && (
+                        <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-50">
+                            <div class="max-w-5xl mx-auto flex justify-between items-center">
+                                <span class="text-gray-500 text-sm">Ensure all changes are saved.</span>
+                                <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 shadow-md transition transform hover:-translate-y-0.5">
+                                    Save All Changes
+                                </button>
                             </div>
                         </div>
-                    ))}
-                </div>
+                    )}
+                </form>
             </div>
 
             <script dangerouslySetInnerHTML={{
@@ -689,7 +730,7 @@ app.post('/past-papers/question/:id/sub-question', async (c) => {
     // Fetch parent question
     const q = await c.env.DB.prepare('SELECT q.*, p.subject FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE q.id = ?').bind(qId).first<any>();
     if (!q) return c.notFound();
-    if (!user || !canUploadPastPaper(user, q.subject)) return c.text('Unauthorized', 403);
+    if (!user || !canUploadPastPaper(user, q.subject)) return c.text('Unauthorised', 403);
 
     const body = await c.req.parseBody();
     const currentIdx = parseFloat(body['ordering_index'] as string);
@@ -722,7 +763,7 @@ app.post('/past-papers/topics/create', async (c) => {
     const redirectId = body['redirect_paper_id']
 
     // Permission check inside canCreateTopic
-    if (!user || !canCreateTopic(user, subject)) return c.text("Unauthorized", 401)
+    if (!user || !canCreateTopic(user, subject)) return c.text("Unauthorised", 401)
 
     const name = body['name'] as string
     if (subject && name) {
@@ -734,7 +775,7 @@ app.post('/past-papers/topics/create', async (c) => {
 // Delete Topic (Admin Only)
 app.post('/past-papers/topics/delete', async (c) => {
     const user = await getUser(c)
-    if (!user || user.permission_level < PermissionLevel.ADMIN) return c.text("Unauthorized", 401)
+    if (!user || user.permission_level < PermissionLevel.ADMIN) return c.text("Unauthorised", 401)
 
     const body = await c.req.parseBody()
     const topicId = body['topic_id']
@@ -764,16 +805,37 @@ app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
     // Lock: Level 4 or C* tag + Validation (All questions must have images)
 
     if (paper.is_locked) {
-        if (!user || user.permission_level < 5) return c.text("Unauthorized to unlock", 403);
+        if (!user || user.permission_level < 5) return c.text("Unauthorised to unlock", 403);
 
         await logAction(c.env.DB, user.id, 'UNLOCK_PAPER', `Unlocked paper ${paperId}`, parseInt(paperId), 'papers');
     } else {
-        if (!user || (user.permission_level < 4 && !hasCTag)) return c.text("Unauthorized to lock", 403);
+        if (!user || (user.permission_level < 4 && !hasCTag)) return c.text("Unauthorised to lock", 403);
 
-        // Validation: Check for questions without images
-        const incompleteCount = await c.env.DB.prepare('SELECT count(*) as count FROM exam_questions WHERE paper_id = ? AND question_image_key IS NULL AND is_deleted = 0').bind(paperId).first<any>();
-        if (incompleteCount.count > 0) {
-            return c.text(`Cannot lock: ${incompleteCount.count} questions are missing images.`, 400);
+        // Validation: Check for questions missingANY of the 5 fields
+        // 1. Topic (must exist in question_topics)
+        // 2. Question Img
+        // 3. Type
+        // 4. Marks
+        // 5. Answer Img
+
+        // Complex query to find invalid questions
+        const invalidQuestions = await c.env.DB.prepare(`
+            SELECT count(q.id) as count
+            FROM exam_questions q
+            LEFT JOIN question_topics qt ON q.id = qt.question_id
+            WHERE q.paper_id = ? AND q.is_deleted = 0
+            GROUP BY q.id
+            HAVING 
+                count(qt.topic_id) = 0 OR 
+                q.question_image_key IS NULL OR 
+                q.question_type IS NULL OR 
+                q.marks IS NULL OR 
+                q.answer_image_key IS NULL
+        `).bind(paperId).all<any>();
+
+        // If results return any rows, those correspond to invalid questions
+        if (invalidQuestions.results.length > 0) {
+            return c.text(`Cannot lock: ${invalidQuestions.results.length} questions have missing fields.`, 400);
         }
 
         await logAction(c.env.DB, user.id, 'LOCK_PAPER', `Locked paper ${paperId}`, parseInt(paperId), 'papers');
@@ -781,6 +843,76 @@ app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
 
     const newLockState = paper.is_locked ? 0 : 1;
     await c.env.DB.prepare('UPDATE papers SET is_locked = ? WHERE id = ?').bind(newLockState, paperId).run();
+
+    return c.redirect(`/past-papers/paper/${paperId}`);
+});
+
+// Batch Update Questions
+app.post('/past-papers/paper/:id/update-batch', async (c) => {
+    const user = await getUser(c)
+    const paperId = c.req.param('id')
+
+    // Fetch paper and check core permissions
+    const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
+    if (!paper) return c.notFound();
+    if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
+    if (paper.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
+
+    const body = await c.req.parseBody();
+    const qIds = new Set<string>();
+
+    // Identify which questions are being updated based on form keys (e.g., q_123_marks)
+    for (const key of Object.keys(body)) {
+        if (key.startsWith('q_')) {
+            const parts = key.split('_');
+            if (parts.length >= 2) {
+                qIds.add(parts[1]);
+            }
+        }
+    }
+
+    // Process updates for each question
+    for (const qId of qIds) {
+        // 1. Update Basic Fields
+        await c.env.DB.prepare(`
+            UPDATE exam_questions 
+            SET question_type = ?, marks = ?, mc_answer = ?, uploader_id = ?
+            WHERE id = ?
+        `).bind(
+            (body[`q_${qId}_question_type`] as string) || null,
+            (body[`q_${qId}_marks`] as string) || null,
+            (body[`q_${qId}_mc_answer`] as string) || null,
+            user.id, // Update attribution to current saver
+            qId
+        ).run();
+
+        // 2. Handle Images
+        for (const type of ['question', 'answer', 'stimulus']) {
+            const file = body[`q_${qId}_${type}_image`] as File;
+            if (file && file.size > 0 && file.name !== 'undefined') {
+                const key = `questions/${Date.now()}-${type}-${Math.random().toString(36).slice(2)}`;
+                await c.env.BUCKET.put(key, file);
+                await c.env.DB.prepare(`UPDATE exam_questions SET ${type}_image_key = ? WHERE id = ?`).bind(key, qId).run();
+            }
+        }
+
+        // 3. Handle Topics
+        await c.env.DB.prepare('DELETE FROM question_topics WHERE question_id = ?').bind(qId).run();
+        // Look for the key with []
+        const topicIds = body[`q_${qId}_topic_ids[]`];
+        const idsToInsert = Array.isArray(topicIds) ? topicIds : (topicIds ? [topicIds as string] : []);
+
+        if (idsToInsert.length > 0) {
+            const placeholders = idsToInsert.map(() => '(?, ?)').join(',');
+            const values = [];
+            for (const tid of idsToInsert) {
+                values.push(qId, tid);
+            }
+            await c.env.DB.prepare(`INSERT INTO question_topics (question_id, topic_id) VALUES ${placeholders}`).bind(...values).run();
+        }
+    }
+
+    await logAction(c.env.DB, user.id, 'BATCH_UPDATE_QUESTIONS', `Batch updated ${qIds.size} questions in paper ${paperId}`, parseInt(paperId), 'papers');
 
     return c.redirect(`/past-papers/paper/${paperId}`);
 });
@@ -796,7 +928,7 @@ app.post('/past-papers/question/:id/update', async (c) => {
 
     // Check Permissions
     // 1. Must be able to upload subject
-    if (!user || !canUploadPastPaper(user, q.subject)) return c.text('Unauthorized', 403);
+    if (!user || !canUploadPastPaper(user, q.subject)) return c.text('Unauthorised', 403);
 
     // 2. If locked, must be Level 5
     if (q.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);

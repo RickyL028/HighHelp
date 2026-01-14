@@ -231,7 +231,7 @@ app.post('/announcements/:id/delete', async (c) => {
     if (!ann) return c.notFound();
 
     if (!canModerateSubject(user, ann.subject) && user.id !== ann.author_id) {
-        return c.text('Unauthorized', 403);
+        return c.text('Unauthorised', 403);
     }
 
     await c.env.DB.prepare('UPDATE announcements SET is_deleted = 1 WHERE id = ?').bind(id).run();
