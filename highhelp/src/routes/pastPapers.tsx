@@ -404,7 +404,7 @@ app.get('/past-papers/paper/:id', async (c) => {
     // Final Edit Permission: Must have subject perm AND (not locked OR (locked AND canUnlock))
     const canEdit = canEditSubject && (!paper.is_locked || canUnlock);
 
-    const canManageTopics = user && user.permission_level >= PermissionLevel.ADMIN;
+    const canManageTopics = user && (user.permission_level >= PermissionLevel.ADMIN || hasCTag);
 
     // Build question list with next_index for gap calculation
     const qList = questions.results as any[];
@@ -505,7 +505,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                 {canManageTopics && (
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                         <details>
-                            <summary class="font-bold text-gray-700 cursor-pointer">Topic Management (Admin)</summary>
+                            <summary class="font-bold text-gray-700 cursor-pointer">Topic Management</summary>
                             <div class="mt-4">
                                 <form action="/past-papers/topics/create" method="post" class="flex gap-2 mb-4">
                                     <input type="hidden" name="subject" value={paper.subject} />
