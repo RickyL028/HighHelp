@@ -121,6 +121,10 @@ app.get('/past-papers', async (c) => {
         const filterTopic = c.req.query('topic');
         const filterYear = c.req.query('year');
         const filterStatus = c.req.query('status'); // done, undone
+        const filterType = c.req.query('type');
+        const filterSection = c.req.query('section');
+        const filterMarksMin = c.req.query('marks_min');
+        const filterMarksMax = c.req.query('marks_max');
         const sort = c.req.query('sort') || 'school_asc';
 
         let query = `
@@ -136,14 +140,13 @@ app.get('/past-papers', async (c) => {
         `;
         const params: any[] = [user?.id, subject];
 
-        if (filterTopic) {
-            query += ` AND qt.topic_id = ?`;
-            params.push(filterTopic);
-        }
-        if (filterYear) {
-            query += ` AND p.academic_year = ?`;
-            params.push(filterYear);
-        }
+        if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
+        if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
+        if (filterType) { query += ` AND q.question_type = ?`; params.push(filterType); }
+        if (filterSection) { query += ` AND q.section_label = ?`; params.push(filterSection); }
+        if (filterMarksMin) { query += ` AND q.marks >= ?`; params.push(filterMarksMin); }
+        if (filterMarksMax) { query += ` AND q.marks <= ?`; params.push(filterMarksMax); }
+
         if (filterStatus === 'done') {
             query += ` AND ua.is_completed = 1`;
         } else if (filterStatus === 'undone') {
@@ -162,6 +165,7 @@ app.get('/past-papers', async (c) => {
 
         const questions = await c.env.DB.prepare(query).bind(...params).all();
         const allTopics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject).all();
+        const sections = await c.env.DB.prepare('SELECT DISTINCT section_label FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE p.subject = ? ORDER BY section_label ASC').bind(subject).all();
 
 
         content = (
@@ -169,39 +173,69 @@ app.get('/past-papers', async (c) => {
                 <h1 class="text-3xl font-bold mb-6">Practice Questions</h1>
 
                 {/* Filters Bar */}
-                <form action="/past-papers" method="get" class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4 items-end">
+                <form action="/past-papers" method="get" class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 space-y-4">
                     <input type="hidden" name="subject" value={subject} />
                     <input type="hidden" name="tab" value="practice" />
 
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Topic</label>
-                        <select name="topic" class="rounded border-gray-300 text-sm w-48">
-                            <option value="">All Topics</option>
-                            {allTopics.results.map((t: any) => <option value={t.id} selected={filterTopic == t.id}>{t.name}</option>)}
-                        </select>
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Topic</label>
+                            <select name="topic" class="rounded border-gray-300 text-sm w-48">
+                                <option value="">All Topics</option>
+                                {allTopics.results.map((t: any) => <option value={t.id} selected={filterTopic == t.id}>{t.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Year</label>
+                            <input type="number" name="year" value={filterYear} placeholder="Any" class="rounded border-gray-300 text-sm w-24" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Section</label>
+                            <select name="section" class="rounded border-gray-300 text-sm w-32">
+                                <option value="">All</option>
+                                {sections.results.map((s: any) => <option value={s.section_label} selected={filterSection == s.section_label}>{s.section_label}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type</label>
+                            <select name="type" class="rounded border-gray-300 text-sm w-32">
+                                <option value="">All</option>
+                                <option value="multiple_choice" selected={filterType == 'multiple_choice'}>Multiple Choice</option>
+                                <option value="short_answer" selected={filterType == 'short_answer'}>Short Answer</option>
+                                <option value="extended_response" selected={filterType == 'extended_response'}>Extended Response</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Year</label>
-                        <input type="number" name="year" value={filterYear} placeholder="Any" class="rounded border-gray-300 text-sm w-24" />
+                    <div class="flex flex-wrap gap-4 items-end border-t pt-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+                            <select name="status" class="rounded border-gray-300 text-sm w-32">
+                                <option value="">All</option>
+                                <option value="done" selected={filterStatus == 'done'}>Completed</option>
+                                <option value="undone" selected={filterStatus == 'undone'}>Unattempted</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Marks Range</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="marks_min" value={filterMarksMin} placeholder="Min" class="rounded border-gray-300 text-sm w-20" />
+                                <span class="text-gray-400">-</span>
+                                <input type="number" name="marks_max" value={filterMarksMax} placeholder="Max" class="rounded border-gray-300 text-sm w-20" />
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Sort</label>
+                            <select name="sort" class="rounded border-gray-300 text-sm w-32">
+                                <option value="school_asc" selected={sort == 'school_asc'}>School A-Z</option>
+                                <option value="year_desc" selected={sort == 'year_desc'}>Year (Newest)</option>
+                                <option value="year_asc" selected={sort == 'year_asc'}>Year (Oldest)</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-blue-700">Filter</button>
+                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice`} class="px-4 py-2 border rounded text-gray-600 text-sm hover:bg-gray-50">Reset</a>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
-                        <select name="status" class="rounded border-gray-300 text-sm w-32">
-                            <option value="">All</option>
-                            <option value="done" selected={filterStatus == 'done'}>Completed</option>
-                            <option value="undone" selected={filterStatus == 'undone'}>Unattempted</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Sort</label>
-                        <select name="sort" class="rounded border-gray-300 text-sm w-32">
-                            <option value="school_asc" selected={sort == 'school_asc'}>School A-Z</option>
-                            <option value="year_desc" selected={sort == 'year_desc'}>Year (Newest)</option>
-                            <option value="year_asc" selected={sort == 'year_asc'}>Year (Oldest)</option>
-                        </select>
-                    </div>
-                    <button class="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm">Filter</button>
-                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice`} class="text-sm text-gray-500 underline ml-2">Reset</a>
                 </form>
 
                 {/* Question List */}
@@ -209,34 +243,45 @@ app.get('/past-papers', async (c) => {
                     {questions.results.length === 0 ? (
                         <div class="text-center py-12 text-gray-500">No questions found matching your filters.</div>
                     ) : (
-                        questions.results.map((q: any) => (
-                            <div onclick={`window.location.href='/past-papers/attempt/${q.id}?source=practice&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}'`} class="block bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-400 hover:shadow-md transition cursor-pointer group">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <div class="flex items-center gap-2 mb-1">
-                                            <span class="font-bold text-gray-900 group-hover:text-blue-700">{q.school_name} {q.academic_year}</span>
-                                            <span class="text-gray-400 text-sm">| {q.section_label} {q.question_number}</span>
-                                            {q.is_completed ? <span class="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded font-bold">Done</span> : null}
-                                        </div>
-                                        <div class="text-sm text-gray-500">{q.topic_names || 'No topic'}</div>
-                                    </div>
-                                    <div class="text-right">
-                                        <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded font-bold">{q.marks} Marks</span>
-                                        {q.marks_awarded != null && (
-                                            <div class="text-xs font-bold text-blue-600 mt-1">
-                                                My Score: {q.marks_awarded}/{q.marks}
+                        questions.results.map((q: any) => {
+                            const params = `source=practice&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+                            const isIncomplete = !q.marks || !q.question_image_key;
+
+                            return (
+                                <div onclick={`window.location.href='/past-papers/attempt/${q.id}?${params}'`}
+                                    class={`block p-4 rounded-lg border transition cursor-pointer group 
+                                            ${isIncomplete ? 'bg-gray-50 border-gray-200 opacity-75 grayscale' : 'bg-white border-gray-200 hover:border-blue-400 hover:shadow-md'}`}>
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <span class={`font-bold ${isIncomplete ? 'text-gray-500' : 'text-gray-900 group-hover:text-blue-700'}`}>{q.school_name} {q.academic_year}</span>
+                                                <span class="text-gray-400 text-sm">| {q.section_label} {q.question_number}</span>
+                                                {q.is_completed ? <span class="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded font-bold">Done</span> : null}
                                             </div>
-                                        )}
+                                            <div class="text-sm text-gray-500 flex gap-2">
+                                                <span>{q.question_type ? q.question_type.replace('_', ' ') : 'Unknown Type'}</span>
+                                                <span>•</span>
+                                                <span>{q.topic_names || 'No topic'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <span class={`text-xs px-2 py-1 rounded font-bold ${isIncomplete ? 'bg-gray-200 text-gray-500' : 'bg-gray-100 text-gray-600'}`}>{q.marks || '?'} Marks</span>
+                                            {q.marks_awarded != null && (
+                                                <div class="text-xs font-bold text-blue-600 mt-1">
+                                                    My Score: {q.marks_awarded}/{q.marks}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
                 {/* Pagination (Simple) */}
                 <div class="mt-8 flex justify-center gap-2">
-                    {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}`} class="px-4 py-2 border rounded bg-white hover:bg-gray-50">Previous</a>}
-                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}`} class="px-4 py-2 border rounded bg-white hover:bg-gray-50">Next</a>
+                    {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border rounded bg-white hover:bg-gray-50">Previous</a>}
+                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border rounded bg-white hover:bg-gray-50">Next</a>
                 </div>
             </div>
         )
@@ -568,7 +613,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                             canUnlock && (
                                 <form action={`/past-papers/paper/${paper.id}/toggle-lock`} method="post">
                                     <button class="bg-gray-800 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-gray-900 flex items-center gap-2">
-                                        🔓 Unlock Paper
+                                        Uncheck
                                     </button>
                                 </form>
                             )
@@ -578,7 +623,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                     {incompleteQuestionsCount > 0 ? (
                                         <div class="group relative">
                                             <button disabled class="bg-gray-100 text-gray-400 border border-gray-200 text-sm font-bold px-3 py-2 rounded cursor-not-allowed flex items-center gap-2">
-                                                🔒 Lock Paper
+                                                Check
                                             </button>
                                             <div class="absolute right-0 top-full mt-2 w-64 bg-gray-800 text-white text-xs p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
                                                 Cannot lock: {incompleteQuestionsCount} questions have missing fields.
@@ -586,7 +631,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                         </div>
                                     ) : (
                                         <button onclick="document.getElementById('lock-modal').showModal()" class="bg-gray-100 text-gray-600 border border-gray-300 text-sm font-bold px-3 py-2 rounded shadow-sm hover:bg-gray-200 flex items-center gap-2">
-                                            Lock Paper
+                                            Check
                                         </button>
                                     )}
                                 </>
@@ -599,11 +644,11 @@ app.get('/past-papers/paper/:id', async (c) => {
                 <dialog id="lock-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
                     <div class="w-full max-w-md bg-white p-6 rounded-xl">
                         <h3 class="text-xl font-bold text-red-600 mb-4 flex items-center gap-2">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                            Confirm Lock
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" ></path></svg>
+                            Confirm check
                         </h3>
                         <p class="text-gray-600 mb-6">
-                            You are about to lock this paper. By proceeding, you verify that:
+                            By checking, you - yes, you - verify that:
                             <ul class="list-disc pl-5 mt-2 space-y-1 text-sm">
                                 <li>All questions have been uploaded correctly.</li>
                                 <li>The content is accurate and complete.</li>
@@ -615,7 +660,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                             <button onclick="document.getElementById('lock-modal').close()" class="px-4 py-2 text-gray-600 font-bold hover:bg-gray-50 rounded-lg">Cancel</button>
                             <form action={`/past-papers/paper/${paper.id}/toggle-lock`} method="post">
                                 <button class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 shadow-sm">
-                                    I Understand, Lock Paper
+                                    I Understand, check
                                 </button>
                             </form>
                         </div>
@@ -1112,11 +1157,15 @@ app.get('/past-papers/attempt/:id', async (c) => {
     const filterTopic = c.req.query('topic');
     const filterYear = c.req.query('year');
     const filterStatus = c.req.query('status'); // done, undone
+    const filterType = c.req.query('type');
+    const filterSection = c.req.query('section');
+    const filterMarksMin = c.req.query('marks_min');
+    const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
 
     let nextId = null;
     let prevId = null;
-    const currentParams = `source=${source || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}`;
+    const currentParams = `source=${source || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
     if (source === 'practice') {
         // Fetch ALL IDs matching the filters to find current position
@@ -1133,6 +1182,11 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
         if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
         if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
+        if (filterType) { query += ` AND q.question_type = ?`; params.push(filterType); }
+        if (filterSection) { query += ` AND q.section_label = ?`; params.push(filterSection); }
+        if (filterMarksMin) { query += ` AND q.marks >= ?`; params.push(filterMarksMin); }
+        if (filterMarksMax) { query += ` AND q.marks <= ?`; params.push(filterMarksMax); }
+
         if (filterStatus === 'done') { query += ` AND ua.is_completed = 1`; }
         else if (filterStatus === 'undone') { query += ` AND (ua.is_completed IS NULL OR ua.is_completed = 0)`; }
 
@@ -1169,13 +1223,16 @@ app.get('/past-papers/attempt/:id', async (c) => {
         prevId = prevNeighbors?.id;
     }
 
+    // Format Date safely
+    const completedDate = attempt?.updated_at ? new Date(attempt.updated_at).toLocaleDateString() : '';
+
     return c.html(
         <Layout title={`Question - ${q.subject}`} user={user}>
             <div class="max-w-6xl mx-auto h-[calc(100vh-140px)] flex flex-col">
                 {/* Header */}
                 <div class="flex items-center justify-between mb-4 shrink-0">
                     <div>
-                        <a href={source === 'practice' ? `/past-papers?subject=${encodeURIComponent(q.subject)}&tab=practice&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}` : `/past-papers/paper/${q.paper_id}`} class="text-sm text-gray-500 hover:underline">
+                        <a href={source === 'practice' ? `/past-papers?subject=${encodeURIComponent(q.subject)}&tab=practice&${currentParams}` : `/past-papers/paper/${q.paper_id}`} class="text-sm text-gray-500 hover:underline">
                             ← Back to {source === 'practice' ? 'Practice' : 'Paper'}
                         </a>
                         <h1 class="text-xl font-bold flex items-center gap-2">
@@ -1223,6 +1280,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     {/* Right: Interaction */}
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-y-auto p-6 flex flex-col">
                         <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" class="flex-1 flex flex-col">
+                            <input type="hidden" name="next_id" value={nextId || ''} />
 
                             {/* State: Check Answer vs Attempting */}
                             <div class="flex-1">
@@ -1285,11 +1343,21 @@ app.get('/past-papers/attempt/:id', async (c) => {
                             {/* Actions */}
                             <div class="mt-6 flex justify-between items-center pt-4 border-t sticky bottom-0 bg-white">
                                 <span class="text-xs text-gray-400">
-                                    {attempt?.is_completed ? `Completed on ${new Date(attempt.completed_at).toLocaleDateString()}` : 'Not completed yet'}
+                                    {attempt?.is_completed ? (
+                                        <div class="flex items-center gap-2">
+                                            <span>Completed on {completedDate}</span>
+                                            <button type="submit" name="action" value="undone" class="text-red-500 hover:underline">Mark Undone</button>
+                                        </div>
+                                    ) : 'Not completed yet'}
                                 </span>
-                                <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 shadow-sm transition">
-                                    Save & Mark Complete
-                                </button>
+                                <div class="flex gap-2">
+                                    <button type="submit" name="action" value="save" class="bg-gray-100 text-gray-700 font-bold py-2 px-6 rounded-lg hover:bg-gray-200 transition">
+                                        Save
+                                    </button>
+                                    <button type="submit" name="action" value="complete" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 shadow-sm transition">
+                                        Save & Mark Complete
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -1310,27 +1378,47 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     const response = (body['response_content'] as string) || '';
     const selected = (body['selected_option'] as string) || null;
     const notes = (body['marker_notes'] as string) || '';
+    const action = body['action']; // save, complete, undone
+    const nextId = body['next_id'];
+
+    // Determine completion status
+    // Default to 1 (completed) unless explicitly "undone" or just "save" (and maybe not completed before? assumes save = done usually)
+    // Actually, "Save" button shouldn't necessarily complete it if it wasn't.
+    // simpler logic: 'complete' -> 1, 'undone' -> 0. 'save' -> keep as is?
+    // User requirement: "Undone" action.
+    // Let's stick to: is_completed = 1 for 'save' and 'complete', unless 'undone'.
+    let completedValue = 1;
+    if (action === 'undone') completedValue = 0;
 
     // Upsert Attempt
     await c.env.DB.prepare(`
         INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ON CONFLICT(user_id, question_id) DO UPDATE SET
             response_content = excluded.response_content,
             selected_option = excluded.selected_option,
             marks_awarded = excluded.marks_awarded,
             marker_notes = excluded.marker_notes,
-            is_completed = 1,
+            is_completed = ?,
             updated_at = CURRENT_TIMESTAMP
-    `).bind(user.id, qId, response, selected, marks, notes).run();
+    `).bind(user.id, qId, response, selected, marks, notes, completedValue, completedValue).run();
 
     // Preserve Navigation Context
     const source = c.req.query('source');
     const filterTopic = c.req.query('topic');
     const filterYear = c.req.query('year');
-    const filterStatus = c.req.query('status'); // done, undone
+    const filterStatus = c.req.query('status');
+    const filterType = c.req.query('type');
+    const filterSection = c.req.query('section');
+    const filterMarksMin = c.req.query('marks_min');
+    const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
-    const params = `source=${source || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}`;
+    const params = `source=${source || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+
+    // Auto-Advance logic
+    if (action === 'complete' && nextId) {
+        return c.redirect(`/past-papers/attempt/${nextId}?${params}`);
+    }
 
     return c.redirect(`/past-papers/attempt/${qId}?${params}`);
 });
