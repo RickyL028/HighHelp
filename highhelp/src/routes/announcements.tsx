@@ -29,7 +29,7 @@ app.get('/announcements', async (c) => {
         <Layout title="Announcements" user={user}>
             <h1 class="text-3xl font-bold mb-6">Announcements</h1>
             {user && user.permission_level >= 2 ? (
-                <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 overflow-hidden">
+                <div class="bg-white rounded border border-gray-300 shadow-none mb-8 overflow-hidden">
                     <div class="bg-gray-50/50 border-b border-gray-200 px-8 py-4">
                         <h3 class="text-lg font-bold text-gray-800">Post New Announcement</h3>
                     </div>
@@ -114,33 +114,34 @@ app.get('/announcements', async (c) => {
                 ) : (
                     filteredResults.map((a: any) => (
                         <div
-                            class={`search-item bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col justify-between ${a.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
+                            class={`search-item bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors group h-full flex flex-col justify-between ${a.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
                             data-search-text={`${a.title} ${a.content} ${a.subject} ${a.first_name || ''} ${a.last_name || ''}`}
                         >
                             <div>
-                                <div class="flex justify-between items-center mb-3">
-                                    <div class="flex items-center gap-2">
-                                        <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{a.subject}</span>
-                                        {a.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
-                                    </div>
-                                    <span class="text-xs text-gray-400 local-date" data-timestamp={a.created_at}>{new Date(a.created_at).toLocaleDateString()}</span>
+                                <h2 class="text-lg font-bold text-gray-900 mb-1 leading-snug">{a.title}</h2>
+
+                                <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
+                                    <span class="font-bold text-blue-700 uppercase tracking-wide">{a.subject}</span>
+                                    <span class="text-gray-300">•</span>
+                                    <span class="local-date" data-timestamp={a.created_at}>{new Date(a.created_at).toLocaleDateString()}</span>
+                                    <span class="text-gray-300">•</span>
+                                    <span class="flex items-center">
+                                        {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}
+                                        <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(a.tags) }}></span>
+                                    </span>
+                                    {a.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                 </div>
 
-                                <h2 class="text-xl font-bold text-gray-800 mb-2">{a.title}</h2>
-                                <p class="text-gray-600 leading-relaxed mb-4 whitespace-pre-wrap line-clamp-3">{a.content}</p>
+                                <p class="text-gray-700 mb-3 text-sm whitespace-pre-wrap line-clamp-3">{a.content}</p>
                             </div>
 
-                            <div class="border-t border-gray-100 pt-3 flex justify-between items-center text-sm">
-                                <span class="text-gray-500 flex items-center">
-                                    Posted by {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}
-                                    <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(a.tags) }}></span>
-                                </span>
-                                {!a.is_deleted && user && (canModerateSubject(user, a.subject) || user.id === a.author_id) && (
+                            {!a.is_deleted && user && (canModerateSubject(user, a.subject) || user.id === a.author_id) && (
+                                <div class="flex justify-end">
                                     <form action={`/announcements/${a.id}/delete`} method="post" class="inline">
                                         <button type="submit" class="text-red-500 text-xs font-bold hover:underline" onclick="return confirm('Are you sure?')">DELETE</button>
                                     </form>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </div>
                     ))
                 )}

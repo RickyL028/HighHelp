@@ -90,19 +90,28 @@ app.get('/past-papers', async (c) => {
                         </div>
                     ) : (
                         papers.results.map((p: any) => (
-                            <a href={`/past-papers/paper/${p.id}`} class="search-item block bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-400 transition group h-full flex flex-col justify-between" data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}>
+                            <a href={`/past-papers/paper/${p.id}`} class="search-item block bg-white p-4 rounded border border-gray-300 hover:border-blue-500 transition-colors group h-full flex flex-col justify-between" data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}>
                                 <div>
-                                    <div class="flex justify-between items-start mb-4">
-                                        <div class="bg-blue-50 text-blue-800 text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">{p.academic_year}</div>
-                                        {p.is_locked ? <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded border border-gray-200">* Locked</span> : null}
+                                    <h3 class="text-lg font-bold text-gray-900 group-hover:text-blue-700 mb-1 leading-snug">{p.school_name}</h3>
+
+                                    <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
+                                        <span class="font-bold text-blue-700 uppercase tracking-wide">{p.academic_year}</span>
+                                        <span class="text-gray-300">•</span>
+                                        <span class="uppercase tracking-wide">{p.paper_type || 'Trial Paper'}</span>
+                                        {p.is_locked ? <span class="text-xs font-bold text-gray-500 ml-2">🔒 Locked</span> : null}
                                     </div>
-                                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-blue-700 mb-2">{p.school_name}</h3>
-                                    <div class="flex flex-col gap-1">
-                                        <p class="text-sm text-gray-500">{p.paper_type || 'Trial Paper'}</p>
-                                        <div class="flex items-center gap-3 text-xs text-gray-400 font-medium">
-                                            <span> {p.question_count || 0} Questions</span>
-                                            <span> {p.total_marks || 0} Marks</span>
-                                        </div>
+                                </div>
+
+                                <div class="flex flex-col gap-1 mt-2">
+                                    <div class="flex items-center gap-3 text-xs text-gray-500 font-mono border-t border-gray-100 pt-2">
+                                        <span class="flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                                            {p.question_count || 0} Qs
+                                        </span>
+                                        <span class="flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            {p.total_marks || 0} Marks
+                                        </span>
                                     </div>
                                 </div>
                             </a>
@@ -249,26 +258,26 @@ app.get('/past-papers', async (c) => {
 
                             return (
                                 <div onclick={`window.location.href='/past-papers/attempt/${q.id}?${params}'`}
-                                    class={`block p-4 rounded-lg border transition cursor-pointer group 
-                                            ${isIncomplete ? 'bg-gray-50 border-gray-200 opacity-75 grayscale' : 'bg-white border-gray-200 hover:border-blue-400 hover:shadow-md'}`}>
+                                    class={`block p-3 rounded border transition-colors cursor-pointer group 
+                                            ${isIncomplete ? 'bg-gray-50 border-gray-200 opacity-75 grayscale' : 'bg-white border-gray-300 hover:border-blue-500 hover:bg-gray-50'}`}>
                                     <div class="flex justify-between items-start">
                                         <div>
                                             <div class="flex items-center gap-2 mb-1">
-                                                <span class={`font-bold ${isIncomplete ? 'text-gray-500' : 'text-gray-900 group-hover:text-blue-700'}`}>{q.school_name} {q.academic_year}</span>
-                                                <span class="text-gray-400 text-sm">| {q.section_label} {q.question_number}</span>
-                                                {q.is_completed ? <span class="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded font-bold">Done</span> : null}
+                                                <span class={`font-bold text-sm ${isIncomplete ? 'text-gray-500' : 'text-gray-900 group-hover:text-blue-700'}`}>{q.school_name} {q.academic_year}</span>
+                                                <span class="text-gray-400 text-xs font-mono">| {q.section_label} {q.question_number}</span>
+                                                {q.is_completed ? <span class="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded border border-green-200 font-bold uppercase">Done</span> : null}
                                             </div>
-                                            <div class="text-sm text-gray-500 flex gap-2">
-                                                <span>{q.question_type ? q.question_type.replace('_', ' ') : 'Unknown Type'}</span>
-                                                <span>•</span>
-                                                <span>{q.topic_names || 'No topic'}</span>
+                                            <div class="text-xs text-gray-500 flex gap-2">
+                                                <span class="capitalize">{q.question_type ? q.question_type.replace('_', ' ') : '-'}</span>
+                                                <span class="text-gray-300">•</span>
+                                                <span class="font-medium text-gray-600">{q.topic_names || 'No topic'}</span>
                                             </div>
                                         </div>
                                         <div class="text-right">
-                                            <span class={`text-xs px-2 py-1 rounded font-bold ${isIncomplete ? 'bg-gray-200 text-gray-500' : 'bg-gray-100 text-gray-600'}`}>{q.marks || '?'} Marks</span>
+                                            <span class={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border ${isIncomplete ? 'bg-gray-200 text-gray-500 border-gray-300' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>{q.marks || '?'}m</span>
                                             {q.marks_awarded != null && (
-                                                <div class="text-xs font-bold text-blue-600 mt-1">
-                                                    My Score: {q.marks_awarded}/{q.marks}
+                                                <div class="text-[10px] font-bold text-blue-600 mt-1">
+                                                    {q.marks_awarded}/{q.marks}
                                                 </div>
                                             )}
                                         </div>
@@ -343,7 +352,7 @@ app.get('/past-papers/create', async (c) => {
                     <h1 class="text-2xl font-bold mt-2">Add New Past Paper</h1>
                 </div>
 
-                <form action="/past-papers/create" method="post" class="bg-white p-8 rounded-xl shadow-sm border border-gray-200 space-y-6">
+                <form action="/past-papers/create" method="post" class="bg-white p-6 rounded border border-gray-300 shadow-none space-y-6">
                     <input type="hidden" name="subject" value={subject} />
 
                     <div>

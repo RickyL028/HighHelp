@@ -38,28 +38,27 @@ app.get('/resources', async (c) => {
                                 <p class="text-gray-500 italic">No resources uploaded recently.</p>
                             ) : (
                                 recentResources?.map((r: any) => (
-                                    <div class={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col justify-between ${r.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
+                                    <div class={`bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors h-full flex flex-col justify-between ${r.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
                                         <div>
-                                            <div class="flex justify-between items-center mb-3">
-                                                <div class="flex items-center gap-2">
-                                                    <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{r.subject}</span>
-                                                    {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
-                                                </div>
-                                                <span class="text-xs text-gray-400 local-date" data-timestamp={r.created_at}>{new Date(r.created_at).toLocaleDateString()}</span>
-                                            </div>
+                                            <h2 class="text-lg font-bold text-gray-900 mb-1 leading-snug">{r.title}</h2>
 
-                                            <h2 class="text-xl font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition-colors">{r.title}</h2>
-
-                                            <div class="text-sm text-gray-500 mb-4 flex items-center">
-                                                By {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
-                                                <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
+                                            <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-3">
+                                                <span class="font-bold text-blue-700 uppercase tracking-wide">{r.subject}</span>
+                                                <span class="text-gray-300">•</span>
+                                                <span class="local-date" data-timestamp={r.created_at}>{new Date(r.created_at).toLocaleDateString()}</span>
+                                                <span class="text-gray-300">•</span>
+                                                <span class="flex items-center">
+                                                    {r.first_name ? `${r.first_name}` : 'Unknown'}
+                                                    <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
+                                                </span>
+                                                {r.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                             </div>
                                         </div>
 
-                                        <div class="border-t border-gray-100 pt-3 flex justify-between items-center">
-                                            <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1">
-                                                <span>Download Resource</span>
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                        <div class="flex justify-between items-center mt-auto pt-2">
+                                            <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 font-bold text-xs hover:underline flex items-center gap-1 uppercase tracking-wide">
+                                                <span>Download</span>
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                             </a>
                                             {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
                                                 <form action={`/resources/${r.id}/delete`} method="post">
@@ -163,37 +162,38 @@ app.get('/resources', async (c) => {
                 ) : (
                     results.map((r: any) => (
                         <div
-                            class={`search-item bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col justify-between ${r.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
+                            class={`search-item bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors h-full flex flex-col justify-between ${r.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
                             data-search-text={`${r.title} ${r.description} ${r.subject} ${r.first_name || ''} ${r.last_name || ''}`}
                         >
                             <div>
-                                <div class="flex justify-between items-center mb-3">
-                                    <div class="flex items-center gap-2">
-                                        <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{subject}</span>
-                                        {r.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
-                                    </div>
-                                    <span class="text-xs text-gray-400 local-date" data-timestamp={r.created_at}>{new Date(r.created_at).toLocaleDateString()}</span>
+                                <h2 class="text-lg font-bold text-gray-900 mb-1 leading-snug">{r.title}</h2>
+
+                                <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
+                                    <span class="font-bold text-blue-700 uppercase tracking-wide">{r.subject}</span>
+                                    <span class="text-gray-300">•</span>
+                                    <span class="local-date" data-timestamp={r.created_at}>{new Date(r.created_at).toLocaleDateString()}</span>
+                                    {r.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
+                                </div>
+                                <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-3">
+                                    <span class="text-gray-400">By</span>
+                                    <span class="flex items-center">
+                                        {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
+                                        <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
+                                    </span>
                                 </div>
 
-                                <h2 class="text-xl font-bold text-gray-800 mb-2">{r.title}</h2>
-                                <p class="text-gray-600 mb-4 line-clamp-3">{r.description}</p>
+                                <p class="text-gray-600 mb-3 text-sm line-clamp-3 leading-relaxed">{r.description}</p>
                             </div>
 
-                            <div class="border-t border-gray-100 pt-3 flex justify-between items-center">
-                                <div class="text-sm text-gray-500 flex items-center">
-                                    Uploaded by {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
-                                    <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
-                                </div>
-                                <div class="flex items-center gap-4">
-                                    <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1">
-                                        Download
-                                    </a>
-                                    {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
-                                        <form action={`/resources/${r.id}/delete`} method="post">
-                                            <button class="text-red-400 text-xs hover:text-red-600 font-medium">Delete</button>
-                                        </form>
-                                    )}
-                                </div>
+                            <div class="flex justify-between items-center mt-auto pt-2">
+                                <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 font-bold text-xs hover:underline flex items-center gap-1 uppercase tracking-wide">
+                                    Download
+                                </a>
+                                {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
+                                    <form action={`/resources/${r.id}/delete`} method="post">
+                                        <button class="text-red-400 text-xs hover:text-red-600 font-medium">Delete</button>
+                                    </form>
+                                )}
                             </div>
                         </div>
                     ))

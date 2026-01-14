@@ -62,32 +62,29 @@ app.get('/forum', async (c) => {
                                 <p class="text-gray-500 italic">No discussions yet. Be the first to ask!</p>
                             ) : (
                                 recentPosts?.map((p: any) => (
-                                    <div class={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group block ${p.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
-                                        <div class="flex justify-between items-start">
-                                            <div class="flex-grow">
-                                                <div class="flex items-center justify-between mb-3">
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">{p.subject}</span>
-                                                        {p.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
-                                                    </div>
-                                                    <span class="text-xs text-gray-400 local-date" data-timestamp={p.created_at}>{new Date(p.created_at).toLocaleDateString()}</span>
-                                                </div>
+                                    <div class={`bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors group block ${p.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
+                                        <a href={`/forum/post/${p.id}`} class="block">
+                                            <h3 class="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors mb-1 leading-snug">{p.title}</h3>
+                                        </a>
 
-                                                <a href={`/forum/post/${p.id}`} class="block">
-                                                    <h3 class="text-lg font-bold text-gray-800 group-hover:text-blue-600 transition-colors mb-2">{p.title}</h3>
-                                                </a>
-                                                <p class="text-sm text-gray-600 mb-4 line-clamp-2">{p.content}</p>
+                                        <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
+                                            <span class="font-bold text-blue-700 uppercase tracking-wide">{p.subject}</span>
+                                            <span class="text-gray-300">•</span>
+                                            <span class="local-date" data-timestamp={p.created_at}>{new Date(p.created_at).toLocaleDateString()}</span>
+                                            <span class="text-gray-300">•</span>
+                                            <span class="flex items-center">
+                                                {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
+                                                <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(p.tags) }}></span>
+                                            </span>
+                                            {p.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
+                                        </div>
 
-                                                <div class="border-t border-gray-100 pt-3 flex items-center justify-between">
-                                                    <div class="flex items-center text-xs text-gray-500">
-                                                        <span>Posted by {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}</span>
-                                                        <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(p.tags) }}></span>
-                                                    </div>
-                                                    <span class="flex items-center gap-1 text-gray-500 text-sm font-medium">
-                                                        💬 {p.comment_count} Comments
-                                                    </span>
-                                                </div>
-                                            </div>
+                                        <p class="text-sm text-gray-700 mb-2 line-clamp-2">{p.content}</p>
+
+                                        <div class="flex items-center justify-between">
+                                            <span class="flex items-center gap-1 text-gray-500 text-xs font-medium bg-gray-50 px-2 py-0.5 rounded">
+                                                💬 {p.comment_count} Comments
+                                            </span>
                                         </div>
                                     </div>
                                 ))
@@ -164,33 +161,33 @@ app.get('/forum', async (c) => {
                     ) : (
                         results.map((p: any) => (
                             <div
-                                class={`search-item bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 group block h-full flex flex-col justify-between ${p.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
+                                class={`search-item bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors group block h-full flex flex-col justify-between ${p.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
                                 data-search-text={`${p.title} ${p.content} ${p.subject} ${p.first_name || ''} ${p.last_name || ''}`}
                             >
-                                <div class="flex justify-between items-start">
-                                    <div class="flex-grow">
-                                        <div class="flex items-center justify-between mb-3">
-                                            <div class="flex items-center gap-2">
-                                                {p.is_deleted && <span class="text-xs font-bold text-red-600 uppercase">Deleted</span>}
-                                                <span class="text-xs text-gray-400 local-date" data-timestamp={p.created_at}>{new Date(p.created_at).toLocaleDateString()}</span>
-                                            </div>
-                                        </div>
+                                <div>
+                                    <a href={`/forum/post/${p.id}`} class="block">
+                                        <h3 class="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors mb-1 leading-snug">{p.title}</h3>
+                                    </a>
 
-                                        <a href={`/forum/post/${p.id}`} class="block">
-                                            <h3 class="text-lg font-bold text-gray-800 group-hover:text-blue-600 transition-colors mb-2">{p.title}</h3>
-                                        </a>
-                                        <p class="text-sm text-gray-600 mb-4 line-clamp-2">{p.content}</p>
-
-                                        <div class="border-t border-gray-100 pt-3 flex items-center justify-between">
-                                            <div class="flex items-center text-xs text-gray-500">
-                                                <span>by {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}</span>
-                                                <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(p.tags) }}></span>
-                                            </div>
-                                            <span class="flex items-center gap-1 text-gray-500 text-sm font-medium">
-                                                💬 {p.comment_count} Comments
-                                            </span>
-                                        </div>
+                                    <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
+                                        <span class="font-bold text-blue-700 uppercase tracking-wide">{p.subject}</span>
+                                        <span class="text-gray-300">•</span>
+                                        <span class="local-date" data-timestamp={p.created_at}>{new Date(p.created_at).toLocaleDateString()}</span>
+                                        <span class="text-gray-300">•</span>
+                                        <span class="flex items-center">
+                                            {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
+                                            <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(p.tags) }}></span>
+                                        </span>
+                                        {p.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                     </div>
+
+                                    <p class="text-sm text-gray-700 mb-2 line-clamp-2">{p.content}</p>
+                                </div>
+
+                                <div class="flex items-center justify-between mt-auto">
+                                    <span class="flex items-center gap-1 text-gray-500 text-xs font-medium bg-gray-50 px-2 py-0.5 rounded">
+                                        💬 {p.comment_count} Comments
+                                    </span>
                                 </div>
                             </div>
                         ))
@@ -258,7 +255,7 @@ app.get('/forum/create', async (c) => {
 
     return c.html(
         <Layout title="Ask a Question" user={user}>
-            <div class="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md border border-gray-200">
+            <div class="max-w-2xl mx-auto bg-white p-6 rounded border border-gray-300 shadow-none">
                 <h1 class="text-2xl font-bold mb-6 text-gray-900">Ask a Question</h1>
 
                 <form action="/forum" method="post" class="space-y-6">
@@ -360,7 +357,7 @@ app.get('/forum/post/:id', async (c) => {
                 </div>
 
                 {/* Main Post */}
-                <div class={`bg-white rounded-lg shadow-md border overflow-hidden mb-8 ${post.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
+                <div class={`bg-white rounded border border-gray-300 overflow-hidden mb-8 ${post.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
                     <div class="p-6 border-b border-gray-100">
                         {post.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
                         <div class="flex items-center gap-2 mb-2">
@@ -391,7 +388,7 @@ app.get('/forum/post/:id', async (c) => {
 
                     <div class="space-y-4">
                         {comments?.map((comment: any) => (
-                            <div class={`bg-white p-4 rounded-lg shadow-sm border ${comment.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
+                            <div class={`bg-white p-4 rounded border ${comment.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}>
                                 {comment.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                                 <div class="flex justify-between items-start mb-2">
                                     <div class="flex items-center gap-2">

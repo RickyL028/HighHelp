@@ -26,7 +26,7 @@ app.get('/profile', async (c) => {
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* User Info Card */}
-                    <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                    <div class="bg-white p-5 rounded border border-gray-300">
                         <h2 class="text-xl font-bold mb-4 text-gray-800">Account Details</h2>
 
                         <div class="space-y-4">
@@ -73,7 +73,7 @@ app.get('/profile', async (c) => {
 
                     <div class="space-y-8">
                         {/* Tags Section */}
-                        <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <div class="bg-white p-5 rounded border border-gray-300">
                             <h2 class="text-xl font-bold mb-4 text-gray-800">Profile Tags</h2>
                             <p class="text-sm text-gray-500 mb-4">Toggle visibility of your awarded tags.</p>
 
@@ -105,7 +105,7 @@ app.get('/profile', async (c) => {
                         </div>
 
                         {/* Password Change Section */}
-                        <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                        <div class="bg-white p-5 rounded border border-gray-300">
                             <h2 class="text-xl font-bold mb-4 text-gray-800">Security</h2>
                             <form action="/profile" method="post" class="space-y-4">
                                 <input type="hidden" name="action" value="change_password" />
@@ -204,7 +204,7 @@ app.get('/profile/contributions', async (c) => {
                         ) : (
                             <div class="grid grid-cols-1 gap-4">
                                 {myResources?.map((r: any) => (
-                                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200 flex justify-between items-center group hover:border-blue-400 transition">
+                                    <div class="bg-white p-4 rounded border border-gray-300 flex justify-between items-center group hover:border-blue-500 transition-colors">
                                         <div>
                                             <h3 class="font-bold text-gray-800">{r.title}</h3>
                                             <p class="text-sm text-gray-500">{r.subject} • {new Date(r.created_at).toLocaleDateString()}</p>
@@ -229,7 +229,7 @@ app.get('/profile/contributions', async (c) => {
                         ) : (
                             <div class="grid grid-cols-1 gap-4">
                                 {myAnnouncements?.map((a: any) => (
-                                    <div class="bg-white p-4 rounded shadow-sm border border-gray-200 hover:border-purple-400 transition">
+                                    <div class="bg-white p-4 rounded border border-gray-300 hover:border-purple-500 transition-colors">
                                         <div class="flex justify-between">
                                             <h3 class="font-bold text-gray-800">{a.title}</h3>
                                             <span class="text-xs text-gray-400">{new Date(a.created_at).toLocaleDateString()}</span>
