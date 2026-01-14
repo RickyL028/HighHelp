@@ -261,8 +261,9 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                         <div>
                                                             <label class="block text-xs font-bold text-gray-500 uppercase">Type</label>
                                                             <select name={`q_${q.id}_question_type`} class="w-full mt-1 rounded border-gray-300 text-sm">
-                                                                <option value="multiple_choice" selected={q.question_type === 'multiple_choice'}>Multiple Choice</option>
                                                                 <option value="short_answer" selected={q.question_type === 'short_answer'}>Short Answer</option>
+                                                                <option value="multiple_choice" selected={q.question_type === 'multiple_choice'}>Multiple Choice</option>
+
                                                                 <option value="extended_response" selected={q.question_type === 'extended_response'}>Extended Response</option>
                                                             </select>
                                                         </div>
