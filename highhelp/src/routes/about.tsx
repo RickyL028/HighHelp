@@ -142,7 +142,7 @@ app.get('/about', async (c) => {
                     <section id="application" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Applications</h2>
                         <p class="text-gray-700 leading-relaxed">
-                            Applications are currently in the works and will be released in future via Google Forms. If you are interested in this project, please contact Ricky via 'notricky028' on Discord, or by emailing '457297106@student.sbhs.nsw.edu.au'.
+                            Applications are currently in the works and will be released in future via Google Forms. If you are interested in this project, see contact
                             The current application form is: N/A
                         </p>
                     </section>
@@ -171,7 +171,7 @@ app.get('/about', async (c) => {
                     <section id="contact" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Contact</h2>
                         <p class="text-gray-700 leading-relaxed">
-                            Please contact Ricky via 'notricky028' on Discord, or by emailing '457297106@student.sbhs.nsw.edu.au'.
+                            check insta
                             <br></br>
                             will have a domain email after i buy
                         </p>
