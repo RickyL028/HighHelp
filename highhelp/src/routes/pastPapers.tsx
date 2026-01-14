@@ -15,6 +15,7 @@ function generatePaperName(school: string, year: number) {
 app.get('/past-papers', async (c) => {
     const user = await getUser(c)
     const subject = c.req.query('subject')
+    const tab = c.req.query('tab') || 'browse';
 
     // 1. Landing Page -> Subject Selector
     if (!subject) {
@@ -41,30 +42,33 @@ app.get('/past-papers', async (c) => {
         )
     }
 
-    // 2. Subject View -> List Papers
-    // JOIN with exam_questions to get counts and sum of marks
-    const papers = await c.env.DB.prepare(`
-        SELECT p.*, count(q.id) as question_count, sum(q.marks) as total_marks 
-        FROM papers p 
-        LEFT JOIN exam_questions q ON p.id = q.paper_id AND q.is_deleted = 0
-        WHERE p.subject = ? 
-        GROUP BY p.id 
-        ORDER BY p.academic_year DESC, p.created_at DESC
-    `).bind(subject).all();
-
+    // 2. Subject View
     const canUpload = user && canUploadPastPaper(user, subject);
 
-    return c.html(
-        <Layout title={`Past Papers - ${subject}`} user={user}>
-            <div class="mx-auto">
+    // Tabs Config
+    const tabs = [
+        { id: 'browse', label: 'Browse Papers' },
+        { id: 'practice', label: 'Practice Questions' },
+        { id: 'exam', label: 'Mock Exam' },
+        { id: 'review', label: 'Review' },
+    ];
+
+    let content;
+
+    if (tab === 'browse') {
+        const papers = await c.env.DB.prepare(`
+            SELECT p.*, count(q.id) as question_count, sum(q.marks) as total_marks 
+            FROM papers p 
+            LEFT JOIN exam_questions q ON p.id = q.paper_id AND q.is_deleted = 0
+            WHERE p.subject = ? 
+            GROUP BY p.id 
+            ORDER BY p.academic_year DESC, p.created_at DESC
+        `).bind(subject).all();
+
+        content = (
+            <div>
                 <div class="flex items-center justify-between mb-6">
-                    <div>
-                        <div class="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                            <a href="/past-papers" class="hover:underline">Past Papers</a>
-                            <span>/</span>
-                        </div>
-                        <h1 class="text-3xl font-bold">{subject}</h1>
-                    </div>
+                    <h1 class="text-3xl font-bold">{subject}</h1>
                     {canUpload && (
                         <a href={`/past-papers/create?subject=${encodeURIComponent(subject)}`} class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition">
                             + Add New Paper
@@ -77,18 +81,8 @@ app.get('/past-papers', async (c) => {
                         <input type="text" id="search-input" placeholder="Search papers..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" />
                         <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
-                    <div class="flex items-center gap-2 bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
-                        <button id="view-list" class="p-2 rounded text-gray-500 hover:bg-gray-50 transition-colors" title="List View">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                        </button>
-                        <button id="view-grid" class="p-2 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors" title="Grid View">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                        </button>
-                    </div>
                 </div>
 
-                {/* Grid View Container */}
-                {/* Grid View Container */}
                 <div id="grid-view-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {papers.results.length === 0 ? (
                         <div class="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
@@ -96,27 +90,15 @@ app.get('/past-papers', async (c) => {
                         </div>
                     ) : (
                         papers.results.map((p: any) => (
-                            <a
-                                href={`/past-papers/paper/${p.id}`}
-                                class="search-item block bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-400 transition group h-full flex flex-col justify-between"
-                                data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}
-                            >
+                            <a href={`/past-papers/paper/${p.id}`} class="search-item block bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-400 transition group h-full flex flex-col justify-between" data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}>
                                 <div>
                                     <div class="flex justify-between items-start mb-4">
-                                        <div class="bg-blue-50 text-blue-800 text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">
-                                            {p.academic_year}
-                                        </div>
-                                        {p.is_locked ? (
-                                            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded border border-gray-200">* Locked</span>
-                                        ) : null}
+                                        <div class="bg-blue-50 text-blue-800 text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">{p.academic_year}</div>
+                                        {p.is_locked ? <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded border border-gray-200">* Locked</span> : null}
                                     </div>
-                                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-blue-700 mb-2">
-                                        {p.school_name}
-                                    </h3>
+                                    <h3 class="text-xl font-bold text-gray-900 group-hover:text-blue-700 mb-2">{p.school_name}</h3>
                                     <div class="flex flex-col gap-1">
-                                        <p class="text-sm text-gray-500">
-                                            {p.paper_type || 'Trial Paper'}
-                                        </p>
+                                        <p class="text-sm text-gray-500">{p.paper_type || 'Trial Paper'}</p>
                                         <div class="flex items-center gap-3 text-xs text-gray-400 font-medium">
                                             <span> {p.question_count || 0} Questions</span>
                                             <span> {p.total_marks || 0} Marks</span>
@@ -127,55 +109,173 @@ app.get('/past-papers', async (c) => {
                         ))
                     )}
                 </div>
+            </div>
+        );
 
-                {/* List View Container (Table) */}
-                {/* List View Container (Table) */}
-                <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Q, M</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            {papers.results.length === 0 ? (
-                                <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={5}>No papers found.</td>
-                                </tr>
-                            ) : (
-                                papers.results.map((p: any) => (
-                                    <tr
-                                        class="search-item hover:bg-gray-50 transition-colors cursor-pointer"
-                                        data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}
-                                        onclick={`window.location.href='/past-papers/paper/${p.id}'`}
-                                    >
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-700">
-                                            {p.academic_year}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                                            {p.school_name}
-                                            {p.is_locked ? <span class="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border">*</span> : null}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {p.paper_type || 'Trial Paper'}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                                            <span class="mr-3" title="Questions">Q {p.question_count || 0}</span>
-                                            <span title="Marks">M/{p.total_marks || 0}</span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-blue-600 hover:text-blue-900">
-                                            View
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+    } else if (tab === 'practice') {
+        const page = parseInt(c.req.query('page') || '1');
+        const limit = 20;
+        const offset = (page - 1) * limit;
+
+        // Filters
+        const filterTopic = c.req.query('topic');
+        const filterYear = c.req.query('year');
+        const filterStatus = c.req.query('status'); // done, undone
+        const sort = c.req.query('sort') || 'school_asc';
+
+        let query = `
+            SELECT q.*, p.school_name, p.academic_year, 
+                   group_concat(t.name, ', ') as topic_names,
+                   ua.is_completed, ua.marks_awarded
+            FROM exam_questions q
+            JOIN papers p ON q.paper_id = p.id
+            LEFT JOIN question_topics qt ON q.id = qt.question_id
+            LEFT JOIN topics t ON qt.topic_id = t.id
+            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+            WHERE p.subject = ? AND q.is_deleted = 0
+        `;
+        const params: any[] = [user?.id, subject];
+
+        if (filterTopic) {
+            query += ` AND qt.topic_id = ?`;
+            params.push(filterTopic);
+        }
+        if (filterYear) {
+            query += ` AND p.academic_year = ?`;
+            params.push(filterYear);
+        }
+        if (filterStatus === 'done') {
+            query += ` AND ua.is_completed = 1`;
+        } else if (filterStatus === 'undone') {
+            query += ` AND (ua.is_completed IS NULL OR ua.is_completed = 0)`;
+        }
+
+        query += ` GROUP BY q.id`;
+
+        // Sort
+        if (sort === 'year_desc') query += ` ORDER BY p.academic_year DESC, q.ordering_index ASC`;
+        else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`;
+        else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`;
+
+        query += ` LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+
+        const questions = await c.env.DB.prepare(query).bind(...params).all();
+        const allTopics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject).all();
+
+
+        content = (
+            <div>
+                <h1 class="text-3xl font-bold mb-6">Practice Questions</h1>
+
+                {/* Filters Bar */}
+                <form action="/past-papers" method="get" class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-wrap gap-4 items-end">
+                    <input type="hidden" name="subject" value={subject} />
+                    <input type="hidden" name="tab" value="practice" />
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Topic</label>
+                        <select name="topic" class="rounded border-gray-300 text-sm w-48">
+                            <option value="">All Topics</option>
+                            {allTopics.results.map((t: any) => <option value={t.id} selected={filterTopic == t.id}>{t.name}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Year</label>
+                        <input type="number" name="year" value={filterYear} placeholder="Any" class="rounded border-gray-300 text-sm w-24" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
+                        <select name="status" class="rounded border-gray-300 text-sm w-32">
+                            <option value="">All</option>
+                            <option value="done" selected={filterStatus == 'done'}>Completed</option>
+                            <option value="undone" selected={filterStatus == 'undone'}>Unattempted</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Sort</label>
+                        <select name="sort" class="rounded border-gray-300 text-sm w-32">
+                            <option value="school_asc" selected={sort == 'school_asc'}>School A-Z</option>
+                            <option value="year_desc" selected={sort == 'year_desc'}>Year (Newest)</option>
+                            <option value="year_asc" selected={sort == 'year_asc'}>Year (Oldest)</option>
+                        </select>
+                    </div>
+                    <button class="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm">Filter</button>
+                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice`} class="text-sm text-gray-500 underline ml-2">Reset</a>
+                </form>
+
+                {/* Question List */}
+                <div class="space-y-4">
+                    {questions.results.length === 0 ? (
+                        <div class="text-center py-12 text-gray-500">No questions found matching your filters.</div>
+                    ) : (
+                        questions.results.map((q: any) => (
+                            <div onclick={`window.location.href='/past-papers/attempt/${q.id}'`} class="block bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-400 hover:shadow-md transition cursor-pointer group">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <span class="font-bold text-gray-900 group-hover:text-blue-700">{q.school_name} {q.academic_year}</span>
+                                            <span class="text-gray-400 text-sm">| {q.section_label} {q.question_number}</span>
+                                            {q.is_completed ? <span class="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded font-bold">Done</span> : null}
+                                        </div>
+                                        <div class="text-sm text-gray-500">{q.topic_names || 'No topic'}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded font-bold">{q.marks} Marks</span>
+                                        {q.marks_awarded != null && (
+                                            <div class="text-xs font-bold text-blue-600 mt-1">
+                                                My Score: {q.marks_awarded}/{q.marks}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
+                {/* Pagination (Simple) */}
+                <div class="mt-8 flex justify-center gap-2">
+                    {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}`} class="px-4 py-2 border rounded bg-white hover:bg-gray-50">Previous</a>}
+                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}`} class="px-4 py-2 border rounded bg-white hover:bg-gray-50">Next</a>
+                </div>
+            </div>
+        )
+
+    } else {
+        content = (
+            <div class="text-center py-20 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                <h3 class="text-xl font-bold text-gray-400 mb-2">Coming Soon</h3>
+                <p class="text-gray-500">{tab === 'exam' ? 'Mock Exam functionality is under development.' : 'Review functionality is under development.'}</p>
+            </div>
+        )
+    }
+
+    return c.html(
+        <Layout title={`Past Papers - ${subject}`} user={user}>
+            <div class="mx-auto">
+                {/* Breadcrumbs */}
+                <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
+                    <a href="/past-papers" class="hover:underline">Past Papers</a>
+                    <span>/</span>
+                    <span class="font-bold text-gray-700">{subject}</span>
+                </div>
+
+                {/* Tabs */}
+                <div class="border-b border-gray-200 mb-8">
+                    <nav class="-mb-px flex space-x-8">
+                        {tabs.map(t => (
+                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=${t.id}`}
+                                class={`
+                                    whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors
+                                    ${tab === t.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                               `}>
+                                {t.label}
+                            </a>
+                        ))}
+                    </nav>
+                </div>
+
+                {content}
             </div>
         </Layout>
     )
@@ -977,6 +1077,208 @@ app.post('/past-papers/question/:id/update', async (c) => {
     }
 
     return c.redirect(`/past-papers/paper/${q.paper_id}#q-${qId}`);
+});
+
+
+// Question Attempt View
+app.get('/past-papers/attempt/:id', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+
+    const qId = c.req.param('id')
+
+    // Fetch Question Details
+    const q = await c.env.DB.prepare(`
+        SELECT q.*, p.subject, p.school_name, p.academic_year, 
+               group_concat(t.name, ', ') as topic_names
+        FROM exam_questions q
+        JOIN papers p ON q.paper_id = p.id
+        LEFT JOIN question_topics qt ON q.id = qt.question_id
+        LEFT JOIN topics t ON qt.topic_id = t.id
+        WHERE q.id = ?
+        GROUP BY q.id
+    `).bind(qId).first<any>();
+
+    if (!q) return c.notFound();
+
+    // Fetch existing attempt
+    const attempt = await c.env.DB.prepare(`
+        SELECT * FROM user_question_attempts 
+        WHERE user_id = ? AND question_id = ?
+    `).bind(user.id, qId).first<any>();
+
+    // Determine Prev/Next IDs based on filters (complex, for now just use ID order in same paper or subject? 
+    // User asked: "Navigate through filtered, selected questions". This implies we need to pass the filter context.
+    // For MVP, we'll try to get next/prev in the same paper.
+    const neighbors = await c.env.DB.prepare(`
+        SELECT id FROM exam_questions 
+        WHERE paper_id = ? AND ordering_index > ? AND is_deleted = 0
+        ORDER BY ordering_index ASC LIMIT 1
+    `).bind(q.paper_id, q.ordering_index).first<any>();
+
+    const prevNeighbors = await c.env.DB.prepare(`
+        SELECT id FROM exam_questions 
+        WHERE paper_id = ? AND ordering_index < ? AND is_deleted = 0
+        ORDER BY ordering_index DESC LIMIT 1
+    `).bind(q.paper_id, q.ordering_index).first<any>();
+
+    const nextId = neighbors?.id;
+    const prevId = prevNeighbors?.id;
+
+    return c.html(
+        <Layout title={`Question - ${q.subject}`} user={user}>
+            <div class="max-w-6xl mx-auto h-[calc(100vh-140px)] flex flex-col">
+                {/* Header */}
+                <div class="flex items-center justify-between mb-4 shrink-0">
+                    <div>
+                        <a href={`/past-papers?subject=${encodeURIComponent(q.subject)}&tab=practice`} class="text-sm text-gray-500 hover:underline">← Back to Practice</a>
+                        <h1 class="text-xl font-bold flex items-center gap-2">
+                            {q.school_name} {q.academic_year}
+                            <span class="text-gray-400">|</span>
+                            {q.section_label} {q.question_number}
+                            <span class="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded ml-2">{q.marks} Marks</span>
+                        </h1>
+                        <p class="text-sm text-gray-500">{q.topic_names}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        {prevId ? (
+                            <a href={`/past-papers/attempt/${prevId}`} class="px-3 py-1 bg-white border rounded hover:bg-gray-50">Previous</a>
+                        ) : (
+                            <button disabled class="px-3 py-1 bg-gray-50 border rounded text-gray-300">Previous</button>
+                        )}
+                        {nextId ? (
+                            <a href={`/past-papers/attempt/${nextId}`} class="px-3 py-1 bg-blue-600 text-white border border-blue-600 rounded hover:bg-blue-700">Next</a>
+                        ) : (
+                            <button disabled class="px-3 py-1 bg-gray-50 border rounded text-gray-300">Next</button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Content Split */}
+                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
+
+                    {/* Left: Question Content */}
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-y-auto p-6">
+                        <h3 class="font-bold text-gray-700 mb-4 uppercase text-sm tracking-wide">Question</h3>
+                        {q.question_image_key ? (
+                            <img src={`/download/${q.question_image_key}`} class="w-full h-auto object-contain" />
+                        ) : (
+                            <div class="text-gray-400 italic text-center py-12">No question image available</div>
+                        )}
+
+                        {q.stimulus_image_key && (
+                            <div class="mt-6 border-t pt-6">
+                                <h4 class="font-bold text-gray-500 mb-2 text-xs uppercase">Stimulus</h4>
+                                <img src={`/download/${q.stimulus_image_key}`} class="w-full h-auto object-contain" />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right: Interaction */}
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-y-auto p-6 flex flex-col">
+                        <form action={`/past-papers/attempt/${qId}/save`} method="post" class="flex-1 flex flex-col">
+
+                            {/* State: Check Answer vs Attempting */}
+                            <div class="flex-1">
+                                <h3 class="font-bold text-gray-700 mb-4 uppercase text-sm tracking-wide">Your Response</h3>
+
+                                {q.question_type === 'multiple_choice' ? (
+                                    <div class="grid grid-cols-2 gap-4 mb-6">
+                                        {['A', 'B', 'C', 'D'].map(opt => (
+                                            <label class="cursor-pointer">
+                                                <input type="radio" name="selected_option" value={opt} class="peer sr-only" checked={attempt?.selected_option === opt} />
+                                                <div class="text-center p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition">
+                                                    <span class="text-xl font-bold text-gray-700 peer-checked:text-blue-700">{opt}</span>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <textarea name="response_content" class="w-full h-64 p-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none font-mono text-sm" placeholder="Type your answer here...">{attempt?.response_content || ''}</textarea>
+                                )}
+
+                                {/* Marking Section (Revealed on Check or always visible? "User can then check their response") */}
+                                <div id="marking-section" class="mt-8 border-t border-gray-100 pt-6">
+                                    <details open={!!attempt?.is_completed}>
+                                        <summary class="font-bold text-blue-600 cursor-pointer mb-4 select-none group">
+                                            <span class="group-open:hidden">▶ Check Answer & Mark</span>
+                                            <span class="hidden group-open:inline">▼ Hide Answer</span>
+                                        </summary>
+
+                                        <div class="space-y-6 animate-fade-in">
+                                            {/* Correct Answer */}
+                                            <div class="bg-green-50 rounded-lg p-4 border border-green-100">
+                                                <h4 class="font-bold text-green-800 text-sm mb-2">Correct Answer / Guidelines</h4>
+                                                {q.mc_answer && <div class="text-xl font-bold text-green-700 mb-2">{q.mc_answer}</div>}
+                                                {q.answer_image_key ? (
+                                                    <img src={`/download/${q.answer_image_key}`} class="w-full object-contain bg-white rounded border border-green-200" />
+                                                ) : <span class="text-gray-500 italic text-sm">No answer image provided.</span>}
+                                            </div>
+
+                                            {/* Self Marking UI */}
+                                            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                                <div class="flex items-center justify-between mb-4">
+                                                    <label class="font-bold text-gray-700 text-sm">Marks Awarded</label>
+                                                    <div class="flex items-center gap-2">
+                                                        <button type="button" onclick={`document.querySelector('input[name="marks_awarded"]').value = ${q.marks}`} class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200">Give Max ({q.marks})</button>
+                                                    </div>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <input type="number" name="marks_awarded" min="0" max={q.marks} value={attempt?.marks_awarded || 0} class="w-20 rounded border-gray-300 font-bold text-center" />
+                                                    <span class="text-gray-500 font-bold">/ {q.marks}</span>
+                                                </div>
+
+                                                <label class="block font-bold text-gray-700 text-sm mt-4 mb-2">My Marker Notes</label>
+                                                <textarea name="marker_notes" class="w-full h-24 p-2 rounded border border-gray-300 text-sm" placeholder="Notes for future review...">{attempt?.marker_notes || ''}</textarea>
+                                            </div>
+                                        </div>
+                                    </details>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div class="mt-6 flex justify-between items-center pt-4 border-t sticky bottom-0 bg-white">
+                                <span class="text-xs text-gray-400">
+                                    {attempt?.is_completed ? `Completed on ${new Date(attempt.completed_at).toLocaleDateString()}` : 'Not completed yet'}
+                                </span>
+                                <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 shadow-sm transition">
+                                    Save & Mark Complete
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </Layout>
+    );
+})
+
+// Save Attempt
+app.post('/past-papers/attempt/:id/save', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+    const qId = c.req.param('id')
+    const body = await c.req.parseBody()
+
+    const marks = parseInt((body['marks_awarded'] as string) || '0');
+    const response = (body['response_content'] as string) || '';
+    const selected = (body['selected_option'] as string) || null;
+    const notes = (body['marker_notes'] as string) || '';
+
+    // Upsert Attempt
+    await c.env.DB.prepare(`
+        INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id, question_id) DO UPDATE SET
+            response_content = excluded.response_content,
+            selected_option = excluded.selected_option,
+            marks_awarded = excluded.marks_awarded,
+            marker_notes = excluded.marker_notes,
+            is_completed = 1,
+            completed_at = CURRENT_TIMESTAMP
+    `).bind(user.id, qId, response, selected, marks, notes).run();
+
+    return c.redirect(`/past-papers/attempt/${qId}`);
 });
 
 export default app
