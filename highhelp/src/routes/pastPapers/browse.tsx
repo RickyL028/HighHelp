@@ -42,10 +42,10 @@ app.get('/past-papers', async (c) => {
 
     // Tabs Config
     const tabs = [
-        { id: 'browse', label: 'Browse Papers' },
-        { id: 'practice', label: 'Practice Questions' },
-        { id: 'exam', label: 'Mock Exam' },
-        { id: 'review', label: 'Review' },
+        { id: 'browse', label: 'Browse Papers', href: `/past-papers?subject=${encodeURIComponent(subject)}&tab=browse` },
+        { id: 'practice', label: 'Practice Questions', href: `/past-papers?subject=${encodeURIComponent(subject)}&tab=practice` },
+        { id: 'exam', label: 'Mock Exam', href: `/past-papers/mock-exams?subject=${encodeURIComponent(subject)}` },
+        { id: 'review', label: 'Review', href: `/past-papers?subject=${encodeURIComponent(subject)}&tab=review` },
     ];
 
     let content;
@@ -130,6 +130,7 @@ app.get('/past-papers', async (c) => {
         const filterMarksMin = c.req.query('marks_min');
         const filterMarksMax = c.req.query('marks_max');
         const sort = c.req.query('sort') || 'school_asc';
+        const mode = c.req.query('mode'); // 'select'
 
         let query = `
             SELECT q.*, p.school_name, p.academic_year, 
@@ -248,40 +249,72 @@ app.get('/past-papers', async (c) => {
                     {questions.results.length === 0 ? (
                         <div class="text-center py-12 text-gray-500">No questions found matching your filters.</div>
                     ) : (
-                        questions.results.map((q: any) => {
-                            const params = `source=practice&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
-                            const isIncomplete = !q.marks || !q.question_image_key;
+                        <form action="/past-papers/mock-exams/create-manual" method="post" id="manual-exam-form">
+                            <input type="hidden" name="subject" value={subject} />
+                            <div class="space-y-4">
+                                {questions.results.map((q: any) => {
+                                    const params = `source=practice&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+                                    const isIncomplete = !q.marks || !q.question_image_key;
 
-                            return (
-                                <div onclick={`window.location.href='/past-papers/attempt/${q.id}?${params}'`}
-                                    class={`block p-3 rounded border transition-colors cursor-pointer group 
+                                    const clickAction = mode === 'select'
+                                        ? `const cb = document.querySelector('input[name="question_ids"][value="${q.id}"]'); if(cb) cb.checked = !cb.checked;`
+                                        : `window.location.href='/past-papers/attempt/${q.id}?${params}'`;
+
+                                    return (
+                                        <div onclick={clickAction}
+                                            class={`block p-3 rounded border transition-colors cursor-pointer group 
                                             ${isIncomplete ? 'bg-gray-50 border-gray-200 opacity-75 grayscale' : 'bg-white border-gray-300 hover:border-blue-500 hover:bg-gray-50'}`}>
-                                    <div class="flex justify-between items-start">
-                                        <div>
-                                            <div class="flex items-center gap-2 mb-1">
-                                                <span class={`font-bold text-sm ${isIncomplete ? 'text-gray-500' : 'text-gray-900 group-hover:text-blue-700'}`}>{q.school_name} {q.academic_year}</span>
-                                                <span class="text-gray-400 text-xs font-mono">| {q.section_label} {q.question_number}</span>
-                                                {q.is_completed ? <span class="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded border border-green-200 font-bold uppercase">Done</span> : null}
-                                            </div>
-                                            <div class="text-xs text-gray-500 flex gap-2">
-                                                <span class="capitalize">{q.question_type ? q.question_type.replace('_', ' ') : '-'}</span>
-                                                <span class="text-gray-300">•</span>
-                                                <span class="font-medium text-gray-600">{q.topic_names || 'No topic'}</span>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <span class={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border ${isIncomplete ? 'bg-gray-200 text-gray-500 border-gray-300' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>{q.marks || '?'}m</span>
-                                            {q.marks_awarded != null && (
-                                                <div class="text-[10px] font-bold text-blue-600 mt-1">
-                                                    {q.marks_awarded}/{q.marks}
+                                            <div class="flex justify-between items-start">
+                                                <div class="flex gap-3">
+                                                    {mode === 'select' && (
+                                                        <div class="pt-1" onclick="event.stopPropagation()">
+                                                            <input type="checkbox" name="question_ids" value={q.id} class="rounded border-gray-300 w-5 h-5 text-blue-600 focus:ring-blue-500" />
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div class="flex items-center gap-2 mb-1">
+                                                            <span class={`font-bold text-sm ${isIncomplete ? 'text-gray-500' : 'text-gray-900 group-hover:text-blue-700'}`}>{q.school_name} {q.academic_year}</span>
+                                                            <span class="text-gray-400 text-xs font-mono">| {q.section_label} {q.question_number}</span>
+                                                            {q.is_completed ? <span class="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded border border-green-200 font-bold uppercase">Done</span> : null}
+                                                        </div>
+                                                        <div class="text-xs text-gray-500 flex gap-2">
+                                                            <span class="capitalize">{q.question_type ? q.question_type.replace('_', ' ') : '-'}</span>
+                                                            <span class="text-gray-300">•</span>
+                                                            <span class="font-medium text-gray-600">{q.topic_names || 'No topic'}</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            )}
+                                                <div class="text-right">
+                                                    <span class={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border ${isIncomplete ? 'bg-gray-200 text-gray-500 border-gray-300' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>{q.marks || '?'}m</span>
+                                                    {q.marks_awarded != null && (
+                                                        <div class="text-[10px] font-bold text-blue-600 mt-1">
+                                                            {q.marks_awarded}/{q.marks}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
+                                    );
+                                })}
+                            </div>
+                            {mode === 'select' && (
+                                <div class="fixed bottom-0 left-0 w-full bg-white border-t p-4 flex justify-between items-center shadow-lg z-50">
+                                    <div class="container mx-auto flex justify-between items-center">
+                                        <div class="flex gap-4 items-center">
+                                            <input type="text" name="exam_name" placeholder="Custom Exam Name" class="rounded border-gray-300 text-sm" />
+                                            <div class="flex items-center gap-2">
+                                                <input type="number" name="timer_minutes" placeholder="Timer (mins)" class="rounded border-gray-300 text-sm w-24" />
+                                            </div>
+                                        </div>
+                                        <button class="bg-blue-600 text-white px-8 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md">
+                                            Create Exam
+                                        </button>
                                     </div>
                                 </div>
-                            );
-                        })
-                    )}
+                            )}
+                        </form>
+                    )
+                    }
                 </div>
                 {/* Pagination (Simple) */}
                 <div class="mt-8 flex justify-center gap-2">
@@ -314,10 +347,10 @@ app.get('/past-papers', async (c) => {
                 <div class="border-b border-gray-200 mb-8">
                     <nav class="-mb-px flex space-x-8">
                         {tabs.map(t => (
-                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=${t.id}`}
+                            <a href={(t as any).href}
                                 class={`
                                     whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors
-                                    ${tab === t.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                                    ${(tab === t.id) || (t.id === 'exam' && c.req.path.includes('mock-exams')) ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
                                 `}>
                                 {t.label}
                             </a>

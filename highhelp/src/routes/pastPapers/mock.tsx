@@ -114,68 +114,70 @@ app.get('/mock-exams/create', async (c) => {
 
                 <h1 class="text-3xl font-bold mb-8">Create Mock Exam</h1>
 
-                <div x-data="{ mode: 'auto' }" class="space-y-6">
+                <div class="space-y-6">
                     <div class="flex border-b border-gray-200">
-                        <button @click="mode = 'auto'" :class="{'border-blue-500 text-blue-600': mode === 'auto', 'border-transparent text-gray-500': mode !== 'auto' }" class="px-6 py-3 font-medium border-b-2 transition-colors">Auto Generate</button>
-                    <button @click="mode = 'manual'" :class="{'border-blue-500 text-blue-600': mode === 'manual', 'border-transparent text-gray-500': mode !== 'manual' }" class="px-6 py-3 font-medium border-b-2 transition-colors">Manual Selection</button>
-            </div>
-
-            {/* Auto Mode Form */}
-            <div x-show="mode === 'auto'">
-                <form action="/past-papers/mock-exams/create-auto" method="post" class="space-y-6 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                    <input type="hidden" name="subject" value={subject || ''} />
-
-                    <div>
-                        <label class="block font-bold text-gray-700 mb-2">Exam Name</label>
-                        <input type="text" name="exam_name" placeholder="e.g. Weekly Practice" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required />
+                        <a href={`?subject=${encodeURIComponent(subject || '')}&mode=auto`} class={`px-6 py-3 font-medium border-b-2 transition-colors ${!c.req.query('mode') || c.req.query('mode') === 'auto' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Auto Generate</a>
+                        <a href={`?subject=${encodeURIComponent(subject || '')}&mode=manual`} class={`px-6 py-3 font-medium border-b-2 transition-colors ${c.req.query('mode') === 'manual' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Manual Selection</a>
                     </div>
 
-                    <div>
-                        <label class="block font-bold text-gray-700 mb-2">Uncompleted Priority</label>
-                        <p class="text-sm text-gray-500 mb-2">We try to find unattempted questions first. If not enough, should we use completed ones?</p>
-                        <label class="flex items-center gap-2">
-                            <input type="checkbox" name="allow_completed" value="1" checked class="rounded text-blue-600 focus:ring-blue-500" />
-                            <span class="text-gray-700">Allow using completed questions if needed</span>
-                        </label>
-                    </div>
+                    {(!c.req.query('mode') || c.req.query('mode') === 'auto') && (
+                        <div>
+                            <form action="/past-papers/mock-exams/create-auto" method="post" class="space-y-6 bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                                <input type="hidden" name="subject" value={subject || ''} />
 
-                    <div>
-                        <label class="block font-bold text-gray-700 mb-4">Marks per Section</label>
-                        <p class="text-sm text-gray-500 mb-4">Enter how many marks you want for each section (approximate).</p>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            {sections.results.map((s: any) => (
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">{s.section_label}</label>
-                                    <input type="number" name={`marks_${s.section_label}`} placeholder="0" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                    <label class="block font-bold text-gray-700 mb-2">Exam Name</label>
+                                    <input type="text" name="exam_name" placeholder="e.g. Weekly Practice" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" required />
                                 </div>
-                            ))}
+
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-2">Uncompleted Priority</label>
+                                    <p class="text-sm text-gray-500 mb-2">We try to find unattempted questions first. If not enough, should we use completed ones?</p>
+                                    <label class="flex items-center gap-2">
+                                        <input type="checkbox" name="allow_completed" value="1" checked class="rounded text-blue-600 focus:ring-blue-500" />
+                                        <span class="text-gray-700">Allow using completed questions if needed</span>
+                                    </label>
+                                </div>
+
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-4">Marks per Section</label>
+                                    <p class="text-sm text-gray-500 mb-4">Enter how many marks you want for each section (approximate).</p>
+                                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        {sections.results.map((s: any) => (
+                                            <div>
+                                                <label class="block text-xs font-bold text-gray-500 uppercase mb-1">{s.section_label}</label>
+                                                <input type="number" name={`marks_${s.section_label}`} placeholder="0" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block font-bold text-gray-700 mb-2">Timer (Optional)</label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" name="timer_minutes" placeholder="Minutes" class="w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                        <span class="text-gray-500">minutes</span>
+                                    </div>
+                                </div>
+
+                                <div class="pt-4">
+                                    <button class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition">Generate Exam</button>
+                                </div>
+                            </form>
                         </div>
-                    </div>
+                    )}
 
-                    <div>
-                        <label class="block font-bold text-gray-700 mb-2">Timer (Optional)</label>
-                        <div class="flex items-center gap-2">
-                            <input type="number" name="timer_minutes" placeholder="Minutes" class="w-32 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
-                            <span class="text-gray-500">minutes</span>
+                    {c.req.query('mode') === 'manual' && (
+                        <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 text-center">
+                            <p class="text-gray-600 mb-4">To create a manual exam, please browse the <strong>Practice Questions</strong> tab and select the questions you want to add.</p>
+                            <a href={`/past-papers?subject=${encodeURIComponent(subject || '')}&tab=practice&mode=select`} class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition">
+                                Go to Question Selector
+                            </a>
                         </div>
-                    </div>
-
-                    <div class="pt-4">
-                        <button class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition">Generate Exam</button>
-                    </div>
-                </form>
+                    )}
+                </div>
             </div>
-
-            {/* Manual Mode Info */}
-            <div x-show="mode === 'manual'" class="bg-gray-50 p-6 rounded-lg border border-gray-200 text-center">
-                <p class="text-gray-600 mb-4">To create a manual exam, please browse the <strong>Practice Questions</strong> tab and select the questions you want to add.</p>
-                <a href={`/past-papers?subject=${encodeURIComponent(subject || '')}&tab=practice&mode=select`} class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition">
-                    Go to Question Selector
-                </a>
-            </div>
-        </div>
-            </div >
-        </Layout >
+        </Layout>
     )
 })
 
@@ -214,13 +216,13 @@ app.post('/mock-exams/create-auto', async (c) => {
         // We fetch ALL questions for the section and do logic in JS for simplicity or complex SQL
 
         let query = `
-            SELECT q.*, ua.is_completed
-            FROM exam_questions q
-            JOIN papers p ON q.paper_id = p.id
-            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
-            WHERE p.subject = ? AND q.section_label = ? AND q.is_deleted = 0
-            ORDER BY RANDOM()
-        `
+                SELECT q.*, ua.is_completed
+                FROM exam_questions q
+                JOIN papers p ON q.paper_id = p.id
+                LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+                WHERE p.subject = ? AND q.section_label = ? AND q.is_deleted = 0
+                ORDER BY RANDOM()
+                `
         const candidates = await c.env.DB.prepare(query).bind(user.id, subject, section).all()
 
         let currentMarks = 0
@@ -255,9 +257,9 @@ app.post('/mock-exams/create-auto', async (c) => {
 
     // Create Exam
     const examRes = await c.env.DB.prepare(`
-        INSERT INTO mock_exams (user_id, subject, exam_name, created_method, allowed_time_seconds, is_timed, status)
-        VALUES (?, ?, ?, 'auto', ?, ?, 'in_progress')
-        RETURNING id
+                INSERT INTO mock_exams (user_id, subject, exam_name, created_method, allowed_time_seconds, is_timed, status)
+                VALUES (?, ?, ?, 'auto', ?, ?, 'in_progress')
+                RETURNING id
     `).bind(user.id, subject, examName, timerMinutes * 60, timerMinutes > 0 ? 1 : 0).first()
 
     const examId = examRes.id
@@ -301,9 +303,9 @@ app.post('/mock-exams/create-manual', async (c) => {
 
     // Create Exam
     const examRes = await c.env.DB.prepare(`
-        INSERT INTO mock_exams (user_id, subject, exam_name, created_method, allowed_time_seconds, is_timed, status)
-        VALUES (?, ?, ?, 'manual', ?, ?, 'in_progress')
-        RETURNING id
+                INSERT INTO mock_exams (user_id, subject, exam_name, created_method, allowed_time_seconds, is_timed, status)
+                VALUES (?, ?, ?, 'manual', ?, ?, 'in_progress')
+                RETURNING id
     `).bind(user.id, subject, examName, timerMinutes * 60, timerMinutes > 0 ? 1 : 0).first()
 
     const examId = examRes.id
@@ -333,13 +335,13 @@ app.get('/mock-exams/:id', async (c) => {
     if (!exam) return c.notFound()
 
     const questions = await c.env.DB.prepare(`
-        SELECT q.*, mq.ordering_index, p.school_name, p.academic_year
-        FROM mock_exam_questions mq
-        JOIN exam_questions q ON mq.question_id = q.id
-        JOIN papers p ON q.paper_id = p.id
-        WHERE mq.mock_exam_id = ?
-        ORDER BY mq.ordering_index ASC
-    `).bind(examId).all()
+                SELECT q.*, mq.ordering_index, p.school_name, p.academic_year
+                FROM mock_exam_questions mq
+                JOIN exam_questions q ON mq.question_id = q.id
+                JOIN papers p ON q.paper_id = p.id
+                WHERE mq.mock_exam_id = ?
+                ORDER BY mq.ordering_index ASC
+                `).bind(examId).all()
 
     return c.html(
         <Layout title={`${exam.exam_name}`} user={user} hideFooter>
@@ -463,15 +465,15 @@ app.get('/mock-exams/:id/mark', async (c) => {
     if (!exam) return c.notFound()
 
     const questions = await c.env.DB.prepare(`
-        SELECT q.*, mq.ordering_index, p.school_name, p.academic_year,
-               ua.marks_awarded as existing_marks, ua.is_completed
-        FROM mock_exam_questions mq
-        JOIN exam_questions q ON mq.question_id = q.id
-        JOIN papers p ON q.paper_id = p.id
-        LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
-        WHERE mq.mock_exam_id = ?
-        ORDER BY mq.ordering_index ASC
-    `).bind(user.id, examId).all()
+                SELECT q.*, mq.ordering_index, p.school_name, p.academic_year,
+                ua.marks_awarded as existing_marks, ua.is_completed
+                FROM mock_exam_questions mq
+                JOIN exam_questions q ON mq.question_id = q.id
+                JOIN papers p ON q.paper_id = p.id
+                LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+                WHERE mq.mock_exam_id = ?
+                ORDER BY mq.ordering_index ASC
+                `).bind(user.id, examId).all()
 
     return c.html(
         <Layout title={`Marking - ${exam.exam_name}`} user={user}>
@@ -541,13 +543,13 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
     const examQuestions = await c.env.DB.prepare(`SELECT question_id FROM mock_exam_questions WHERE mock_exam_id = ?`).bind(examId).all()
 
     const stmt = c.env.DB.prepare(`
-        INSERT INTO user_question_attempts (user_id, question_id, marks_awarded, is_completed, updated_at)
-        VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
-        ON CONFLICT(user_id, question_id) DO UPDATE SET
-        marks_awarded = excluded.marks_awarded,
-        is_completed = 1,
-        updated_at = excluded.updated_at
-    `)
+                INSERT INTO user_question_attempts (user_id, question_id, marks_awarded, is_completed, updated_at)
+                VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id, question_id) DO UPDATE SET
+                marks_awarded = excluded.marks_awarded,
+                is_completed = 1,
+                updated_at = excluded.updated_at
+                `)
 
     // Batch execution would be better but simple loop for now
     for (const q of examQuestions.results) {

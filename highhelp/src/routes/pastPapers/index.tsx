@@ -15,6 +15,6 @@ app.route('/', browseApp)
 app.route('/', createApp)
 app.route('/', viewApp)
 app.route('/', attemptApp)
-app.route('/', mockApp)
+app.route('/past-papers', mockApp)
 
 export default app
