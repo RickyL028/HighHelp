@@ -237,7 +237,7 @@ app.get('/essays/create', async (c) => {
     if (!user) return c.redirect('/login')
 
     // Check Points
-    if (user.points < 0) {
+    if (user.points < -2) {
         return c.html(
             <Layout title="Insufficient Points" user={user}>
                 <div class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md border border-gray-200 text-center">
@@ -323,7 +323,7 @@ app.post('/essays', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
 
-    if (user.points < 0) {
+    if (user.points < -2) {
         return c.text("Insufficient points", 403)
     }
 

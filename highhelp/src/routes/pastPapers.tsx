@@ -42,7 +42,16 @@ app.get('/past-papers', async (c) => {
     }
 
     // 2. Subject View -> List Papers
-    const papers = await c.env.DB.prepare('SELECT * FROM papers WHERE subject = ? ORDER BY academic_year DESC, created_at DESC').bind(subject).all();
+    // JOIN with exam_questions to get counts and sum of marks
+    const papers = await c.env.DB.prepare(`
+        SELECT p.*, count(q.id) as question_count, sum(q.marks) as total_marks 
+        FROM papers p 
+        LEFT JOIN exam_questions q ON p.id = q.paper_id AND q.is_deleted = 0
+        WHERE p.subject = ? 
+        GROUP BY p.id 
+        ORDER BY p.academic_year DESC, p.created_at DESC
+    `).bind(subject).all();
+
     const canUpload = user && canUploadPastPaper(user, subject);
 
     return c.html(
@@ -79,6 +88,7 @@ app.get('/past-papers', async (c) => {
                 </div>
 
                 {/* Grid View Container */}
+                {/* Grid View Container */}
                 <div id="grid-view-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {papers.results.length === 0 ? (
                         <div class="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
@@ -96,19 +106,29 @@ app.get('/past-papers', async (c) => {
                                         <div class="bg-blue-50 text-blue-800 text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">
                                             {p.academic_year}
                                         </div>
+                                        {p.is_locked ? (
+                                            <span class="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded border border-gray-200">* Locked</span>
+                                        ) : null}
                                     </div>
                                     <h3 class="text-xl font-bold text-gray-900 group-hover:text-blue-700 mb-2">
                                         {p.school_name}
                                     </h3>
-                                    <p class="text-sm text-gray-500">
-                                        Trial Paper
-                                    </p>
+                                    <div class="flex flex-col gap-1">
+                                        <p class="text-sm text-gray-500">
+                                            {p.paper_type || 'Trial Paper'}
+                                        </p>
+                                        <div class="flex items-center gap-3 text-xs text-gray-400 font-medium">
+                                            <span> {p.question_count || 0} Questions</span>
+                                            <span> {p.total_marks || 0} Marks</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </a>
                         ))
                     )}
                 </div>
 
+                {/* List View Container (Table) */}
                 {/* List View Container (Table) */}
                 <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
                     <table class="min-w-full divide-y divide-gray-200">
@@ -117,6 +137,7 @@ app.get('/past-papers', async (c) => {
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">School</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Q, M</th>
                                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -137,9 +158,14 @@ app.get('/past-papers', async (c) => {
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                             {p.school_name}
+                                            {p.is_locked ? <span class="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border">*</span> : null}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            Trial Paper
+                                            {p.paper_type || 'Trial Paper'}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                                            <span class="mr-3" title="Questions">Q {p.question_count || 0}</span>
+                                            <span title="Marks">M/{p.total_marks || 0}</span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-blue-600 hover:text-blue-900">
                                             View
@@ -177,7 +203,29 @@ app.get('/past-papers/create', async (c) => {
 
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">School Name</label>
-                        <input type="text" name="school_name" required placeholder="e.g. Sydney Boys High School" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                        <input type="text" name="school_name" list="nsw-schools" required placeholder="Select or type school..." class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                        <datalist id="nsw-schools">
+                            <option value="Sydney Boys High School" />
+                            <option value="Sydney Girls High School" />
+                            <option value="North Sydney Boys High School" />
+                            <option value="North Sydney Girls High School" />
+                            <option value="Sydney Grammar School" />
+                            <option value="James Ruse Agricultural High School" />
+                            <option value="Baulkham Hills High School" />
+                            <option value="Hornsby Girls High School" />
+                        </datalist>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Paper Type</label>
+                        <select name="paper_type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="Trial Paper" selected>Trial Paper</option>
+                            <option value="HSC Examination">HSC Examination</option>
+                            <option value="Assessment Task">Assessment Task</option>
+                            <option value="Independent Trial">Yearly</option>
+                            <option value="Half Yearly">Half Yearly</option>
+
+                        </select>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -263,10 +311,11 @@ app.post('/past-papers/create', async (c) => {
     const school = body['school_name'] as string;
     const year = parseInt(body['academic_year'] as string);
     const link = body['reference_link'] as string;
+    const type = body['paper_type'] as string || 'Trial Paper';
 
     // Insert Paper
-    const paperRes = await c.env.DB.prepare('INSERT INTO papers (subject, school_name, academic_year, reference_link) VALUES (?, ?, ?, ?) RETURNING id')
-        .bind(subject, school, year, link)
+    const paperRes = await c.env.DB.prepare('INSERT INTO papers (subject, school_name, academic_year, reference_link, paper_type) VALUES (?, ?, ?, ?, ?) RETURNING id')
+        .bind(subject, school, year, link, type)
         .first<{ id: number }>();
 
     if (!paperRes) {
@@ -334,7 +383,27 @@ app.get('/past-papers/paper/:id', async (c) => {
     // Fetch all topics for dropdown
     const allTopics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(paper.subject).all();
 
-    const canEdit = user && canUploadPastPaper(user, paper.subject);
+    // Check for incomplete questions (missing question image)
+    const incompleteQuestions = questions.results.filter((q: any) => !q.question_image_key).length;
+
+    // Check permissions
+    // Tag check: "C*" allows locking. 
+    // Locking: Permission >= 4 OR tag C*
+    // Unlocking: Permission >= 5
+    // Editing Locked: Permission >= 5
+    const hasCTag = user?.tags && (typeof user.tags === 'string' ? user.tags.includes('C*') : user.tags.includes('C*')); // Check JSON or string
+    const canLock = user && (user.permission_level >= 4 || hasCTag);
+    const canUnlock = user && user.permission_level >= 5;
+
+    // Validate Locking: Can only lock if 0 incomplete questions
+    const canLockValidate = canLock && incompleteQuestions === 0;
+
+    // Normal edit permission
+    const canEditSubject = user && canUploadPastPaper(user, paper.subject);
+
+    // Final Edit Permission: Must have subject perm AND (not locked OR (locked AND canUnlock))
+    const canEdit = canEditSubject && (!paper.is_locked || canUnlock);
+
     const canManageTopics = user && user.permission_level >= PermissionLevel.ADMIN;
 
     // Build question list with next_index for gap calculation
@@ -358,10 +427,79 @@ app.get('/past-papers/paper/:id', async (c) => {
                             <a href={`/past-papers?subject=${encodeURIComponent(paper.subject)}`} class="hover:underline">{paper.subject}</a>
                             <span>/</span>
                         </div>
-                        <h1 class="text-3xl font-bold">{paper.school_name} {paper.academic_year}</h1>
-                        {paper.reference_link && <a href={paper.reference_link} target="_blank" class="text-blue-600 hover:underline text-sm">View Reference PDF ↗</a>}
+                        <div class="flex items-center gap-3">
+                            <h1 class="text-3xl font-bold">{paper.school_name} {paper.academic_year}</h1>
+                            {paper.is_locked ? (
+                                <span class="bg-gray-100 text-gray-500 border border-gray-300 rounded px-2 py-0.5 text-xs font-bold uppercase flex items-center gap-1" title="Locked by Admin/Mod">
+                                    Locked
+                                </span>
+                            ) : null}
+                        </div>
+                        <div class="flex gap-4 mt-1 items-center">
+                            <span class="text-sm text-gray-600 bg-blue-50 px-2 py-0.5 rounded text-blue-800 font-medium">{paper.paper_type || 'Trial Paper'}</span>
+                            {paper.reference_link && <a href={paper.reference_link} target="_blank" class="text-blue-600 hover:underline text-sm">View Reference PDF ↗</a>}
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        {/* Lock/Unlock Button */}
+                        {paper.is_locked ? (
+                            canUnlock && (
+                                <form action={`/past-papers/paper/${paper.id}/toggle-lock`} method="post">
+                                    <button class="bg-gray-800 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-gray-900 flex items-center gap-2">
+                                        🔓 Unlock Paper
+                                    </button>
+                                </form>
+                            )
+                        ) : (
+                            canLock && (
+                                <>
+                                    {incompleteQuestions > 0 ? (
+                                        <div class="group relative">
+                                            <button disabled class="bg-gray-100 text-gray-400 border border-gray-200 text-sm font-bold px-3 py-2 rounded cursor-not-allowed flex items-center gap-2">
+                                                Lock Paper
+                                            </button>
+                                            <div class="absolute right-0 top-full mt-2 w-64 bg-gray-800 text-white text-xs p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
+                                                Cannot lock: {incompleteQuestions} questions are missing images.
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button onclick="document.getElementById('lock-modal').showModal()" class="bg-gray-100 text-gray-600 border border-gray-300 text-sm font-bold px-3 py-2 rounded shadow-sm hover:bg-gray-200 flex items-center gap-2">
+                                            Lock Paper
+                                        </button>
+                                    )}
+                                </>
+                            )
+                        )}
                     </div>
                 </div>
+
+                {/* Lock Warning Modal */}
+                <dialog id="lock-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
+                    <div class="w-full max-w-md bg-white p-6 rounded-xl">
+                        <h3 class="text-xl font-bold text-red-600 mb-4 flex items-center gap-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            Confirm Lock
+                        </h3>
+                        <p class="text-gray-600 mb-6">
+                            You are about to lock this paper. By proceeding, you verify that:
+                            <ul class="list-disc pl-5 mt-2 space-y-1 text-sm">
+                                <li>All questions have been uploaded correctly.</li>
+                                <li>The content is accurate and complete.</li>
+                                <li>You accept responsibility for this paper's integrity.</li>
+                            </ul>
+                        </p>
+                        <p class="text-xs text-gray-400 mb-6">This action will be logged.</p>
+                        <div class="flex justify-end gap-3">
+                            <button onclick="document.getElementById('lock-modal').close()" class="px-4 py-2 text-gray-600 font-bold hover:bg-gray-50 rounded-lg">Cancel</button>
+                            <form action={`/past-papers/paper/${paper.id}/toggle-lock`} method="post">
+                                <button class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 shadow-sm">
+                                    I Understand, Lock Paper
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </dialog>
 
                 {/* Topic Management for Admins */}
                 {canManageTopics && (
@@ -610,16 +748,58 @@ app.post('/past-papers/topics/delete', async (c) => {
     return c.redirect(`/past-papers/paper/${redirectId}`)
 })
 
+// Toggle Lock
+app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
+    const user = await getUser(c)
+    const paperId = c.req.param('id')
+
+    // Fetch paper
+    const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
+    if (!paper) return c.notFound();
+
+    const hasCTag = user?.tags && (typeof user.tags === 'string' ? user.tags.includes('C*') : user.tags.includes('C*'));
+
+    // Permission Logic
+    // Unlock: Only Level 5
+    // Lock: Level 4 or C* tag + Validation (All questions must have images)
+
+    if (paper.is_locked) {
+        if (!user || user.permission_level < 5) return c.text("Unauthorized to unlock", 403);
+
+        await logAction(c.env.DB, user.id, 'UNLOCK_PAPER', `Unlocked paper ${paperId}`, parseInt(paperId), 'papers');
+    } else {
+        if (!user || (user.permission_level < 4 && !hasCTag)) return c.text("Unauthorized to lock", 403);
+
+        // Validation: Check for questions without images
+        const incompleteCount = await c.env.DB.prepare('SELECT count(*) as count FROM exam_questions WHERE paper_id = ? AND question_image_key IS NULL AND is_deleted = 0').bind(paperId).first<any>();
+        if (incompleteCount.count > 0) {
+            return c.text(`Cannot lock: ${incompleteCount.count} questions are missing images.`, 400);
+        }
+
+        await logAction(c.env.DB, user.id, 'LOCK_PAPER', `Locked paper ${paperId}`, parseInt(paperId), 'papers');
+    }
+
+    const newLockState = paper.is_locked ? 0 : 1;
+    await c.env.DB.prepare('UPDATE papers SET is_locked = ? WHERE id = ?').bind(newLockState, paperId).run();
+
+    return c.redirect(`/past-papers/paper/${paperId}`);
+});
+
 // Update Question
 app.post('/past-papers/question/:id/update', async (c) => {
     const user = await getUser(c)
     const qId = c.req.param('id')
 
     // Fetch question to check permissions
-    // FIX: Added generic <any>
-    const q = await c.env.DB.prepare('SELECT q.*, p.subject FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE q.id = ?').bind(qId).first<any>();
+    const q = await c.env.DB.prepare('SELECT q.*, p.subject, p.is_locked FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE q.id = ?').bind(qId).first<any>();
     if (!q) return c.notFound();
+
+    // Check Permissions
+    // 1. Must be able to upload subject
     if (!user || !canUploadPastPaper(user, q.subject)) return c.text('Unauthorized', 403);
+
+    // 2. If locked, must be Level 5
+    if (q.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
 
     const body = await c.req.parseBody();
 
