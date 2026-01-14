@@ -210,7 +210,7 @@ app.get('/past-papers', async (c) => {
                         <div class="text-center py-12 text-gray-500">No questions found matching your filters.</div>
                     ) : (
                         questions.results.map((q: any) => (
-                            <div onclick={`window.location.href='/past-papers/attempt/${q.id}'`} class="block bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-400 hover:shadow-md transition cursor-pointer group">
+                            <div onclick={`window.location.href='/past-papers/attempt/${q.id}?source=practice&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}'`} class="block bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-400 hover:shadow-md transition cursor-pointer group">
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <div class="flex items-center gap-2 mb-1">
@@ -1107,23 +1107,67 @@ app.get('/past-papers/attempt/:id', async (c) => {
         WHERE user_id = ? AND question_id = ?
     `).bind(user.id, qId).first<any>();
 
-    // Determine Prev/Next IDs based on filters (complex, for now just use ID order in same paper or subject? 
-    // User asked: "Navigate through filtered, selected questions". This implies we need to pass the filter context.
-    // For MVP, we'll try to get next/prev in the same paper.
-    const neighbors = await c.env.DB.prepare(`
-        SELECT id FROM exam_questions 
-        WHERE paper_id = ? AND ordering_index > ? AND is_deleted = 0
-        ORDER BY ordering_index ASC LIMIT 1
-    `).bind(q.paper_id, q.ordering_index).first<any>();
+    // Context Navigation
+    const source = c.req.query('source');
+    const filterTopic = c.req.query('topic');
+    const filterYear = c.req.query('year');
+    const filterStatus = c.req.query('status'); // done, undone
+    const sort = c.req.query('sort') || 'school_asc';
 
-    const prevNeighbors = await c.env.DB.prepare(`
-        SELECT id FROM exam_questions 
-        WHERE paper_id = ? AND ordering_index < ? AND is_deleted = 0
-        ORDER BY ordering_index DESC LIMIT 1
-    `).bind(q.paper_id, q.ordering_index).first<any>();
+    let nextId = null;
+    let prevId = null;
+    const currentParams = `source=${source || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}`;
 
-    const nextId = neighbors?.id;
-    const prevId = prevNeighbors?.id;
+    if (source === 'practice') {
+        // Fetch ALL IDs matching the filters to find current position
+        // Ideally we cache this or optimize, but for < ~5000 qs this is usually fast enough in SQLite
+        let query = `
+            SELECT q.id
+            FROM exam_questions q
+            JOIN papers p ON q.paper_id = p.id
+            LEFT JOIN question_topics qt ON q.id = qt.question_id
+            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+            WHERE p.subject = ? AND q.is_deleted = 0
+        `;
+        const params: any[] = [user.id, q.subject];
+
+        if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
+        if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
+        if (filterStatus === 'done') { query += ` AND ua.is_completed = 1`; }
+        else if (filterStatus === 'undone') { query += ` AND (ua.is_completed IS NULL OR ua.is_completed = 0)`; }
+
+        query += ` GROUP BY q.id`;
+
+        if (sort === 'year_desc') query += ` ORDER BY p.academic_year DESC, q.ordering_index ASC`;
+        else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`;
+        else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`;
+
+        const allIdsResult = await c.env.DB.prepare(query).bind(...params).all<{ id: number }>();
+        const allIds = allIdsResult.results.map(r => r.id);
+        const currentIndex = allIds.indexOf(parseInt(qId));
+
+        if (currentIndex !== -1) {
+            if (currentIndex > 0) prevId = allIds[currentIndex - 1];
+            if (currentIndex < allIds.length - 1) nextId = allIds[currentIndex + 1];
+        }
+
+    } else {
+        // Default: Next/Prev in same paper
+        const neighbors = await c.env.DB.prepare(`
+            SELECT id FROM exam_questions 
+            WHERE paper_id = ? AND ordering_index > ? AND is_deleted = 0
+            ORDER BY ordering_index ASC LIMIT 1
+        `).bind(q.paper_id, q.ordering_index).first<any>();
+
+        const prevNeighbors = await c.env.DB.prepare(`
+            SELECT id FROM exam_questions 
+            WHERE paper_id = ? AND ordering_index < ? AND is_deleted = 0
+            ORDER BY ordering_index DESC LIMIT 1
+        `).bind(q.paper_id, q.ordering_index).first<any>();
+
+        nextId = neighbors?.id;
+        prevId = prevNeighbors?.id;
+    }
 
     return c.html(
         <Layout title={`Question - ${q.subject}`} user={user}>
@@ -1131,7 +1175,9 @@ app.get('/past-papers/attempt/:id', async (c) => {
                 {/* Header */}
                 <div class="flex items-center justify-between mb-4 shrink-0">
                     <div>
-                        <a href={`/past-papers?subject=${encodeURIComponent(q.subject)}&tab=practice`} class="text-sm text-gray-500 hover:underline">← Back to Practice</a>
+                        <a href={source === 'practice' ? `/past-papers?subject=${encodeURIComponent(q.subject)}&tab=practice&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}` : `/past-papers/paper/${q.paper_id}`} class="text-sm text-gray-500 hover:underline">
+                            ← Back to {source === 'practice' ? 'Practice' : 'Paper'}
+                        </a>
                         <h1 class="text-xl font-bold flex items-center gap-2">
                             {q.school_name} {q.academic_year}
                             <span class="text-gray-400">|</span>
@@ -1142,12 +1188,12 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     </div>
                     <div class="flex gap-2">
                         {prevId ? (
-                            <a href={`/past-papers/attempt/${prevId}`} class="px-3 py-1 bg-white border rounded hover:bg-gray-50">Previous</a>
+                            <a href={`/past-papers/attempt/${prevId}?${currentParams}`} class="px-3 py-1 bg-white border rounded hover:bg-gray-50">Previous</a>
                         ) : (
                             <button disabled class="px-3 py-1 bg-gray-50 border rounded text-gray-300">Previous</button>
                         )}
                         {nextId ? (
-                            <a href={`/past-papers/attempt/${nextId}`} class="px-3 py-1 bg-blue-600 text-white border border-blue-600 rounded hover:bg-blue-700">Next</a>
+                            <a href={`/past-papers/attempt/${nextId}?${currentParams}`} class="px-3 py-1 bg-blue-600 text-white border border-blue-600 rounded hover:bg-blue-700">Next</a>
                         ) : (
                             <button disabled class="px-3 py-1 bg-gray-50 border rounded text-gray-300">Next</button>
                         )}
@@ -1176,7 +1222,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
                     {/* Right: Interaction */}
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-y-auto p-6 flex flex-col">
-                        <form action={`/past-papers/attempt/${qId}/save`} method="post" class="flex-1 flex flex-col">
+                        <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" class="flex-1 flex flex-col">
 
                             {/* State: Check Answer vs Attempting */}
                             <div class="flex-1">
@@ -1267,7 +1313,7 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
 
     // Upsert Attempt
     await c.env.DB.prepare(`
-        INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, completed_at)
+        INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
         ON CONFLICT(user_id, question_id) DO UPDATE SET
             response_content = excluded.response_content,
@@ -1275,10 +1321,18 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
             marks_awarded = excluded.marks_awarded,
             marker_notes = excluded.marker_notes,
             is_completed = 1,
-            completed_at = CURRENT_TIMESTAMP
+            updated_at = CURRENT_TIMESTAMP
     `).bind(user.id, qId, response, selected, marks, notes).run();
 
-    return c.redirect(`/past-papers/attempt/${qId}`);
+    // Preserve Navigation Context
+    const source = c.req.query('source');
+    const filterTopic = c.req.query('topic');
+    const filterYear = c.req.query('year');
+    const filterStatus = c.req.query('status'); // done, undone
+    const sort = c.req.query('sort') || 'school_asc';
+    const params = `source=${source || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}`;
+
+    return c.redirect(`/past-papers/attempt/${qId}?${params}`);
 });
 
 export default app
