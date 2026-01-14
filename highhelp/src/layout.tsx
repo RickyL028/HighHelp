@@ -7,6 +7,16 @@ export const Layout = (props: { title: string; children: any; user?: any }) => {
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Welcome to the official website for High's Class of 2027" />
+        
+        <!-- Social Media Previews -->
+        <meta property="og:title" content="${props.title} - HighHelp" />
+        <meta property="og:description" content="Welcome to the official website for High's Class of 2027" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="${props.title} - HighHelp" />
+        <meta name="twitter:description" content="Welcome to the official website for High's Class of 2027" />
+
         <title>${props.title} - HighHelp</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <script>
