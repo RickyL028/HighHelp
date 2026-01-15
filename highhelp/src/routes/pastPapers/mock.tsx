@@ -8,7 +8,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 // 1. Dashboard - List User's Mock Exams
 app.get('/mock-exams', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/auth/login')
+    if (!user) return c.redirect('/login')
 
     const subject = c.req.query('subject')
 
@@ -91,7 +91,7 @@ app.get('/mock-exams', async (c) => {
 // 2. Creation UI
 app.get('/mock-exams/create', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/auth/login')
+    if (!user) return c.redirect('/login')
     const subject = c.req.query('subject')
 
     // Get distinct sections for simple auto-generation
@@ -209,7 +209,7 @@ app.get('/mock-exams/create', async (c) => {
 // 3. Handle Auto Creation
 app.post('/mock-exams/create-auto', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/auth/login')
+    if (!user) return c.redirect('/login')
 
     const body = await c.req.parseBody()
     const subject = body['subject'] as string
@@ -337,7 +337,7 @@ app.post('/mock-exams/create-auto', async (c) => {
 // 4. Handle Manual Creation (Post from Browse)
 app.post('/mock-exams/create-manual', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/auth/login')
+    if (!user) return c.redirect('/login')
 
     const body = await c.req.parseBody()
     const subject = body['subject'] as string
@@ -384,12 +384,28 @@ app.post('/mock-exams/create-manual', async (c) => {
 
 // 5. Exam Interface
 app.get('/mock-exams/:id', async (c) => {
+    // ALLOW public view (no login check for viewing, but maybe for taking? User asked to fix 404)
+    // We'll just fetch by ID. Only show "Finish" if it's your exam or maybe anyone can if we want?
+    // For now, removing the user_id constraint on FETCH.
+
     const user = await getUser(c)
-    if (!user) return c.redirect('/auth/login')
     const examId = c.req.param('id')
 
-    const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ? AND user_id = ?`).bind(examId, user.id).first()
+    const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ?`).bind(examId).first()
     if (!exam) return c.notFound()
+
+    // Calculate Total Marks
+    const stats = await c.env.DB.prepare(`
+        SELECT sum(q.marks) as total_marks 
+        FROM mock_exam_questions mq
+        JOIN exam_questions q ON mq.question_id = q.id
+        WHERE mq.mock_exam_id = ?
+    `).bind(examId).first<any>();
+
+    const totalMarks = stats?.total_marks || 0;
+
+    // Check ownership
+    const isOwner = user && user.id === exam.user_id;
 
     const questions = await c.env.DB.prepare(`
                 SELECT q.*, mq.ordering_index, p.school_name, p.academic_year
@@ -406,19 +422,32 @@ app.get('/mock-exams/:id', async (c) => {
             <div class="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-6 py-3 flex justify-between items-center border-b">
                 <div>
                     <h1 class="font-bold text-lg">{exam.exam_name}</h1>
-                    <div class="text-xs text-gray-500">{questions.results.length} Questions</div>
+                    <div class="text-xs text-gray-500 flex gap-3">
+                        <span>{questions.results.length} Questions</span>
+                        <span>•</span>
+                        <span>{totalMarks} Marks Total</span>
+                        {/* Always show time used if completed, or current time if running? */}
+                        {(exam.status === 'completed' || !isOwner) && (
+                            <>
+                                <span>•</span>
+                                <span>Time Used: {Math.floor((exam.elapsed_time_seconds || 0) / 60)}m {(exam.elapsed_time_seconds || 0) % 60}s</span>
+                            </>
+                        )}
+                    </div>
                 </div>
 
-                {exam.is_timed && exam.status !== 'completed' && (
+                {isOwner && exam.is_timed && exam.status !== 'completed' && (
                     <div class="font-mono text-xl font-bold text-blue-600" id="timer-display">
                         00:00:00
                     </div>
                 )}
 
                 <div class="flex gap-4">
-                    <form action={`/past-papers/mock-exams/${examId}/finish`} method="post" onsubmit="return confirm('Are you sure you want to finish the exam?');">
-                        <button class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">Finish Exam</button>
-                    </form>
+                    {isOwner && (
+                        <form action={`/past-papers/mock-exams/${examId}/finish`} method="post" onsubmit="return confirm('Are you sure you want to finish the exam?');">
+                            <button class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">Finish Exam</button>
+                        </form>
+                    )}
                 </div>
             </div>
 
@@ -452,7 +481,7 @@ app.get('/mock-exams/:id', async (c) => {
             </div>
 
             {/* Timer Script */}
-            {exam.is_timed && exam.status !== 'completed' && (
+            {isOwner && exam.is_timed && exam.status !== 'completed' && (
                 <script dangerouslySetInnerHTML={{
                     __html: `
                     let elapsed = ${exam.elapsed_time_seconds || 0};
@@ -491,7 +520,7 @@ app.get('/mock-exams/:id', async (c) => {
 // 6. Finish Exam
 app.post('/mock-exams/:id/finish', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/auth/login')
+    if (!user) return c.redirect('/login')
     const examId = c.req.param('id')
 
     await c.env.DB.prepare(`UPDATE mock_exams SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`)
@@ -516,11 +545,31 @@ app.post('/mock-exams/:id/progress', async (c) => {
 // 8. Marking Interface
 app.get('/mock-exams/:id/mark', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/auth/login')
+    // if (!user) return c.redirect('/login') 
     const examId = c.req.param('id')
-    const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ? AND user_id = ?`).bind(examId, user.id).first()
+
+    // Allow viewing by anyone, but fetching user's attempts depends on the exam owner?
+    // Actually, 'user_question_attempts' is per user. 
+    // If I view someone else's mock exam, do I see MY progress or THEIRS?
+    // Usually 'Marking' implies marking the exam attempt. 
+    // 'mock_exams' belongs to a user. So we should show the attempts of THAT user (exam.user_id).
+
+    const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ?`).bind(examId).first()
     if (!exam) return c.notFound()
 
+    const isOwner = user && user.id === exam.user_id;
+
+    // Calculate Stats
+    const stats = await c.env.DB.prepare(`
+        SELECT sum(q.marks) as total_marks 
+        FROM mock_exam_questions mq
+        JOIN exam_questions q ON mq.question_id = q.id
+        WHERE mq.mock_exam_id = ?
+    `).bind(examId).first<any>();
+
+    const totalMarks = stats?.total_marks || 0;
+
+    // Fetch questions AND the attempts for the EXAM OWNER
     const questions = await c.env.DB.prepare(`
                 SELECT q.*, mq.ordering_index, p.school_name, p.academic_year,
                 ua.marks_awarded as existing_marks, ua.is_completed
@@ -530,14 +579,17 @@ app.get('/mock-exams/:id/mark', async (c) => {
                 LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
                 WHERE mq.mock_exam_id = ?
                 ORDER BY mq.ordering_index ASC
-                `).bind(user.id, examId).all()
+                `).bind(exam.user_id, examId).all()
 
     return c.html(
         <Layout title={`Marking - ${exam.exam_name}`} user={user}>
             <div class="max-w-4xl mx-auto pb-24">
                 <div class="mb-8 border-b pb-4">
                     <h1 class="text-3xl font-bold mb-2">Marking: {exam.exam_name}</h1>
-                    <p class="text-gray-600">Please self-mark your exam. This will update your global statistics.</p>
+                    <div class="flex gap-4 text-gray-500 text-sm">
+                        <span>Total Marks: {totalMarks}</span>
+                        <span>Time Used: {Math.floor((exam.elapsed_time_seconds || 0) / 60)}m {(exam.elapsed_time_seconds || 0) % 60}s</span>
+                    </div>
                 </div>
 
                 <form action={`/past-papers/mock-exams/${examId}/submit-marks`} method="post" class="space-y-12">
@@ -568,9 +620,17 @@ app.get('/mock-exams/:id/mark', async (c) => {
 
                                     <div class="bg-blue-50 p-4 rounded border border-blue-100">
                                         <label class="block font-bold text-blue-900 mb-2">Marks Awarded (Max: {q.marks})</label>
-                                        <input type="number" name={`marks_${q.id}`} min="0" max={q.marks}
-                                            value={q.existing_marks !== null ? q.existing_marks : ''}
-                                            class="w-24 rounded border-blue-300 focus:ring-blue-500 focus:border-blue-500" />
+                                        <input type="hidden" name={`marks_${q.id}`} id={`input-marks-${q.id}`} value={q.existing_marks !== null ? q.existing_marks : ''} />
+
+                                        <div class="flex flex-wrap gap-2">
+                                            {Array.from({ length: (q.marks || 0) + 1 }, (_, m) => (
+                                                <button type="button"
+                                                    onclick={`document.getElementById('input-marks-${q.id}').value = ${m}; this.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('bg-blue-600', 'text-white')); this.classList.add('bg-blue-600', 'text-white');`}
+                                                    class={`w-8 h-8 rounded border border-blue-300 font-bold flex items-center justify-center hover:bg-blue-100 transition-colors ${q.existing_marks === m ? 'bg-blue-600 text-white' : 'bg-white text-blue-700'}`}>
+                                                    {m}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -592,7 +652,7 @@ app.get('/mock-exams/:id/mark', async (c) => {
 // 9. Submit Marks
 app.post('/mock-exams/:id/submit-marks', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/auth/login')
+    if (!user) return c.redirect('/login')
     const examId = c.req.param('id')
     const body = await c.req.parseBody()
 
@@ -619,7 +679,7 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
         }
     }
 
-    return c.redirect(`/past-papers/mock-exams?subject=${encodeURIComponent('English')}`) // Need to persist subject
+    return c.redirect(`/past-papers/mock-exams`) // Need to persist subject
 })
 
 export default app

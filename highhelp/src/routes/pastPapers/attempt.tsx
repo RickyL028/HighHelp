@@ -208,12 +208,20 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                                 <div class="flex items-center justify-between mb-4">
                                                     <label class="font-bold text-gray-700 text-sm">Marks Awarded</label>
                                                     <div class="flex items-center gap-2">
-                                                        <button type="button" onclick={`document.querySelector('input[name="marks_awarded"]').value = ${q.marks}`} class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200">Give Max ({q.marks})</button>
+                                                        <button type="button" onclick={`document.getElementById('marks_awarded_input').value = ${q.marks}; const btns = this.closest('.bg-gray-50').querySelectorAll('.w-8.h-8'); btns.forEach(b => b.classList.remove('bg-blue-600', 'text-white')); const maxBtn = Array.from(btns).find(b => b.textContent.trim() == '${q.marks}'); if(maxBtn) maxBtn.classList.add('bg-blue-600', 'text-white');`} class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200">Give Max ({q.marks})</button>
                                                     </div>
                                                 </div>
                                                 <div class="flex items-center gap-2">
-                                                    <input type="number" name="marks_awarded" min="0" max={q.marks} value={attempt?.marks_awarded || 0} class="w-20 rounded border-gray-300 font-bold text-center" />
-                                                    <span class="text-gray-500 font-bold">/ {q.marks}</span>
+                                                    <input type="hidden" name="marks_awarded" id="marks_awarded_input" value={attempt?.marks_awarded || 0} />
+                                                    <div class="flex flex-wrap gap-2">
+                                                        {Array.from({ length: (q.marks || 0) + 1 }, (_, m) => (
+                                                            <button type="button"
+                                                                onclick={`document.getElementById('marks_awarded_input').value = ${m}; this.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('bg-blue-600', 'text-white')); this.classList.add('bg-blue-600', 'text-white');`}
+                                                                class={`w-8 h-8 rounded border border-blue-300 font-bold flex items-center justify-center hover:bg-blue-100 transition-colors ${(attempt?.marks_awarded || 0) == m ? 'bg-blue-600 text-white' : 'bg-white text-blue-700'}`}>
+                                                                {m}
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
 
                                                 <label class="block font-bold text-gray-700 text-sm mt-4 mb-2">My Marker Notes</label>
