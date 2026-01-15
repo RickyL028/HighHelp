@@ -103,6 +103,8 @@ app.get('/mock-exams/create', async (c) => {
         ORDER BY q.section_label ASC
     `).bind(subject).all()
 
+    const topics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject).all()
+
     return c.html(
         <Layout title={`Create Mock Exam - ${subject}`} user={user}>
             <div class="max-w-3xl mx-auto">
@@ -137,6 +139,29 @@ app.get('/mock-exams/create', async (c) => {
                                         <input type="checkbox" name="allow_completed" value="1" checked class="rounded text-blue-600 focus:ring-blue-500" />
                                         <span class="text-gray-700">Allow using completed questions if needed</span>
                                     </label>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <label class="block font-bold text-gray-700 mb-2">Topic Filter</label>
+                                        <select name="topic" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            <option value="">All Topics</option>
+                                            {topics.results.map((t: any) => <option value={t.id}>{t.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold text-gray-700 mb-2">Year</label>
+                                        <input type="number" name="year" placeholder="Any Year" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold text-gray-700 mb-2">Question Type</label>
+                                        <select name="type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            <option value="">Any Type</option>
+                                            <option value="multiple_choice">Multiple Choice</option>
+                                            <option value="short_answer">Short Answer</option>
+                                            <option value="extended_response">Extended Response</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 <div>
@@ -192,6 +217,10 @@ app.post('/mock-exams/create-auto', async (c) => {
     const allowCompleted = body['allow_completed'] === '1'
     const timerMinutes = parseInt(body['timer_minutes'] as string || '0')
 
+    const filterTopic = body['topic'] as string
+    const filterYear = body['year'] as string
+    const filterType = body['type'] as string
+
     const sections: Record<string, number> = {}
     for (const key in body) {
         if (key.startsWith('marks_')) {
@@ -208,8 +237,24 @@ app.post('/mock-exams/create-auto', async (c) => {
     // Logic to select questions
     let finalQuestions: any[] = []
 
+    // Fetch valid section order from DB to ensure strict ordering (I, II, III...)
+    const orderedDbSections = await c.env.DB.prepare(`
+        SELECT DISTINCT q.section_label 
+        FROM exam_questions q 
+        JOIN papers p ON q.paper_id = p.id 
+        WHERE p.subject = ? 
+        ORDER BY q.section_label ASC
+    `).bind(subject).all();
+
+    // Filter to only included sections
+    const targetSections = orderedDbSections.results
+        .map((s: any) => s.section_label)
+        .filter((label: string) => sections[label] !== undefined);
+
     // For each section request
-    for (const [section, desiredMarks] of Object.entries(sections)) {
+    for (const section of targetSections) {
+        const desiredMarks = sections[section];
+
         // Fetch candidates for this section
         // Priority 1: Uncompleted
         // Priority 2: Completed (if allowed)
@@ -220,10 +265,21 @@ app.post('/mock-exams/create-auto', async (c) => {
                 FROM exam_questions q
                 JOIN papers p ON q.paper_id = p.id
                 LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
-                WHERE p.subject = ? AND q.section_label = ? AND q.is_deleted = 0
-                ORDER BY RANDOM()
+                LEFT JOIN question_topics qt ON q.id = qt.question_id
+                WHERE p.subject = ? 
+                AND q.section_label = ? 
+                AND q.is_deleted = 0
+                AND q.marks >= 1
                 `
-        const candidates = await c.env.DB.prepare(query).bind(user.id, subject, section).all()
+        const params: any[] = [user.id, subject, section]
+
+        if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
+        if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
+        if (filterType) { query += ` AND q.question_type = ?`; params.push(filterType); }
+
+        query += ` GROUP BY q.id ORDER BY RANDOM()`
+
+        const candidates = await c.env.DB.prepare(query).bind(...params).all()
 
         let currentMarks = 0
         let selectedForSection: any[] = []
@@ -235,6 +291,7 @@ app.post('/mock-exams/create-auto', async (c) => {
         // Fill with uncompleted
         for (const q of uncompleted) {
             if (currentMarks < desiredMarks) {
+                // Avoid duplicates (though unlikely with section isolation)
                 selectedForSection.push(q)
                 currentMarks += (q.marks || 0)
             }
@@ -377,13 +434,13 @@ app.get('/mock-exams/:id', async (c) => {
                         </div>
 
                         {q.question_image_key && (
-                            <img src={`https://pub-841857999d3e481b9e598858a472df6c.r2.dev/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 mb-4" />
+                            <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 mb-4" />
                         )}
 
                         {q.stimulus_image_key && (
                             <div class="mt-4 p-4 bg-gray-50 rounded border border-gray-200">
                                 <p class="text-xs font-bold text-gray-500 uppercase mb-2">Stimulus</p>
-                                <img src={`https://pub-841857999d3e481b9e598858a472df6c.r2.dev/${q.stimulus_image_key}`} class="max-w-full rounded" />
+                                <img src={`/download/${q.stimulus_image_key}`} class="max-w-full rounded" />
                             </div>
                         )}
 
@@ -496,7 +553,7 @@ app.get('/mock-exams/:id/mark', async (c) => {
                                 <div>
                                     <h4 class="font-bold text-sm text-gray-500 uppercase mb-2">Question</h4>
                                     {q.question_image_key ? (
-                                        <img src={`https://pub-841857999d3e481b9e598858a472df6c.r2.dev/${q.question_image_key}`} class="max-w-full rounded border border-gray-100" />
+                                        <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100" />
                                     ) : <p class="text-red-500 text-sm">Image missing</p>}
                                 </div>
 
@@ -504,7 +561,7 @@ app.get('/mock-exams/:id/mark', async (c) => {
                                 <div>
                                     <h4 class="font-bold text-sm text-gray-500 uppercase mb-2">Answer / Guidelines</h4>
                                     {q.answer_image_key ? (
-                                        <img src={`https://pub-841857999d3e481b9e598858a472df6c.r2.dev/${q.answer_image_key}`} class="max-w-full rounded border border-gray-100 mb-6" />
+                                        <img src={`/download/${q.answer_image_key}`} class="max-w-full rounded border border-gray-100 mb-6" />
                                     ) : (
                                         <div class="bg-gray-50 p-4 rounded text-sm text-gray-500 mb-6 italic">No answer key available.</div>
                                     )}

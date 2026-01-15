@@ -23,8 +23,9 @@
 	"r2_buckets": [
 		{
 			"binding": "BUCKET",
-			"bucket_name": "highhelp-storage"
-		}
+			"bucket_name": "highhelp-storage",
+			"preview_bucket_name": "my-app-preview-bucket"
+		},
 	],
 	/**
 	 * Smart Placement
