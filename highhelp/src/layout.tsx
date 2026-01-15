@@ -1,6 +1,6 @@
 import { html } from 'hono/html'
 
-export const Layout = (props: { title: string; children: any; user?: any }) => {
+export const Layout = (props: { title: string; children: any; user?: any; hideFooter?: boolean }) => {
   return html`
     <!DOCTYPE html>
     <html lang="en">
@@ -85,12 +85,14 @@ export const Layout = (props: { title: string; children: any; user?: any }) => {
           ${props.children}
         </main>
 
+        ${!props.hideFooter && html`
         <footer class="bg-white-800/10 text-blue-800/10 py-6">
 
           <div class="max-w-[95%] mx-auto px-4 text-center">
             <p>&copy; 2025 HighHelp</p>
           </div>
         </footer>
+        `}
         <script>
             // Client-side date hydration
             document.addEventListener('DOMContentLoaded', () => {

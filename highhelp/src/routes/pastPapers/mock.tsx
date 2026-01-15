@@ -279,7 +279,7 @@ app.post('/mock-exams/create-auto', async (c) => {
 
         query += ` GROUP BY q.id ORDER BY RANDOM()`
 
-        const candidates = await c.env.DB.prepare(query).bind(...params).all()
+        const candidates = await c.env.DB.prepare(query).bind(...params).all<any>()
 
         let currentMarks = 0
         let selectedForSection: any[] = []
@@ -317,8 +317,9 @@ app.post('/mock-exams/create-auto', async (c) => {
                 INSERT INTO mock_exams (user_id, subject, exam_name, created_method, allowed_time_seconds, is_timed, status)
                 VALUES (?, ?, ?, 'auto', ?, ?, 'in_progress')
                 RETURNING id
-    `).bind(user.id, subject, examName, timerMinutes * 60, timerMinutes > 0 ? 1 : 0).first()
+    `).bind(user.id, subject, examName, timerMinutes * 60, timerMinutes > 0 ? 1 : 0).first<any>()
 
+    if (!examRes) return c.text("Failed to create exam", 500)
     const examId = examRes.id
 
     // Insert Questions
@@ -348,23 +349,27 @@ app.post('/mock-exams/create-manual', async (c) => {
     // or a single string if one. Hono/middleware usage might need checking.
     // Usually Hono parseBody returns string | string[]
 
-    let questionIds = body['question_ids']
-    if (!questionIds) return c.text("No questions selected", 400)
+    let questionIdsRaw = body['question_ids']
+    if (!questionIdsRaw) return c.text("No questions selected", 400)
 
-    if (!Array.isArray(questionIds)) {
-        questionIds = [questionIds as string]
+    let questionIds: string[] = []
+    if (Array.isArray(questionIdsRaw)) {
+        questionIds = questionIdsRaw.map(String)
+    } else {
+        questionIds = [String(questionIdsRaw)]
     }
 
     // sort unique?
-    questionIds = [...new Set(questionIds as string[])]
+    questionIds = [...new Set(questionIds)]
 
     // Create Exam
     const examRes = await c.env.DB.prepare(`
                 INSERT INTO mock_exams (user_id, subject, exam_name, created_method, allowed_time_seconds, is_timed, status)
                 VALUES (?, ?, ?, 'manual', ?, ?, 'in_progress')
                 RETURNING id
-    `).bind(user.id, subject, examName, timerMinutes * 60, timerMinutes > 0 ? 1 : 0).first()
+    `).bind(user.id, subject, examName, timerMinutes * 60, timerMinutes > 0 ? 1 : 0).first<any>()
 
+    if (!examRes) return c.text("Failed to create exam", 500)
     const examId = examRes.id
 
     // Insert Questions
@@ -391,7 +396,7 @@ app.get('/mock-exams/:id', async (c) => {
     const user = await getUser(c)
     const examId = c.req.param('id')
 
-    const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ?`).bind(examId).first()
+    const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ?`).bind(examId).first<any>()
     if (!exam) return c.notFound()
 
     // Calculate Total Marks
@@ -554,7 +559,7 @@ app.get('/mock-exams/:id/mark', async (c) => {
     // Usually 'Marking' implies marking the exam attempt. 
     // 'mock_exams' belongs to a user. So we should show the attempts of THAT user (exam.user_id).
 
-    const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ?`).bind(examId).first()
+    const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ?`).bind(examId).first<any>()
     if (!exam) return c.notFound()
 
     const isOwner = user && user.id === exam.user_id;
