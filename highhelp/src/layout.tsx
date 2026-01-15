@@ -1,12 +1,22 @@
 import { html } from 'hono/html'
 
-export const Layout = (props: { title: string; children: any; user?: any }) => {
+export const Layout = (props: { title: string; children: any; user?: any; hideFooter?: boolean }) => {
   return html`
     <!DOCTYPE html>
     <html lang="en">
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Welcome to the official website for High's Class of 2027" />
+        
+        <!-- Social Media Previews -->
+        <meta property="og:title" content="${props.title} - HighHelp" />
+        <meta property="og:description" content="Welcome to the official website for High's Class of 2027" />
+        <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="${props.title} - HighHelp" />
+        <meta name="twitter:description" content="Welcome to the official website for High's Class of 2027" />
+
         <title>${props.title} - HighHelp</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <script>
@@ -75,12 +85,14 @@ export const Layout = (props: { title: string; children: any; user?: any }) => {
           ${props.children}
         </main>
 
+        ${!props.hideFooter && html`
         <footer class="bg-white-800/10 text-blue-800/10 py-6">
 
           <div class="max-w-[95%] mx-auto px-4 text-center">
             <p>&copy; 2025 HighHelp</p>
           </div>
         </footer>
+        `}
         <script>
             // Client-side date hydration
             document.addEventListener('DOMContentLoaded', () => {
