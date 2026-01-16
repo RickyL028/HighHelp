@@ -10,7 +10,13 @@ app.get('/mock-exams', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
 
-    const subject = c.req.query('subject')
+    const subject = c.req.query('subject') || ''
+    const tabs = [
+        { id: 'browse', label: 'Browse Papers', href: `/past-papers?subject=${encodeURIComponent(subject)}&tab=browse` },
+        { id: 'practice', label: 'Practice Questions', href: `/past-papers?subject=${encodeURIComponent(subject)}&tab=practice` },
+        { id: 'exam', label: 'Mock Exam', href: `/past-papers/mock-exams?subject=${encodeURIComponent(subject)}` },
+        { id: 'review', label: 'Review', href: `/past-papers?subject=${encodeURIComponent(subject)}&tab=review` },
+    ];
 
     // Fetch user's mock exams
     // Fetch user's mock exams with scores
@@ -30,6 +36,31 @@ app.get('/mock-exams', async (c) => {
 
     return c.html(
         <Layout title={`Mock Exams - ${subject}`} user={user}>
+            <div class="mx-auto">
+                {/* 1. Breadcrumbs */}
+                <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
+                    <a href="/past-papers" class="hover:underline">Past Papers</a>
+                    <span>/</span>
+                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}`} class="hover:underline">{subject}</a>
+                    <span>/</span>
+                    <span class="font-bold text-gray-700">New Exam</span>
+                </div>
+
+                {/* 2. Tabs Navigation */}
+                <div class="border-b border-gray-200 mb-8">
+                    <nav class="-mb-px flex space-x-8">
+                        {tabs.map(t => (
+                            <a href={t.href}
+                                class={`
+                                    whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                                    ${t.id === 'exam' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                                `}>
+                                {t.label}
+                            </a>
+                        ))}
+                    </nav>
+                </div>
+            </div>
             <div class="mx-auto space-y-8">
                 {/* Header */}
                 <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
@@ -115,7 +146,8 @@ app.get('/mock-exams', async (c) => {
 app.get('/mock-exams/create', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
-    const subject = c.req.query('subject')
+    const subject = c.req.query('subject') || ''
+
 
     // Get distinct sections for simple auto-generation
     const sections = await c.env.DB.prepare(`
@@ -129,7 +161,11 @@ app.get('/mock-exams/create', async (c) => {
     const topics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject).all()
 
     return c.html(
+
+
         <Layout title={`Create Mock Exam - ${subject}`} user={user}>
+
+
             <div class="max-w-3xl mx-auto">
                 <div class="mb-6">
                     <a href={`/past-papers/mock-exams?subject=${encodeURIComponent(subject || '')}`} class="text-gray-500 hover:text-gray-700 text-sm">
@@ -831,7 +867,13 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
     const subject = exam?.subject || ''
 
     // For each question in the exam, update MOCK_EXAM_QUESTIONS (Isolated)
-    const examQuestions = await c.env.DB.prepare(`SELECT question_id FROM mock_exam_questions WHERE mock_exam_id = ?`).bind(examId).all()
+    // AND sync to user_question_attempts (Global Practice History) for Review generation
+    const examQuestions = await c.env.DB.prepare(`
+        SELECT mq.question_id, q.marks as max_marks, mq.response_content, mq.selected_option
+        FROM mock_exam_questions mq
+        JOIN exam_questions q ON mq.question_id = q.id
+        WHERE mq.mock_exam_id = ?
+    `).bind(examId).all()
 
     const stmt = c.env.DB.prepare(`
                 UPDATE mock_exam_questions
@@ -849,6 +891,31 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
             const notes = body[`notes_${q.question_id}`] as string || '' // Get notes
 
             await stmt.bind(marks, notes, examId, q.question_id).run()
+
+            // SYNC TO GLOBAL HISTORY for Review System
+            // If marks < max_marks, it will show up in Review tab (status: To Review)
+            // If marks == max_marks, it counts as Completed.
+            const isCompleted = marks === (q.max_marks || 0) ? 1 : 0;
+
+            await c.env.DB.prepare(`
+                INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id, question_id) DO UPDATE SET
+                    response_content = excluded.response_content, -- Sync response if available from mock? Mock response might be in mq table.
+                    selected_option = excluded.selected_option,
+                    marks_awarded = excluded.marks_awarded,
+                    marker_notes = excluded.marker_notes,
+                    is_completed = excluded.is_completed,
+                    updated_at = CURRENT_TIMESTAMP
+            `).bind(
+                user.id,
+                q.question_id,
+                q.response_content || '',
+                q.selected_option || null,
+                marks,
+                notes,
+                isCompleted
+            ).run();
         }
     }
 

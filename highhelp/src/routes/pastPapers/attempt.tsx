@@ -29,11 +29,32 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     // Fetch existing attempt ONLY if logged in
     let attempt = null;
+    let originalAttempt = null;
+    const mode = c.req.query('mode');
+
     if (user) {
-        attempt = await c.env.DB.prepare(`
-            SELECT * FROM user_question_attempts 
-            WHERE user_id = ? AND question_id = ?
-        `).bind(user.id, qId).first<any>();
+        if (mode === 'review') {
+            // In Review Mode: 'attempt' is the generic container for the CURRENT review effort
+            // 'originalAttempt' is the historical data
+            originalAttempt = await c.env.DB.prepare(`
+                SELECT * FROM user_question_attempts 
+                WHERE user_id = ? AND question_id = ?
+            `).bind(user.id, qId).first<any>();
+
+            // Current review session (lazy load: get the latest one or null)
+            attempt = await c.env.DB.prepare(`
+                SELECT * FROM user_review_attempts 
+                WHERE user_id = ? AND question_id = ?
+                ORDER BY created_at DESC LIMIT 1
+            `).bind(user.id, qId).first<any>();
+
+        } else {
+            // Standard Practice Mode
+            attempt = await c.env.DB.prepare(`
+                SELECT * FROM user_question_attempts 
+                WHERE user_id = ? AND question_id = ?
+            `).bind(user.id, qId).first<any>();
+        }
     }
 
     // Context Navigation
@@ -49,7 +70,8 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     let nextId = null;
     let prevId = null;
-    const currentParams = `source=${source || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+
+    const currentParams = `source=${source || ''}&mode=${mode || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
     if (source === 'practice') {
         // Fetch ALL IDs matching the filters to find current position
@@ -89,6 +111,29 @@ app.get('/past-papers/attempt/:id', async (c) => {
             if (currentIndex < allIds.length - 1) nextId = allIds[currentIndex + 1];
         }
 
+    } else if (source === 'review') {
+        // Fetch ALL Reviewable IDs to find current position
+        // This query must match the one in browse.tsx (review tab) to maintain consistency
+        const query = `
+            SELECT q.id
+            FROM exam_questions q
+            JOIN papers p ON q.paper_id = p.id
+            JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+            WHERE p.subject = ?
+              AND q.is_deleted = 0
+              AND (ua.marks_awarded < q.marks OR ua.marks_awarded IS NULL)
+            GROUP BY q.id
+            ORDER BY ua.created_at DESC
+        `;
+        const allIdsResult = await c.env.DB.prepare(query).bind(user?.id, q.subject).all<{ id: number }>();
+        const allIds = allIdsResult.results.map(r => r.id);
+        const currentIndex = allIds.indexOf(parseInt(qId));
+
+        if (currentIndex !== -1) {
+            if (currentIndex > 0) prevId = allIds[currentIndex - 1];
+            if (currentIndex < allIds.length - 1) nextId = allIds[currentIndex + 1];
+        }
+
     } else {
         // Default: Next/Prev in same paper
         const neighbors = await c.env.DB.prepare(`
@@ -116,8 +161,12 @@ app.get('/past-papers/attempt/:id', async (c) => {
                 {/* Header */}
                 <div class="flex items-center justify-between mb-4 shrink-0">
                     <div>
-                        <a href={source === 'practice' ? `/past-papers?subject=${encodeURIComponent(q.subject)}&tab=practice&${currentParams}` : `/past-papers/paper/${q.paper_id}`} class="text-sm text-gray-500 hover:underline">
-                            ← Back to {source === 'practice' ? 'Practice' : 'Paper'}
+                        <a href={
+                            source === 'practice' ? `/past-papers?subject=${encodeURIComponent(q.subject)}&tab=practice&${currentParams}` :
+                                source === 'review' ? `/past-papers?subject=${encodeURIComponent(q.subject)}&tab=review` :
+                                    `/past-papers/paper/${q.paper_id}`
+                        } class="text-sm text-gray-500 hover:underline">
+                            ← Back to {source === 'practice' ? 'Practice' : source === 'review' ? 'Review Queue' : 'Paper'}
                         </a>
                         <h1 class="text-xl font-bold flex items-center gap-2">
                             {q.school_name} {q.academic_year}
@@ -164,6 +213,34 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     {/* Right: Interaction */}
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-y-auto p-6 flex flex-col">
                         <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" class="flex-1 flex flex-col">
+
+                            {/* Previous Feedback (Review Mode) */}
+                            {mode === 'review' && originalAttempt && (
+                                <div class="mb-6 bg-amber-50 rounded-lg p-4 border border-amber-200">
+                                    <h3 class="font-bold text-amber-800 text-sm mb-2 uppercase tracking-wide flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        Previous Attempt Context
+                                    </h3>
+                                    <div class="space-y-3">
+                                        <div>
+                                            <div class="text-xs text-amber-600 font-bold mb-1">Previous Score</div>
+                                            <span class="bg-white px-2 py-1 rounded border border-amber-200 text-amber-800 font-bold text-sm">
+                                                {originalAttempt.marks_awarded || 0} / {q.marks} Marks
+                                            </span>
+                                        </div>
+                                        {originalAttempt.marker_notes && (
+                                            <div>
+                                                <div class="text-xs text-amber-600 font-bold mb-1">Your previous notes</div>
+                                                <div class="bg-white p-2 rounded border border-amber-200 text-sm text-gray-600 italic">
+                                                    "{originalAttempt.marker_notes}"
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Optionally show previous answer? Maybe overkill or spoiler if they want to retry blindly. */}
+                                    </div>
+                                </div>
+                            )}
+
                             <input type="hidden" name="next_id" value={nextId || ''} />
 
                             {/* State: Check Answer vs Attempting */}
@@ -213,6 +290,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                                 </div>
                                                 <div class="flex items-center gap-2">
                                                     <input type="hidden" name="marks_awarded" id="marks_awarded_input" value={attempt?.marks_awarded || 0} />
+                                                    <input type="hidden" name="max_marks" value={q.marks} />
                                                     <div class="flex flex-wrap gap-2">
                                                         {Array.from({ length: (q.marks || 0) + 1 }, (_, m) => (
                                                             <button type="button"
@@ -284,18 +362,60 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     let completedValue = 1;
     if (action === 'undone') completedValue = 0;
 
-    // Upsert Attempt
-    await c.env.DB.prepare(`
-        INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(user_id, question_id) DO UPDATE SET
-            response_content = excluded.response_content,
-            selected_option = excluded.selected_option,
-            marks_awarded = excluded.marks_awarded,
-            marker_notes = excluded.marker_notes,
-            is_completed = ?,
-            updated_at = CURRENT_TIMESTAMP
-    `).bind(user.id, qId, response, selected, marks, notes, completedValue, completedValue).run();
+    const mode = c.req.query('mode');
+
+    if (mode === 'review') {
+        // SAVE TO REVIEW ATTEMPTS
+        // In review mode, 'is_completed' means did they get full marks? 
+        // The prompt says "note if its wrong again another review question will be generated" -> implies "not done".
+        // "marked with review completed" -> implies full marks.
+        // Let's assume user decides "complete" means "I am done reviewing".
+        // But functionally, if they mark it correct (marks == q.marks), it should be complete.
+
+        // Actually, let's trust the user's "self-marking".
+        // We will store the review attempt.
+        // Logic: Insert new row? Or update the 'active' review attempt?
+        // Schema: user_review_attempts (id, user_id, question_id, ...).
+        // If we want to keep HISTORY of reviews, we insert new.
+        // If we want just "current review state", we upsert.
+        // Prompt says "students should be able to re do their review questions".
+        // Let's just INSERT a new attempt every time they save in review mode? Or Upsert for the current session?
+        // Let's UPSERT based on (user, question) for simplicity, just like attempts. 
+        // Wait, schema has PK id. Unique constraint? 
+        // Migration I wrote: NO UNIQUE constraint on (user_id, question_id).
+        // So we can insert multiple.
+        // But for "state management" (to review vs review completed), we need to know the LATEST status.
+        // Let's insert for history, to be safe.
+
+        // UPDATE: To manage the "state" in the Browse tab, we look for the LATEST review attempt.
+        // So Inserting is fine.
+
+        await c.env.DB.prepare(`
+            INSERT INTO user_review_attempts (user_id, question_id, response_content, selected_option, marks_awarded, is_completed, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).bind(user.id, qId, response, selected, marks, (marks === parseInt(body['max_marks'] as string || '100') || action === 'complete') ? 1 : 0).run();
+
+        // Note: I need max_marks from the form or query to determine "correctness" automatically for "review completed" logic if I rely on marks.
+        // But I don't have access to question marks here easily without a query.
+        // Simplified: Trust 'action' === 'complete' OR just save.
+        // The prompt says "after reviewing the question should be left in the tab but marked with review completed".
+        // Let's assume if they click "Save & Mark Complete", it is completed.
+        // Also if they get full marks (which I can't verify easily without fetch, but let's assume 'complete' button does it).
+
+    } else {
+        // STANDARD PRACTICE SAVE
+        await c.env.DB.prepare(`
+            INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id, question_id) DO UPDATE SET
+                response_content = excluded.response_content,
+                selected_option = excluded.selected_option,
+                marks_awarded = excluded.marks_awarded,
+                marker_notes = excluded.marker_notes,
+                is_completed = ?,
+                updated_at = CURRENT_TIMESTAMP
+        `).bind(user.id, qId, response, selected, marks, notes, completedValue, completedValue).run();
+    }
 
     // Preserve Navigation Context
     const source = c.req.query('source');
@@ -307,7 +427,10 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     const filterMarksMin = c.req.query('marks_min');
     const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
-    const params = `source=${source || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+
+    // Removed duplicate 'mode' declaration here
+
+    const params = `source=${source || ''}&mode=${mode || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
     // Auto-Advance logic
     if (action === 'complete' && nextId) {

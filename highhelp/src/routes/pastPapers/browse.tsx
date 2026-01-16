@@ -324,13 +324,81 @@ app.get('/past-papers', async (c) => {
             </div>
         )
 
-    } else {
+    } else if (tab === 'review') {
+        // Review Logic
+        const query = `
+            SELECT q.*, p.school_name, p.academic_year, 
+                   group_concat(t.name, ', ') as topic_names,
+                   ua.marks_awarded as original_marks,
+                   ua.created_at as original_attempt_date,
+                   ura.marks_awarded as review_marks,
+                   ura.is_completed as review_completed
+            FROM exam_questions q
+            JOIN papers p ON q.paper_id = p.id
+            JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+            LEFT JOIN user_review_attempts ura ON q.id = ura.question_id AND ura.user_id = ? 
+                AND ura.id = (
+                    SELECT MAX(id) FROM user_review_attempts WHERE question_id = q.id AND user_id = ?
+                )
+            LEFT JOIN question_topics qt ON q.id = qt.question_id
+            LEFT JOIN topics t ON qt.topic_id = t.id
+            WHERE p.subject = ?
+              AND q.is_deleted = 0
+              AND (ua.marks_awarded < q.marks OR ua.marks_awarded IS NULL)
+            GROUP BY q.id
+            ORDER BY ua.created_at DESC
+        `;
+
+        const questions = await c.env.DB.prepare(query).bind(user?.id, user?.id, user?.id, subject).all();
+
         content = (
-            <div class="text-center py-20 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                <h3 class="text-xl font-bold text-gray-400 mb-2">Coming Soon</h3>
-                <p class="text-gray-500">{tab === 'exam' ? 'Mock Exam functionality is under development.' : 'Review functionality is under development.'}</p>
+            <div>
+                <h1 class="text-3xl font-bold mb-6">Review Queue</h1>
+                <p class="text-gray-600 mb-8">Questions you didn't get full marks on. Review and retry them to master the content.</p>
+
+                <div class="space-y-4">
+                    {questions.results.length === 0 ? (
+                        <div class="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                            Great work! You have no questions to review.
+                        </div>
+                    ) : (
+                        questions.results.map((q: any) => {
+                            const isReviewCompleted = !!q.review_completed || (q.review_marks != null && q.review_marks === q.marks);
+                            const reviewStatus = isReviewCompleted
+                                ? <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-bold uppercase">Review Completed</span>
+                                : <span class="bg-amber-100 text-amber-700 text-xs px-2 py-1 rounded font-bold uppercase">To Review</span>;
+
+                            return (
+                                <a href={`/past-papers/attempt/${q.id}?mode=review&source=review`} class="block bg-white p-4 rounded border border-gray-300 hover:border-blue-500 hover:bg-gray-50 transition-colors group">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex gap-4">
+                                            <div>
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="font-bold text-sm text-gray-900 group-hover:text-blue-700">{q.school_name} {q.academic_year}</span>
+                                                    <span class="text-gray-400 text-xs font-mono">| {q.section_label} {q.question_number}</span>
+                                                    {reviewStatus}
+                                                </div>
+                                                <div class="text-xs text-gray-500 flex gap-2">
+                                                    <span class="capitalize">{q.question_type ? q.question_type.replace('_', ' ') : '-'}</span>
+                                                    <span class="text-gray-300">•</span>
+                                                    <span class="font-medium text-gray-600">{q.topic_names || 'No topic'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-xs text-gray-500 mb-1">Original Score</div>
+                                            <span class="text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded">
+                                                {q.original_marks || 0}/{q.marks}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </a>
+                            );
+                        })
+                    )}
+                </div>
             </div>
-        )
+        );
     }
 
     return c.html(
