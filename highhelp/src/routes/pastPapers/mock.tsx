@@ -13,10 +13,16 @@ app.get('/mock-exams', async (c) => {
     const subject = c.req.query('subject')
 
     // Fetch user's mock exams
+    // Fetch user's mock exams with scores
+    // We used a subquery or join to get total gained marks.
     const exams = await c.env.DB.prepare(`
-        SELECT m.*, count(mq.question_id) as question_count 
+        SELECT m.*, 
+               count(mq.question_id) as question_count,
+               sum(CASE WHEN q.marks IS NOT NULL THEN q.marks ELSE 0 END) as total_marks_possible,
+               sum(mq.marks_awarded) as total_marks_gained
         FROM mock_exams m
         LEFT JOIN mock_exam_questions mq ON m.id = mq.mock_exam_id
+        LEFT JOIN exam_questions q ON mq.question_id = q.id
         WHERE m.user_id = ? AND m.subject = ?
         GROUP BY m.id
         ORDER BY m.created_at DESC
@@ -50,16 +56,28 @@ app.get('/mock-exams', async (c) => {
                             <div class="bg-white p-4 rounded border border-gray-300 hover:border-blue-500 transition-colors flex justify-between items-center">
                                 <div>
                                     <h3 class="font-bold text-lg text-gray-900">{exam.exam_name || 'Untitled Exam'}</h3>
-                                    <div class="text-sm text-gray-500 flex gap-3 mt-1">
+                                    <div class="text-sm text-gray-500 flex gap-3 mt-1 items-center">
                                         <span class="capitalize">{exam.created_method} Generated</span>
                                         <span>•</span>
                                         <span>{exam.question_count} Questions</span>
                                         {exam.is_timed ? (
                                             <>
                                                 <span>•</span>
-                                                <span>{Math.floor((exam.allowed_time_seconds || 0) / 60)} mins limit</span>
+                                                <span>Limit: {Math.floor((exam.allowed_time_seconds || 0) / 60)}m</span>
                                             </>
                                         ) : null}
+                                        {exam.status === 'completed' && (
+                                            <>
+                                                <span>•</span>
+                                                <span class="font-bold text-gray-700">
+                                                    Score: {exam.total_marks_gained || 0} / {exam.total_marks_possible || 0}
+                                                </span>
+                                                <span>•</span>
+                                                <span>
+                                                    Time: {Math.floor((exam.elapsed_time_seconds || 0) / 60)}m {(exam.elapsed_time_seconds || 0) % 60}s
+                                                </span>
+                                            </>
+                                        )}
                                     </div>
                                     <div class="mt-2">
                                         <span class={`text-xs font-bold uppercase px-2 py-1 rounded ${exam.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
@@ -74,9 +92,14 @@ app.get('/mock-exams', async (c) => {
                                             Continue
                                         </a>
                                     ) : (
-                                        <a href={`/past-papers/mock-exams/${exam.id}/mark`} class="bg-gray-100 text-gray-700 px-4 py-2 rounded font-bold hover:bg-gray-200">
-                                            View Results
-                                        </a>
+                                        <div class="flex flex-col gap-2">
+                                            <a href={`/past-papers/mock-exams/${exam.id}/mark`} class="bg-gray-100 text-gray-700 px-4 py-2 rounded font-bold hover:bg-gray-200 text-center">
+                                                Results
+                                            </a>
+                                            <form action={`/past-papers/mock-exams/${exam.id}/redo`} method="post" onsubmit="return confirm('Start a fresh copy of this exam?');">
+                                                <button class="text-xs text-blue-600 hover:underline w-full text-center">Redo Exam</button>
+                                            </form>
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -386,6 +409,46 @@ app.post('/mock-exams/create-manual', async (c) => {
     return c.redirect(`/past-papers/mock-exams/${examId}`)
 })
 
+// 4b. Redo Exam
+app.post('/mock-exams/:id/redo', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+    const oldExamId = c.req.param('id')
+
+    // 1. Fetch old exam details
+    const oldExam = await c.env.DB.prepare('SELECT * FROM mock_exams WHERE id = ? AND user_id = ?').bind(oldExamId, user.id).first<any>()
+    if (!oldExam) return c.notFound()
+
+    // 2. Fetch Questions
+    const questions = await c.env.DB.prepare('SELECT * FROM mock_exam_questions WHERE mock_exam_id = ? ORDER BY ordering_index ASC').bind(oldExamId).all()
+
+    // 3. Create New Exam
+    const newName = oldExam.exam_name.includes('(Redo)') ? oldExam.exam_name : `${oldExam.exam_name} (Redo)`
+
+    const examRes = await c.env.DB.prepare(`
+        INSERT INTO mock_exams (user_id, subject, exam_name, created_method, allowed_time_seconds, is_timed, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'in_progress')
+        RETURNING id
+    `).bind(user.id, oldExam.subject, newName, oldExam.created_method, oldExam.allowed_time_seconds, oldExam.is_timed).first<any>()
+
+    if (!examRes) return c.text("Failed to create exam", 500)
+    const newExamId = examRes.id
+
+    // 4. Copy Questions
+    if (questions.results.length > 0) {
+        const placeholders = questions.results.map(() => '(?, ?, ?)').join(', ')
+        const values: any[] = []
+        questions.results.forEach((q: any) => {
+            values.push(newExamId, q.question_id, q.ordering_index)
+        })
+
+        await c.env.DB.prepare(`INSERT INTO mock_exam_questions (mock_exam_id, question_id, ordering_index) VALUES ${placeholders}`)
+            .bind(...values).run()
+    }
+
+    return c.redirect(`/past-papers/mock-exams/${newExamId}`)
+})
+
 
 // 5. Exam Interface
 app.get('/mock-exams/:id', async (c) => {
@@ -413,7 +476,7 @@ app.get('/mock-exams/:id', async (c) => {
     const isOwner = user && user.id === exam.user_id;
 
     const questions = await c.env.DB.prepare(`
-                SELECT q.*, mq.ordering_index, p.school_name, p.academic_year
+                SELECT q.*, mq.ordering_index, p.school_name, p.academic_year, q.question_number
                 FROM mock_exam_questions mq
                 JOIN exam_questions q ON mq.question_id = q.id
                 JOIN papers p ON q.paper_id = p.id
@@ -449,41 +512,74 @@ app.get('/mock-exams/:id', async (c) => {
 
                 <div class="flex gap-4">
                     {isOwner && (
-                        <form action={`/past-papers/mock-exams/${examId}/finish`} method="post" onsubmit="return confirm('Are you sure you want to finish the exam?');">
-                            <button class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">Finish Exam</button>
-                        </form>
+                        <button type="submit" form="exam-form" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
+                            Finish Exam
+                        </button>
                     )}
                 </div>
             </div>
 
-            <div class="mt-20 max-w-4xl mx-auto space-y-12 pb-24">
-                {questions.results.map((q: any, i: number) => (
-                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200" id={`q-${q.id}`}>
-                        <div class="flex justify-between items-start mb-4">
+            {isOwner ? (
+                <form id="exam-form" action={`/past-papers/mock-exams/${examId}/finish`} method="post" class="mt-20 max-w-4xl mx-auto space-y-12 pb-24" onsubmit="document.getElementById('final-time-input').value = elapsed; return confirm('Are you sure you want to finish the exam?');">
+                    <input type="hidden" name="final_elapsed" id="final-time-input" value={exam.elapsed_time_seconds || 0} />
+
+                    {questions.results.map((q: any, i: number) => (
+                        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200" id={`q-${q.id}`}>
+                            <div class="flex justify-between items-start mb-4">
+                                <h3 class="font-bold text-gray-900 text-lg">Question {i + 1}</h3>
+                                <div class="text-right">
+                                    <span class="text-sm font-bold text-gray-500">{q.marks} Marks</span>
+                                    <div class="text-xs text-gray-400">
+                                        {q.school_name} {q.academic_year}
+                                        <span class="ml-1 px-1 bg-gray-100 rounded text-gray-500">#{q.question_number}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {q.question_image_key && (
+                                <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 mb-4" />
+                            )}
+
+                            {q.stimulus_image_key && (
+                                <div class="mt-4 p-4 bg-gray-50 rounded border border-gray-200">
+                                    <p class="text-xs font-bold text-gray-500 uppercase mb-2">Stimulus</p>
+                                    <img src={`/download/${q.stimulus_image_key}`} class="max-w-full rounded" />
+                                </div>
+                            )}
+
+                            <div class="mt-6">
+                                {q.question_type === 'multiple_choice' ? (
+                                    <div class="grid grid-cols-2 gap-4">
+                                        {['A', 'B', 'C', 'D'].map(opt => (
+                                            <label class="cursor-pointer">
+                                                <input type="radio" name={`response_${q.id}`} value={opt} class="peer sr-only" />
+                                                <div class="text-center p-4 rounded-lg border-2 border-gray-200 hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition">
+                                                    <span class="text-xl font-bold text-gray-700 peer-checked:text-blue-700">{opt}</span>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <textarea name={`response_${q.id}`} placeholder="Type your answer here..." class="w-full h-32 rounded border-gray-300 text-sm focus:border-blue-500"></textarea>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </form>
+            ) : (
+                <div class="mt-20 max-w-4xl mx-auto space-y-12 pb-24">
+                    {/* Read-only view for non-owners/completed if needed, but for now we focus on the taking flow */}
+                    {questions.results.map((q: any, i: number) => (
+                        // ... Simplified read-only render or just same as above disabled?
+                        // For simplicity, just rendering the questions without inputs if not owner
+                        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                             <h3 class="font-bold text-gray-900 text-lg">Question {i + 1}</h3>
-                            <div class="text-right">
-                                <span class="text-sm font-bold text-gray-500">{q.marks} Marks</span>
-                                <div class="text-xs text-gray-400">{q.school_name} {q.academic_year}</div>
-                            </div>
+                            {/* ... images ... */}
+                            {q.question_image_key && <img src={`/download/${q.question_image_key}`} class="max-w-full rounded mb-4" />}
                         </div>
-
-                        {q.question_image_key && (
-                            <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 mb-4" />
-                        )}
-
-                        {q.stimulus_image_key && (
-                            <div class="mt-4 p-4 bg-gray-50 rounded border border-gray-200">
-                                <p class="text-xs font-bold text-gray-500 uppercase mb-2">Stimulus</p>
-                                <img src={`/download/${q.stimulus_image_key}`} class="max-w-full rounded" />
-                            </div>
-                        )}
-
-                        <div class="mt-6">
-                            <textarea placeholder="Type your answer here (optional notes)..." class="w-full h-32 rounded border-gray-300 text-sm focus:border-blue-500"></textarea>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
 
             {/* Timer Script */}
             {isOwner && exam.is_timed && exam.status !== 'completed' && (
@@ -507,6 +603,12 @@ app.get('/mock-exams/:id', async (c) => {
                         }
                         display.innerText = formatTime(elapsed);
                         
+                        // Auto-submit if time up
+                        if (allowed > 0 && elapsed >= allowed) {
+                             document.getElementById('final-time-input').value = elapsed;
+                             document.getElementById('exam-form').submit();
+                        }
+
                         // Save every 30 seconds
                         if (elapsed % 30 === 0) {
                              fetch('/past-papers/mock-exams/${examId}/progress', {
@@ -527,9 +629,43 @@ app.post('/mock-exams/:id/finish', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
     const examId = c.req.param('id')
+    const body = await c.req.parseBody()
+    const finalElapsed = parseInt(body['final_elapsed'] as string || '0')
 
-    await c.env.DB.prepare(`UPDATE mock_exams SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`)
-        .bind(examId, user.id).run()
+    // 1. Update Exam Status
+    await c.env.DB.prepare(`UPDATE mock_exams SET status = 'completed', completed_at = CURRENT_TIMESTAMP, elapsed_time_seconds = ? WHERE id = ? AND user_id = ?`)
+        .bind(finalElapsed > 0 ? finalElapsed : null, examId, user.id).run()
+
+    // 2. Save Answers to MOCK_EXAM_QUESTIONS (Isolated)
+    const examQuestions = await c.env.DB.prepare(`
+        SELECT q.id, q.question_type 
+        FROM mock_exam_questions mq
+        JOIN exam_questions q ON mq.question_id = q.id 
+        WHERE mq.mock_exam_id = ?
+    `).bind(examId).all()
+
+    const stmt = c.env.DB.prepare(`
+        UPDATE mock_exam_questions 
+        SET response_content = ?, selected_option = ?
+        WHERE mock_exam_id = ? AND question_id = ?
+    `)
+
+    for (const q of examQuestions.results) {
+        const inputName = `response_${q.id}`
+        const rawValue = body[inputName] as string
+
+        let responseContent: string | null = null
+        let selectedOption: string | null = null
+
+        if (q.question_type === 'multiple_choice') {
+            selectedOption = rawValue || null
+        } else {
+            responseContent = rawValue || ''
+        }
+
+        // Save isolated attempt
+        await stmt.bind(responseContent, selectedOption, examId, q.id).run()
+    }
 
     return c.redirect(`/past-papers/mock-exams/${examId}/mark`)
 })
@@ -574,17 +710,16 @@ app.get('/mock-exams/:id/mark', async (c) => {
 
     const totalMarks = stats?.total_marks || 0;
 
-    // Fetch questions AND the attempts for the EXAM OWNER
+    // Fetch questions AND attempts from MOCK_EXAM_QUESTIONS (Isolated)
     const questions = await c.env.DB.prepare(`
-                SELECT q.*, mq.ordering_index, p.school_name, p.academic_year,
-                ua.marks_awarded as existing_marks, ua.is_completed
+                SELECT q.*, mq.ordering_index, p.school_name, p.academic_year, q.question_number,
+                mq.marks_awarded as existing_marks, mq.response_content, mq.selected_option, mq.marker_notes
                 FROM mock_exam_questions mq
                 JOIN exam_questions q ON mq.question_id = q.id
                 JOIN papers p ON q.paper_id = p.id
-                LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
                 WHERE mq.mock_exam_id = ?
                 ORDER BY mq.ordering_index ASC
-                `).bind(exam.user_id, examId).all()
+                `).bind(examId).all()
 
     return c.html(
         <Layout title={`Marking - ${exam.exam_name}`} user={user}>
@@ -599,19 +734,43 @@ app.get('/mock-exams/:id/mark', async (c) => {
 
                 <form action={`/past-papers/mock-exams/${examId}/submit-marks`} method="post" class="space-y-12">
                     {questions.results.map((q: any, i: number) => (
-                        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200" key={q.id}>
                             <div class="flex justify-between items-start mb-6">
                                 <h3 class="font-bold text-gray-900 text-lg">Question {i + 1}</h3>
-                                <div class="text-xs text-gray-500">{q.school_name} {q.academic_year}</div>
+                                <div class="text-xs text-gray-400">
+                                    {q.school_name} {q.academic_year}
+                                    <span class="ml-1 px-1 bg-gray-100 rounded text-gray-500">#{q.question_number}</span>
+                                </div>
                             </div>
 
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                 {/* Left: Question */}
                                 <div>
-                                    <h4 class="font-bold text-sm text-gray-500 uppercase mb-2">Question</h4>
+                                    <h4 class="font-bold text-sm text-gray-500 uppercase mb-2">Question & Student Response</h4>
                                     {q.question_image_key ? (
-                                        <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100" />
-                                    ) : <p class="text-red-500 text-sm">Image missing</p>}
+                                        <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 mb-6" />
+                                    ) : <p class="text-red-500 text-sm mb-6">Image missing</p>}
+
+                                    <div class="bg-gray-50 p-4 rounded border border-gray-200">
+                                        <h5 class="text-xs font-bold text-gray-400 uppercase mb-2">Student Response</h5>
+                                        {q.question_type === 'multiple_choice' ? (
+                                            <div class="flex items-center gap-4">
+                                                {['A', 'B', 'C', 'D'].map(opt => (
+                                                    <div class={`w-10 h-10 rounded-full flex items-center justify-center font-bold border 
+                                                    ${q.selected_option === opt
+                                                            ? (q.mc_answer === opt ? 'bg-green-100 border-green-500 text-green-700' : 'bg-red-100 border-red-500 text-red-700')
+                                                            : (q.mc_answer === opt ? 'bg-green-50 border-green-200 text-green-700 dashed' : 'bg-white border-gray-200 text-gray-400')
+                                                        }`}>
+                                                        {opt}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div class="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border border-gray-200">
+                                                {q.response_content || <span class="text-gray-400 italic">No response provided.</span>}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Right: Answer & Marking */}
@@ -639,19 +798,25 @@ app.get('/mock-exams/:id/mark', async (c) => {
                                     </div>
                                 </div>
                             </div>
+                            <div class="mt-4">
+                                <label class="block font-bold text-gray-700 text-sm mb-2">Marker Notes</label>
+                                <textarea name={`notes_${q.id}`} class="w-full h-20 p-2 rounded border border-gray-300 text-sm focus:border-blue-500" placeholder="Feedback...">
+                                    {q.marker_notes || ''}
+                                </textarea>
+                            </div>
                         </div>
                     ))}
 
                     <div class="fixed bottom-0 left-0 w-full bg-white border-t p-4 flex justify-between items-center shadow-lg">
                         <div class="text-gray-500 text-sm pl-4">Don't forget to save your marks!</div>
-                        <button class="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 shadow-md mr-4">
+                        <button type="submit" class="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 shadow-md mr-4">
                             Save & Complete Marking
                         </button>
                     </div>
                 </form>
             </div>
         </Layout>
-    )
+    );
 })
 
 // 9. Submit Marks
@@ -661,16 +826,17 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
     const examId = c.req.param('id')
     const body = await c.req.parseBody()
 
-    // For each question in the exam, update user_question_attempts
+    // Retrieve subject for redirect
+    const exam = await c.env.DB.prepare('SELECT subject FROM mock_exams WHERE id = ?').bind(examId).first<any>()
+    const subject = exam?.subject || ''
+
+    // For each question in the exam, update MOCK_EXAM_QUESTIONS (Isolated)
     const examQuestions = await c.env.DB.prepare(`SELECT question_id FROM mock_exam_questions WHERE mock_exam_id = ?`).bind(examId).all()
 
     const stmt = c.env.DB.prepare(`
-                INSERT INTO user_question_attempts (user_id, question_id, marks_awarded, is_completed, updated_at)
-                VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
-                ON CONFLICT(user_id, question_id) DO UPDATE SET
-                marks_awarded = excluded.marks_awarded,
-                is_completed = 1,
-                updated_at = excluded.updated_at
+                UPDATE mock_exam_questions
+                SET marks_awarded = ?, marker_notes = ?
+                WHERE mock_exam_id = ? AND question_id = ?
                 `)
 
     // Batch execution would be better but simple loop for now
@@ -680,11 +846,13 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
 
         if (marksStr && marksStr !== '') {
             const marks = parseInt(marksStr as string)
-            await stmt.bind(user.id, q.question_id, marks).run()
+            const notes = body[`notes_${q.question_id}`] as string || '' // Get notes
+
+            await stmt.bind(marks, notes, examId, q.question_id).run()
         }
     }
 
-    return c.redirect(`/past-papers/mock-exams`) // Need to persist subject
+    return c.redirect(`/past-papers/mock-exams?subject=${encodeURIComponent(subject)}`)
 })
 
 export default app
