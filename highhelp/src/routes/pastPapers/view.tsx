@@ -200,121 +200,196 @@ app.get('/past-papers/paper/:id', async (c) => {
                 {/* Batch Form Start */}
                 <form action={`/past-papers/paper/${paper.id}/update-batch`} method="post" enctype="multipart/form-data">
                     <div class="space-y-4 pb-24">
-                        {qWithNext.map((q: any) => (
-                            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" id={`q-${q.id}`}>
-                                {/* Header / Summary Mode */}
-                                <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition" onclick={`toggleEdit(${q.id})`}>
-                                    <div class="flex items-center gap-4">
-                                        <span class="font-mono text-gray-500 font-bold w-16 text-right">{q.section_label} {q.question_number}</span>
+                        {qWithNext.map((q: any, index: number) => {
+                            const isLastInSegment = !qWithNext[index + 1] ||
+                                qWithNext[index + 1].section_label !== q.section_label ||
+                                qWithNext[index + 1].segment_label !== q.segment_label;
 
-                                        <div class="flex flex-col">
-                                            <div class="flex items-center gap-2">
-                                                {q.question_type === 'multiple_choice' && <span class="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded font-bold">MCQ</span>}
-                                                {q.marks && <span class="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded font-bold">{q.marks}m</span>}
+                            return (
+                                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-4" id={`q-${q.id}`}>
+                                    {/* Header / Summary Mode */}
+                                    <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition" onclick={`toggleEdit(${q.id})`}>
+                                        <div class="flex items-center gap-4">
+                                            <span class="font-mono text-gray-500 font-bold w-16 text-right">{q.section_label} {q.question_number}</span>
+
+                                            <div class="flex flex-col">
+                                                <div class="flex items-center gap-2">
+                                                    {q.question_type === 'multiple_choice' && <span class="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded font-bold">MCQ</span>}
+                                                    {q.marks && <span class="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded font-bold">{q.marks}m</span>}
+                                                </div>
+                                                {q.topic_names ? (
+                                                    <span class="text-sm font-medium text-blue-800">{q.topic_names}</span>
+                                                ) : (
+                                                    <span class="text-sm text-gray-400 italic">No topics tagged</span>
+                                                )}
+                                                {/* Attribution Display */}
+                                                <span class="text-xs text-gray-400 mt-1">
+                                                    Last edited by: {q.uploader_first ? `${q.uploader_first} ${q.uploader_last}` : 'Original Uploader'}
+                                                </span>
                                             </div>
-                                            {q.topic_names ? (
-                                                <span class="text-sm font-medium text-blue-800">{q.topic_names}</span>
+                                        </div>
+
+                                        <div class="flex items-center gap-4">
+                                            {q.missing_fields.length === 0 ? (
+                                                <span class="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded border border-green-200">✓ Ready</span>
                                             ) : (
-                                                <span class="text-sm text-gray-400 italic">No topics tagged</span>
+                                                <span class="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-200 cursor-help" title={`Missing: ${q.missing_fields.join(', ')}`}>
+                                                    ⚠ Missing: {q.missing_fields.join(', ')}
+                                                </span>
                                             )}
-                                            {/* Attribution Display */}
-                                            <span class="text-xs text-gray-400 mt-1">
-                                                Last edited by: {q.uploader_first ? `${q.uploader_first} ${q.uploader_last}` : 'Original Uploader'}
-                                            </span>
+                                            <span class="text-gray-400">▼</span>
                                         </div>
                                     </div>
 
-                                    <div class="flex items-center gap-4">
-                                        {q.missing_fields.length === 0 ? (
-                                            <span class="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded border border-green-200">✓ Ready</span>
-                                        ) : (
-                                            <span class="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-200 cursor-help" title={`Missing: ${q.missing_fields.join(', ')}`}>
-                                                ⚠ Missing: {q.missing_fields.join(', ')}
-                                            </span>
-                                        )}
-                                        <span class="text-gray-400">▼</span>
-                                    </div>
-                                </div>
-
-                                {/* Edit / Detail Mode (Auto-expanded if canEdit is true) */}
-                                <div id={`detail-${q.id}`} class={`${canEdit ? '' : 'hidden'} border-t border-gray-100 bg-gray-50 p-6`}>
-                                    {canEdit ? (
-                                        <div class="space-y-6">
-                                            {/* Removed individual form tag */}
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                {/* Left Column: Metadata */}
-                                                <div class="space-y-4">
-                                                    <div>
-                                                        <label class="block text-xs font-bold text-gray-500 uppercase">Topics</label>
-                                                        {/* FIX: size attribute expects number in JSX */}
-                                                        {/* Changed name to include q ID for batch processing */}
-                                                        {/* Added [] to name to ensure multiple values are sent/parsed correctly */}
-                                                        <select name={`q_${q.id}_topic_ids[]`} multiple size={4} class="w-full mt-1 rounded border-gray-300 text-sm">
-                                                            {allTopics.results.map((t: any) => (
-                                                                <option value={t.id} selected={q.topic_ids?.split(',').includes(String(t.id))}>{t.name}</option>
-                                                            ))}
-                                                        </select>
-                                                        <p class="text-xs text-gray-400 mt-1">Cmd/Ctrl+Click to select multiple</p>
-                                                    </div>
-
-                                                    <div class="grid grid-cols-2 gap-4">
+                                    {/* Edit / Detail Mode (Auto-expanded if canEdit is true) */}
+                                    <div id={`detail-${q.id}`} class={`${canEdit ? '' : 'hidden'} border-t border-gray-100 bg-gray-50 p-6`}>
+                                        {canEdit ? (
+                                            <div class="space-y-6">
+                                                {/* Removed individual form tag */}
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    {/* Left Column: Metadata */}
+                                                    <div class="space-y-4">
                                                         <div>
-                                                            <label class="block text-xs font-bold text-gray-500 uppercase">Type</label>
-                                                            <select name={`q_${q.id}_question_type`} class="w-full mt-1 rounded border-gray-300 text-sm">
-                                                                <option value="short_answer" selected={q.question_type === 'short_answer'}>Short Answer</option>
-                                                                <option value="multiple_choice" selected={q.question_type === 'multiple_choice'}>Multiple Choice</option>
-
-                                                                <option value="extended_response" selected={q.question_type === 'extended_response'}>Extended Response</option>
+                                                            <label class="block text-xs font-bold text-gray-500 uppercase">Topics</label>
+                                                            {/* FIX: size attribute expects number in JSX */}
+                                                            {/* Changed name to include q ID for batch processing */}
+                                                            {/* Added [] to name to ensure multiple values are sent/parsed correctly */}
+                                                            <select name={`q_${q.id}_topic_ids[]`} multiple size={4} class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                                {allTopics.results.map((t: any) => (
+                                                                    <option value={t.id} selected={q.topic_ids?.split(',').includes(String(t.id))}>{t.name}</option>
+                                                                ))}
                                                             </select>
+                                                            <p class="text-xs text-gray-400 mt-1">Cmd/Ctrl+Click to select multiple</p>
                                                         </div>
-                                                        <div>
-                                                            <label class="block text-xs font-bold text-gray-500 uppercase">Marks</label>
-                                                            <input type="number" name={`q_${q.id}_marks`} value={q.marks} class="w-full mt-1 rounded border-gray-300 text-sm" />
-                                                        </div>
-                                                        {q.question_type === 'multiple_choice' && (
+
+                                                        <div class="grid grid-cols-2 gap-4">
                                                             <div>
-                                                                <label class="block text-xs font-bold text-gray-500 uppercase">Correct Answer (MCQ only)</label>
-                                                                <select name={`q_${q.id}_mc_answer`} class="w-full mt-1 rounded border-gray-300 text-sm">
-                                                                    {['A', 'B', 'C', 'D'].map(opt => (
-                                                                        <option value={opt} selected={q.mc_answer === opt}>{opt}</option>
-                                                                    ))}
+                                                                <label class="block text-xs font-bold text-gray-500 uppercase">Type</label>
+                                                                <select name={`q_${q.id}_question_type`} class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                                    <option value="short_answer" selected={q.question_type === 'short_answer'}>Short Answer</option>
+                                                                    <option value="multiple_choice" selected={q.question_type === 'multiple_choice'}>Multiple Choice</option>
+
+                                                                    <option value="extended_response" selected={q.question_type === 'extended_response'}>Extended Response</option>
                                                                 </select>
                                                             </div>
-                                                        )}
+                                                            <div>
+                                                                <label class="block text-xs font-bold text-gray-500 uppercase">Marks</label>
+                                                                <input type="number" name={`q_${q.id}_marks`} value={q.marks} class="w-full mt-1 rounded border-gray-300 text-sm" />
+                                                            </div>
+                                                            {q.question_type === 'multiple_choice' && (
+                                                                <div>
+                                                                    <label class="block text-xs font-bold text-gray-500 uppercase">Correct Answer (MCQ only)</label>
+                                                                    <select name={`q_${q.id}_mc_answer`} class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                                        {['A', 'B', 'C', 'D'].map(opt => (
+                                                                            <option value={opt} selected={q.mc_answer === opt}>{opt}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Right Column: Images */}
+                                                    <div class="space-y-4">
+                                                        {['question', 'answer', 'stimulus'].map(type => (
+                                                            <div class="bg-white p-3 rounded border border-gray-200">
+                                                                <div class="flex justify-between items-center mb-2">
+                                                                    <label class="text-xs font-bold text-gray-500 uppercase">{type} Image</label>
+                                                                    <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-blue-600 font-bold">📋 Paste</button>
+                                                                </div>
+
+                                                                {q[`${type}_image_key`] && (
+                                                                    <img src={`/download/${q[`${type}_image_key`]}`} class="max-h-32 object-contain mb-2 border rounded" />
+                                                                )}
+
+                                                                <input type="file" name={`q_${q.id}_${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500" />
+                                                                <img id={`${type}-preview-${q.id}`} class="max-h-32 object-contain mt-2 hidden border rounded bg-gray-50" />
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </div>
 
-                                                {/* Right Column: Images */}
-                                                <div class="space-y-4">
-                                                    {['question', 'answer', 'stimulus'].map(type => (
-                                                        <div class="bg-white p-3 rounded border border-gray-200">
-                                                            <div class="flex justify-between items-center mb-2">
-                                                                <label class="text-xs font-bold text-gray-500 uppercase">{type} Image</label>
-                                                                <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-blue-600 font-bold">📋 Paste</button>
-                                                            </div>
-
-                                                            {q[`${type}_image_key`] && (
-                                                                <img src={`/download/${q[`${type}_image_key`]}`} class="max-h-32 object-contain mb-2 border rounded" />
-                                                            )}
-
-                                                            <input type="file" name={`q_${q.id}_${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500" />
-                                                            <img id={`${type}-preview-${q.id}`} class="max-h-32 object-contain mt-2 hidden border rounded bg-gray-50" />
-                                                        </div>
-                                                    ))}
-                                                </div>
+                                                {/* Removed individual save button */}
                                             </div>
+                                        ) : (
+                                            <div class="flex gap-4">
+                                                {q.question_image_key && <img src={`/download/${q.question_image_key}`} class="max-w-md border rounded" />}
+                                                {q.answer_image_key && <img src={`/download/${q.answer_image_key}`} class="max-w-md border rounded border-green-200" />}
+                                            </div>
+                                        )}
+                                    </div>
 
-                                            {/* Removed individual save button */}
-                                        </div>
-                                    ) : (
-                                        <div class="flex gap-4">
-                                            {q.question_image_key && <img src={`/download/${q.question_image_key}`} class="max-w-md border rounded" />}
-                                            {q.answer_image_key && <img src={`/download/${q.answer_image_key}`} class="max-w-md border rounded border-green-200" />}
+                                    {/* Segment Controls (Injected via map return) */}
+                                    {isLastInSegment && canEdit && !paper.is_locked && (
+                                        <div class="bg-blue-50/50 p-2 flex justify-center gap-2 border-t border-gray-100">
+                                            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest self-center mr-2">{q.section_label} {q.segment_label} Controls:</span>
+
+                                            <button
+                                                type="submit"
+                                                formaction={`/past-papers/paper/${paper.id}/adjust-segment`}
+                                                name="action" value="add"
+                                                class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded font-bold"
+                                                onclick={`
+                                                    // Add hidden inputs dynamically for this button's context
+                                                    const form = this.closest('form');
+                                                    let sectionInput = form.querySelector('input[name="section_label"]');
+                                                    if (!sectionInput) {
+                                                        sectionInput = document.createElement('input');
+                                                        sectionInput.type = 'hidden';
+                                                        sectionInput.name = 'section_label';
+                                                        form.appendChild(sectionInput);
+                                                    }
+                                                    sectionInput.value = '${q.section_label}';
+
+                                                    let segmentInput = form.querySelector('input[name="segment_label"]');
+                                                    if (!segmentInput) {
+                                                        segmentInput = document.createElement('input');
+                                                        segmentInput.type = 'hidden';
+                                                        segmentInput.name = 'segment_label';
+                                                        form.appendChild(segmentInput);
+                                                    }
+                                                    segmentInput.value = '${q.segment_label || ''}';
+                                                `}
+                                            >
+                                                + Add Question
+                                            </button>
+
+                                            <button
+                                                type="submit"
+                                                formaction={`/past-papers/paper/${paper.id}/adjust-segment`}
+                                                name="action" value="remove"
+                                                class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded font-bold"
+                                                onclick={`
+                                                     if (!confirm('Remove last question of ${q.section_label} ${q.segment_label || ''}?')) return false;
+
+                                                    // Add hidden inputs dynamically for this button's context
+                                                    const form = this.closest('form');
+                                                    let sectionInput = form.querySelector('input[name="section_label"]');
+                                                    if (!sectionInput) {
+                                                        sectionInput = document.createElement('input');
+                                                        sectionInput.type = 'hidden';
+                                                        sectionInput.name = 'section_label';
+                                                        form.appendChild(sectionInput);
+                                                    }
+                                                    sectionInput.value = '${q.section_label}';
+
+                                                    let segmentInput = form.querySelector('input[name="segment_label"]');
+                                                    if (!segmentInput) {
+                                                        segmentInput = document.createElement('input');
+                                                        segmentInput.type = 'hidden';
+                                                        segmentInput.name = 'segment_label';
+                                                        form.appendChild(segmentInput);
+                                                    }
+                                                    segmentInput.value = '${q.segment_label || ''}';
+                                                `}
+                                            >
+                                                - Remove Question
+                                            </button>
                                         </div>
                                     )}
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     {/* Floating Save Bar */}
@@ -329,7 +404,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                         </div>
                     )}
                 </form>
-            </div>
+            </div >
 
             <script dangerouslySetInnerHTML={{
                 __html: `
@@ -362,7 +437,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                     }
                 }
             `}} />
-        </Layout>
+        </Layout >
     );
 })
 
@@ -627,6 +702,137 @@ app.post('/past-papers/question/:id/update', async (c) => {
     }
 
     return c.redirect(`/past-papers/paper/${q.paper_id}#q-${qId}`);
+});
+
+// Adjust Segment (Add/Remove Question)
+app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
+    const user = await getUser(c);
+    const paperId = c.req.param('id');
+    const body = await c.req.parseBody();
+    const action = body['action'] as string; // 'add' or 'remove'
+    const sectionLabel = body['section_label'] as string;
+    const segmentLabel = body['segment_label'] as string; // can be empty string
+
+    // 1. Fetch paper & Validate Permissions
+    const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
+    if (!paper) return c.notFound();
+    if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
+
+    // Cannot adjust if locked (unless admin? No, plan says only if not locked for now, matching UI)
+    // Actually, user requirement: "if the paper is not 'checked' yet".
+    if (paper.is_locked) return c.text('Paper is locked', 403);
+
+    // 2. Find the last question of this segment
+    // We need to query questions for this paper, section, and segment
+    // We need to handle segmentLabel being empty or null
+    let query = `SELECT * FROM exam_questions WHERE paper_id = ? AND section_label = ? AND is_deleted = 0`;
+    const params: any[] = [paperId, sectionLabel];
+
+    if (segmentLabel) {
+        query += ` AND segment_label = ?`;
+        params.push(segmentLabel);
+    } else {
+        query += ` AND (segment_label IS NULL OR segment_label = '')`;
+    }
+
+    query += ` ORDER BY ordering_index DESC LIMIT 1`;
+
+    const lastQ = await c.env.DB.prepare(query).bind(...params).first<any>();
+
+    if (!lastQ) {
+        // If no questions exist in this segment, we can't easily append to it or remove from it without more info.
+        // For now, assuming segments exist.
+        return c.text('Segment not found or empty', 404);
+    }
+
+    if (action === 'add') {
+        // Logic to ADD a question
+        // 1. Determine new Question Number
+        // Attempt to parse the numeric part of the last question number
+        // Examples: "10" -> 11, "A10" -> A11, "3b" -> ?? (Complex)
+        // Simple heuristic: Extract last sequence of digits, increment it.
+        // If no digits, just append "1".
+
+        const lastNum = lastQ.question_number;
+        const match = lastNum.match(/(\d+)$/); // match numbers at end
+        let newNum = "";
+
+        if (match) {
+            const numPart = match[1];
+            const prefix = lastNum.substring(0, lastNum.length - numPart.length);
+            const nextVal = parseInt(numPart) + 1;
+            newNum = prefix + nextVal;
+        } else {
+            newNum = lastNum + "1"; // Fallback
+        }
+
+        // Full label
+        const newFullLabel = segmentLabel ?
+            `${sectionLabel} ${segmentLabel}${newNum.replace(segmentLabel, '')}` : // heuristic...
+            `${sectionLabel} ${newNum}`;
+        // Actually simpler: just re-construct like create.tsx does
+        const standardFullLabel = segmentLabel ? `${sectionLabel} ${newNum}` : `${sectionLabel} ${newNum}`;
+
+
+        // 2. Determine Ordering Index
+        // Should be after lastQ. We need to find if there's a question *after* lastQ (next segment) to insert between,
+        // or just add +1 if it's the very end.
+        const nextQ = await c.env.DB.prepare(`
+            SELECT * FROM exam_questions 
+            WHERE paper_id = ? AND ordering_index > ? AND is_deleted = 0
+            ORDER BY ordering_index ASC LIMIT 1
+        `).bind(paperId, lastQ.ordering_index).first<any>();
+
+        let newOrderIdx;
+        if (nextQ) {
+            newOrderIdx = (lastQ.ordering_index + nextQ.ordering_index) / 2;
+        } else {
+            newOrderIdx = lastQ.ordering_index + 1;
+        }
+
+        // 3. Insert
+        await c.env.DB.prepare(`
+            INSERT INTO exam_questions 
+            (paper_id, section_label, segment_label, question_number, question_full_label, uploader_id, ordering_index)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+            paperId,
+            sectionLabel,
+            segmentLabel || null,
+            newNum,
+            standardFullLabel,
+            user.id,
+            newOrderIdx
+        ).run();
+
+        await logAction(c.env.DB, user.id, 'ADD_QUESTION', `Added question ${newNum} to paper ${paperId}`, parseInt(paperId), 'papers');
+
+    } else if (action === 'remove') {
+        // Logic to REMOVE the last question
+        // Check count first - don't allow removing if it's the ONLY question (as per plan decision)
+
+        // Count questions in this segment
+        let countQuery = `SELECT count(*) as c FROM exam_questions WHERE paper_id = ? AND section_label = ? AND is_deleted = 0`;
+        const countParams: any[] = [paperId, sectionLabel];
+        if (segmentLabel) {
+            countQuery += ` AND segment_label = ?`;
+            countParams.push(segmentLabel);
+        } else {
+            countQuery += ` AND (segment_label IS NULL OR segment_label = '')`;
+        }
+
+        const countRes = await c.env.DB.prepare(countQuery).bind(...countParams).first<any>();
+        if (countRes.c <= 1) {
+            return c.text('Cannot remove the last question of a segment.', 400);
+        }
+
+        // Delete lastQ
+        await c.env.DB.prepare('UPDATE exam_questions SET is_deleted = 1 WHERE id = ?').bind(lastQ.id).run();
+
+        await logAction(c.env.DB, user.id, 'REMOVE_QUESTION', `Removed question ${lastQ.question_number} from paper ${paperId}`, parseInt(paperId), 'papers');
+    }
+
+    return c.redirect(`/past-papers/paper/${paperId}#q-${lastQ.id}`); // anchor might be slightly off for remove, but close enough
 });
 
 export default app;
