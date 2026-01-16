@@ -41,10 +41,9 @@ app.get('/mock-exams', async (c) => {
                 <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
                     <a href="/past-papers" class="hover:underline">Past Papers</a>
                     <span>/</span>
-                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}`} class="hover:underline">{subject}</a>
-                    <span>/</span>
-                    <span class="font-bold text-gray-700">New Exam</span>
+                    <span class="font-bold text-gray-700">{subject}</span>
                 </div>
+
 
                 {/* 2. Tabs Navigation */}
                 <div class="border-b border-gray-200 mb-8">
@@ -63,11 +62,6 @@ app.get('/mock-exams', async (c) => {
             </div>
             <div class="mx-auto space-y-8">
                 {/* Header */}
-                <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
-                    <a href="/past-papers" class="hover:underline">Past Papers</a>
-                    <span>/</span>
-                    <span class="font-bold text-gray-700">{subject}</span>
-                </div>
 
                 <div class="flex justify-between items-center">
                     <h1 class="text-3xl font-bold">Mock Exams</h1>
