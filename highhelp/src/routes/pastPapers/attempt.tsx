@@ -266,8 +266,8 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                 <div id="marking-section" class="mt-8 border-t border-gray-100 pt-6">
                                     <details open={!!attempt?.is_completed}>
                                         <summary class="font-bold text-blue-600 cursor-pointer mb-4 select-none group">
-                                            <span class="group-open:hidden">▶ Check Answer & Mark</span>
-                                            <span class="hidden group-open:inline">▼ Hide Answer</span>
+                                            <span class="group-open:hidden">Check Answer & Mark</span>
+                                            <span class="hidden group-open:inline">Hide Answer</span>
                                         </summary>
 
                                         <div class="space-y-6 animate-fade-in">
