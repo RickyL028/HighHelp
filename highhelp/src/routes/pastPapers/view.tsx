@@ -572,6 +572,122 @@ app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
     return c.redirect(`/past-papers/paper/${paperId}`);
 });
 
+// Helper to process batch updates (Optimize: only update changed fields)
+async function processBatchUpdate(c: any, paperId: string, user: any, body: any) {
+    // Fetch all current questions to compare state
+    const currentQuestions = await c.env.DB.prepare(`
+        SELECT q.*, group_concat(qt.topic_id, ',') as topic_ids
+        FROM exam_questions q
+        LEFT JOIN question_topics qt ON q.id = qt.question_id
+        WHERE q.paper_id = ? AND q.is_deleted = 0
+        GROUP BY q.id
+    `).bind(paperId).all();
+
+    const currentQMap = new Map();
+    if (currentQuestions.results) {
+        for (const q of currentQuestions.results) {
+            currentQMap.set(String(q.id), q);
+        }
+    }
+
+    const qIds = new Set<string>();
+    // Identify which questions are being updated
+    for (const key of Object.keys(body)) {
+        if (key.startsWith('q_')) {
+            const parts = key.split('_');
+            if (parts.length >= 2) {
+                qIds.add(parts[1]);
+            }
+        }
+    }
+
+    let updatedCount = 0;
+
+    // Process updates for each question
+    for (const qId of qIds) {
+        const currentQ = currentQMap.get(qId);
+
+        // Prepare new values
+        const newType = (body[`q_${qId}_question_type`] as string) || null;
+        const newMarks = (body[`q_${qId}_marks`] as string) || null;
+        const newMcAnswer = (body[`q_${qId}_mc_answer`] as string) || null;
+
+        // Check if basic fields changed
+        let basicChanged = false;
+        if (currentQ) {
+            if (currentQ.question_type !== newType) basicChanged = true;
+            if (String(currentQ.marks || '') !== String(newMarks || '')) basicChanged = true;
+            if (currentQ.mc_answer !== newMcAnswer) basicChanged = true;
+        } else {
+            basicChanged = true; // New or unknown question (shouldn't happen in batch usually)
+        }
+
+        if (basicChanged) {
+            await c.env.DB.prepare(`
+                UPDATE exam_questions 
+                SET question_type = ?, marks = ?, mc_answer = ?, uploader_id = ?
+                WHERE id = ?
+            `).bind(
+                newType,
+                newMarks,
+                newMcAnswer,
+                user.id, // Update attribution
+                qId
+            ).run();
+            updatedCount++;
+        }
+
+        // 2. Handle Images (Only if file provided)
+        for (const type of ['question', 'answer', 'stimulus']) {
+            const file = body[`q_${qId}_${type}_image`] as File;
+            if (file && file.size > 0 && file.name !== 'undefined') {
+                const key = `questions/${Date.now()}-${type}-${Math.random().toString(36).slice(2)}`;
+                await c.env.BUCKET.put(key, file);
+                await c.env.DB.prepare(`UPDATE exam_questions SET ${type}_image_key = ? WHERE id = ?`).bind(key, qId).run();
+                updatedCount++;
+            }
+        }
+
+        // 3. Handle Topics
+        // Compare existing topics to new topics
+        const existingTopicIdsStr = currentQ?.topic_ids || '';
+        const existingTopicSet = new Set(existingTopicIdsStr.split(',').filter(Boolean));
+
+        const topicIds = body[`q_${qId}_topic_ids[]`];
+        const idsToInsert = Array.isArray(topicIds) ? topicIds : (topicIds ? [topicIds as string] : []);
+        const newTopicSet = new Set(idsToInsert.map(String));
+
+        // Start symmetric difference check
+        let topicsChanged = false;
+        if (existingTopicSet.size !== newTopicSet.size) {
+            topicsChanged = true;
+        } else {
+            for (const id of newTopicSet) {
+                if (!existingTopicSet.has(id)) {
+                    topicsChanged = true;
+                    break;
+                }
+            }
+        }
+
+        if (topicsChanged) {
+            await c.env.DB.prepare('DELETE FROM question_topics WHERE question_id = ?').bind(qId).run();
+
+            if (idsToInsert.length > 0) {
+                const placeholders = idsToInsert.map(() => '(?, ?)').join(',');
+                const values = [];
+                for (const tid of idsToInsert) {
+                    values.push(qId, tid);
+                }
+                await c.env.DB.prepare(`INSERT INTO question_topics (question_id, topic_id) VALUES ${placeholders}`).bind(...values).run();
+            }
+            updatedCount++;
+        }
+    }
+
+    return updatedCount;
+}
+
 // Batch Update Questions
 app.post('/past-papers/paper/:id/update-batch', async (c) => {
     const user = await getUser(c)
@@ -584,60 +700,12 @@ app.post('/past-papers/paper/:id/update-batch', async (c) => {
     if (paper.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
 
     const body = await c.req.parseBody();
-    const qIds = new Set<string>();
 
-    // Identify which questions are being updated based on form keys (e.g., q_123_marks)
-    for (const key of Object.keys(body)) {
-        if (key.startsWith('q_')) {
-            const parts = key.split('_');
-            if (parts.length >= 2) {
-                qIds.add(parts[1]);
-            }
-        }
+    const count = await processBatchUpdate(c, paperId, user, body);
+
+    if (count > 0) {
+        await logAction(c.env.DB, user.id, 'BATCH_UPDATE_QUESTIONS', `Batch updated questions in paper ${paperId}`, parseInt(paperId), 'papers');
     }
-
-    // Process updates for each question
-    for (const qId of qIds) {
-        // 1. Update Basic Fields
-        await c.env.DB.prepare(`
-            UPDATE exam_questions 
-            SET question_type = ?, marks = ?, mc_answer = ?, uploader_id = ?
-            WHERE id = ?
-        `).bind(
-            (body[`q_${qId}_question_type`] as string) || null,
-            (body[`q_${qId}_marks`] as string) || null,
-            (body[`q_${qId}_mc_answer`] as string) || null,
-            user.id, // Update attribution to current saver
-            qId
-        ).run();
-
-        // 2. Handle Images
-        for (const type of ['question', 'answer', 'stimulus']) {
-            const file = body[`q_${qId}_${type}_image`] as File;
-            if (file && file.size > 0 && file.name !== 'undefined') {
-                const key = `questions/${Date.now()}-${type}-${Math.random().toString(36).slice(2)}`;
-                await c.env.BUCKET.put(key, file);
-                await c.env.DB.prepare(`UPDATE exam_questions SET ${type}_image_key = ? WHERE id = ?`).bind(key, qId).run();
-            }
-        }
-
-        // 3. Handle Topics
-        await c.env.DB.prepare('DELETE FROM question_topics WHERE question_id = ?').bind(qId).run();
-        // Look for the key with []
-        const topicIds = body[`q_${qId}_topic_ids[]`];
-        const idsToInsert = Array.isArray(topicIds) ? topicIds : (topicIds ? [topicIds as string] : []);
-
-        if (idsToInsert.length > 0) {
-            const placeholders = idsToInsert.map(() => '(?, ?)').join(',');
-            const values = [];
-            for (const tid of idsToInsert) {
-                values.push(qId, tid);
-            }
-            await c.env.DB.prepare(`INSERT INTO question_topics (question_id, topic_id) VALUES ${placeholders}`).bind(...values).run();
-        }
-    }
-
-    await logAction(c.env.DB, user.id, 'BATCH_UPDATE_QUESTIONS', `Batch updated ${qIds.size} questions in paper ${paperId}`, parseInt(paperId), 'papers');
 
     return c.redirect(`/past-papers/paper/${paperId}`);
 });
@@ -718,9 +786,13 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
     if (!paper) return c.notFound();
     if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
 
-    // Cannot adjust if locked (unless admin? No, plan says only if not locked for now, matching UI)
-    // Actually, user requirement: "if the paper is not 'checked' yet".
+    // Cannot adjust if locked
     if (paper.is_locked) return c.text('Paper is locked', 403);
+
+    // AUTO-SAVE: Process updates for all questions in the form before adding/removing
+    // This assumes the form submitted to this endpoint contains all the q_ inputs, which it does because
+    // the buttons are inside the main <form> and use formaction
+    await processBatchUpdate(c, paperId, user, body);
 
     // 2. Find the last question of this segment
     // We need to query questions for this paper, section, and segment
@@ -749,10 +821,6 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
         // Logic to ADD a question
         // 1. Determine new Question Number
         // Attempt to parse the numeric part of the last question number
-        // Examples: "10" -> 11, "A10" -> A11, "3b" -> ?? (Complex)
-        // Simple heuristic: Extract last sequence of digits, increment it.
-        // If no digits, just append "1".
-
         const lastNum = lastQ.question_number;
         const match = lastNum.match(/(\d+)$/); // match numbers at end
         let newNum = "";
@@ -767,10 +835,6 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
         }
 
         // Full label
-        const newFullLabel = segmentLabel ?
-            `${sectionLabel} ${segmentLabel}${newNum.replace(segmentLabel, '')}` : // heuristic...
-            `${sectionLabel} ${newNum}`;
-        // Actually simpler: just re-construct like create.tsx does
         const standardFullLabel = segmentLabel ? `${sectionLabel} ${newNum}` : `${sectionLabel} ${newNum}`;
 
 
@@ -808,11 +872,12 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
         await logAction(c.env.DB, user.id, 'ADD_QUESTION', `Added question ${newNum} to paper ${paperId}`, parseInt(paperId), 'papers');
 
     } else if (action === 'remove') {
-        // Logic to REMOVE the last question
-        // Check count first - don't allow removing if it's the ONLY question (as per plan decision)
+        // Logic to REMOVE a question (Soft Delete)
+        // We are removing `lastQ`.
 
-        // Count questions in this segment
-        let countQuery = `SELECT count(*) as c FROM exam_questions WHERE paper_id = ? AND section_label = ? AND is_deleted = 0`;
+        // Safety Check 1: Do not remove if it's the ONLY question in the segment.
+        // Count questions in segment
+        let countQuery = `SELECT count(*) as count FROM exam_questions WHERE paper_id = ? AND section_label = ? AND is_deleted = 0`;
         const countParams: any[] = [paperId, sectionLabel];
         if (segmentLabel) {
             countQuery += ` AND segment_label = ?`;
@@ -822,17 +887,14 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
         }
 
         const countRes = await c.env.DB.prepare(countQuery).bind(...countParams).first<any>();
-        if (countRes.c <= 1) {
-            return c.text('Cannot remove the last question of a segment.', 400);
+        if (countRes.count <= 1) {
+            return c.text('Cannot delete the last remaining question of a segment. Delete the segment instead if needed (not implemented).', 400);
         }
 
-        // Delete lastQ
-        await c.env.DB.prepare('UPDATE exam_questions SET is_deleted = 1 WHERE id = ?').bind(lastQ.id).run();
-
-        await logAction(c.env.DB, user.id, 'REMOVE_QUESTION', `Removed question ${lastQ.question_number} from paper ${paperId}`, parseInt(paperId), 'papers');
+        await c.env.DB.prepare(`UPDATE exam_questions SET is_deleted = 1 WHERE id = ?`).bind(lastQ.id).run();
     }
 
-    return c.redirect(`/past-papers/paper/${paperId}#q-${lastQ.id}`); // anchor might be slightly off for remove, but close enough
+    return c.redirect(`/past-papers/paper/${paperId}`);
 });
 
 export default app;
