@@ -325,6 +325,7 @@ app.get('/past-papers', async (c) => {
         )
 
     } else if (tab === 'review') {
+        if (!user) return c.redirect('/login')
         // Review Logic
         const query = `
             SELECT q.*, p.school_name, p.academic_year, 
