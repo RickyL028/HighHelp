@@ -254,7 +254,7 @@ app.get('/past-papers', async (c) => {
                             <div class="space-y-4">
                                 {questions.results.map((q: any) => {
                                     const params = `source=practice&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
-                                    const isIncomplete = !q.marks || !q.question_image_key;
+                                    const isIncomplete = !q.marks || (!q.question_image_key && !q.question_text);
 
                                     const clickAction = mode === 'select'
                                         ? `const cb = document.querySelector('input[name="question_ids"][value="${q.id}"]'); if(cb) cb.checked = !cb.checked;`
