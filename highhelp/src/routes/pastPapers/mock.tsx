@@ -144,10 +144,15 @@ app.get('/mock-exams/create', async (c) => {
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
                                         <label class="block font-bold text-gray-700 mb-2">Topic Filter</label>
-                                        <select name="topic" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                            <option value="">All Topics</option>
-                                            {topics.results.map((t: any) => <option value={t.id}>{t.name}</option>)}
-                                        </select>
+                                        <div class="max-h-48 overflow-y-auto border border-gray-300 rounded-md p-2 bg-white space-y-1">
+                                            {topics.results.length === 0 && <p class="text-sm text-gray-400">No topics validation</p>}
+                                            {topics.results.map((t: any) => (
+                                                <label class="flex items-center gap-2 hover:bg-gray-50 p-1 rounded cursor-pointer">
+                                                    <input type="checkbox" name="topics" value={t.id} class="rounded text-blue-600 focus:ring-blue-500" />
+                                                    <span class="text-sm text-gray-700">{t.name}</span>
+                                                </label>
+                                            ))}
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="block font-bold text-gray-700 mb-2">Year</label>
@@ -211,13 +216,22 @@ app.post('/mock-exams/create-auto', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
 
-    const body = await c.req.parseBody()
+    const body = await c.req.parseBody({ all: true })
     const subject = body['subject'] as string
     const examName = body['exam_name'] as string
     const allowCompleted = body['allow_completed'] === '1'
     const timerMinutes = parseInt(body['timer_minutes'] as string || '0')
 
-    const filterTopic = body['topic'] as string
+    // Handle topics as array (from checkboxes)
+    let filterTopics: string[] = []
+    const rawTopics = body['topics']
+    if (rawTopics) {
+        if (Array.isArray(rawTopics)) {
+            filterTopics = rawTopics as string[]
+        } else {
+            filterTopics = [rawTopics as string]
+        }
+    }
     const filterYear = body['year'] as string
     const filterType = body['type'] as string
 
@@ -273,7 +287,11 @@ app.post('/mock-exams/create-auto', async (c) => {
                 `
         const params: any[] = [user.id, subject, section]
 
-        if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
+        if (filterTopics.length > 0) {
+            const placeholders = filterTopics.map(() => '?').join(', ')
+            query += ` AND qt.topic_id IN (${placeholders})`
+            params.push(...filterTopics)
+        }
         if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
         if (filterType) { query += ` AND q.question_type = ?`; params.push(filterType); }
 
@@ -340,7 +358,7 @@ app.post('/mock-exams/create-manual', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
 
-    const body = await c.req.parseBody()
+    const body = await c.req.parseBody({ all: true })
     const subject = body['subject'] as string
     const examName = body['exam_name'] as string || 'Custom Exam'
     const timerMinutes = parseInt(body['timer_minutes'] as string || '0')
@@ -354,7 +372,7 @@ app.post('/mock-exams/create-manual', async (c) => {
 
     let questionIds: string[] = []
     if (Array.isArray(questionIdsRaw)) {
-        questionIds = questionIdsRaw.map(String)
+        questionIds = (questionIdsRaw as string[]).map(String)
     } else {
         questionIds = [String(questionIdsRaw)]
     }
