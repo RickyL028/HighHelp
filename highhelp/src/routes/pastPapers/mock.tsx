@@ -20,7 +20,7 @@ app.get('/mock-exams', async (c) => {
         WHERE m.user_id = ? AND m.subject = ?
         GROUP BY m.id
         ORDER BY m.created_at DESC
-    `).bind(user.id, subject).all()
+    `).bind(user.id, subject || null).all()
 
     return c.html(
         <Layout title={`Mock Exams - ${subject}`} user={user}>
@@ -485,14 +485,26 @@ app.get('/mock-exams/:id', async (c) => {
                             </div>
                         </div>
 
-                        {q.question_image_key && (
-                            <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 mb-4" />
+                        {q.question_text ? (
+                            <div class="prose prose-sm max-w-none mb-6 whitespace-pre-wrap font-serif text-lg leading-relaxed text-gray-800">
+                                {q.question_text}
+                            </div>
+                        ) : (
+                            q.question_image_key && (
+                                <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 mb-4" />
+                            )
                         )}
 
-                        {q.stimulus_image_key && (
+                        {(q.stimulus_text || q.stimulus_image_key) && (
                             <div class="mt-4 p-4 bg-gray-50 rounded border border-gray-200">
                                 <p class="text-xs font-bold text-gray-500 uppercase mb-2">Stimulus</p>
-                                <img src={`/download/${q.stimulus_image_key}`} class="max-w-full rounded" />
+                                {q.stimulus_text ? (
+                                    <div class="prose prose-sm max-w-none whitespace-pre-wrap font-serif">
+                                        {q.stimulus_text}
+                                    </div>
+                                ) : (
+                                    <img src={`/download/${q.stimulus_image_key}`} class="max-w-full rounded" />
+                                )}
                             </div>
                         )}
 
@@ -627,18 +639,41 @@ app.get('/mock-exams/:id/mark', async (c) => {
                                 {/* Left: Question */}
                                 <div>
                                     <h4 class="font-bold text-sm text-gray-500 uppercase mb-2">Question</h4>
-                                    {q.question_image_key ? (
-                                        <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100" />
-                                    ) : <p class="text-red-500 text-sm">Image missing</p>}
+                                    {q.question_text ? (
+                                        <div class="prose prose-sm max-w-none mb-4 whitespace-pre-wrap font-serif text-gray-800">
+                                            {q.question_text}
+                                        </div>
+                                    ) : (
+                                        q.question_image_key ? (
+                                            <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 mb-4" />
+                                        ) : <p class="text-red-500 text-sm italic">No question content</p>
+                                    )}
+
+                                    {(q.stimulus_text || q.stimulus_image_key) && (
+                                        <div class="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
+                                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Stimulus</p>
+                                            {q.stimulus_text ? (
+                                                <div class="whitespace-pre-wrap text-sm font-serif">{q.stimulus_text}</div>
+                                            ) : (
+                                                <img src={`/download/${q.stimulus_image_key}`} class="max-w-full rounded" />
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Right: Answer & Marking */}
                                 <div>
                                     <h4 class="font-bold text-sm text-gray-500 uppercase mb-2">Answer / Guidelines</h4>
-                                    {q.answer_image_key ? (
-                                        <img src={`/download/${q.answer_image_key}`} class="max-w-full rounded border border-gray-100 mb-6" />
+                                    {q.answer_text ? (
+                                        <div class="prose prose-sm max-w-none mb-4 whitespace-pre-wrap font-serif text-green-900 bg-green-50 p-3 rounded border border-green-100">
+                                            {q.answer_text}
+                                        </div>
                                     ) : (
-                                        <div class="bg-gray-50 p-4 rounded text-sm text-gray-500 mb-6 italic">No answer key available.</div>
+                                        q.answer_image_key ? (
+                                            <img src={`/download/${q.answer_image_key}`} class="max-w-full rounded border border-gray-100 mb-6" />
+                                        ) : (
+                                            <div class="bg-gray-50 p-4 rounded text-sm text-gray-500 mb-6 italic">No answer key available.</div>
+                                        )
                                     )}
 
                                     <div class="bg-blue-50 p-4 rounded border border-blue-100">
@@ -702,7 +737,11 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
         }
     }
 
-    return c.redirect(`/past-papers/mock-exams`) // Need to persist subject
+    // Fetch subject to persist redirect
+    const exam = await c.env.DB.prepare(`SELECT subject FROM mock_exams WHERE id = ?`).bind(examId).first<any>()
+    const subject = exam?.subject ? `?subject=${encodeURIComponent(exam.subject)}` : ''
+
+    return c.redirect(`/past-papers/mock-exams${subject}`)
 })
 
 export default app

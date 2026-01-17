@@ -147,16 +147,28 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     {/* Left: Question Content */}
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-y-auto p-6">
                         <h3 class="font-bold text-gray-700 mb-4 uppercase text-sm tracking-wide">Question</h3>
-                        {q.question_image_key ? (
-                            <img src={`/download/${q.question_image_key}`} class="w-full h-auto object-contain" />
+                        {q.question_text ? (
+                            <div class="prose prose-sm max-w-none mb-6 whitespace-pre-wrap font-serif text-lg leading-relaxed text-gray-800">
+                                {q.question_text}
+                            </div>
                         ) : (
-                            <div class="text-gray-400 italic text-center py-12">No question image available</div>
+                            q.question_image_key ? (
+                                <img src={`/download/${q.question_image_key}`} class="w-full h-auto object-contain" />
+                            ) : (
+                                <div class="text-gray-400 italic text-center py-12">No question content available</div>
+                            )
                         )}
 
-                        {q.stimulus_image_key && (
+                        {(q.stimulus_text || q.stimulus_image_key) && (
                             <div class="mt-6 border-t pt-6">
                                 <h4 class="font-bold text-gray-500 mb-2 text-xs uppercase">Stimulus</h4>
-                                <img src={`/download/${q.stimulus_image_key}`} class="w-full h-auto object-contain" />
+                                {q.stimulus_text ? (
+                                    <div class="prose prose-sm max-w-none bg-gray-50 p-4 rounded border whitespace-pre-wrap font-serif">
+                                        {q.stimulus_text}
+                                    </div>
+                                ) : (
+                                    <img src={`/download/${q.stimulus_image_key}`} class="w-full h-auto object-contain" />
+                                )}
                             </div>
                         )}
                     </div>
@@ -198,9 +210,15 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                             <div class="bg-green-50 rounded-lg p-4 border border-green-100">
                                                 <h4 class="font-bold text-green-800 text-sm mb-2">Correct Answer / Guidelines</h4>
                                                 {q.mc_answer && <div class="text-xl font-bold text-green-700 mb-2">{q.mc_answer}</div>}
-                                                {q.answer_image_key ? (
-                                                    <img src={`/download/${q.answer_image_key}`} class="w-full object-contain bg-white rounded border border-green-200" />
-                                                ) : <span class="text-gray-500 italic text-sm">No answer image provided.</span>}
+                                                {q.answer_text ? (
+                                                    <div class="prose prose-sm max-w-none whitespace-pre-wrap text-green-900 font-serif">
+                                                        {q.answer_text}
+                                                    </div>
+                                                ) : (
+                                                    q.answer_image_key ? (
+                                                        <img src={`/download/${q.answer_image_key}`} class="w-full object-contain bg-white rounded border border-green-200" />
+                                                    ) : <span class="text-gray-500 italic text-sm">No answer content provided.</span>
+                                                )}
                                             </div>
 
                                             {/* Self Marking UI */}

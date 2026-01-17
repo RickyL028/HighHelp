@@ -33,11 +33,6 @@ app.get('/past-papers/paper/:id', async (c) => {
     const allTopics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(paper.subject).all();
 
     // Build question list and Validate
-    // 1. Topic (at least one)
-    // 2. Question Image
-    // 3. Type
-    // 4. Marks
-    // 5. Answer Image
     const qList = questions.results as any[];
     let incompleteQuestionsCount = 0;
 
@@ -47,10 +42,10 @@ app.get('/past-papers/paper/:id', async (c) => {
         // Validation Logic
         const missing = [];
         if (!q.topic_ids) missing.push("Topic");
-        if (!q.question_image_key) missing.push("Q. Img");
+        if (!q.question_image_key && !q.question_text) missing.push("Q. Content");
         if (!q.question_type) missing.push("Type");
         if (!q.marks) missing.push("Marks");
-        if (!q.answer_image_key) missing.push("Ans. Img");
+        if (!q.answer_image_key && !q.answer_text) missing.push("Ans. Content");
 
         if (missing.length > 0) incompleteQuestionsCount++;
 
@@ -61,27 +56,12 @@ app.get('/past-papers/paper/:id', async (c) => {
         };
     });
 
-    // Check permissions
-    // Tag check: "C*" allows locking. 
-    // Locking: Permission >= 4 OR tag C*
-    // Unlocking: Permission >= 5
-    // Editing Locked: Permission >= 5
-    const hasCTag = user?.tags && (typeof user.tags === 'string' ? user.tags.includes('C*') : user.tags.includes('C*')); // Check JSON or string
+    const hasCTag = user?.tags && (typeof user.tags === 'string' ? user.tags.includes('C*') : Array.isArray(user.tags) ? user.tags.includes('C*') : false);
     const canLock = user && (user.permission_level >= 4 || hasCTag);
     const canUnlock = user && user.permission_level >= 5;
-
-    // Validate Locking: Can only lock if 0 incomplete questions
-    const canLockValidate = canLock && incompleteQuestionsCount === 0;
-
-    // Normal edit permission
     const canEditSubject = user && canUploadPastPaper(user, paper.subject);
-
-    // Final Edit Permission: Must have subject perm AND (not locked OR (locked AND canUnlock))
     const canEdit = canEditSubject && (!paper.is_locked || canUnlock);
-
     const canManageTopics = user && (user.permission_level >= PermissionLevel.ADMIN || hasCTag);
-
-
 
     return c.html(
         <Layout title={`${paper.school_name} ${paper.academic_year}`} user={user}>
@@ -109,7 +89,6 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
 
                     <div class="flex items-center gap-3">
-                        {/* Lock/Unlock Button */}
                         {paper.is_locked ? (
                             canUnlock && (
                                 <form action={`/past-papers/paper/${paper.id}/toggle-lock`} method="post">
@@ -141,22 +120,14 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
                 </div>
 
-                {/* Lock Warning Modal */}
                 <dialog id="lock-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
                     <div class="w-full max-w-md bg-white p-6 rounded-xl">
                         <h3 class="text-xl font-bold text-red-600 mb-4 flex items-center gap-2">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" ></path></svg>
                             Confirm check
                         </h3>
                         <p class="text-gray-600 mb-6">
-                            By checking, you - yes, you - verify that:
-                            <ul class="list-disc pl-5 mt-2 space-y-1 text-sm">
-                                <li>All questions have been uploaded correctly.</li>
-                                <li>The content is accurate and complete.</li>
-                                <li>You accept responsibility for this paper's integrity.</li>
-                            </ul>
+                            By checking, you - yes, you - verify that the paper is accurate and complete.
                         </p>
-                        <p class="text-xs text-gray-400 mb-6">This action will be logged.</p>
                         <div class="flex justify-end gap-3">
                             <button onclick="document.getElementById('lock-modal').close()" class="px-4 py-2 text-gray-600 font-bold hover:bg-gray-50 rounded-lg">Cancel</button>
                             <form action={`/past-papers/paper/${paper.id}/toggle-lock`} method="post">
@@ -168,11 +139,10 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
                 </dialog>
 
-                {/* Topic Management for Admins */}
                 {canManageTopics && (
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                         <details>
-                            <summary class="font-bold text-gray-700 cursor-pointer">Topic Management - Do NOT touch unless necessary</summary>
+                            <summary class="font-bold text-gray-700 cursor-pointer">Topic Management</summary>
                             <div class="mt-4">
                                 <form action="/past-papers/topics/create" method="post" class="flex gap-2 mb-4">
                                     <input type="hidden" name="subject" value={paper.subject} />
@@ -182,7 +152,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                 </form>
                                 <div class="flex flex-wrap gap-2">
                                     {allTopics.results.map((t: any) => (
-                                        <div class="bg-white border rounded px-2 py-1 text-xs flex items-center gap-2">
+                                        <div class="bg-white border rounded px-2 py-1 text-xs flex items-center gap-2" key={t.id}>
                                             {t.name}
                                             <form action="/past-papers/topics/delete" method="post" onsubmit="return confirm('Delete topic?');">
                                                 <input type="hidden" name="topic_id" value={t.id} />
@@ -197,16 +167,13 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
                 )}
 
-                {/* Batch Form Start */}
                 <form action={`/past-papers/paper/${paper.id}/update-batch`} method="post" enctype="multipart/form-data">
                     <div class="space-y-4 pb-24">
                         {qWithNext.map((q: any) => (
-                            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" id={`q-${q.id}`}>
-                                {/* Header / Summary Mode */}
+                            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" id={`q-${q.id}`} key={q.id}>
                                 <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition" onclick={`toggleEdit(${q.id})`}>
                                     <div class="flex items-center gap-4">
                                         <span class="font-mono text-gray-500 font-bold w-16 text-right">{q.section_label} {q.question_number}</span>
-
                                         <div class="flex flex-col">
                                             <div class="flex items-center gap-2">
                                                 {q.question_type === 'multiple_choice' && <span class="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded font-bold">MCQ</span>}
@@ -217,99 +184,105 @@ app.get('/past-papers/paper/:id', async (c) => {
                                             ) : (
                                                 <span class="text-sm text-gray-400 italic">No topics tagged</span>
                                             )}
-                                            {/* Attribution Display */}
-                                            <span class="text-xs text-gray-400 mt-1">
-                                                Last edited by: {q.uploader_first ? `${q.uploader_first} ${q.uploader_last}` : 'Original Uploader'}
-                                            </span>
                                         </div>
                                     </div>
-
                                     <div class="flex items-center gap-4">
                                         {q.missing_fields.length === 0 ? (
                                             <span class="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded border border-green-200">✓ Ready</span>
                                         ) : (
-                                            <span class="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-200 cursor-help" title={`Missing: ${q.missing_fields.join(', ')}`}>
-                                                ⚠ Missing: {q.missing_fields.join(', ')}
-                                            </span>
+                                            <span class="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-200">⚠ Missing: {q.missing_fields.join(', ')}</span>
                                         )}
                                         <span class="text-gray-400">▼</span>
                                     </div>
                                 </div>
 
-                                {/* Edit / Detail Mode (Auto-expanded if canEdit is true) */}
                                 <div id={`detail-${q.id}`} class={`${canEdit ? '' : 'hidden'} border-t border-gray-100 bg-gray-50 p-6`}>
                                     {canEdit ? (
-                                        <div class="space-y-6">
-                                            {/* Removed individual form tag */}
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                {/* Left Column: Metadata */}
-                                                <div class="space-y-4">
-                                                    <div>
-                                                        <label class="block text-xs font-bold text-gray-500 uppercase">Topics</label>
-                                                        {/* FIX: size attribute expects number in JSX */}
-                                                        {/* Changed name to include q ID for batch processing */}
-                                                        {/* Added [] to name to ensure multiple values are sent/parsed correctly */}
-                                                        <select name={`q_${q.id}_topic_ids[]`} multiple size={4} class="w-full mt-1 rounded border-gray-300 text-sm">
-                                                            {allTopics.results.map((t: any) => (
-                                                                <option value={t.id} selected={q.topic_ids?.split(',').includes(String(t.id))}>{t.name}</option>
-                                                            ))}
-                                                        </select>
-                                                        <p class="text-xs text-gray-400 mt-1">Cmd/Ctrl+Click to select multiple</p>
-                                                    </div>
-
-                                                    <div class="grid grid-cols-2 gap-4">
-                                                        <div>
-                                                            <label class="block text-xs font-bold text-gray-500 uppercase">Type</label>
-                                                            <select name={`q_${q.id}_question_type`} class="w-full mt-1 rounded border-gray-300 text-sm">
-                                                                <option value="short_answer" selected={q.question_type === 'short_answer'}>Short Answer</option>
-                                                                <option value="multiple_choice" selected={q.question_type === 'multiple_choice'}>Multiple Choice</option>
-
-                                                                <option value="extended_response" selected={q.question_type === 'extended_response'}>Extended Response</option>
-                                                            </select>
-                                                        </div>
-                                                        <div>
-                                                            <label class="block text-xs font-bold text-gray-500 uppercase">Marks</label>
-                                                            <input type="number" name={`q_${q.id}_marks`} value={q.marks} class="w-full mt-1 rounded border-gray-300 text-sm" />
-                                                        </div>
-                                                        {q.question_type === 'multiple_choice' && (
-                                                            <div>
-                                                                <label class="block text-xs font-bold text-gray-500 uppercase">Correct Answer (MCQ only)</label>
-                                                                <select name={`q_${q.id}_mc_answer`} class="w-full mt-1 rounded border-gray-300 text-sm">
-                                                                    {['A', 'B', 'C', 'D'].map(opt => (
-                                                                        <option value={opt} selected={q.mc_answer === opt}>{opt}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div class="space-y-4">
+                                                <div>
+                                                    <label class="block text-xs font-bold text-gray-500 uppercase">Topics</label>
+                                                    <select name={`q_${q.id}_topic_ids[]`} multiple size={4} class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                        {allTopics.results.map((t: any) => (
+                                                            <option value={t.id} selected={q.topic_ids?.split(',').includes(String(t.id))} key={t.id}>{t.name}</option>
+                                                        ))}
+                                                    </select>
                                                 </div>
-
-                                                {/* Right Column: Images */}
-                                                <div class="space-y-4">
-                                                    {['question', 'answer', 'stimulus'].map(type => (
-                                                        <div class="bg-white p-3 rounded border border-gray-200">
-                                                            <div class="flex justify-between items-center mb-2">
-                                                                <label class="text-xs font-bold text-gray-500 uppercase">{type} Image</label>
-                                                                <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-blue-600 font-bold">📋 Paste</button>
-                                                            </div>
-
-                                                            {q[`${type}_image_key`] && (
-                                                                <img src={`/download/${q[`${type}_image_key`]}`} class="max-h-32 object-contain mb-2 border rounded" />
-                                                            )}
-
-                                                            <input type="file" name={`q_${q.id}_${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500" />
-                                                            <img id={`${type}-preview-${q.id}`} class="max-h-32 object-contain mt-2 hidden border rounded bg-gray-50" />
-                                                        </div>
-                                                    ))}
+                                                <div class="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label class="block text-xs font-bold text-gray-500 uppercase">Type</label>
+                                                        <select name={`q_${q.id}_question_type`} class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                            <option value="short_answer" selected={q.question_type === 'short_answer'}>Short Answer</option>
+                                                            <option value="multiple_choice" selected={q.question_type === 'multiple_choice'}>Multiple Choice</option>
+                                                            <option value="extended_response" selected={q.question_type === 'extended_response'}>Extended Response</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-bold text-gray-500 uppercase">Marks</label>
+                                                        <input type="number" name={`q_${q.id}_marks`} value={q.marks} class="w-full mt-1 rounded border-gray-300 text-sm" />
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            {/* Removed individual save button */}
+                                            <div class="space-y-4">
+                                                {['question', 'answer', 'stimulus'].map(type => {
+                                                    const isText = !!q[`${type}_text`];
+                                                    return (
+                                                        <div class="bg-white p-3 rounded border border-gray-200" x-data={`{ mode: '${isText ? 'text' : 'image'}' }`} key={type}>
+                                                            <div class="flex justify-between items-center mb-2">
+                                                                <label class="text-xs font-bold text-gray-500 uppercase">{type} Content</label>
+                                                                <div class="flex gap-2">
+                                                                    <button type="button" x-on:click="mode = 'image'"
+                                                                        class="text-xs px-2 py-1 rounded font-bold"
+                                                                        x-bind:class="mode === 'image' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'">
+                                                                        Image
+                                                                    </button>
+                                                                    <button type="button" x-on:click="mode = 'text'"
+                                                                        class="text-xs px-2 py-1 rounded font-bold"
+                                                                        x-bind:class="mode === 'text' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'">
+                                                                        Text
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            <div x-show="mode === 'image'" class="space-y-2">
+                                                                <div class="flex justify-between items-center">
+                                                                    <span class="text-xs text-gray-400">Upload or Paste</span>
+                                                                    <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-blue-600 font-bold">📋 Paste</button>
+                                                                </div>
+                                                                {q[`${type}_image_key`] && (
+                                                                    <img src={`/download/${q[`${type}_image_key`]}`} class="max-h-32 object-contain mb-2 border rounded" />
+                                                                )}
+                                                                <input type="file" name={`q_${q.id}_${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500" />
+                                                                <img id={`${type}-preview-${q.id}`} class="max-h-32 object-contain mt-2 hidden border rounded bg-gray-50" />
+                                                            </div>
+
+                                                            <div x-show="mode === 'text'">
+                                                                <textarea
+                                                                    name={`q_${q.id}_${type}_text`}
+                                                                    class="w-full h-32 p-2 text-sm border border-gray-300 rounded resize-none font-mono"
+                                                                    placeholder={`Enter ${type} text...`}>{q[`${type}_text`] || ''}</textarea>
+                                                            </div>
+                                                            <input type="hidden" name={`q_${q.id}_${type}_active_mode`} x-model="mode" />
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     ) : (
-                                        <div class="flex gap-4">
-                                            {q.question_image_key && <img src={`/download/${q.question_image_key}`} class="max-w-md border rounded" />}
-                                            {q.answer_image_key && <img src={`/download/${q.answer_image_key}`} class="max-w-md border rounded border-green-200" />}
+                                        <div class="space-y-4">
+                                            {['question', 'answer', 'stimulus'].map(type => (
+                                                q[`${type}_text`] || q[`${type}_image_key`] ? (
+                                                    <div class="border rounded p-4 bg-white" key={type}>
+                                                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">{type}</h4>
+                                                        {q[`${type}_text`] ? (
+                                                            <div class="whitespace-pre-wrap font-mono text-sm">{q[`${type}_text`]}</div>
+                                                        ) : (
+                                                            <img src={`/download/${q[`${type}_image_key`]}`} class="max-w-md border rounded" />
+                                                        )}
+                                                    </div>
+                                                ) : null
+                                            ))}
                                         </div>
                                     )}
                                 </div>
@@ -317,12 +290,11 @@ app.get('/past-papers/paper/:id', async (c) => {
                         ))}
                     </div>
 
-                    {/* Floating Save Bar */}
                     {canEdit && (
                         <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-50">
                             <div class="max-w-5xl mx-auto flex justify-between items-center">
                                 <span class="text-gray-500 text-sm">Ensure all changes are saved.</span>
-                                <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 shadow-md transition transform hover:-translate-y-0.5">
+                                <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 shadow-md">
                                     Save All Changes
                                 </button>
                             </div>
@@ -331,6 +303,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                 </form>
             </div>
 
+            <script src="//unpkg.com/alpinejs" defer></script>
             <script dangerouslySetInnerHTML={{
                 __html: `
                 function toggleEdit(id) {
@@ -345,18 +318,15 @@ app.get('/past-papers/paper/:id', async (c) => {
                             if (item.types.some(type => type.startsWith('image/'))) {
                                 const blob = await item.getType(item.types.find(type => type.startsWith('image/')));
                                 const file = new File([blob], "pasted.png", { type: blob.type });
-                                
                                 const dataTransfer = new DataTransfer();
                                 dataTransfer.items.add(file);
                                 document.getElementById(inputId).files = dataTransfer.files;
-                                
                                 const preview = document.getElementById(previewId);
                                 preview.src = URL.createObjectURL(blob);
                                 preview.classList.remove('hidden');
                                 return;
                             }
                         }
-                        alert("No image in clipboard");
                     } catch (e) {
                          alert("Paste failed: " + e.message);
                     }
@@ -370,8 +340,6 @@ app.get('/past-papers/paper/:id', async (c) => {
 app.post('/past-papers/question/:id/sub-question', async (c) => {
     const user = await getUser(c)
     const qId = c.req.param('id')
-
-    // Fetch parent question
     const q = await c.env.DB.prepare('SELECT q.*, p.subject FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE q.id = ?').bind(qId).first<any>();
     if (!q) return c.notFound();
     if (!user || !canUploadPastPaper(user, q.subject)) return c.text('Unauthorised', 403);
@@ -380,41 +348,24 @@ app.post('/past-papers/question/:id/sub-question', async (c) => {
     const currentIdx = parseFloat(body['ordering_index'] as string);
     const nextIdx = parseFloat(body['next_ordering_index'] as string);
     const newNumber = body['new_number'] as string;
-
     const newIdx = (currentIdx + nextIdx) / 2;
 
     await c.env.DB.prepare(`
         INSERT INTO exam_questions 
         (paper_id, section_label, segment_label, question_number, uploader_id, ordering_index)
         VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(
-        q.paper_id,
-        q.section_label,
-        q.segment_label,
-        q.question_number, // Fix: this was q.question_number in original? No, newNumber. Check original.
-        user.id,
-        newIdx
-    ).run();
-    // Wait, original: `newNumber,` - oh let me check.
-    // Original line 904 used `newNumber`.
-
-    // FIX ABOVE: in bind arguments.
+    `).bind(q.paper_id, q.section_label, q.segment_label, newNumber, user.id, newIdx).run();
 
     return c.redirect(`/past-papers/paper/${q.paper_id}#q-${qId}`);
 });
-// Need to re-paste the handler properly (I typed it manually above and missed arguments).
-// Let's just include all handlers properly.
 
-// Create Topic (Admin/Subject Mod)
+// Create Topic
 app.post('/past-papers/topics/create', async (c) => {
     const user = await getUser(c)
     const body = await c.req.parseBody()
     const subject = body['subject'] as string
     const redirectId = body['redirect_paper_id']
-
-    // Permission check inside canCreateTopic
     if (!user || !canCreateTopic(user, subject)) return c.text("Unauthorised", 401)
-
     const name = body['name'] as string
     if (subject && name) {
         await c.env.DB.prepare('INSERT INTO topics (subject, name) VALUES (?, ?)').bind(subject, name).run()
@@ -422,20 +373,15 @@ app.post('/past-papers/topics/create', async (c) => {
     return c.redirect(`/past-papers/paper/${redirectId}`)
 })
 
-// Delete Topic (Admin Only)
+// Delete Topic
 app.post('/past-papers/topics/delete', async (c) => {
     const user = await getUser(c)
     if (!user || user.permission_level < PermissionLevel.ADMIN) return c.text("Unauthorised", 401)
-
     const body = await c.req.parseBody()
     const topicId = body['topic_id']
     const redirectId = body['redirect_paper_id']
-
     await c.env.DB.prepare('DELETE FROM topics WHERE id = ?').bind(topicId).run()
-
-    // Also clean up question_topics links
     await c.env.DB.prepare('DELETE FROM question_topics WHERE topic_id = ?').bind(topicId).run()
-
     return c.redirect(`/past-papers/paper/${redirectId}`)
 })
 
@@ -443,32 +389,15 @@ app.post('/past-papers/topics/delete', async (c) => {
 app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
     const user = await getUser(c)
     const paperId = c.req.param('id')
-
-    // Fetch paper
     const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
     if (!paper) return c.notFound();
-
-    const hasCTag = user?.tags && (typeof user.tags === 'string' ? user.tags.includes('C*') : user.tags.includes('C*'));
-
-    // Permission Logic
-    // Unlock: Only Level 5
-    // Lock: Level 4 or C* tag + Validation (All questions must have images)
+    const hasCTag = user?.tags && (typeof user.tags === 'string' ? user.tags.includes('C*') : Array.isArray(user.tags) ? user.tags.includes('C*') : false);
 
     if (paper.is_locked) {
         if (!user || user.permission_level < 5) return c.text("Unauthorised to unlock", 403);
-
         await logAction(c.env.DB, user.id, 'UNLOCK_PAPER', `Unlocked paper ${paperId}`, parseInt(paperId), 'papers');
     } else {
         if (!user || (user.permission_level < 4 && !hasCTag)) return c.text("Unauthorised to lock", 403);
-
-        // Validation: Check for questions missingANY of the 5 fields
-        // 1. Topic (must exist in question_topics)
-        // 2. Question Img
-        // 3. Type
-        // 4. Marks
-        // 5. Answer Img
-
-        // Complex query to find invalid questions
         const invalidQuestions = await c.env.DB.prepare(`
             SELECT count(q.id) as count
             FROM exam_questions q
@@ -477,23 +406,20 @@ app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
             GROUP BY q.id
             HAVING 
                 count(qt.topic_id) = 0 OR 
-                q.question_image_key IS NULL OR 
+                (q.question_image_key IS NULL AND q.question_text IS NULL) OR 
                 q.question_type IS NULL OR 
                 q.marks IS NULL OR 
-                q.answer_image_key IS NULL
+                (q.answer_image_key IS NULL AND q.answer_text IS NULL)
         `).bind(paperId).all<any>();
 
-        // If results return any rows, those correspond to invalid questions
         if (invalidQuestions.results.length > 0) {
-            return c.text(`Cannot lock: ${invalidQuestions.results.length} questions have missing fields.`, 400);
+            return c.text(`Cannot lock: Missing fields.`, 400);
         }
-
         await logAction(c.env.DB, user.id, 'LOCK_PAPER', `Locked paper ${paperId}`, parseInt(paperId), 'papers');
     }
 
     const newLockState = paper.is_locked ? 0 : 1;
     await c.env.DB.prepare('UPDATE papers SET is_locked = ? WHERE id = ?').bind(newLockState, paperId).run();
-
     return c.redirect(`/past-papers/paper/${paperId}`);
 });
 
@@ -501,8 +427,6 @@ app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
 app.post('/past-papers/paper/:id/update-batch', async (c) => {
     const user = await getUser(c)
     const paperId = c.req.param('id')
-
-    // Fetch paper and check core permissions
     const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
     if (!paper) return c.notFound();
     if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
@@ -510,123 +434,56 @@ app.post('/past-papers/paper/:id/update-batch', async (c) => {
 
     const body = await c.req.parseBody();
     const qIds = new Set<string>();
-
-    // Identify which questions are being updated based on form keys (e.g., q_123_marks)
     for (const key of Object.keys(body)) {
         if (key.startsWith('q_')) {
             const parts = key.split('_');
-            if (parts.length >= 2) {
-                qIds.add(parts[1]);
-            }
+            if (parts.length >= 2) qIds.add(parts[1]);
         }
     }
 
-    // Process updates for each question
     for (const qId of qIds) {
-        // 1. Update Basic Fields
         await c.env.DB.prepare(`
             UPDATE exam_questions 
             SET question_type = ?, marks = ?, mc_answer = ?, uploader_id = ?
             WHERE id = ?
         `).bind(
-            (body[`q_${qId}_question_type`] as string) || null,
-            (body[`q_${qId}_marks`] as string) || null,
-            (body[`q_${qId}_mc_answer`] as string) || null,
-            user.id, // Update attribution to current saver
+            body[`q_${qId}_question_type`] || null,
+            body[`q_${qId}_marks`] || null,
+            body[`q_${qId}_mc_answer`] || null,
+            user.id,
             qId
         ).run();
 
-        // 2. Handle Images
         for (const type of ['question', 'answer', 'stimulus']) {
-            const file = body[`q_${qId}_${type}_image`] as File;
-            if (file && file.size > 0 && file.name !== 'undefined') {
-                const key = `questions/${Date.now()}-${type}-${Math.random().toString(36).slice(2)}`;
-                await c.env.BUCKET.put(key, file);
-                await c.env.DB.prepare(`UPDATE exam_questions SET ${type}_image_key = ? WHERE id = ?`).bind(key, qId).run();
+            const mode = body[`q_${qId}_${type}_active_mode`] as string;
+            if (mode === 'text') {
+                const text = body[`q_${qId}_${type}_text`] as string;
+                await c.env.DB.prepare(`UPDATE exam_questions SET ${type}_text = ?, ${type}_image_key = NULL WHERE id = ?`).bind(text || null, qId).run();
+            } else if (mode === 'image') {
+                const file = body[`q_${qId}_${type}_image`] as File;
+                if (file && file.size > 0 && file.name !== 'undefined') {
+                    const key = `questions/${Date.now()}-${type}-${Math.random().toString(36).slice(2)}`;
+                    await c.env.BUCKET.put(key, file);
+                    await c.env.DB.prepare(`UPDATE exam_questions SET ${type}_image_key = ?, ${type}_text = NULL WHERE id = ?`).bind(key, qId).run();
+                } else {
+                    await c.env.DB.prepare(`UPDATE exam_questions SET ${type}_text = NULL WHERE id = ?`).bind(qId).run();
+                }
             }
         }
 
-        // 3. Handle Topics
         await c.env.DB.prepare('DELETE FROM question_topics WHERE question_id = ?').bind(qId).run();
-        // Look for the key with []
         const topicIds = body[`q_${qId}_topic_ids[]`];
         const idsToInsert = Array.isArray(topicIds) ? topicIds : (topicIds ? [topicIds as string] : []);
-
         if (idsToInsert.length > 0) {
             const placeholders = idsToInsert.map(() => '(?, ?)').join(',');
             const values = [];
-            for (const tid of idsToInsert) {
-                values.push(qId, tid);
-            }
+            for (const tid of idsToInsert) values.push(qId, tid);
             await c.env.DB.prepare(`INSERT INTO question_topics (question_id, topic_id) VALUES ${placeholders}`).bind(...values).run();
         }
     }
 
-    await logAction(c.env.DB, user.id, 'BATCH_UPDATE_QUESTIONS', `Batch updated ${qIds.size} questions in paper ${paperId}`, parseInt(paperId), 'papers');
-
+    await logAction(c.env.DB, user.id, 'BATCH_UPDATE_QUESTIONS', `Batch updated ${qIds.size} questions`, parseInt(paperId), 'papers');
     return c.redirect(`/past-papers/paper/${paperId}`);
-});
-
-// Update Question
-app.post('/past-papers/question/:id/update', async (c) => {
-    const user = await getUser(c)
-    const qId = c.req.param('id')
-
-    // Fetch question to check permissions
-    const q = await c.env.DB.prepare('SELECT q.*, p.subject, p.is_locked FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE q.id = ?').bind(qId).first<any>();
-    if (!q) return c.notFound();
-
-    // Check Permissions
-    // 1. Must be able to upload subject
-    if (!user || !canUploadPastPaper(user, q.subject)) return c.text('Unauthorised', 403);
-
-    // 2. If locked, must be Level 5
-    if (q.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
-
-    const body = await c.req.parseBody();
-
-    // Logic to handle updates
-    // 1. Update basic fields
-    // FIX: Cast body values to string (or null) to satisfy bind() type requirements
-    await c.env.DB.prepare(`
-        UPDATE exam_questions 
-        SET question_type = ?, marks = ?, mc_answer = ?
-        WHERE id = ?
-    `).bind(
-        (body['question_type'] as string) || null,
-        (body['marks'] as string) || null,
-        (body['mc_answer'] as string) || null,
-        qId
-    ).run();
-
-    // 2. Handle Images
-    for (const type of ['question', 'answer', 'stimulus']) {
-        const file = body[`${type}_image`] as File;
-        if (file && file.size > 0 && file.name !== 'undefined') {
-            const key = `questions/${Date.now()}-${type}-${Math.random().toString(36).slice(2)}`;
-            await c.env.BUCKET.put(key, file);
-            await c.env.DB.prepare(`UPDATE exam_questions SET ${type}_image_key = ? WHERE id = ?`).bind(key, qId).run();
-        }
-    }
-
-    // 3. Handle Topics (Delete all and re-insert)
-    await c.env.DB.prepare('DELETE FROM question_topics WHERE question_id = ?').bind(qId).run();
-
-    // FIX: cast topic_ids to unknown first or handle array vs string
-    const topicIds = body['topic_ids'];
-    // topic_ids can be string (one) or array (multiple)
-    const idsToInsert = Array.isArray(topicIds) ? topicIds : (topicIds ? [topicIds] : []);
-
-    if (idsToInsert.length > 0) {
-        const placeholders = idsToInsert.map(() => '(?, ?)').join(',');
-        const values = [];
-        for (const tid of idsToInsert) {
-            values.push(qId, tid);
-        }
-        await c.env.DB.prepare(`INSERT INTO question_topics (question_id, topic_id) VALUES ${placeholders}`).bind(...values).run();
-    }
-
-    return c.redirect(`/past-papers/paper/${q.paper_id}#q-${qId}`);
 });
 
 export default app;
