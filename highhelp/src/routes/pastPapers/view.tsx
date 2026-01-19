@@ -1143,17 +1143,18 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
 
     // State
     let currentSectionIdx = 0;
-    let currentSegmentIdx = -1;
-    let currentQCount = 0; // Tracks questions within the current scope (Section or Segment)
+    let currentSegmentIdx = 0;
+    let currentQCount = 0;
 
     let currentSectionLabel = "I";
-    let currentSegmentLabel = "";
+    let currentSegmentLabel = "A";
 
     let currentQ: any = null;
     let questionsToProcess: any[] = [];
 
-    const lastQResult = await c.env.DB.prepare('SELECT MAX(ordering_index) as max_idx FROM exam_questions WHERE paper_id = ?').bind(paperId).first<any>();
-    let runningOrderIdx = (lastQResult?.max_idx || 0) + 1;
+    // CHANGED: We are wiping the paper, so we start ordering from 1.
+    // We no longer need to check the DB for the MAX(ordering_index).
+    let runningOrderIdx = 1;
 
     const pushCurrentQ = () => {
         if (currentQ) {
@@ -1178,29 +1179,28 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
         if (token === '\\s') {
             pushCurrentQ();
             currentSectionIdx++;
-            currentSegmentIdx = -1; // Reset segment index
-            currentQCount = 0;      // Reset question count for new section
+            // currentSegmentIdx = 0;
+            currentQCount = 0;
 
             currentSectionLabel = toRoman(currentSectionIdx);
-            currentSegmentLabel = "";
+            // currentSegmentLabel = "A";
             i++;
         }
         else if (token === '\\a') {
             pushCurrentQ();
             currentSegmentIdx++;
-            currentQCount = 0;      // Reset question count for new segment
+            currentQCount = 0;
 
             currentSegmentLabel = toLetter(currentSegmentIdx);
             i++;
         }
         else if (token === '\\q') {
             pushCurrentQ();
-            currentQCount++; // Always increment count
+            currentQCount++;
 
             let qText = content;
 
-            // Clean the text: Remove leading numbering like "1.", "**1**", "A1."
-            // We strip this because we are generating the number strictly based on count
+            // Clean the text
             const boldMatch = content.match(/^\*\*([a-zA-Z0-9]+)\*\*\s*/);
             const standardMatch = content.match(/^(\d+|[a-z])[\.\)]\s*/);
 
@@ -1210,7 +1210,6 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
                 qText = content.substring(standardMatch[0].length);
             }
 
-            // Generate Number: If Segment A, Q1 -> "A1". If no segment, Q1 -> "1"
             const generatedNumber = currentSegmentLabel
                 ? `${currentSegmentLabel}${currentQCount}`
                 : `${currentQCount}`;
@@ -1222,7 +1221,7 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
                 question_number: generatedNumber,
                 question_text: qText,
                 uploader_id: user.id,
-                ordering_index: runningOrderIdx++,
+                ordering_index: runningOrderIdx++, // Increments sequentially from 1
                 marks: null,
                 question_type: null,
                 mc_answer: null
@@ -1253,65 +1252,41 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
         }
     }
 
-    // 5. Database Upsert
-    let updatedCount = 0;
+    // 5. Database Reset & Insert
+    // CHANGED: Delete all existing questions for this paper first
+    await c.env.DB.prepare('DELETE FROM exam_questions WHERE paper_id = ?').bind(paperId).run();
+
     let insertedCount = 0;
+
+    // Optional: You can use c.env.DB.batch() here if inserting many rows for performance,
+    // but a loop is fine for standard paper sizes.
+    const stmt = c.env.DB.prepare(`
+        INSERT INTO exam_questions 
+        (paper_id, section_label, segment_label, question_number, question_text, marks, question_type, mc_answer, uploader_id, ordering_index)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
 
     for (const q of questionsToProcess) {
         const segmentVal = q.segment_label || null;
 
-        // Unique Constraint: Paper + Section + Segment + Question Number
-        const existing = await c.env.DB.prepare(`
-            SELECT id FROM exam_questions 
-            WHERE paper_id = ? 
-            AND section_label = ? 
-            AND question_number = ?
-            AND (segment_label = ? OR (segment_label IS NULL AND ? IS NULL))
-        `).bind(
+        await stmt.bind(
             q.paper_id,
             q.section_label,
-            q.question_number,
             segmentVal,
-            segmentVal
-        ).first<any>();
+            q.question_number,
+            q.question_text || null,
+            q.marks || null,
+            q.question_type || null,
+            q.mc_answer || null,
+            q.uploader_id,
+            q.ordering_index
+        ).run();
 
-        if (existing) {
-            await c.env.DB.prepare(`
-                UPDATE exam_questions 
-                SET segment_label = ?, question_text = ?, marks = ?, question_type = ?, mc_answer = ?, uploader_id = ?, is_deleted = 0
-                WHERE id = ?
-            `).bind(
-                segmentVal,
-                q.question_text || null,
-                q.marks || null,
-                q.question_type || null,
-                q.mc_answer || null,
-                user.id,
-                existing.id
-            ).run();
-            updatedCount++;
-        } else {
-            await c.env.DB.prepare(`
-                INSERT INTO exam_questions 
-                (paper_id, section_label, segment_label, question_number, question_text, marks, question_type, mc_answer, uploader_id, ordering_index)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).bind(
-                q.paper_id,
-                q.section_label,
-                segmentVal,
-                q.question_number,
-                q.question_text || null,
-                q.marks || null,
-                q.question_type || null,
-                q.mc_answer || null,
-                q.uploader_id,
-                q.ordering_index
-            ).run();
-            insertedCount++;
-        }
+        insertedCount++;
     }
 
-    await logAction(c.env.DB, user.id, 'IMPORT_TEXT', `Imported Text: ${insertedCount} inserted, ${updatedCount} updated.`, parseInt(paperId), 'papers');
+    // Logging "Fresh Import" instead of update
+    await logAction(c.env.DB, user.id, 'IMPORT_TEXT', `Fresh Import: Wiped previous questions. ${insertedCount} inserted.`, parseInt(paperId), 'papers');
 
     return c.redirect(`/past-papers/paper/${paperId}`);
 });
