@@ -1131,7 +1131,6 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
     const text = rawText.replace(/\r\n/g, '\n');
 
     // 3. Parsing Logic
-    // Split key at the end (\e)
     const parts = text.split('\\e');
     const questionPart = parts[0];
     const answerKeyPart = parts.length > 1 ? parts.slice(1).join('') : '';
@@ -1145,8 +1144,11 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
     // State
     let currentSectionIdx = 0;
     let currentSegmentIdx = -1;
+    let currentQCount = 0; // Tracks questions within the current scope (Section or Segment)
+
     let currentSectionLabel = "I";
     let currentSegmentLabel = "";
+
     let currentQ: any = null;
     let questionsToProcess: any[] = [];
 
@@ -1176,7 +1178,9 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
         if (token === '\\s') {
             pushCurrentQ();
             currentSectionIdx++;
-            currentSegmentIdx = -1;
+            currentSegmentIdx = -1; // Reset segment index
+            currentQCount = 0;      // Reset question count for new section
+
             currentSectionLabel = toRoman(currentSectionIdx);
             currentSegmentLabel = "";
             i++;
@@ -1184,37 +1188,38 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
         else if (token === '\\a') {
             pushCurrentQ();
             currentSegmentIdx++;
+            currentQCount = 0;      // Reset question count for new segment
+
             currentSegmentLabel = toLetter(currentSegmentIdx);
             i++;
         }
         else if (token === '\\q') {
             pushCurrentQ();
+            currentQCount++; // Always increment count
 
-            let rawNumber = "";
             let qText = content;
 
+            // Clean the text: Remove leading numbering like "1.", "**1**", "A1."
+            // We strip this because we are generating the number strictly based on count
             const boldMatch = content.match(/^\*\*([a-zA-Z0-9]+)\*\*\s*/);
             const standardMatch = content.match(/^(\d+|[a-z])[\.\)]\s*/);
 
             if (boldMatch) {
-                rawNumber = boldMatch[1];
                 qText = content.substring(boldMatch[0].length);
             } else if (standardMatch) {
-                rawNumber = standardMatch[1];
                 qText = content.substring(standardMatch[0].length);
             }
 
-            // Fix: Construct Question Number (e.g., Segment A + Number 1 => "A1")
-            let finalNumber = rawNumber;
-            if (currentSegmentLabel && !rawNumber.startsWith(currentSegmentLabel)) {
-                finalNumber = `${currentSegmentLabel}${rawNumber}`;
-            }
+            // Generate Number: If Segment A, Q1 -> "A1". If no segment, Q1 -> "1"
+            const generatedNumber = currentSegmentLabel
+                ? `${currentSegmentLabel}${currentQCount}`
+                : `${currentQCount}`;
 
             currentQ = {
                 paper_id: paperId,
                 section_label: currentSectionLabel,
                 segment_label: currentSegmentLabel,
-                question_number: finalNumber, // Stores "A1"
+                question_number: generatedNumber,
                 question_text: qText,
                 uploader_id: user.id,
                 ordering_index: runningOrderIdx++,
@@ -1235,14 +1240,13 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
     pushCurrentQ();
 
     // 4. Parse Answer Key
-    // Map answers to the FIRST N questions. This overrides heuristics.
     if (answerKeyPart && answerKeyPart.trim().length > 0) {
         const answers = answerKeyPart.match(/\b[A-D]\b/g);
         if (answers) {
             questionsToProcess.forEach((q, index) => {
                 if (answers[index]) {
                     q.mc_answer = answers[index];
-                    q.question_type = 'multiple_choice'; // Force type
+                    q.question_type = 'multiple_choice';
                     if (!q.marks) q.marks = 1;
                 }
             });
@@ -1254,10 +1258,9 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
     let insertedCount = 0;
 
     for (const q of questionsToProcess) {
-        // Handle logic where segment_label is empty string (undefined in upload) vs NULL in DB
         const segmentVal = q.segment_label || null;
 
-        // Unique Check: Paper + Section + Segment + Number
+        // Unique Constraint: Paper + Section + Segment + Question Number
         const existing = await c.env.DB.prepare(`
             SELECT id FROM exam_questions 
             WHERE paper_id = ? 
@@ -1273,7 +1276,6 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
         ).first<any>();
 
         if (existing) {
-            // Update
             await c.env.DB.prepare(`
                 UPDATE exam_questions 
                 SET segment_label = ?, question_text = ?, marks = ?, question_type = ?, mc_answer = ?, uploader_id = ?, is_deleted = 0
@@ -1289,7 +1291,6 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
             ).run();
             updatedCount++;
         } else {
-            // Insert
             await c.env.DB.prepare(`
                 INSERT INTO exam_questions 
                 (paper_id, section_label, segment_label, question_number, question_text, marks, question_type, mc_answer, uploader_id, ordering_index)
@@ -1314,4 +1315,5 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
 
     return c.redirect(`/past-papers/paper/${paperId}`);
 });
+
 export default app;
