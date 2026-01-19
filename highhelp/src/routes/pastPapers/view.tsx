@@ -111,6 +111,50 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
 
                     <div class="flex items-center gap-3">
+                        {/* Text Import Button (Only if editable) */}
+                        {canEdit && (
+                            <>
+                                <button onclick="document.getElementById('import-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    Import Text
+                                </button>
+
+                                {/* Import Modal */}
+                                <dialog id="import-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
+                                    <div class="w-full max-w-lg bg-white p-6 rounded-xl">
+                                        <h3 class="text-xl font-bold text-gray-800 mb-2">Import Paper from Text</h3>
+                                        <p class="text-sm text-gray-500 mb-4">
+                                            Upload a .txt file formatted with tags (\s, \a, \q, \m, \e). This will append questions to the end of the paper.
+                                        </p>
+
+                                        <form action={`/past-papers/paper/${paper.id}/upload-text`} method="post" enctype="multipart/form-data">
+                                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition cursor-pointer relative">
+                                                <input type="file" name="text_file" accept=".txt" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required />
+                                                <div class="text-gray-500">
+                                                    <span class="block text-2xl mb-1">📄</span>
+                                                    <span class="font-bold text-sm">Click to select .txt file</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="mt-4 bg-gray-50 p-3 rounded text-xs text-gray-500 font-mono overflow-x-auto">
+                                                Key:<br />
+                                                \s New Section | \a New Segment<br />
+                                                \q Question | \m marks<br />
+                                                \e End questions (Start Answer Key)<br />
+                                                /s [A B C D] (MCQ Key)
+                                            </div>
+
+                                            <div class="flex justify-end gap-3 mt-6">
+                                                <button type="button" onclick="document.getElementById('import-modal').close()" class="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-lg">Cancel</button>
+                                                <button class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm">
+                                                    Process & Import
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </dialog>
+                            </>
+                        )}
                         {/* Lock/Unlock Button */}
                         {paper.is_locked ? (
                             canUnlock && (
@@ -1067,5 +1111,207 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
 
     return c.redirect(`/past-papers/paper/${paperId}`);
 });
+app.post('/past-papers/paper/:id/upload-text', async (c) => {
+    console.log(`[Import] Attempting text import for paper ${c.req.param('id')}`);
+    const user = await getUser(c);
+    const paperId = c.req.param('id');
 
+    // 1. Permission & Paper Checks
+    const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
+    if (!paper) return c.notFound();
+    if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
+    if (paper.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
+
+    // 2. Process File
+    const body = await c.req.parseBody();
+    const file = body['text_file'];
+    if (!(file instanceof File)) return c.text("Invalid file uploaded", 400);
+
+    const rawText = await file.text();
+    const text = rawText.replace(/\r\n/g, '\n');
+
+    // 3. Parsing Logic
+    // Split key at the end (\e)
+    const parts = text.split('\\e');
+    const questionPart = parts[0];
+    const answerKeyPart = parts.length > 1 ? parts.slice(1).join('') : '';
+
+    const tokens = questionPart.split(/(\\s|\\a|\\q|\\m)/);
+
+    // Helpers
+    const toRoman = (num: number) => ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][num] || String(num);
+    const toLetter = (num: number) => String.fromCharCode(65 + num); // 0->A, 1->B
+
+    // State
+    let currentSectionIdx = 0;
+    let currentSegmentIdx = -1;
+    let currentSectionLabel = "I";
+    let currentSegmentLabel = "";
+    let currentQ: any = null;
+    let questionsToProcess: any[] = [];
+
+    const lastQResult = await c.env.DB.prepare('SELECT MAX(ordering_index) as max_idx FROM exam_questions WHERE paper_id = ?').bind(paperId).first<any>();
+    let runningOrderIdx = (lastQResult?.max_idx || 0) + 1;
+
+    const pushCurrentQ = () => {
+        if (currentQ) {
+            // Default Heuristics (can be overwritten by Answer Key later)
+            if (!currentQ.question_type) {
+                if (currentQ.question_text && currentQ.question_text.includes('(A)') && currentQ.question_text.includes('(B)')) {
+                    currentQ.question_type = 'multiple_choice';
+                    if (!currentQ.marks) currentQ.marks = 1;
+                } else {
+                    currentQ.question_type = (currentQ.marks && parseInt(currentQ.marks) >= 5) ? 'extended_response' : 'short_answer';
+                }
+            }
+            questionsToProcess.push(currentQ);
+            currentQ = null;
+        }
+    };
+
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i].trim();
+        const content = (tokens[i + 1] || "").trim();
+
+        if (token === '\\s') {
+            pushCurrentQ();
+            currentSectionIdx++;
+            currentSegmentIdx = -1;
+            currentSectionLabel = toRoman(currentSectionIdx);
+            currentSegmentLabel = "";
+            i++;
+        }
+        else if (token === '\\a') {
+            pushCurrentQ();
+            currentSegmentIdx++;
+            currentSegmentLabel = toLetter(currentSegmentIdx);
+            i++;
+        }
+        else if (token === '\\q') {
+            pushCurrentQ();
+
+            let rawNumber = "";
+            let qText = content;
+
+            const boldMatch = content.match(/^\*\*([a-zA-Z0-9]+)\*\*\s*/);
+            const standardMatch = content.match(/^(\d+|[a-z])[\.\)]\s*/);
+
+            if (boldMatch) {
+                rawNumber = boldMatch[1];
+                qText = content.substring(boldMatch[0].length);
+            } else if (standardMatch) {
+                rawNumber = standardMatch[1];
+                qText = content.substring(standardMatch[0].length);
+            }
+
+            // Fix: Construct Question Number (e.g., Segment A + Number 1 => "A1")
+            let finalNumber = rawNumber;
+            if (currentSegmentLabel && !rawNumber.startsWith(currentSegmentLabel)) {
+                finalNumber = `${currentSegmentLabel}${rawNumber}`;
+            }
+
+            currentQ = {
+                paper_id: paperId,
+                section_label: currentSectionLabel,
+                segment_label: currentSegmentLabel,
+                question_number: finalNumber, // Stores "A1"
+                question_text: qText,
+                uploader_id: user.id,
+                ordering_index: runningOrderIdx++,
+                marks: null,
+                question_type: null,
+                mc_answer: null
+            };
+            i++;
+        }
+        else if (token === '\\m') {
+            if (currentQ) {
+                const cleanMarks = content.replace(/\*\*/g, '').match(/(\d+)/);
+                if (cleanMarks) currentQ.marks = cleanMarks[1];
+            }
+            i++;
+        }
+    }
+    pushCurrentQ();
+
+    // 4. Parse Answer Key
+    // Map answers to the FIRST N questions. This overrides heuristics.
+    if (answerKeyPart && answerKeyPart.trim().length > 0) {
+        const answers = answerKeyPart.match(/\b[A-D]\b/g);
+        if (answers) {
+            questionsToProcess.forEach((q, index) => {
+                if (answers[index]) {
+                    q.mc_answer = answers[index];
+                    q.question_type = 'multiple_choice'; // Force type
+                    if (!q.marks) q.marks = 1;
+                }
+            });
+        }
+    }
+
+    // 5. Database Upsert
+    let updatedCount = 0;
+    let insertedCount = 0;
+
+    for (const q of questionsToProcess) {
+        // Handle logic where segment_label is empty string (undefined in upload) vs NULL in DB
+        const segmentVal = q.segment_label || null;
+
+        // Unique Check: Paper + Section + Segment + Number
+        const existing = await c.env.DB.prepare(`
+            SELECT id FROM exam_questions 
+            WHERE paper_id = ? 
+            AND section_label = ? 
+            AND question_number = ?
+            AND (segment_label = ? OR (segment_label IS NULL AND ? IS NULL))
+        `).bind(
+            q.paper_id,
+            q.section_label,
+            q.question_number,
+            segmentVal,
+            segmentVal
+        ).first<any>();
+
+        if (existing) {
+            // Update
+            await c.env.DB.prepare(`
+                UPDATE exam_questions 
+                SET segment_label = ?, question_text = ?, marks = ?, question_type = ?, mc_answer = ?, uploader_id = ?, is_deleted = 0
+                WHERE id = ?
+            `).bind(
+                segmentVal,
+                q.question_text || null,
+                q.marks || null,
+                q.question_type || null,
+                q.mc_answer || null,
+                user.id,
+                existing.id
+            ).run();
+            updatedCount++;
+        } else {
+            // Insert
+            await c.env.DB.prepare(`
+                INSERT INTO exam_questions 
+                (paper_id, section_label, segment_label, question_number, question_text, marks, question_type, mc_answer, uploader_id, ordering_index)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+                q.paper_id,
+                q.section_label,
+                segmentVal,
+                q.question_number,
+                q.question_text || null,
+                q.marks || null,
+                q.question_type || null,
+                q.mc_answer || null,
+                q.uploader_id,
+                q.ordering_index
+            ).run();
+            insertedCount++;
+        }
+    }
+
+    await logAction(c.env.DB, user.id, 'IMPORT_TEXT', `Imported Text: ${insertedCount} inserted, ${updatedCount} updated.`, parseInt(paperId), 'papers');
+
+    return c.redirect(`/past-papers/paper/${paperId}`);
+});
 export default app;
