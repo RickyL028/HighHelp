@@ -93,7 +93,7 @@ app.get('/past-papers', async (c) => {
                                         <span class="font-bold text-blue-700 uppercase tracking-wide">{p.academic_year}</span>
                                         <span class="text-gray-300">•</span>
                                         <span class="uppercase tracking-wide">{p.paper_type || 'Trial Paper'}</span>
-                                        {p.is_locked ? <span class="text-xs font-bold text-gray-500 ml-2">🔒 Locked</span> : null}
+                                        {p.is_locked ? <span class="text-xs font-bold text-gray-500 ml-2">✅ Checked</span> : null}
                                     </div>
                                 </div>
 

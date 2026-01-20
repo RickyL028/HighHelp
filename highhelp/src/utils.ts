@@ -79,7 +79,7 @@ export const renderTags = (tagsJson: string | null) => {
 }
 
 export const getFruitPermission = (level: number) => {
-    const fruits = ["Apple", "Banana", "Oranges", "Watermelon", "Cherry", "Avocado"];
+    const fruits = ["Apple", "Banana", "Oranges", "Boba", "Mango", "Avocado"];
     return fruits[level] || "No fruit for you :<";
 }
 

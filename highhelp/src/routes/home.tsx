@@ -19,15 +19,22 @@ app.get('/', async (c) => {
 
     // Half Yearly Date (Backend Adjustable)
     const HALF_YEARLY_DATE = "2026-05-25T09:00:00";
+    const c1d = "2026-02-02T09:00:00";
 
     return c.html(
         <Layout title="Home" user={user}>
-            <a class="block text-bg font-medium text-gray-1000 text-center text-2xl font-bold text-gray-800 uppercase tracking-wider">test - This Website is under development - All data may be erased</a>
+            <a class="block text-bg font-medium text-gray-1000 text-center text-2xl font-bold text-gray-800 uppercase tracking-wider">This Website is under development - All data (except past papers) may be erased</a>
             <div class="space-y-12 py-8">
 
                 {/* Countdowns Section */}
                 <div class="grid grid-cols-1 gap-4 max-w-2xl mx-auto">
                     {/* Half Yearly Countdown */}
+                    <div class="bg-white p-5 rounded border border-t-4 border-gray-300 border-t-primary text-center">
+                        <h2 class="text-xl font-bold text-gray-800 mb-2 uppercase tracking-tight">School Starts</h2>
+                        <div id="c1-countdown" class="text-3xl md:text-4xl font-mono font-bold text-primary">
+                            --:--:--:--
+                        </div>
+                    </div>
                     <div class="bg-white p-5 rounded border border-t-4 border-gray-300 border-t-primary text-center">
                         <h2 class="text-xl font-bold text-gray-800 mb-2 uppercase tracking-tight">Half Yearly</h2>
                         <div id="half-yearly-countdown" class="text-3xl md:text-4xl font-mono font-bold text-primary">
@@ -82,6 +89,7 @@ app.get('/', async (c) => {
                     __html: `
                     (function() {
                         const halfYearlyTarget = new Date("${HALF_YEARLY_DATE}").getTime();
+                        const c1 = new Date("${c1d}").getTime();
                         // HSC 2027 Target: Oct 12, 2027 (Approx)
                         const hscTarget = new Date("2027-10-12T09:00:00").getTime();
 
@@ -89,6 +97,7 @@ app.get('/', async (c) => {
                             const now = new Date().getTime();
 
                             // Half Yearly Logic
+                            const distanceC1 = c1 - now;
                             const distanceHY = halfYearlyTarget - now;
                             if (distanceHY < 0) {
                                 document.getElementById("half-yearly-countdown").innerText = "EXPIRED";
@@ -99,6 +108,18 @@ app.get('/', async (c) => {
                                 const seconds = Math.floor((distanceHY % (1000 * 60)) / 1000);
                                 document.getElementById("half-yearly-countdown").innerText = \`\${days}d \${hours}h \${minutes}m \${seconds}s\`;
                             }
+                            // C1 Logic
+                            if (distanceC1 < 0) {
+                                document.getElementById("c1-countdown").innerText = "EXPIRED";
+                            } else {
+                                const days = Math.floor(distanceC1 / (1000 * 60 * 60 * 24));
+                                const hours = Math.floor((distanceC1 % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                const minutes = Math.floor((distanceC1 % (1000 * 60 * 60)) / (1000 * 60));
+                                const seconds = Math.floor((distanceC1 % (1000 * 60)) / 1000);
+                                document.getElementById("c1-countdown").innerText = \`\${days}d \${hours}h \${minutes}m \${seconds}s\`;
+                            }
+
+                            
 
                             // HSC Logic (Weeks)
                             const distanceHSC = hscTarget - now;
