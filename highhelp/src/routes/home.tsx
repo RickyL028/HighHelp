@@ -25,22 +25,8 @@ app.get('/', async (c) => {
         <Layout title="Home" user={user}>
             {/* Development Warning */}
 
-            {/* Hero Image Section */}
-
-            <div class="w-full h-64 md:h-80 relative mb-8 overflow-hidden rounded-b-xl shadow-md group">
-                <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/a/ab/Sbhsmoorepark.jpg"
-                    alt="Sydney Boys High School"
-                    class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
-                />
-                <div class="absolute inset-0 bg-gradient-to-t from-gray-900/80 to-transparent flex items-end justify-center pb-8">
-                    <h1 class="text-3xl md:text-5xl font-bold text-white drop-shadow-md tracking-tight">HighHelp</h1>
-
-                </div>
-
-            </div>
-
-            <div class="space-y-12 px-4 md:px-0 pb-12">
+            {/* Main Content Container - Added pt-12 for spacing since Hero Image is gone */}
+            <div class="space-y-12 px-4 md:px-0 pb-12 pt-12">
 
                 {/* Countdowns Section */}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto items-center">
@@ -62,7 +48,6 @@ app.get('/', async (c) => {
                         <div id="half-yearly-countdown" class="text-4xl md:text-5xl font-mono font-black text-gray-900 group-hover:text-secondary transition-colors">
                             --:--:--:--
                         </div>
-
                     </div>
 
                     {/* HSC Countdown (Standard) */}
@@ -72,6 +57,17 @@ app.get('/', async (c) => {
                             -- Weeks
                         </div>
                     </div>
+                </div>
+
+                {/* NEW SECTION: Logo and Branding Below Countdowns */}
+                <div class="flex flex-col items-center justify-center space-y-4 py-4">
+                    <img
+                        src="https://assets.schools.nsw.gov.au/content/dam/doe/sws/schools/s/sydneyboys-h/logo.png"
+                        alt="Sydney Boys High School Logo"
+                        class="h-48 w-auto object-contain drop-shadow-sm"
+                    />
+                    <h1 class="text-4xl font-bold text-gray-900 tracking-tight">HighHelp</h1>
+                    <p class="text-lg text-gray-600">Designed and programmed specifically for, and by, class of 2027.</p>
                 </div>
 
                 {/* Latest Announcements Section */}
