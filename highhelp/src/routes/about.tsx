@@ -225,31 +225,40 @@ app.get('/about', async (c) => {
                     <section id="faq" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">FAQs</h2>
                         <p class="text-gray-700 leading-relaxed">
-                            <h3 class="text-1xl font-bold mt-4 mb-1">How do I log in?</h3>
-                            To log into HighHelp, either create an account or log in via the SBHS portal.
+                            <h3 class="text-1xl font-bold mt-4 mb-1">What if data is lost before important exams?</h3>
+                            The database and storage provider of this website is Cloudflare - which features a built-in backup system that allows for data to be restored to any snapshots in the past 30 days. Additionally, we will manually backup all the data before e.g. Trials and HSC.
                             <br></br>
                             <h3 class="text-1xl font-bold mt-4 mb-1">Is there support for SBHS students outside of Class of 2027?</h3>
-                            ricky please answer this question :p
+                            We do not currently support students outside of Class of 2027 (as the website was established so recently). However, resources will be passed down to the next cohort, and we may work on adding support for other cohorts in the future depending on demand.
                             <br></br>
-                            <h3 class="text-1xl font-bold mt-4 mb-1">Where do I report a student breaking the guidelines?</h3>
-                            also answer this one. thakn you kind sir
+                            <h3 class="text-1xl font-bold mt-4 mb-1">Who is behind all this? Does the school know?</h3>
+                            We are a group of students consisted mainly of subject duxes and students assuming leadership roles, as we gathered to discuss efficient methods to better our cohort academically. The website is programmed by a group of students taking Software Engineering.
                             <br></br>
-                            <h3 class="text-1xl font-bold mt-4 mb-1">I have found a bug! Where do I report it?</h3>
-                            Please report all bugs as well as additional feedback via the <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"><u>Google Form</u></a>.
+                            We have inquired and consulted with Software Engineering teacher and our Year Advisors, and we express our sincere gratitude for their support.
+                            <br></br>
+                            <h3 class="text-1xl font-bold mt-4 mb-1">Ask more questions in the Contact section!</h3>
+
                         </p>
                     </section>
                     <section id="feedback" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Feedback</h2>
                         <p class="text-gray-700 leading-relaxed">
-                            Report bugs and provide feedback via the <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"><u>Google Form</u></a>.
+                            Report bugs and provide feedback via <a href="https://forms.gle/7af9Dq8mZiQtjfbs9"><u>Google Form</u></a>.
                         </p>
                     </section>
                     <section id="contact" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Contact</h2>
                         <p class="text-gray-700 leading-relaxed">
-                            check insta
+
+                            <ul class="list-disc list-inside text-gray-700 leading-relaxed">
+                                <li>Use the above feedback form. We read each feedback carefully and will respond within one day.</li>
+                                <li>Contact any SRCs for additional information.</li>
+                                <li>Contact 457297106@student.sbhs.nsw.edu.au (Ricky Luo) for any inquiries or technical issues.</li>
+                                <li>DM on Instagram: <a href="https://www.instagram.com/sydneyhighhsc/"><u>sydneyhighhsc</u></a></li>
+                            </ul>
+
+
                             <br></br>
-                            will have a domain email after i buy
                         </p>
                     </section>
 
