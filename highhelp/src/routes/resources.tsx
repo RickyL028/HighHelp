@@ -10,7 +10,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/resources', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+
     const subject = c.req.query('subject')
 
     // 1. Landing Page (No Subject) -> Show Recent Resources + Subject Selector at Bottom
