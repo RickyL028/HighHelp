@@ -8,8 +8,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 // Question Attempt View
 app.get('/past-papers/attempt/:id', async (c) => {
     const user = await getUser(c)
-    // ALLOW view even if not logged in, but don't save progress/fetch attempts
-    // if (!user) return c.redirect('/login') 
+    if (!user) return c.redirect('/login')
 
     const qId = c.req.param('id')
 

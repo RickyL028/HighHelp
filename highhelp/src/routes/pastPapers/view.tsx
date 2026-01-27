@@ -9,6 +9,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 // View Paper
 app.get('/past-papers/paper/:id', async (c) => {
     const user = await getUser(c)
+    if (!user) return c.redirect('/login')
     const paperId = c.req.param('id')
 
     // Fetch paper

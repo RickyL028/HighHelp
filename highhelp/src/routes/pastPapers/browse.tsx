@@ -9,6 +9,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/past-papers', async (c) => {
     const user = await getUser(c)
+    if (!user) return c.redirect('/login')
     const subject = c.req.query('subject')
     const tab = c.req.query('tab') || 'browse';
 

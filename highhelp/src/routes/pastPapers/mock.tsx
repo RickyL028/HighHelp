@@ -407,11 +407,8 @@ app.post('/mock-exams/create-manual', async (c) => {
 
 // 5. Exam Interface
 app.get('/mock-exams/:id', async (c) => {
-    // ALLOW public view (no login check for viewing, but maybe for taking? User asked to fix 404)
-    // We'll just fetch by ID. Only show "Finish" if it's your exam or maybe anyone can if we want?
-    // For now, removing the user_id constraint on FETCH.
-
     const user = await getUser(c)
+    if (!user) return c.redirect('/login')
     const examId = c.req.param('id')
 
     const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ?`).bind(examId).first<any>()
@@ -580,7 +577,7 @@ app.post('/mock-exams/:id/progress', async (c) => {
 // 8. Marking Interface
 app.get('/mock-exams/:id/mark', async (c) => {
     const user = await getUser(c)
-    // if (!user) return c.redirect('/login') 
+    if (!user) return c.redirect('/login')
     const examId = c.req.param('id')
 
     // Allow viewing by anyone, but fetching user's attempts depends on the exam owner?

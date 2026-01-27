@@ -1,11 +1,27 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
 import { Bindings } from '../types'
-
+import { getUser } from '../utils'
+import { PermissionLevel } from '../permissions'
 const app = new Hono<{ Bindings: Bindings }>()
+
+app.post('/about/verify', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+
+    if (Number(user.permission_level) === PermissionLevel.DEFAULT) {
+        await c.env.DB.prepare('UPDATE users SET permission_level = ? WHERE id = ?')
+            .bind(PermissionLevel.VERIFIED, user.id)
+            .run()
+    }
+
+    return c.redirect('/about#application')
+})
+
 app.get('/about', async (c) => {
+    const user = await getUser(c)
     return c.html(
-        <Layout title="About">
+        <Layout title="About" user={user}>
             <div class="flex flex-col md:flex-row gap-8">
                 {/* --- Sidebar Navigation --- */}
                 <aside class="md:w-64 flex-shrink-0">
@@ -140,11 +156,71 @@ app.get('/about', async (c) => {
                         </p>
                     </section>
                     <section id="application" class="mb-12 scroll-mt-20">
-                        <h2 class="text-2xl font-bold mb-4">Applications</h2>
-                        <p class="text-gray-700 leading-relaxed">
-                            Applications are currently in the works and will be released in future via Google Forms. If you are interested in this project, see contact
-                            The current application form is: N/A
-                        </p>
+                        <h2 class="text-2xl font-bold mb-4">Application</h2>
+                        {user && Number(user.permission_level) === PermissionLevel.DEFAULT ? (
+                            <div class="bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
+                                <p class="text-gray-700 mb-6">
+                                    To access all features of HighHelp, including the ability to upload resources and participate in our community, please review and agree to our guidelines.
+                                </p>
+                                <form action="/about/verify" method="post" class="space-y-4">
+                                    <div class="grid gap-4">
+                                        {[
+                                            { id: 'misinfo', label: 'I will not post deliberate misinformation.' },
+                                            { id: 'plagiarism', label: 'I will not engage in plagiarism.' },
+                                            { id: 'copyright', label: 'I will not infringe on copyrights (e.g. uploading textbooks).' },
+                                            { id: 'malicious', label: 'I will not upload viruses or malicious software.' },
+                                            { id: 'respect', label: 'I will maintain a respectful environment (no trolling or personal attacks).' },
+                                            { id: 'consequences', label: 'I understand that violating these rules will result in account suspension.' }
+                                        ].map(item => (
+                                            <label class="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer group border border-transparent hover:border-gray-200">
+                                                <div class="mt-1">
+                                                    <input type="checkbox" name={item.id} required class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer" />
+                                                </div>
+                                                <span class="text-gray-700 group-hover:text-gray-900 transition-colors">{item.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <button type="submit" class="w-full mt-6 bg-[#633200] hover:bg-[#b05800] text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] shadow-md">
+                                        Verify Account & Agree to Terms
+                                    </button>
+                                </form>
+                            </div>
+                        ) : user && Number(user.permission_level) >= PermissionLevel.VERIFIED ? (
+                            <div class="bg-green-50 border border-green-200 rounded-xl p-6 flex items-center gap-4">
+                                <div class="bg-green-100 p-2 rounded-full">
+                                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-green-900">Verified Account</h3>
+                                    <p class="text-green-700 text-sm">You have already agreed to the terms and services. Your account is fully verified and you have access to all standard features.</p>
+                                </div>
+                            </div>
+                        ) : !user ? (
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center">
+                                <div class="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-semibold text-gray-900 mb-2">Login Required</h3>
+                                <p class="text-gray-600 mb-6">You need to be logged in to verify your account and agree to the terms.</p>
+                                <a href="/login" class="inline-block bg-[#633200] hover:bg-[#b05800] text-white font-bold py-2 px-8 rounded-lg transition-all transform hover:scale-[1.05] active:scale-[0.95]">Log In</a>
+                            </div>
+                        ) : (
+                            <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6 flex items-center gap-4">
+                                <div class="bg-yellow-100 p-2 rounded-full">
+                                    <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-yellow-900">Restricted Account</h3>
+                                    <p class="text-yellow-700 text-sm">Your account status does not allow for verification at this time or your permissions are currently restricted.</p>
+                                </div>
+                            </div>
+                        )}
                     </section>
                     <section id="faq" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">FAQs</h2>
