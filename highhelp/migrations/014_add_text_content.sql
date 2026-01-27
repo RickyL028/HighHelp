@@ -1,4 +1,4 @@
 -- Migration number: 0014 	 2026-01-18T10:15:00.000Z
-ALTER TABLE exam_questions ADD COLUMN question_text TEXT;
-ALTER TABLE exam_questions ADD COLUMN answer_text TEXT;
-ALTER TABLE exam_questions ADD COLUMN stimulus_text TEXT;
+-- ALTER TABLE exam_questions ADD COLUMN question_text TEXT;
+-- ALTER TABLE exam_questions ADD COLUMN answer_text TEXT;
+-- ALTER TABLE exam_questions ADD COLUMN stimulus_text TEXT;
