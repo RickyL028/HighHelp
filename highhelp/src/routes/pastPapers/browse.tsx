@@ -9,6 +9,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/past-papers', async (c) => {
     const user = await getUser(c)
+
     const subject = c.req.query('subject')
     const tab = c.req.query('tab') || 'browse';
 
@@ -93,7 +94,7 @@ app.get('/past-papers', async (c) => {
                                         <span class="font-bold text-blue-700 uppercase tracking-wide">{p.academic_year}</span>
                                         <span class="text-gray-300">•</span>
                                         <span class="uppercase tracking-wide">{p.paper_type || 'Trial Paper'}</span>
-                                        {p.is_locked ? <span class="text-xs font-bold text-gray-500 ml-2">🔒 Locked</span> : null}
+                                        {p.is_locked ? <span class="text-xs font-bold text-gray-500 ml-2">✅ Checked</span> : null}
                                     </div>
                                 </div>
 
@@ -254,7 +255,7 @@ app.get('/past-papers', async (c) => {
                             <div class="space-y-4">
                                 {questions.results.map((q: any) => {
                                     const params = `source=practice&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
-                                    const isIncomplete = !q.marks || !q.question_image_key;
+                                    const isIncomplete = !q.marks || (!q.question_image_key && !q.question_text);
 
                                     const clickAction = mode === 'select'
                                         ? `const cb = document.querySelector('input[name="question_ids"][value="${q.id}"]'); if(cb) cb.checked = !cb.checked;`

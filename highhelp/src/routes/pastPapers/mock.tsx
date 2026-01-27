@@ -407,11 +407,8 @@ app.post('/mock-exams/create-manual', async (c) => {
 
 // 5. Exam Interface
 app.get('/mock-exams/:id', async (c) => {
-    // ALLOW public view (no login check for viewing, but maybe for taking? User asked to fix 404)
-    // We'll just fetch by ID. Only show "Finish" if it's your exam or maybe anyone can if we want?
-    // For now, removing the user_id constraint on FETCH.
-
     const user = await getUser(c)
+    if (!user) return c.redirect('/login')
     const examId = c.req.param('id')
 
     const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ?`).bind(examId).first<any>()
@@ -485,14 +482,26 @@ app.get('/mock-exams/:id', async (c) => {
                             </div>
                         </div>
 
-                        {q.question_image_key && (
-                            <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 mb-4" />
+                        {q.question_text ? (
+                            <div class="mb-4 p-6 bg-white border border-gray-200 rounded-lg text-gray-800 whitespace-pre-wrap font-serif text-lg leading-relaxed shadow-sm">
+                                {q.question_text}
+                            </div>
+                        ) : (
+                            q.question_image_key && (
+                                <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 mb-4" />
+                            )
                         )}
 
-                        {q.stimulus_image_key && (
+                        {(q.stimulus_text || q.stimulus_image_key) && (
                             <div class="mt-4 p-4 bg-gray-50 rounded border border-gray-200">
                                 <p class="text-xs font-bold text-gray-500 uppercase mb-2">Stimulus</p>
-                                <img src={`/download/${q.stimulus_image_key}`} class="max-w-full rounded" />
+                                {q.stimulus_text ? (
+                                    <div class="text-gray-700 italic border-l-4 border-l-blue-400 pl-4 py-2 whitespace-pre-wrap">
+                                        {q.stimulus_text}
+                                    </div>
+                                ) : (
+                                    <img src={`/download/${q.stimulus_image_key}`} class="max-w-full rounded" />
+                                )}
                             </div>
                         )}
 
@@ -568,7 +577,7 @@ app.post('/mock-exams/:id/progress', async (c) => {
 // 8. Marking Interface
 app.get('/mock-exams/:id/mark', async (c) => {
     const user = await getUser(c)
-    // if (!user) return c.redirect('/login') 
+    if (!user) return c.redirect('/login')
     const examId = c.req.param('id')
 
     // Allow viewing by anyone, but fetching user's attempts depends on the exam owner?
@@ -627,18 +636,30 @@ app.get('/mock-exams/:id/mark', async (c) => {
                                 {/* Left: Question */}
                                 <div>
                                     <h4 class="font-bold text-sm text-gray-500 uppercase mb-2">Question</h4>
-                                    {q.question_image_key ? (
-                                        <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100" />
-                                    ) : <p class="text-red-500 text-sm">Image missing</p>}
+                                    {q.question_text ? (
+                                        <div class="p-4 bg-gray-50 border border-gray-200 rounded text-gray-800 whitespace-pre-wrap text-sm mb-4">
+                                            {q.question_text}
+                                        </div>
+                                    ) : (
+                                        q.question_image_key ? (
+                                            <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100" />
+                                        ) : <p class="text-red-500 text-sm">Image missing</p>
+                                    )}
                                 </div>
 
                                 {/* Right: Answer & Marking */}
                                 <div>
                                     <h4 class="font-bold text-sm text-gray-500 uppercase mb-2">Answer / Guidelines</h4>
-                                    {q.answer_image_key ? (
-                                        <img src={`/download/${q.answer_image_key}`} class="max-w-full rounded border border-gray-100 mb-6" />
+                                    {q.answer_text ? (
+                                        <div class="p-4 bg-green-50 border border-green-200 rounded text-green-900 whitespace-pre-wrap text-sm mb-6">
+                                            {q.answer_text}
+                                        </div>
                                     ) : (
-                                        <div class="bg-gray-50 p-4 rounded text-sm text-gray-500 mb-6 italic">No answer key available.</div>
+                                        q.answer_image_key ? (
+                                            <img src={`/download/${q.answer_image_key}`} class="max-w-full rounded border border-gray-100 mb-6" />
+                                        ) : (
+                                            <div class="bg-gray-50 p-4 rounded text-sm text-gray-500 mb-6 italic">No answer key available.</div>
+                                        )
                                     )}
 
                                     <div class="bg-blue-50 p-4 rounded border border-blue-100">

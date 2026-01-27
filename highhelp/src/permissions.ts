@@ -67,7 +67,9 @@ export function canUploadPastPaper(user: User, subject: string): boolean {
     const level = Number(user.permission_level);
     if (level >= PermissionLevel.GLOBAL_MOD) return true;
 
+
     const tags = getUserTags(user);
+    if (tags.includes('c*')) return true;
     const hasCTag = tags.includes('c');
 
     if (hasCTag) {

@@ -10,6 +10,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/resources', async (c) => {
     const user = await getUser(c)
+
     const subject = c.req.query('subject')
 
     // 1. Landing Page (No Subject) -> Show Recent Resources + Subject Selector at Bottom
@@ -134,7 +135,7 @@ app.get('/resources', async (c) => {
                 </div>
             ) : (
                 <div class="bg-blue-50 p-4 rounded mb-8 text-center text-blue-800">
-                    <p>Please agree to website guidelines before uploading resources :P</p>
+                    <a href='/about#application'><u>Please agree to website guidelines before uploading resources :P</u></a>
                 </div>
             )}
 
@@ -313,6 +314,9 @@ app.post('/resources/:id/delete', async (c) => {
 
 app.get('/download/*', async (c) => {
     try {
+        const user = await getUser(c)
+        if (!user) return c.redirect('/login')
+
         const path = c.req.path;
         const prefix = '/download/';
         if (!path.startsWith(prefix)) return c.text('Invalid path', 400);

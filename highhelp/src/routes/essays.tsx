@@ -10,7 +10,10 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 // 1. Landing / Subject List
 app.get('/essays', async (c) => {
+
     const user = await getUser(c) as User | null
+    if (!user) return c.redirect('/login')
+    if (user && Number(user.permission_level) === 0) return c.redirect('/about#application')
     const subject = c.req.query('subject')
 
     // View: Recent Essays (Global)
@@ -230,6 +233,7 @@ app.get('/essays', async (c) => {
 app.get('/essays/create', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
+    if (Number(user.permission_level) === 0) return c.redirect('/about#application')
 
     // Check Points
     if (user.points < -2) {
@@ -368,6 +372,7 @@ app.post('/essays', async (c) => {
 // 4. View Essay
 app.get('/essays/view/:id', async (c) => {
     const user = await getUser(c)
+    if (user && Number(user.permission_level) === 0) return c.redirect('/about#application')
     const essayId = c.req.param('id')
 
     // Fetch Essay

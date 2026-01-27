@@ -9,6 +9,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 // View Paper
 app.get('/past-papers/paper/:id', async (c) => {
     const user = await getUser(c)
+    if (!user) return c.redirect('/login')
     const paperId = c.req.param('id')
 
     // Fetch paper
@@ -47,10 +48,12 @@ app.get('/past-papers/paper/:id', async (c) => {
         // Validation Logic
         const missing = [];
         if (!q.topic_ids) missing.push("Topic");
-        if (!q.question_image_key) missing.push("Q. Img");
+        const hasQContent = q.question_image_key || q.question_text;
+        if (!hasQContent) missing.push("Q. Content");
         if (!q.question_type) missing.push("Type");
         if (!q.marks) missing.push("Marks");
-        if (!q.answer_image_key) missing.push("Ans. Img");
+        const hasAContent = q.answer_image_key || q.answer_text;
+        if (!hasAContent) missing.push("Ans. Content");
 
         if (missing.length > 0) incompleteQuestionsCount++;
 
@@ -109,6 +112,50 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
 
                     <div class="flex items-center gap-3">
+                        {/* Text Import Button (Only if editable) */}
+                        {canEdit && (
+                            <>
+                                <button onclick="document.getElementById('import-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    Import Text
+                                </button>
+
+                                {/* Import Modal */}
+                                <dialog id="import-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
+                                    <div class="w-full max-w-lg bg-white p-6 rounded-xl">
+                                        <h3 class="text-xl font-bold text-gray-800 mb-2">Import Paper from Text</h3>
+                                        <p class="text-sm text-gray-500 mb-4">
+                                            Upload a .txt file formatted with tags (\s, \a, \q, \m, \e). This will append questions to the end of the paper.
+                                        </p>
+
+                                        <form action={`/past-papers/paper/${paper.id}/upload-text`} method="post" enctype="multipart/form-data">
+                                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition cursor-pointer relative">
+                                                <input type="file" name="text_file" accept=".txt" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required />
+                                                <div class="text-gray-500">
+                                                    <span class="block text-2xl mb-1">📄</span>
+                                                    <span class="font-bold text-sm">Click to select .txt file</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="mt-4 bg-gray-50 p-3 rounded text-xs text-gray-500 font-mono overflow-x-auto">
+                                                Key:<br />
+                                                \s New Section | \a New Segment<br />
+                                                \q Question | \m marks<br />
+                                                \e End questions (Start Answer Key)<br />
+                                                /s [A B C D] (MCQ Key)
+                                            </div>
+
+                                            <div class="flex justify-end gap-3 mt-6">
+                                                <button type="button" onclick="document.getElementById('import-modal').close()" class="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-lg">Cancel</button>
+                                                <button class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm">
+                                                    Process & Import
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </dialog>
+                            </>
+                        )}
                         {/* Lock/Unlock Button */}
                         {paper.is_locked ? (
                             canUnlock && (
@@ -289,47 +336,108 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                         </div>
                                                     </div>
 
-                                                    {/* Right Column: Images */}
+                                                    {/* Right Column: Content (Text/Images) */}
                                                     <div class="space-y-4">
-                                                        {['question', 'answer', 'stimulus'].map(type => (
-                                                            <div class="bg-white p-3 rounded border border-gray-200">
-                                                                <div class="flex justify-between items-center mb-2">
-                                                                    <label class="text-xs font-bold text-gray-500 uppercase">{type} Image</label>
-                                                                    <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-blue-600 font-bold">📋 Paste</button>
+                                                        {['question', 'answer', 'stimulus'].map(type => {
+                                                            const hasText = !!q[`${type}_text`];
+                                                            const hasImage = !!q[`${type}_image_key`];
+                                                            // Default to text if text exists, else image (or default image if neither)
+                                                            const initialMode = hasText ? 'text' : 'image';
+
+                                                            return (
+                                                                <div class="bg-white p-3 rounded border border-gray-200" id={`container-${type}-${q.id}`}>
+                                                                    <div class="flex justify-between items-center mb-2">
+                                                                        <label class="text-xs font-bold text-gray-500 uppercase">{type} Content</label>
+                                                                        <div class="flex gap-2">
+                                                                            <button type="button" onclick={`switchMode('${type}', ${q.id}, 'text')`} class={`text-xs px-2 py-1 rounded font-bold transition var-mode-text ${initialMode === 'text' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>Text</button>
+                                                                            <button type="button" onclick={`switchMode('${type}', ${q.id}, 'image')`} class={`text-xs px-2 py-1 rounded font-bold transition var-mode-image ${initialMode === 'image' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>Image</button>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Text Mode */}
+                                                                    <div id={`mode-${type}-${q.id}-text`} class={`${initialMode === 'text' ? '' : 'hidden'}`}>
+                                                                        <textarea
+                                                                            name={`q_${q.id}_${type}_text`}
+                                                                            rows={3}
+                                                                            placeholder={`Enter ${type} text...`}
+                                                                            class="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                                            oninput={`// Clear image input if typing? logic handled on save`}
+                                                                        >{q[`${type}_text`] || ''}</textarea>
+                                                                    </div>
+
+                                                                    {/* Image Mode */}
+                                                                    <div id={`mode-${type}-${q.id}-image`} class={`${initialMode === 'image' ? '' : 'hidden'}`}>
+                                                                        <div class="flex justify-between items-center mb-2">
+                                                                            <span class="text-xs text-gray-400">Upload or Paste Image</span>
+                                                                            <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-blue-600 font-bold">📋 Paste</button>
+                                                                        </div>
+
+                                                                        {q[`${type}_image_key`] && (
+                                                                            <img src={`/download/${q[`${type}_image_key`]}`} class="max-h-32 object-contain mb-2 border rounded" />
+                                                                        )}
+
+                                                                        <input type="file" name={`q_${q.id}_${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500" />
+                                                                        <img id={`${type}-preview-${q.id}`} class="max-h-32 object-contain mt-2 hidden border rounded bg-gray-50" />
+                                                                    </div>
                                                                 </div>
-
-                                                                {q[`${type}_image_key`] && (
-                                                                    <img src={`/download/${q[`${type}_image_key`]}`} class="max-h-32 object-contain mb-2 border rounded" />
-                                                                )}
-
-                                                                <input type="file" name={`q_${q.id}_${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500" />
-                                                                <img id={`${type}-preview-${q.id}`} class="max-h-32 object-contain mt-2 hidden border rounded bg-gray-50" />
-                                                            </div>
-                                                        ))}
+                                                            )
+                                                        })}
                                                     </div>
                                                 </div>
 
                                                 {/* Removed individual save button */}
                                             </div>
                                         ) : (
-                                            <div class="flex gap-4">
-                                                {q.question_image_key && <img src={`/download/${q.question_image_key}`} class="max-w-md border rounded" />}
-                                                {q.answer_image_key && <img src={`/download/${q.answer_image_key}`} class="max-w-md border rounded border-green-200" />}
+                                            <div class="flex flex-col gap-4">
+                                                {/* Read-Only View of Content */}
+
+                                                {/* Question */}
+                                                <div>
+                                                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Question</span>
+                                                    {q.question_text ? (
+                                                        <div class="p-4 bg-white border border-gray-200 rounded text-gray-800 whitespace-pre-wrap">{q.question_text}</div>
+                                                    ) : (
+                                                        q.question_image_key && <img src={`/download/${q.question_image_key}`} class="max-w-md border rounded" />
+                                                    )}
+                                                </div>
+
+                                                {/* Stimulus */}
+                                                {(q.stimulus_text || q.stimulus_image_key) && (
+                                                    <div>
+                                                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Stimulus</span>
+                                                        {q.stimulus_text ? (
+                                                            <div class="p-4 bg-gray-50 border border-gray-200 rounded text-gray-700 italic border-l-4 border-l-blue-400 whitespace-pre-wrap">{q.stimulus_text}</div>
+                                                        ) : (
+                                                            <img src={`/download/${q.stimulus_image_key}`} class="max-w-md border rounded" />
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Answer */}
+                                                <div>
+                                                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Answer / Marking Criteria</span>
+                                                    {q.answer_text ? (
+                                                        <div class="p-4 bg-green-50 border border-green-200 rounded text-green-900 whitespace-pre-wrap">{q.answer_text}</div>
+                                                    ) : (
+                                                        q.answer_image_key && <img src={`/download/${q.answer_image_key}`} class="max-w-md border rounded border-green-200" />
+                                                    )}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
 
                                     {/* Segment Controls (Injected via map return) */}
-                                    {isLastInSegment && canEdit && !paper.is_locked && (
-                                        <div class="bg-blue-50/50 p-2 flex justify-center gap-2 border-t border-gray-100">
-                                            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest self-center mr-2">{q.section_label} {q.segment_label} Controls:</span>
+                                    {
+                                        isLastInSegment && canEdit && !paper.is_locked && (
+                                            <div class="bg-blue-50/50 p-2 flex justify-center gap-2 border-t border-gray-100">
+                                                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest self-center mr-2">{q.section_label} {q.segment_label} Controls:</span>
 
-                                            <button
-                                                type="submit"
-                                                formaction={`/past-papers/paper/${paper.id}/adjust-segment`}
-                                                name="action" value="add"
-                                                class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded font-bold"
-                                                onclick={`
+                                                <button
+                                                    type="submit"
+                                                    formaction={`/past-papers/paper/${paper.id}/adjust-segment`}
+                                                    name="action" value="add"
+                                                    class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded font-bold"
+                                                    onclick={`
                                                     // Add hidden inputs dynamically for this button's context
                                                     const form = this.closest('form');
                                                     let sectionInput = form.querySelector('input[name="section_label"]');
@@ -350,16 +458,16 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                     }
                                                     segmentInput.value = '${q.segment_label || ''}';
                                                 `}
-                                            >
-                                                + Add Question
-                                            </button>
+                                                >
+                                                    + Add Question
+                                                </button>
 
-                                            <button
-                                                type="submit"
-                                                formaction={`/past-papers/paper/${paper.id}/adjust-segment`}
-                                                name="action" value="remove"
-                                                class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded font-bold"
-                                                onclick={`
+                                                <button
+                                                    type="submit"
+                                                    formaction={`/past-papers/paper/${paper.id}/adjust-segment`}
+                                                    name="action" value="remove"
+                                                    class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded font-bold"
+                                                    onclick={`
                                                      if (!confirm('Remove last question of ${q.section_label} ${q.segment_label || ''}?')) return false;
 
                                                     // Add hidden inputs dynamically for this button's context
@@ -382,11 +490,12 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                     }
                                                     segmentInput.value = '${q.segment_label || ''}';
                                                 `}
-                                            >
-                                                - Remove Question
-                                            </button>
-                                        </div>
-                                    )}
+                                                >
+                                                    - Remove Question
+                                                </button>
+                                            </div>
+                                        )
+                                    }
                                 </div>
                             );
                         })}
@@ -411,6 +520,40 @@ app.get('/past-papers/paper/:id', async (c) => {
                 function toggleEdit(id) {
                     const el = document.getElementById('detail-' + id);
                     el.classList.toggle('hidden');
+                }
+
+                function switchMode(type, id, mode) {
+                    const container = document.getElementById('container-' + type + '-' + id);
+                    
+                    // Toggle Visibility
+                    document.getElementById('mode-' + type + '-' + id + '-text').classList.toggle('hidden', mode !== 'text');
+                    document.getElementById('mode-' + type + '-' + id + '-image').classList.toggle('hidden', mode !== 'image');
+
+                    // Update Button Styles
+                    const textBtn = container.querySelector('.var-mode-text');
+                    const imgBtn = container.querySelector('.var-mode-image');
+
+                    if (mode === 'text') {
+                        textBtn.classList.remove('bg-gray-100', 'text-gray-500');
+                        textBtn.classList.add('bg-blue-100', 'text-blue-700');
+                        imgBtn.classList.remove('bg-blue-100', 'text-blue-700');
+                        imgBtn.classList.add('bg-gray-100', 'text-gray-500');
+                        
+                        // Optional: clear file input if switching to text? 
+                        // Maybe not, in case they switch back. Validation logic on server handles priority.
+                    } else {
+                        imgBtn.classList.remove('bg-gray-100', 'text-gray-500');
+                        imgBtn.classList.add('bg-blue-100', 'text-blue-700');
+                        textBtn.classList.remove('bg-blue-100', 'text-blue-700');
+                        textBtn.classList.add('bg-gray-100', 'text-gray-500');
+                        
+                        // Clear text input if switching to image?
+
+                        // Let's rely on server side logic: if image uploaded, clear text. If text valid, clear image.
+                        // Actually, to ensure user intent, if they switch to image, we should probably clear the text field value so it doesn't override.
+                         const textArea = document.querySelector('textarea[name="q_' + id + '_' + type + '_text"]');
+                         if(textArea) textArea.value = '';
+                    }
                 }
 
                 async function pasteImage(inputId, previewId) {
@@ -552,10 +695,10 @@ app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
             GROUP BY q.id
             HAVING 
                 count(qt.topic_id) = 0 OR 
-                q.question_image_key IS NULL OR 
+                (q.question_image_key IS NULL AND q.question_text IS NULL) OR 
                 q.question_type IS NULL OR 
                 q.marks IS NULL OR 
-                q.answer_image_key IS NULL
+                (q.answer_image_key IS NULL AND q.answer_text IS NULL)
         `).bind(paperId).all<any>();
 
         // If results return any rows, those correspond to invalid questions
@@ -612,40 +755,92 @@ async function processBatchUpdate(c: any, paperId: string, user: any, body: any)
         const newMarks = (body[`q_${qId}_marks`] as string) || null;
         const newMcAnswer = (body[`q_${qId}_mc_answer`] as string) || null;
 
+        // Text fields
+        let newQText = (body[`q_${qId}_question_text`] as string) || null;
+        let newAText = (body[`q_${qId}_answer_text`] as string) || null;
+        let newSText = (body[`q_${qId}_stimulus_text`] as string) || null;
+        if (newQText && newQText.trim() === '') newQText = null;
+        if (newAText && newAText.trim() === '') newAText = null;
+        if (newSText && newSText.trim() === '') newSText = null;
+
         // Check if basic fields changed
         let basicChanged = false;
-        if (currentQ) {
-            if (currentQ.question_type !== newType) basicChanged = true;
-            if (String(currentQ.marks || '') !== String(newMarks || '')) basicChanged = true;
-            if (currentQ.mc_answer !== newMcAnswer) basicChanged = true;
-        } else {
-            basicChanged = true; // New or unknown question (shouldn't happen in batch usually)
-        }
+        // Mutual Exclusivity Logic for Batch Update
+        // We need to know if an image is being uploaded to clear the text, OR if text is being set to clear the image.
+        // However, here we handle text updates in the DB update, and image updates separately.
+        // But if text is updated, we should clear the image key.
+        // If image is uploaded, we clearing text (in the image loop).
 
-        if (basicChanged) {
-            await c.env.DB.prepare(`
-                UPDATE exam_questions 
-                SET question_type = ?, marks = ?, mc_answer = ?, uploader_id = ?
-                WHERE id = ?
-            `).bind(
-                newType,
-                newMarks,
-                newMcAnswer,
-                user.id, // Update attribution
-                qId
-            ).run();
-            updatedCount++;
-        }
+        let newQImageKey = currentQ?.question_image_key;
+        let newAImageKey = currentQ?.answer_image_key;
+        let newSImageKey = currentQ?.stimulus_image_key;
 
         // 2. Handle Images (Only if file provided)
+        let imageUploaded = { question: false, answer: false, stimulus: false };
         for (const type of ['question', 'answer', 'stimulus']) {
             const file = body[`q_${qId}_${type}_image`] as File;
             if (file && file.size > 0 && file.name !== 'undefined') {
                 const key = `questions/${Date.now()}-${type}-${Math.random().toString(36).slice(2)}`;
                 await c.env.BUCKET.put(key, file);
-                await c.env.DB.prepare(`UPDATE exam_questions SET ${type}_image_key = ? WHERE id = ?`).bind(key, qId).run();
+
+                // Update key variable
+                if (type === 'question') newQImageKey = key;
+                if (type === 'answer') newAImageKey = key;
+                if (type === 'stimulus') newSImageKey = key;
+
+                // Clear text if image uploaded
+                if (type === 'question') newQText = null;
+                if (type === 'answer') newAText = null;
+                if (type === 'stimulus') newSText = null;
+
+                imageUploaded[type as keyof typeof imageUploaded] = true;
                 updatedCount++;
             }
+        }
+
+        // If Text is set (and not cleared by image upload logic above - wait, if I uploaded image, text is null. 
+        // If I didn't upload image, but set text, I should clear image key?
+        // Let's rely on the form state or just: if new text is not null, clear image key.
+        // But wait, if partial update?
+        // Batch update sends all fields usually? Or at least the ones in the form.
+        // Yes, the form sends everything.
+
+        if (newQText !== null) newQImageKey = null;
+        if (newAText !== null) newAImageKey = null;
+        if (newSText !== null) newSImageKey = null;
+
+        // Now update DB
+        if (currentQ) {
+            if (currentQ.question_type !== newType) basicChanged = true;
+            if (String(currentQ.marks || '') !== String(newMarks || '')) basicChanged = true;
+            if (currentQ.mc_answer !== newMcAnswer) basicChanged = true;
+            if (currentQ.question_text !== newQText) basicChanged = true;
+            if (currentQ.answer_text !== newAText) basicChanged = true;
+            if (currentQ.stimulus_text !== newSText) basicChanged = true;
+            if (currentQ.question_image_key !== newQImageKey) basicChanged = true;
+            if (currentQ.answer_image_key !== newAImageKey) basicChanged = true;
+            if (currentQ.stimulus_image_key !== newSImageKey) basicChanged = true;
+        } else {
+            basicChanged = true;
+        }
+
+        if (basicChanged) {
+            await c.env.DB.prepare(`
+                UPDATE exam_questions 
+                SET question_type = ?, marks = ?, mc_answer = ?, uploader_id = ?,
+                    question_text = ?, answer_text = ?, stimulus_text = ?,
+                    question_image_key = ?, answer_image_key = ?, stimulus_image_key = ?
+                WHERE id = ?
+            `).bind(
+                newType,
+                newMarks,
+                newMcAnswer,
+                user.id,
+                newQText, newAText, newSText,
+                newQImageKey, newAImageKey, newSImageKey,
+                qId
+            ).run();
+            updatedCount++;
         }
 
         // 3. Handle Topics
@@ -729,18 +924,16 @@ app.post('/past-papers/question/:id/update', async (c) => {
     const body = await c.req.parseBody();
 
     // Logic to handle updates
-    // 1. Update basic fields
-    // FIX: Cast body values to string (or null) to satisfy bind() type requirements
-    await c.env.DB.prepare(`
-        UPDATE exam_questions 
-        SET question_type = ?, marks = ?, mc_answer = ?
-        WHERE id = ?
-    `).bind(
-        (body['question_type'] as string) || null,
-        (body['marks'] as string) || null,
-        (body['mc_answer'] as string) || null,
-        qId
-    ).run();
+    let qText = (body['question_text'] as string) || null;
+    let aText = (body['answer_text'] as string) || null;
+    let sText = (body['stimulus_text'] as string) || null;
+    if (qText && qText.trim() === '') qText = null;
+    if (aText && aText.trim() === '') aText = null;
+    if (sText && sText.trim() === '') sText = null;
+
+    let qImgKey = q.question_image_key;
+    let aImgKey = q.answer_image_key;
+    let sImgKey = q.stimulus_image_key;
 
     // 2. Handle Images
     for (const type of ['question', 'answer', 'stimulus']) {
@@ -748,9 +941,32 @@ app.post('/past-papers/question/:id/update', async (c) => {
         if (file && file.size > 0 && file.name !== 'undefined') {
             const key = `questions/${Date.now()}-${type}-${Math.random().toString(36).slice(2)}`;
             await c.env.BUCKET.put(key, file);
-            await c.env.DB.prepare(`UPDATE exam_questions SET ${type}_image_key = ? WHERE id = ?`).bind(key, qId).run();
+            if (type === 'question') { qImgKey = key; qText = null; }
+            if (type === 'answer') { aImgKey = key; aText = null; }
+            if (type === 'stimulus') { sImgKey = key; sText = null; }
         }
     }
+
+    // If text is set, clear image
+    if (qText !== null) qImgKey = null;
+    if (aText !== null) aImgKey = null;
+    if (sText !== null) sImgKey = null;
+
+    // 1. Update fields
+    await c.env.DB.prepare(`
+        UPDATE exam_questions 
+        SET question_type = ?, marks = ?, mc_answer = ?,
+            question_text = ?, answer_text = ?, stimulus_text = ?,
+            question_image_key = ?, answer_image_key = ?, stimulus_image_key = ?
+        WHERE id = ?
+    `).bind(
+        (body['question_type'] as string) || null,
+        (body['marks'] as string) || null,
+        (body['mc_answer'] as string) || null,
+        qText, aText, sText,
+        qImgKey, aImgKey, sImgKey,
+        qId
+    ).run();
 
     // 3. Handle Topics (Delete all and re-insert)
     await c.env.DB.prepare('DELETE FROM question_topics WHERE question_id = ?').bind(qId).run();
@@ -893,6 +1109,185 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
 
         await c.env.DB.prepare(`UPDATE exam_questions SET is_deleted = 1 WHERE id = ?`).bind(lastQ.id).run();
     }
+
+    return c.redirect(`/past-papers/paper/${paperId}`);
+});
+app.post('/past-papers/paper/:id/upload-text', async (c) => {
+    console.log(`[Import] Attempting text import for paper ${c.req.param('id')}`);
+    const user = await getUser(c);
+    const paperId = c.req.param('id');
+
+    // 1. Permission & Paper Checks
+    const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
+    if (!paper) return c.notFound();
+    if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
+    if (paper.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
+
+    // 2. Process File
+    const body = await c.req.parseBody();
+    const file = body['text_file'];
+    if (!(file instanceof File)) return c.text("Invalid file uploaded", 400);
+
+    const rawText = await file.text();
+    const text = rawText.replace(/\r\n/g, '\n');
+
+    // 3. Parsing Logic
+    const parts = text.split('\\e');
+    const questionPart = parts[0];
+    const answerKeyPart = parts.length > 1 ? parts.slice(1).join('') : '';
+
+    const tokens = questionPart.split(/(\\s|\\a|\\q|\\m)/);
+
+    // Helpers
+    const toRoman = (num: number) => ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][num] || String(num);
+    const toLetter = (num: number) => String.fromCharCode(65 + num); // 0->A, 1->B
+
+    // State
+    let currentSectionIdx = 0;
+    let currentSegmentIdx = 0;
+    let currentQCount = 0;
+
+    let currentSectionLabel = "I";
+    let currentSegmentLabel = "A";
+
+    let currentQ: any = null;
+    let questionsToProcess: any[] = [];
+
+    // CHANGED: We are wiping the paper, so we start ordering from 1.
+    // We no longer need to check the DB for the MAX(ordering_index).
+    let runningOrderIdx = 1;
+
+    const pushCurrentQ = () => {
+        if (currentQ) {
+            // Default Heuristics (can be overwritten by Answer Key later)
+            if (!currentQ.question_type) {
+                if (currentQ.question_text && currentQ.question_text.includes('(A)') && currentQ.question_text.includes('(B)')) {
+                    currentQ.question_type = 'multiple_choice';
+                    if (!currentQ.marks) currentQ.marks = 1;
+                } else {
+                    currentQ.question_type = (currentQ.marks && parseInt(currentQ.marks) >= 5) ? 'extended_response' : 'short_answer';
+                }
+            }
+            questionsToProcess.push(currentQ);
+            currentQ = null;
+        }
+    };
+
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i].trim();
+        const content = (tokens[i + 1] || "").trim();
+
+        if (token === '\\s') {
+            pushCurrentQ();
+            currentSectionIdx++;
+            // currentSegmentIdx = 0;
+            currentQCount = 0;
+
+            currentSectionLabel = toRoman(currentSectionIdx);
+            // currentSegmentLabel = "A";
+            i++;
+        }
+        else if (token === '\\a') {
+            pushCurrentQ();
+            currentSegmentIdx++;
+            currentQCount = 0;
+
+            currentSegmentLabel = toLetter(currentSegmentIdx);
+            i++;
+        }
+        else if (token === '\\q') {
+            pushCurrentQ();
+            currentQCount++;
+
+            let qText = content;
+
+            // Clean the text
+            const boldMatch = content.match(/^\*\*([a-zA-Z0-9]+)\*\*\s*/);
+            const standardMatch = content.match(/^(\d+|[a-z])[\.\)]\s*/);
+
+            if (boldMatch) {
+                qText = content.substring(boldMatch[0].length);
+            } else if (standardMatch) {
+                qText = content.substring(standardMatch[0].length);
+            }
+
+            const generatedNumber = currentSegmentLabel
+                ? `${currentSegmentLabel}${currentQCount}`
+                : `${currentQCount}`;
+
+            currentQ = {
+                paper_id: paperId,
+                section_label: currentSectionLabel,
+                segment_label: currentSegmentLabel,
+                question_number: generatedNumber,
+                question_text: qText,
+                uploader_id: user.id,
+                ordering_index: runningOrderIdx++, // Increments sequentially from 1
+                marks: null,
+                question_type: null,
+                mc_answer: null
+            };
+            i++;
+        }
+        else if (token === '\\m') {
+            if (currentQ) {
+                const cleanMarks = content.replace(/\*\*/g, '').match(/(\d+)/);
+                if (cleanMarks) currentQ.marks = cleanMarks[1];
+            }
+            i++;
+        }
+    }
+    pushCurrentQ();
+
+    // 4. Parse Answer Key
+    if (answerKeyPart && answerKeyPart.trim().length > 0) {
+        const answers = answerKeyPart.match(/\b[A-D]\b/g);
+        if (answers) {
+            questionsToProcess.forEach((q, index) => {
+                if (answers[index]) {
+                    q.mc_answer = answers[index];
+                    q.question_type = 'multiple_choice';
+                    if (!q.marks) q.marks = 1;
+                }
+            });
+        }
+    }
+
+    // 5. Database Reset & Insert
+    // CHANGED: Delete all existing questions for this paper first
+    await c.env.DB.prepare('DELETE FROM exam_questions WHERE paper_id = ?').bind(paperId).run();
+
+    let insertedCount = 0;
+
+    // Optional: You can use c.env.DB.batch() here if inserting many rows for performance,
+    // but a loop is fine for standard paper sizes.
+    const stmt = c.env.DB.prepare(`
+        INSERT INTO exam_questions 
+        (paper_id, section_label, segment_label, question_number, question_text, marks, question_type, mc_answer, uploader_id, ordering_index)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const q of questionsToProcess) {
+        const segmentVal = q.segment_label || null;
+
+        await stmt.bind(
+            q.paper_id,
+            q.section_label,
+            segmentVal,
+            q.question_number,
+            q.question_text || null,
+            q.marks || null,
+            q.question_type || null,
+            q.mc_answer || null,
+            q.uploader_id,
+            q.ordering_index
+        ).run();
+
+        insertedCount++;
+    }
+
+    // Logging "Fresh Import" instead of update
+    await logAction(c.env.DB, user.id, 'IMPORT_TEXT', `Fresh Import: Wiped previous questions. ${insertedCount} inserted.`, parseInt(paperId), 'papers');
 
     return c.redirect(`/past-papers/paper/${paperId}`);
 });
