@@ -54,7 +54,7 @@ app.get('/api/auth/callback', async (c) => {
     const redirectUri = c.env.APP_REDIRECT_URI;
 
     if (!clientSecret) {
-        return c.text('Configuration Error: Missing Client Secret. Please add PORTAL_API_CLIENT_SECRET to .dev.vars or secrets.', 500);
+        return c.text('Configuration Error: Missing Client Secret. add PORTAL_API_CLIENT_SECRET to .dev.vars or secrets.', 500);
     }
 
     try {
@@ -89,11 +89,11 @@ app.get('/api/auth/callback', async (c) => {
             return c.text('Failed to retrieve user info: ' + JSON.stringify(userData), 400);
         }
 
-        // Check/Upsert User in DB
+        // Check/Upsert
         let user = await c.env.DB.prepare('SELECT * FROM users WHERE student_id = ?').bind(userData.studentId).first();
 
         if (!user) {
-            // Create new user
+            // new user
             const result = await c.env.DB.prepare(`
                 INSERT INTO users (student_id, first_name, last_name, email, role, permission_level)
                 VALUES (?, ?, ?, ?, 'student', 0)
@@ -105,11 +105,12 @@ app.get('/api/auth/callback', async (c) => {
                 userData.email
             ).first();
             user = result;
+            // TODO: timetable & notices
         }
 
         if (!user) return c.text('Database Error: Failed to create user', 500);
 
-        // Set Session Cookie
+        // Set Cookie
         const isLocal = c.req.url.includes('localhost');
         setCookie(c, 'user_id', String(user.id), {
             path: '/',
