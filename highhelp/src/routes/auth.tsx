@@ -44,12 +44,11 @@ app.get('/api/auth/callback', async (c) => {
     const state = c.req.query('state');
     const savedState = getCookie(c, 'oauth_state');
 
-    // Verify state to prevent CSRF
+    // CSRF
     if (!code || !state || state !== savedState) {
         return c.text('Invalid State or Missing Code. Please try logging in again.', 400);
     }
 
-    // Exchange code for token
     const clientId = c.env.PORTAL_API_CLIENT_ID;
     const clientSecret = c.env.PORTAL_API_CLIENT_SECRET;
     const redirectUri = c.env.APP_REDIRECT_URI;
@@ -79,7 +78,7 @@ app.get('/api/auth/callback', async (c) => {
 
         const accessToken = tokenData.access_token;
 
-        // Get User Info
+        // Get Info
         const userResponse = await fetch('https://student.sbhs.net.au/api/details/userinfo.json', {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
@@ -132,8 +131,7 @@ app.get('/login', (c) => {
         <Layout title="Login">
             <div class="flex flex-col md:flex-row min-h-[600px]">
 
-                {/* LEFT SIDE: Student Portal Login (Previously Right) */}
-                {/* Added 'border-r border-gray-200' here to maintain the center divider */}
+                
                 <div class="w-full md:w-1/2 p-8 flex flex-col justify-center items-center bg-gray-50 border-r border-gray-200">
                     <h2 class="text-2xl font-bold mb-6 text-gray-800">Student Portal Login</h2>
                     <p class="text-gray-600 mb-6 text-center">Log in with your school account.</p>
@@ -144,8 +142,7 @@ app.get('/login', (c) => {
                     <p class="text-gray-600 mb-6 text-center">Note: This is purely for login and no sensitive information will be collected (to avoid Deputy)</p>
                 </div>
 
-                {/* RIGHT SIDE: Standard Login (Previously Left) */}
-                {/* Removed 'border-r border-gray-200' from here */}
+                
                 <div class="w-full md:w-1/2 p-8 flex flex-col justify-center">
                     <h2 class="text-2xl font-bold mb-6 text-blue-900">Manual Login</h2>
                     <form action="/login" method="post" class="space-y-4">
