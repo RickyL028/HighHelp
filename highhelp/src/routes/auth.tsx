@@ -105,10 +105,28 @@ app.get('/api/auth/callback', async (c) => {
                 userData.email
             ).first();
             user = result;
-            // TODO: timetable & notices
         }
 
         if (!user) return c.text('Database Error: Failed to create user', 500);
+
+        // Fetch Timetable Data
+        const timetableResponse = await fetch('https://student.sbhs.net.au/api/timetable/timetable.json', {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const timetableData = await timetableResponse.json();
+
+        // Fetch Calendar Data (Full Year to allow navigation)
+        // Default only returns today, so we specific a range.
+        const currentYear = new Date().getFullYear();
+        const calendarResponse = await fetch(`https://student.sbhs.net.au/api/calendar/days.json?from=${currentYear}-01-01&to=${currentYear}-12-31`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const calendarData = await calendarResponse.json();
+
+        const studentData = {
+            timetable: timetableData,
+            calendar: calendarData
+        };
 
         // Set Cookie
         const isLocal = c.req.url.includes('localhost');
@@ -120,7 +138,37 @@ app.get('/api/auth/callback', async (c) => {
             sameSite: 'Lax'
         });
 
-        return c.redirect('/');
+        // Return HTML to save to localStorage and redirect
+        return c.html(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Redirecting...</title>
+                <style>
+                    body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f9fafb; color: #374151; }
+                    .container { text-align: center; }
+                    .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="spinner"></div>
+                    <p>Setting up your session...</p>
+                </div>
+                <script>
+                    try {
+                        const studentData = ${JSON.stringify(studentData)};
+                        localStorage.setItem('studentData', JSON.stringify(studentData));
+                        window.location.href = '/';
+                    } catch (e) {
+                        console.error('Error saving data', e);
+                        document.body.innerHTML = '<p style="color:red">Error saving session data. Please try again or contact support.</p>';
+                    }
+                </script>
+            </body>
+            </html>
+        `);
 
     } catch (e: any) {
         return c.text(`Authentication Failed: ${e.message}`, 500);
@@ -132,7 +180,7 @@ app.get('/login', (c) => {
         <Layout title="Login">
             <div class="flex flex-col md:flex-row min-h-[600px]">
 
-                
+
                 <div class="w-full md:w-1/2 p-8 flex flex-col justify-center items-center bg-gray-50 border-r border-gray-200">
                     <h2 class="text-2xl font-bold mb-6 text-gray-800">Student Portal Login</h2>
                     <p class="text-gray-600 mb-6 text-center">Log in with your school account.</p>
@@ -143,7 +191,7 @@ app.get('/login', (c) => {
                     <p class="text-gray-600 mb-6 text-center">Note: This is purely for login and no sensitive information will be collected (to avoid Deputy)</p>
                 </div>
 
-                
+
                 <div class="w-full md:w-1/2 p-8 flex flex-col justify-center">
                     <h2 class="text-2xl font-bold mb-6 text-blue-900">Manual Login</h2>
                     <form action="/login" method="post" class="space-y-4">
