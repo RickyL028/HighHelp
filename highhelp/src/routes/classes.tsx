@@ -234,32 +234,31 @@ app.get('/', async (c) => {
                                     const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
 
                                     innerHtml = \`
-                                        <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group"
-                                             data-subject="\${data.subjectCode}">
-                                            <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" 
-                                        style="background-color: \${stripColor};">
-                                    </div>
+    <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group"
+         data-subject="\${data.subjectCode}">
+        <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" 
+             style="background-color: \${stripColor};">
+        </div>
 
-                                    <div class="pl-3 font-medium text-gray-900 \${textSize}">
-                                        \${data.title || data.subject || 'Unknown'}
-                                            </div>
-                                            
-                                            <div class="pl-3 flex items-center gap-4 \${textSize}">
-                                                <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
-                                                                                     \${data.room ? \`<span class="font-bold text-black">\${data.room}</span>\` : ''}
-                                            </div>
-                                            
-                                            <!-- Tooltip -->
-                                            <div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
-                                                <div class="flex justify-between items-start mb-2 border-b border-gray-600 pb-2 mt-auto">
-                                                    <span class="font-bold text-sm">\${data.title}</span>
-                                                    <span class="text-gray-300">\${nextTimeStr}</span>
-                                                </div>
-                                                <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
-                                                \${miniCycle}
-                                            </div>
-                                        </div>
-                                    \`;
+        <div class="pl-3 font-medium text-gray-900 \${textSize}">
+            \${data.title || data.subject || 'Unknown'}
+        </div>
+        
+        <div class="pl-3 flex items-center gap-4 \${textSize}">
+            <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
+            \${data.room ? \`<span class="font-bold text-black">\${data.room}</span>\` : ''}
+        </div>
+        
+        <div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
+            <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2">
+                <span class="font-bold text-sm">\${data.title}</span>
+                <span class="text-gray-300">\${nextTimeStr}</span>
+            </div>
+            <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
+            \${miniCycle}
+        </div>
+    </div>
+\`;
                                 } else {
                                     if (bell.period === 'EoD') return;
                                     innerHtml = \`
