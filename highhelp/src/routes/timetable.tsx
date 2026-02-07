@@ -13,6 +13,9 @@ app.get('/', async (c) => {
     return c.html(
         <Layout title="Classes" user={user}>
             <div class="max-w-4xl mx-auto py-6" id="app-container">
+                {/* Progress Bar */}
+                <div id="daily-progress-bar" class="fixed left-0 top-0 h-full w-1.5 bg-gray-200 z-50 hidden transition-all duration-500 ease-in-out origin-top"></div>
+
                 {/* Loader */}
                 <div id="loader" class="text-center py-12">
                     <p class="text-gray-500">Loading timetable...</p>
@@ -49,6 +52,11 @@ app.get('/', async (c) => {
                         <button id="btn-reset" class="h-10 px-4 flex items-center justify-center rounded-lg border border-red-500 text-red-500 font-medium text-sm hover:bg-red-50 transition-colors">
                             Reset
                         </button>
+
+                        {/* Countdown Timer */}
+                        <div id="countdown-timer" class="h-10 px-3 font-mono font-bold text-gray-600 bg-white border border-gray-200 rounded-lg flex items-center justify-center shadow-sm min-w-[5rem]">
+                            --:--
+                        </div>
 
                         {/* Next Button */}
                         <button id="btn-next" class="w-10 h-10 flex items-center justify-center rounded-lg border border-red-500 text-red-500 hover:bg-red-50 transition-colors">
@@ -103,6 +111,8 @@ app.get('/', async (c) => {
                         // State
                         let currentDateStr = new URLSearchParams(window.location.search).get('date') || getInitialDate();
                         let currentView = 'day'; // 'day' or 'cycle'
+                        let tickerInterval = null;
+                        let hoveredPeriodData = null;
 
                         function getInitialDate() {
                             const now = new Date();
@@ -335,6 +345,10 @@ app.get('/', async (c) => {
                                 const timeWidth = 'w-24'; 
                                 const textSize = 'text-sm';
 
+                                // NEW: Past check
+                                const isPast = isTimePast(currentDateStr, bell.endTime);
+                                const opacityClass = isPast ? 'opacity-90 grayscale-[0.1]' : '';
+
                                 let innerHtml = '';
                                 if (hasContent) {
                                     // Calculate time to next
@@ -346,7 +360,10 @@ app.get('/', async (c) => {
 
                                     innerHtml = \`
     <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
-         data-subject="\${data.subjectCode}">
+         data-subject="\${data.subjectCode}"
+         data-start="\${bell.startTime}"
+         data-end="\${bell.endTime}"
+         data-color="\${stripColor}">
         <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" 
              style="background-color: \${stripColor};">
         </div>
@@ -382,7 +399,7 @@ app.get('/', async (c) => {
                                 }
 
                                 const html = \`
-                                    <div class="flex items-center \${containerClass}">
+                                    <div class="flex items-center \${containerClass} \${opacityClass} transition-opacity duration-500">
                                         <div class="\${timeWidth} text-right pr-4 text-gray-500 font-medium \${textSize}">
                                             \${formatTime(bell.startTime)}
                                         </div>
@@ -395,6 +412,7 @@ app.get('/', async (c) => {
                             });
 
                             attachHoverEffects();
+                            startTicker();
                         }
 
                         function renderCycle() {
@@ -505,6 +523,15 @@ app.get('/', async (c) => {
                             cards.forEach(card => {
                                 card.addEventListener('mouseenter', () => {
                                     const subject = card.getAttribute('data-subject');
+                                    // Capture time
+                                    const start = card.getAttribute('data-start');
+                                    const end = card.getAttribute('data-end');
+                                    
+                                    if(start) {
+                                        hoveredPeriodData = { start, end };
+                                        updateTicker(); // Immediate update
+                                    }
+
                                     if (!subject) return;
 
                                     cards.forEach(c => {
@@ -519,6 +546,9 @@ app.get('/', async (c) => {
                                 });
                                 
                                 card.addEventListener('mouseleave', () => {
+                                    hoveredPeriodData = null;
+                                    updateTicker(); // Immediate update
+
                                     cards.forEach(c => {
                                         c.classList.remove('opacity-25', 'opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
                                         c.style.transform = '';
@@ -618,6 +648,139 @@ app.get('/', async (c) => {
                 document.getElementById('loader').classList.add('hidden');
                 document.getElementById('content').classList.remove('hidden');
                 render();
+
+                        function isTimePast(dateStr, timeStr) {
+                            if (!timeStr) return false;
+                            const t = new Date();
+                            const todayStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
+
+                            if (dateStr < todayStr) return true;
+                            if (dateStr > todayStr) return false;
+
+                            const [h, m] = timeStr.split(':').map(Number);
+                            const now = new Date();
+                            // If timeStr is "23:59", it's effectively end of day
+                            const check = new Date(now);
+                            check.setHours(h, m, 0, 0);
+                            return now > check;
+                        }
+
+                        function startTicker() {
+                            if (tickerInterval) clearInterval(tickerInterval);
+                            updateTicker(); // First run
+                            if(!tickerInterval) tickerInterval = setInterval(updateTicker, 1000);
+                        }
+
+                        function updateTicker() {
+                            const now = new Date();
+                            const t = new Date();
+                            const todayStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
+                            
+                            const progressBar = document.getElementById('daily-progress-bar');
+                            const timerDisplay = document.getElementById('countdown-timer');
+                            
+                            // Only run on Today
+                            if (currentDateStr !== todayStr) {
+                                if(progressBar) progressBar.classList.add('hidden');
+                                if(timerDisplay) timerDisplay.textContent = '--:--'; 
+                                return;
+                            }
+                            
+                            if(progressBar) progressBar.classList.remove('hidden');
+
+                            // Progress Bar
+                            // Define day as 8:00 (Start P0/RC) to 15:10 (End)
+                            const startMins = 8 * 60; // 8:00
+                            const endMins = 15 * 60 + 10; // 15:10
+                            const currentMins = now.getHours() * 60 + now.getMinutes() + (now.getSeconds()/60);
+                            
+                            let pct = (currentMins - startMins) / (endMins - startMins);
+                            if (pct < 0) pct = 0;
+                            if (pct > 1) pct = 1;
+                            
+                            if(progressBar) {
+                                progressBar.style.height = \`\${pct * 100}%\`;
+                                
+                                let activeColor = '#e5e7eb'; // default gray
+                                const cards = document.querySelectorAll('.period-card');
+                                
+                                // Find current active period based on time
+                                let foundActive = false;
+                                cards.forEach(card => {
+                                     const s = card.dataset.start;
+                                     const e = card.dataset.end;
+                                     if(s && e) {
+                                         const [sh, sm] = s.split(':').map(Number);
+                                         const [eh, em] = e.split(':').map(Number);
+                                         const sTime = new Date(now); sTime.setHours(sh, sm, 0, 0);
+                                         const eTime = new Date(now); eTime.setHours(eh, em, 0, 0);
+                                         
+                                         if (now >= sTime && now < eTime) {
+                                             activeColor = card.dataset.color || '#e5e7eb';
+                                             foundActive = true;
+                                         }
+                                     }
+                                });
+                                
+                                // If not explicit active period (e.g. recess), keep gray? Or Keep previous?
+                                // User said "colour of the lesson". If between lessons, maybe gray is fine.
+                                progressBar.style.backgroundColor = activeColor;
+                            }
+                            
+                            // Countdown
+                            if (timerDisplay) {
+                                let targetTime = null;
+                                let showText = '';
+                                
+                                if (hoveredPeriodData) {
+                                     const [h, m] = hoveredPeriodData.start.split(':').map(Number);
+                                     targetTime = new Date(now); targetTime.setHours(h, m, 0, 0);
+                                } else {
+                                     // Next period
+                                     const cards = document.querySelectorAll('.period-card');
+                                     for (const card of cards) {
+                                         const s = card.dataset.start;
+                                         if(!s) continue;
+                                         const [h, m] = s.split(':').map(Number);
+                                         const sTime = new Date(now); sTime.setHours(h, m, 0, 0);
+                                         
+                                         if (sTime > now) {
+                                             targetTime = sTime;
+                                             break;
+                                         }
+                                     }
+                                }
+                                
+                                if (!targetTime) {
+                                    // Make sure we handle "End of Day" gracefully
+                                    const endDayTime = new Date(now);
+                                    endDayTime.setHours(15, 10, 0, 0);
+                                    if (now > endDayTime) {
+                                        timerDisplay.textContent = "End";
+                                    } else if (!hoveredPeriodData) {
+                                         // If we are before end of day but no next period found? (Maybe current is last)
+                                         // Then countdown to End of Day?
+                                         timerDisplay.textContent = "Last";
+                                    } else {
+                                         // Hovering past period
+                                         timerDisplay.textContent = "Ended";
+                                    }
+                                } else {
+                                    let diff = targetTime - now;
+                                    if (diff < 0) {
+                                         // Past
+                                         timerDisplay.textContent = "Ended";
+                                    } else {
+                                        const dHours = Math.floor(diff / (1000 * 60 * 60));
+                                        const dMins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                                        const dSecs = Math.floor((diff % (1000 * 60)) / 1000);
+                                        // Format
+                                        const hStr = dHours > 0 ? \`\${String(dHours)}:\` : '';
+                                        timerDisplay.textContent = \`\${hStr}\${String(dMins).padStart(2,'0')}:\${String(dSecs).padStart(2,'0')}\`;
+                                    }
+                                }
+                            }
+                        }
 
                     })();
                 `
