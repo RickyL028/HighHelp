@@ -72,6 +72,7 @@ app.get('/api/auth/callback', async (c) => {
 
         const tokenData: any = await tokenResponse.json();
 
+
         if (!tokenData.access_token) {
             return c.text('Failed to retrieve access token: ' + JSON.stringify(tokenData), 400);
         }
@@ -158,7 +159,10 @@ app.get('/api/auth/callback', async (c) => {
                 </div>
                 <script>
                     try {
-                        const studentData = ${JSON.stringify(studentData)};
+                        const studentData = {
+                            ...${JSON.stringify(studentData)},
+                            accessToken: "${accessToken}"
+                        };
                         localStorage.setItem('studentData', JSON.stringify(studentData));
                         window.location.href = '/';
                     } catch (e) {

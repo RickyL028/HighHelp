@@ -6,6 +6,31 @@ import { html } from 'hono/html'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+app.get('/day-data', async (c) => {
+    const date = c.req.query('date')
+    const authHeader = c.req.header('Authorization')
+
+    if (!authHeader) return c.json({ error: 'Missing token' }, 401)
+    if (!date) return c.json({ error: 'Missing date' }, 400)
+
+    try {
+        const response = await fetch(`https://student.sbhs.net.au/api/timetable/daytimetable.json?date=${date}`, {
+            headers: {
+                'Authorization': authHeader
+            }
+        })
+
+        if (!response.ok) {
+            return c.json({ error: 'Failed to fetch' }, (response.status))
+        }
+
+        const data = await response.json()
+        return c.json(data)
+    } catch (e) {
+        return c.json({ error: 'Internal Server Error' }, 500)
+    }
+})
+
 app.get('/', async (c) => {
     const user = await getUser(c)
 
@@ -66,7 +91,7 @@ app.get('/', async (c) => {
                 <script dangerouslySetInnerHTML={{
                     __html: `
                     (function() {
-                        const BELL_TIMES = [
+                        const DEFAULT_BELL_TIMES = [
                             { period: "0", startTime: "08:00", endTime: "08:50", label: "Period 0" },
                             { period: "RC", startTime: "08:50", endTime: "08:57", label: "Roll Call" },
                             { period: "1", startTime: "09:00", endTime: "10:00", label: "Period 1" },
@@ -94,7 +119,7 @@ app.get('/', async (c) => {
                             return;
                         }
 
-                        // Data mappings
+                        // Data mappings for static/cycle view
                         const calendarMap = studentData.calendar; 
                         const daysData = studentData.timetable.days || {};
                         const subjectsData = studentData.timetable.subjects || [];
@@ -110,7 +135,7 @@ app.get('/', async (c) => {
                             if (isAfterSchool) {
                                 now.setDate(now.getDate() + 1);
                             }
-                            // Ensure not weekend initially?
+                            // Ensure not weekend initially
                             if (now.getDay() === 0) now.setDate(now.getDate() + 1); // Sun -> Mon
                             if (now.getDay() === 6) now.setDate(now.getDate() + 2); // Sat -> Mon
 
@@ -134,6 +159,24 @@ app.get('/', async (c) => {
                                 fullTeacher: subj ? subj.fullTeacher : periodObj.fullTeacher || periodObj.teacher,
                                 subjectCode: subj ? (subj.shortTitle || subj.title) : (periodObj.title || 'Unknown')
                             };
+                        }
+
+                        async function fetchDayData(date) {
+                            if (!studentData.accessToken) {
+                                console.warn('No access token available for live refresh');
+                                return null;
+                            }
+                            try {
+                                const res = await fetch(\`/classes/day-data?date=\${date}\`, {
+                                    headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
+                                });
+                                if (res.ok) return await res.json();
+                                console.error('Failed to fetch day data', res.status);
+                                return null;
+                            } catch(e) {
+                                console.error(e);
+                                return null;
+                            }
                         }
 
                         function render() {
@@ -161,15 +204,13 @@ app.get('/', async (c) => {
                             }
                         }
 
-                        function renderDay() {
+                        async function renderDay() {
                             // Update URL
                             const url = new URL(window.location);
                             url.searchParams.set('date', currentDateStr);
                             window.history.replaceState({}, '', url);
 
                             const dayInfo = calendarMap[currentDateStr];
-                            const dayNumber = dayInfo ? dayInfo.dayNumber : null;
-                            
                             // Day Header
                             const d = new Date(currentDateStr);
                             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -200,53 +241,125 @@ app.get('/', async (c) => {
                             }
 
                             const container = document.getElementById('timetable-list');
-                            container.innerHTML = '';
+                            container.innerHTML = '<div class="text-center py-12 text-gray-500">Checking for updates...</div>';
                             container.className = 'space-y-4';
 
-                            if (!dayNumber || !daysData[dayNumber]) {
-                                container.innerHTML = '<div class="text-center py-12 text-gray-500">No classes scheduled for this day.</div>';
+                            // Fetch Live Data
+                            const apiData = await fetchDayData(currentDateStr);
+
+                            container.innerHTML = '';
+                            
+                            if (!apiData && (!dayInfo || !daysData[dayInfo.dayNumber])) {
+                                container.innerHTML = '<div class="text-center py-12 text-gray-500">No classes scheduled for this day (and cannot fetch live data).</div>';
                                 return;
                             }
 
-                            const dailyRoutine = daysData[dayNumber];
-                            
-                            BELL_TIMES.forEach(bell => {
-                                let data = null;
-                                if (bell.period === 'RC') data = dailyRoutine.rollcall;
-                                else data = dailyRoutine.periods[bell.period];
+                            // Prepare Data Sources
+                            let periodsData = {};
+                            let currentBellTimes = DEFAULT_BELL_TIMES;
+                            let dayVariations = {};
 
+                            if (apiData) {
+                                // Dynamic bells from API
+                                if (apiData.bells && apiData.bells.length > 0) {
+                                    currentBellTimes = apiData.bells.map(b => ({
+                                        period: b.period || b.bell, // Use period as ID
+                                        startTime: b.startTime,
+                                        endTime: b.endTime || '23:59',
+                                        label: b.bellDisplay || b.bell || b.period
+                                    }));
+                                }
+                                
+                                // Periods
+                                if (apiData.timetable && apiData.timetable.timetable && apiData.timetable.timetable.periods) {
+                                    periodsData = apiData.timetable.timetable.periods;
+                                }
+
+                                // Variations
+                                if (apiData.classVariations) {
+                                    dayVariations = apiData.classVariations;
+                                }
+                            } else {
+                                // Fallback to Static Data
+                                if (dayInfo && daysData[dayInfo.dayNumber]) {
+                                    const dr = daysData[dayInfo.dayNumber];
+                                    periodsData = { ...dr.periods };
+                                    if (dr.rollcall) periodsData['RC'] = dr.rollcall;
+                                }
+                            }
+                            
+                            currentBellTimes.forEach(bell => {
+                                const pKey = bell.period; // e.g. "1", "RC"
+                                let data = periodsData[pKey];
+                                let variation = dayVariations[pKey];
+                                
                                 if (data) data = enrichPeriod(data);
 
-                                const hasContent = !!data;
+                                let highlightChange = false;
+                                let variationTags = [];
+
+                                if (variation && variation.type !== 'novariation') {
+                                    highlightChange = true;
+                                    variationTags.push('CHANGED');
+                                    
+                                    if (!data) {
+                                        // If no previous class, it's a new one (maybe?) or just filling in
+                                        data = { title: variation.title || 'Variation', teacher: variation.teacher };
+                                    }
+
+                                    // Override fields
+                                    if (variation.title) data.title = variation.title;
+                                    
+                                    if (variation.casualSurname) {
+                                        data.fullTeacher = variation.casualSurname;
+                                        data.teacher = variation.casual || variation.casualSurname;
+                                        variationTags.push('Cover: ' + variation.casualSurname);
+                                    } else if (variation.teacher && variation.teacher !== data.teacher) {
+                                        data.teacher = variation.teacher;
+                                    }
+
+                                    if (variation.roomTo && variation.roomTo !== data.room) {
+                                        data.room = variation.roomTo;
+                                        variationTags.push('Room Change');
+                                    }
+                                    
+                                    // Re-enrich to catch colors if subject code matched new title
+                                    data = enrichPeriod(data);
+                                }
+
+                                const hasContent = !!data && (!!data.title || !!data.subject);
                                 const stripColor = data?.color ? \`#\${data.color}\` : '#e5e7eb';
                                 
                                 // Reduce space for non-class periods
-                                const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === '0' || bell.period === 'EoD';
+                                const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD';
                                 const containerClass = isMinorPeriod ? 'min-h-[1.5rem]' : 'min-h-[3rem]';
-                                // Fixed time width for alignment
                                 const timeWidth = 'w-24'; 
-                                const textSize = isMinorPeriod ? 'text-xs' : 'text-sm';
+                                const textSize = 'text-sm';
 
                                 let innerHtml = '';
                                 if (hasContent) {
                                     // Calculate time to next
                                     const nextTimeStr = getNextSubjectOccurrence(data.subjectCode, currentDateStr, bell.period);
                                     const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
+                                    
+                                    const borderClass = highlightChange ? 'ring-2 ring-red-500 ring-offset-2' : '';
+                                    const changedBadge = highlightChange ? \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded animate-pulse">\${variationTags[0] || 'UPDATED'}</span>\` : '';
 
                                     innerHtml = \`
-    <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group"
+    <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
          data-subject="\${data.subjectCode}">
         <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" 
              style="background-color: \${stripColor};">
         </div>
 
-        <div class="pl-3 font-medium text-gray-900 \${textSize}">
+        <div class="pl-3 font-medium text-gray-900 \${textSize} flex items-center">
             \${data.title || data.subject || 'Unknown'}
+            \${changedBadge}
         </div>
         
         <div class="pl-3 flex items-center gap-4 \${textSize}">
             <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
-            \${data.room ? \`<span class="font-bold text-black">\${data.room}</span>\` : ''}
+            \${data.room ? \`<span class="font-bold text-black \${highlightChange && variation && variation.roomTo ? 'text-red-600' : ''}">\${data.room}</span>\` : ''}
         </div>
         
         <div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
@@ -254,6 +367,7 @@ app.get('/', async (c) => {
                 <span class="font-bold text-sm">\${data.title}</span>
                 <span class="text-gray-300">\${nextTimeStr}</span>
             </div>
+            \${highlightChange ? '<div class="text-red-400 font-bold mb-1">' + variationTags.join(', ') + '</div>' : ''}
             <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
             \${miniCycle}
         </div>
@@ -420,7 +534,6 @@ app.get('/', async (c) => {
                             const pOrder = ['0', '1', '2', '3', '4', '5'];
                             let pInd = pOrder.indexOf(currentPeriodId);
                             if (pInd === -1) pInd = -1; 
-
                             const [y, m, d] = currentDateStr.split('-').map(Number);
                             let searchDate = new Date(y, m - 1, d);
                             let checkFromIndex = pInd + 1;
@@ -430,31 +543,28 @@ app.get('/', async (c) => {
                                     searchDate.setDate(searchDate.getDate() + 1);
                                     checkFromIndex = 0; 
                                 }
-
                                 const dy = searchDate.getFullYear();
                                 const dm = String(searchDate.getMonth() + 1).padStart(2, '0');
                                 const dd = String(searchDate.getDate()).padStart(2, '0');
                                 const sStr = \`\${dy}-\${dm}-\${dd}\`;
 
-                const dInfo = calendarMap[sStr];
-                if (dInfo && daysData[dInfo.dayNumber]) {
+                                const dInfo = calendarMap[sStr];
+                                if (dInfo && daysData[dInfo.dayNumber]) {
                                     const dayP = daysData[dInfo.dayNumber].periods;
-
-                for (let i = checkFromIndex; i < pOrder.length; i++) {
+                                    for (let i = checkFromIndex; i < pOrder.length; i++) {
                                         const pId = pOrder[i];
-                const pData = dayP[pId];
-                if (pData) {
-                                            // Check if same subject
+                                        const pData = dayP[pId];
+                                        if (pData) {
                                             const enriched = enrichPeriod(pData);
-                if (enriched && enriched.subjectCode === subjectCode) {
-                    let dayLabel = '';
-                if (dayOffset === 0) {
-                    dayLabel = 'Today';
+                                            if (enriched && enriched.subjectCode === subjectCode) {
+                                                let dayLabel = '';
+                                                if (dayOffset === 0) {
+                                                    dayLabel = 'Today';
                                                 } else if (dayOffset === 1) {
-                    dayLabel = 'Next Day';
+                                                    dayLabel = 'Next Day';
                                                 } else {
                                                     const dName = dInfo.dayName || '';
-                dayLabel = dName.replace(/[AB]$/, '');
+                                                    dayLabel = dName.replace(/[AB]$/, '');
                                                 }
                                                 return \`Next: \${dayLabel} P\${pId}\`;
                                             }
@@ -462,7 +572,7 @@ app.get('/', async (c) => {
                                     }
                                 }
                             }
-                return '/';
+                            return '/';
                         }
 
                 function formatTime(t) {
