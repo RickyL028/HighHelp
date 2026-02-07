@@ -110,6 +110,10 @@ app.get('/', async (c) => {
                             if (isAfterSchool) {
                                 now.setDate(now.getDate() + 1);
                             }
+                            // Ensure not weekend initially?
+                            if (now.getDay() === 0) now.setDate(now.getDate() + 1); // Sun -> Mon
+                            if (now.getDay() === 6) now.setDate(now.getDate() + 2); // Sat -> Mon
+
                              const year = now.getFullYear();
                              const month = String(now.getMonth() + 1).padStart(2, '0');
                              const day = String(now.getDate()).padStart(2, '0');
@@ -168,14 +172,32 @@ app.get('/', async (c) => {
                             
                             // Day Header
                             const d = new Date(currentDateStr);
-                            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                             const dayName = days[d.getDay()];
                             const day = d.getDate().toString().padStart(2, '0');
                             const month = (d.getMonth() + 1).toString().padStart(2, '0');
                             const year = d.getFullYear();
                             const dateFormatted = \`\${dayName}, \${day}/\${month}/\${year}\`;
                             
-                            document.getElementById('date-display').textContent = \`\${dateFormatted} \${dayInfo ? '(' + dayInfo.dayName + ')' : ''}\`;
+                            // Date Picker Injection
+                            const dateDisplay = document.getElementById('date-display');
+                            dateDisplay.innerHTML = \`
+                                <div class="relative cursor-pointer group flex items-center gap-2">
+                                    <span class="z-10 bg-transparent">\${dateFormatted} \${dayInfo ? ' [' + dayInfo.dayName[dayInfo.dayName.length - 1] + ']' : ''}</span>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    <input type="date" id="date-picker-input" 
+                                           class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
+                                           value="\${currentDateStr}">
+                                </div>
+                            \`;
+                            // Attach listener
+                            const picker = document.getElementById('date-picker-input');
+                            if(picker) {
+                                picker.onchange = (e) => {
+                                    currentDateStr = e.target.value;
+                                    render();
+                                };
+                            }
 
                             const container = document.getElementById('timetable-list');
                             container.innerHTML = '';
@@ -201,30 +223,40 @@ app.get('/', async (c) => {
                                 // Reduce space for non-class periods
                                 const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === '0' || bell.period === 'EoD';
                                 const containerClass = isMinorPeriod ? 'min-h-[1.5rem]' : 'min-h-[3rem]';
-                                const timeWidth = isMinorPeriod ? 'w-20' : 'w-24';
+                                // Fixed time width for alignment
+                                const timeWidth = 'w-24'; 
                                 const textSize = isMinorPeriod ? 'text-xs' : 'text-sm';
 
                                 let innerHtml = '';
                                 if (hasContent) {
                                     // Calculate time to next
                                     const nextTimeStr = getNextTimeForSubject(data.subjectCode);
+                                    const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
 
                                     innerHtml = \`
                                         <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group"
                                              data-subject="\${data.subjectCode}">
-                                            <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" style="background-color: \${stripColor};"></div>
-                                            <div class="pl-3 font-medium text-gray-900 \${textSize}">
-                                                \${data.title || data.subject || 'Unknown'}
+                                            <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" 
+                                        style="background-color: \${stripColor};">
+                                    </div>
+
+                                    <div class="pl-3 font-medium text-gray-900 \${textSize}">
+                                        \${data.title || data.subject || 'Unknown'}
                                             </div>
-                                            <div class="flex items-center gap-4 \${textSize}">
+                                            
+                                            <div class="pl-3 flex items-center gap-4 \${textSize}">
                                                 <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
-                                                \${data.room ? \`<span class="font-bold text-black">\${data.room}</span>\` : ''}
+                                                                                     \${data.room ? \`<span class="font-bold text-black">\${data.room}</span>\` : ''}
                                             </div>
                                             
                                             <!-- Tooltip -->
-                                            <div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-20 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg pointer-events-none">
-                                                <div class="font-bold mb-1">\${data.title}</div>
-                                                <div>Next: \${nextTimeStr}</div>
+                                            <div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
+                                                <div class="flex justify-between items-start mb-2 border-b border-gray-600 pb-2 mt-auto">
+                                                    <span class="font-bold text-sm">\${data.title}</span>
+                                                    <span class="text-gray-300">\${nextTimeStr}</span>
+                                                </div>
+                                                <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
+                                                \${miniCycle}
                                             </div>
                                         </div>
                                     \`;
@@ -254,65 +286,104 @@ app.get('/', async (c) => {
                         }
 
                         function renderCycle() {
-    const container = document.getElementById('timetable-list');
-    container.innerHTML = '';
-    container.className = 'overflow-x-auto pb-4'; // Added padding for scale effect
-    
-    const weekA = ['1', '2', '3', '4', '5'];
-    const weekB = ['6', '7', '8', '9', '10'];
-    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+                            const container = document.getElementById('timetable-list');
+                            container.innerHTML = '';
+                            container.className = 'overflow-x-auto pb-4';
+                            
+                            const weekA = ['1', '2', '3', '4', '5'];
+                            const weekB = ['6', '7', '8', '9', '10'];
+                            const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
-    let gridHtml = '<div class="flex flex-col gap-8 min-w-[800px]">';
-    
-    [weekA, weekB].forEach((weekIds, wIdx) => {
-        const weekLabel = wIdx === 0 ? 'Week A' : 'Week B';
-        gridHtml += \`
-            <div>
-                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1">\${weekLabel}</h3>
-                <div class="grid grid-cols-5 gap-2">
-                    \${weekIds.map((dNum, i) => \`
-                        <div class="text-center text-xs font-medium text-gray-500 mb-1">\${dayLabels[i]}</div>
-                    \`).join('')}
-                    
-                    \${weekIds.map(dNum => {
-                        const dayData = daysData[dNum];
-                        if (!dayData) return '<div></div>';
-                        
-                        const periods = ['1', '2', '3', '4', '5'].map(p => {
-                            let pData = dayData.periods[p];
-                            if (pData) pData = enrichPeriod(pData);
-                            return pData;
-                        });
-                        
-                        // Changed gap-1 to gap-0 to remove hovering obstacles
-                        return \`
-                            <div class="flex flex-col gap-0 border border-gray-100 rounded-lg overflow-hidden">
-                                \${periods.map(p => {
-                                    if (!p) return '<div class="h-12 bg-gray-50/30"></div>';
-                                    const color = p.color ? '#' + p.color : '#e5e7eb';
-                                    // Changed to 20 alpha for more transparency and added border-b for internal separation
-                                    return \`
-                                        <div class="period-card h-12 flex flex-col justify-center px-2 text-xs relative group cursor-default transition-all border-b border-white/50 last:border-b-0"
-                                             style="background-color: \${color}20; border-left: 4px solid \${color};"
-                                             data-subject="\${p.subjectCode}">
-                                            <div class="font-bold truncate text-gray-800">\${p.subjectCode}</div>
-                                            <div class="truncate text-gray-500 text-[10px]">\${p.room || ''}</div>
+                            let gridHtml = '<div class="flex flex-col gap-8 min-w-[800px]">';
+                            
+                            [weekA, weekB].forEach((weekIds, wIdx) => {
+                                const weekLabel = wIdx === 0 ? 'Week A' : 'Week B';
+                                gridHtml += \`
+                                    <div>
+                                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1">\${weekLabel}</h3>
+                                        <div class="grid grid-cols-5 gap-2">
+                                            \${weekIds.map((dNum, i) => \`
+                                                <div class="text-center text-xs font-medium text-gray-500 mb-1">\${dayLabels[i]}</div>
+                                            \`).join('')}
+                                            
+                                            \${weekIds.map(dNum => {
+                                                const dayData = daysData[dNum];
+                                                if (!dayData) return '<div></div>';
+                                                
+                                                // Include Period 0
+                                                const displayPeriods = ['0', '1', '2', '3', '4', '5'];
+                                                const periods = displayPeriods.map(p => {
+                                                    let pData = dayData.periods[p];
+                                                    if (pData) pData = enrichPeriod(pData);
+                                                    return pData;
+                                                });
+                                                
+                                                return \`
+                                                    <div class="flex flex-col gap-0 border border-gray-100 rounded-lg overflow-hidden">
+                                                        \${periods.map(p => {
+                                                            if (!p) return '<div class="h-10 bg-gray-50/30"></div>';
+                                                            const color = p.color ? '#' + p.color : '#e5e7eb';
+                                                            // Using 10 alpha for higher transparency
+                                                            return \`
+                                                                <div class="period-card h-10 flex flex-col justify-center px-1 text-xs relative group cursor-default transition-all border-b border-white/50 last:border-b-0"
+                                                                     style="background-color: \${color}10; border-left: 3px solid \${color};"
+                                                                     data-subject="\${p.subjectCode}">
+                                                                    <div class="font-bold truncate text-gray-800 text-[10px] leading-tight">\${p.subjectCode}</div>
+                                                                    <div class="truncate text-gray-500 text-[9px] leading-tight">\${p.room || ''}</div>
+                                                                </div>
+                                                            \`;
+                                                        }).join('')}
+                                                    </div>
+                                                \`;
+                                            }).join('')}
                                         </div>
-                                    \`;
-                                }).join('')}
-                            </div>
-                        \`;
-                    }).join('')}
-                </div>
-            </div>
-        \`;
-    });
+                                    </div>
+                                \`;
+                            });
 
-    gridHtml += '</div>';
-    container.innerHTML = gridHtml;
-    
-    attachHoverEffects();
-}
+                            gridHtml += '</div>';
+                            container.innerHTML = gridHtml;
+                            
+                            attachHoverEffects();
+                        }
+
+                        function getMiniCycleHtml(subjectCode, color) {
+                            if (!subjectCode) return '';
+                            // 2 rows, 5 cols
+                            // Week A: days 1-5, Week B: days 6-10
+                            
+                            let html = '<div class="grid grid-cols-5 gap-1 gap-y-2">';
+                            // Labels? Maybe too small. Just dots. 
+                            // Add headers 'A' and 'B'? 
+                            // Let's do 2 rows.
+                            
+                            for (let week=0; week<2; week++) {
+                                for (let day=1; day<=5; day++) {
+                                    const dayNum = (week*5) + day;
+                                    const dData = daysData[dayNum.toString()];
+                                    let hasSubject = false;
+                                    if (dData && dData.periods) {
+                                        // Check all periods
+                                        Object.values(dData.periods).forEach(p => {
+                                            if (!p) return;
+                                            // Need to enrich or check title match
+                                            // We can check title or quick match if we know current subjectCode
+                                            // subjectCode is richer, so compare titles
+                                            // Re-enrich is safe
+                                            const e = enrichPeriod(p);
+                                            if (e && e.subjectCode === subjectCode) hasSubject = true;
+                                        });
+                                    }
+                                    
+                                    const bgClass = hasSubject ? '' : 'bg-gray-700';
+                                    const style = hasSubject ? \`background-color: \${color};\` : '';
+                                    
+                                    html += \`<div class="h-1.5 rounded-full w-full \${bgClass}" style="\${style}"></div>\`;
+                                }
+                            }
+                            html += '</div>';
+                            return html;
+                        }
 
                         function attachHoverEffects() {
                             const cards = document.querySelectorAll('.period-card');
@@ -346,28 +417,25 @@ app.get('/', async (c) => {
                             if (!subjectCode) return '';
                            
                             let searchDate = new Date();
-                            // If user is looking at a future date in day view, obscure?
-                            // No, always "Next from NOW"
-                            
                             for (let i=0; i<14; i++) {
-                                searchDate.setDate(searchDate.getDate() + (i===0?0:1)); // Start today
+                                searchDate.setDate(searchDate.getDate() + (i===0?0:1)); 
                                 const sStr = searchDate.toISOString().split('T')[0];
                                 const dInfo = calendarMap[sStr];
                                 if (dInfo && daysData[dInfo.dayNumber]) {
                                     const dayP = daysData[dInfo.dayNumber].periods;
-                                    for (let pId of ['1','2','3','4','5']) {
-                                        // Simple period order check if today?
-                                        // Ignoring time check for MVP simplicity, assume "Next" = "Next logical slot"
+                                    // Check periods 0 to 5
+                                    for (let pId of ['0','1','2','3','4','5']) {
                                         if (dayP[pId]) {
                                             const enriched = enrichPeriod(dayP[pId]);
                                             if (enriched.subjectCode === subjectCode) {
-                                                return \`\${dInfo.dayName} P\${pId}\`;
+                                                // If today, check if passed? (Optional enhancement)
+                                                return \`Next: \${dInfo.dayName.slice(0, dInfo.dayName.length - 1)} P\${pId}\`;
                                             }
                                         }
                                     }
                                 }
                             }
-                            return 'None soon';
+                            return '';
                         }
                         
                         function formatTime(t) {
@@ -379,8 +447,19 @@ app.get('/', async (c) => {
                         }
 
                         function changeDate(delta) {
-                            const d = new Date(currentDateStr);
-                            d.setDate(d.getDate() + delta);
+                            let d = new Date(currentDateStr);
+                            let count = 0;
+                            // Search for next weekday, prevent infinite loop with safe cap
+                            while(count < 7) {
+                                d.setDate(d.getDate() + delta);
+                                const day = d.getDay();
+                                if (day !== 0 && day !== 6) {
+                                    // Found a weekday
+                                    break;
+                                }
+                                count++;
+                            }
+
                             const year = d.getFullYear();
                             const month = String(d.getMonth() + 1).padStart(2, '0');
                             const day = String(d.getDate()).padStart(2, '0');
