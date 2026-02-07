@@ -33,6 +33,21 @@ app.use('*', async (c, next) => {
     await next();
 })
 
+app.get('/api/proxy/day-data', async (c) => {
+    const date = c.req.query('date')
+    const authHeader = c.req.header('Authorization')
+    if (!authHeader || !date) return c.json({ error: 'Invalid request' }, 400)
+    try {
+        const response = await fetch(`https://student.sbhs.net.au/api/timetable/daytimetable.json?date=${date}`, {
+            headers: { 'Authorization': authHeader }
+        })
+        const data = await response.json()
+        return c.json(data, response.status as any)
+    } catch (e) {
+        return c.json({ error: 'Proxy error' }, 500)
+    }
+})
+
 // Mount Routes
 app.route('/', homeRoutes)
 app.route('/', authRoutes)

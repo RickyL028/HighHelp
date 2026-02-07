@@ -6,31 +6,6 @@ import { html } from 'hono/html'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-app.get('/day-data', async (c) => {
-    const date = c.req.query('date')
-    const authHeader = c.req.header('Authorization')
-
-    if (!authHeader) return c.json({ error: 'Missing token' }, 401)
-    if (!date) return c.json({ error: 'Missing date' }, 400)
-
-    try {
-        const response = await fetch(`https://student.sbhs.net.au/api/timetable/daytimetable.json?date=${date}`, {
-            headers: {
-                'Authorization': authHeader
-            }
-        })
-
-        if (!response.ok) {
-            return c.json({ error: 'Failed to fetch' }, (response.status))
-        }
-
-        const data = await response.json()
-        return c.json(data)
-    } catch (e) {
-        return c.json({ error: 'Internal Server Error' }, 500)
-    }
-})
-
 app.get('/', async (c) => {
     const user = await getUser(c)
 
@@ -166,11 +141,26 @@ app.get('/', async (c) => {
                                 console.warn('No access token available for live refresh');
                                 return null;
                             }
+
+                            // Check cache first (synced by layout.tsx or previous visits)
+                            const cached = localStorage.getItem('todayData_' + date);
+                            if (cached) {
+                                try {
+                                    return JSON.parse(cached);
+                                } catch(e) { console.error('Cache parse error', e); }
+                            }
+
                             try {
-                                const res = await fetch(\`/classes/day-data?date=\${date}\`, {
+                                const res = await fetch(\`/api/proxy/day-data?date=\${date}\`, {
                                     headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
                                 });
-                                if (res.ok) return await res.json();
+                                if (res.ok) {
+                                    const data = await res.json();
+                                    if (data && data.status === 'OK') {
+                                        localStorage.setItem('todayData_' + date, JSON.stringify(data));
+                                    }
+                                    return data;
+                                }
                                 console.error('Failed to fetch day data', res.status);
                                 return null;
                             } catch(e) {
@@ -178,6 +168,14 @@ app.get('/', async (c) => {
                                 return null;
                             }
                         }
+
+                        // Listen for global refreshes that might happen while we are viewing "today"
+                        window.addEventListener('todayDataRefreshed', (e) => {
+                            if (e.detail.date === currentDateStr) {
+                                console.log('Today data updated via global sync, re-rendering...');
+                                render();
+                            }
+                        });
 
                         function render() {
                             // Update Tab UI

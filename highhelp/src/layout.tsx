@@ -234,6 +234,34 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                         viewGridBtn.classList.add('text-gray-500', 'hover:bg-gray-50');
                     });
                 }
+
+                // Global Timetable Sync on Reload
+                (function() {
+                    const raw = localStorage.getItem('studentData');
+                    if (!raw) return;
+                    try {
+                        const studentData = JSON.parse(raw);
+                        if (!studentData.accessToken) return;
+                        
+                        const now = new Date();
+                        const year = now.getFullYear();
+                        const month = String(now.getMonth() + 1).padStart(2, '0');
+                        const day = String(now.getDate()).padStart(2, '0');
+                        const todayStr = year + '-' + month + '-' + day;
+
+                        fetch('/api/proxy/day-data?date=' + todayStr, {
+                            headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data && data.status === 'OK') {
+                                localStorage.setItem('todayData_' + todayStr, JSON.stringify(data));
+                                window.dispatchEvent(new CustomEvent('todayDataRefreshed', { detail: { date: todayStr, data } }));
+                            }
+                        })
+                        .catch(err => console.error('Global sync error:', err));
+                    } catch(e) { console.error(e); }
+                })();
             });
         </script>
       </body>
