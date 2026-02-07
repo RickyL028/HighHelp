@@ -22,11 +22,11 @@ app.get('/', async (c) => {
 
                     {/* Tabs */}
                     <div class="flex border-b border-gray-200 mb-6">
-                        <button class="flex items-center gap-2 px-4 py-2 border-b-2 border-red-500 text-red-500 font-medium text-sm focus:outline-none">
+                        <button id="tab-day" class="flex items-center gap-2 px-4 py-2 border-b-2 border-red-500 text-red-500 font-medium text-sm focus:outline-none transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                             Day
                         </button>
-                        <button class="flex items-center gap-2 px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm focus:outline-none">
+                        <button id="tab-cycle" class="flex items-center gap-2 px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm focus:outline-none transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                             Cycle
                         </button>
@@ -94,29 +94,30 @@ app.get('/', async (c) => {
                             return;
                         }
 
-                        // Parse Calendar Mapping
-                        // The structure is { "2026-02-03": { dayNumber: "2", dayName: "TueA", ... } }
+                        // Data mappings
                         const calendarMap = studentData.calendar; 
-                        // Note: Depending on API, it might be nested under 'days' or direct. 
-                        // Based on apioutput.txt/calendar/days.json, it seems to be flattened or slightly different. 
-                        // Step 8 shows: "2026-02-03": {...} (Direct object keys?)
-                        // Wait, Step 8 shows: { "2026-02-03": { ... } } 
-                        // Code in Auth was: fetch(...days.json). So it matches that structure.
-                        
-                        // Parse Timetable Mapping
-                        // studentData.timetable has { student: {}, subjects: [], days: { "1": {...}, "2": {...} } }
                         const daysData = studentData.timetable.days || {};
                         const subjectsData = studentData.timetable.subjects || [];
 
-                        // Helper to find subject color/details
+                        // State
+                        let currentDateStr = new URLSearchParams(window.location.search).get('date') || getInitialDate();
+                        let currentView = 'day'; // 'day' or 'cycle'
+
+                        function getInitialDate() {
+                            const now = new Date();
+                            const isAfterSchool = (now.getHours() > 15) || (now.getHours() === 15 && now.getMinutes() >= 10);
+                            
+                            if (isAfterSchool) {
+                                now.setDate(now.getDate() + 1);
+                            }
+                             const year = now.getFullYear();
+                             const month = String(now.getMonth() + 1).padStart(2, '0');
+                             const day = String(now.getDate()).padStart(2, '0');
+                             return \`\${year}-\${month}-\${day}\`;
+                        }
+
                         function enrichPeriod(periodObj) {
                             if (!periodObj) return null;
-                            // Search subject list for color/teacher if missing in period
-                            // In apioutput.txt, period has: { title: "PHY 1", teacher: "HOOM", room: "304" ... }
-                            // Subject list has: { shortcut: "PHY 1", ... colour: "2ee8d7" }
-                            // Actually subjects structure: { title: "11 Physics 1", shortTitle: "PHY 1", teacher: "HOOM", colour: "2ee8d7" ... }
-                            
-                            // Try to find matching subject
                             const subj = subjectsData.find(s => 
                                 (s.shortTitle && s.shortTitle === periodObj.title) || 
                                 (s.title && s.title === periodObj.title) ||
@@ -126,34 +127,42 @@ app.get('/', async (c) => {
                             return {
                                 ...periodObj,
                                 color: subj ? subj.colour : periodObj.colour || periodObj.color || 'e5e7eb',
-                                fullTeacher: subj ? subj.fullTeacher : periodObj.fullTeacher || periodObj.teacher
+                                fullTeacher: subj ? subj.fullTeacher : periodObj.fullTeacher || periodObj.teacher,
+                                subjectCode: subj ? (subj.shortTitle || subj.title) : (periodObj.title || 'Unknown')
                             };
                         }
 
-                        // State
-                        let currentDateStr = new URLSearchParams(window.location.search).get('date') || getInitialDate();
+                        function render() {
+                            // Update Tab UI
+                            const tabDay = document.getElementById('tab-day');
+                            const tabCycle = document.getElementById('tab-cycle');
+                            const headerControls = document.querySelector('#content > .flex.items-center.gap-2.mb-6');
 
-                        function getInitialDate() {
-                            const now = new Date();
-                            const isAfterSchool = (now.getHours() > 15) || (now.getHours() === 15 && now.getMinutes() >= 10);
-                            
-                            if (isAfterSchool) {
-                                // Next day logic
-                                now.setDate(now.getDate() + 1);
+                            if (currentView === 'day') {
+                                tabDay.classList.add('border-red-500', 'text-red-500');
+                                tabDay.classList.remove('border-transparent', 'text-gray-500');
+                                tabCycle.classList.remove('border-red-500', 'text-red-500');
+                                tabCycle.classList.add('border-transparent', 'text-gray-500');
+                                
+                                headerControls.classList.remove('hidden');
+                                renderDay();
+                            } else {
+                                tabCycle.classList.add('border-red-500', 'text-red-500');
+                                tabCycle.classList.remove('border-transparent', 'text-gray-500');
+                                tabDay.classList.remove('border-red-500', 'text-red-500');
+                                tabDay.classList.add('border-transparent', 'text-gray-500');
+                                
+                                headerControls.classList.add('hidden');
+                                renderCycle();
                             }
-                             const year = now.getFullYear();
-                             const month = String(now.getMonth() + 1).padStart(2, '0');
-                             const day = String(now.getDate()).padStart(2, '0');
-                             return \`\${year}-\${month}-\${day}\`;
                         }
 
-                        function render() {
-                            // Update URL without reload
+                        function renderDay() {
+                            // Update URL
                             const url = new URL(window.location);
                             url.searchParams.set('date', currentDateStr);
                             window.history.replaceState({}, '', url);
 
-                            // Find Day Info
                             const dayInfo = calendarMap[currentDateStr];
                             const dayNumber = dayInfo ? dayInfo.dayNumber : null;
                             
@@ -168,9 +177,9 @@ app.get('/', async (c) => {
                             
                             document.getElementById('date-display').textContent = \`\${dateFormatted} \${dayInfo ? '(' + dayInfo.dayName + ')' : ''}\`;
 
-                            // Timetable List
                             const container = document.getElementById('timetable-list');
                             container.innerHTML = '';
+                            container.className = 'space-y-4';
 
                             if (!dayNumber || !daysData[dayNumber]) {
                                 container.innerHTML = '<div class="text-center py-12 text-gray-500">No classes scheduled for this day.</div>';
@@ -178,52 +187,189 @@ app.get('/', async (c) => {
                             }
 
                             const dailyRoutine = daysData[dayNumber];
-                             // dailyRoutine has: { dayname: "MonA", routine: "...", rollcall: {...}, periods: { "1": {...} } }
-
+                            
                             BELL_TIMES.forEach(bell => {
                                 let data = null;
-                                if (bell.period === 'RC') {
-                                    data = dailyRoutine.rollcall;
-                                } else {
-                                    data = dailyRoutine.periods[bell.period];
-                                }
+                                if (bell.period === 'RC') data = dailyRoutine.rollcall;
+                                else data = dailyRoutine.periods[bell.period];
 
-                                if (data) {
-                                  data = enrichPeriod(data);
-                                }
+                                if (data) data = enrichPeriod(data);
 
                                 const hasContent = !!data;
                                 const stripColor = data?.color ? \`#\${data.color}\` : '#e5e7eb';
+                                
+                                // Reduce space for non-class periods
+                                const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === '0' || bell.period === 'EoD';
+                                const containerClass = isMinorPeriod ? 'min-h-[1.5rem]' : 'min-h-[3rem]';
+                                const timeWidth = isMinorPeriod ? 'w-20' : 'w-24';
+                                const textSize = isMinorPeriod ? 'text-xs' : 'text-sm';
+
+                                let innerHtml = '';
+                                if (hasContent) {
+                                    // Calculate time to next
+                                    const nextTimeStr = getNextTimeForSubject(data.subjectCode);
+
+                                    innerHtml = \`
+                                        <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group"
+                                             data-subject="\${data.subjectCode}">
+                                            <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" style="background-color: \${stripColor};"></div>
+                                            <div class="pl-3 font-medium text-gray-900 \${textSize}">
+                                                \${data.title || data.subject || 'Unknown'}
+                                            </div>
+                                            <div class="flex items-center gap-4 \${textSize}">
+                                                <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
+                                                \${data.room ? \`<span class="font-bold text-black">\${data.room}</span>\` : ''}
+                                            </div>
+                                            
+                                            <!-- Tooltip -->
+                                            <div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-20 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg pointer-events-none">
+                                                <div class="font-bold mb-1">\${data.title}</div>
+                                                <div>Next: \${nextTimeStr}</div>
+                                            </div>
+                                        </div>
+                                    \`;
+                                } else {
+                                    if (bell.period === 'EoD') return;
+                                    innerHtml = \`
+                                        <div class="pl-2 text-gray-400 text-xs py-1">
+                                            \${bell.label}
+                                        </div>
+                                    \`;
+                                }
 
                                 const html = \`
-                                    <div class="flex items-center min-h-[3rem]">
-                                        <div class="w-24 text-right pr-6 text-sm text-gray-500 font-medium">
+                                    <div class="flex items-center \${containerClass}">
+                                        <div class="\${timeWidth} text-right pr-4 text-gray-500 font-medium \${textSize}">
                                             \${formatTime(bell.startTime)}
                                         </div>
                                         <div class="flex-grow">
-                                            \${hasContent ? \`
-                                                <div class="relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-colors">
-                                                    <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" style="background-color: \${stripColor};"></div>
-                                                    <div class="pl-3 font-medium text-gray-900 text-sm">
-                                                        \${data.title || data.subject || 'Unknown'}
-                                                    </div>
-                                                    <div class="flex items-center gap-4 text-sm">
-                                                        <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
-                                                        \${data.room ? \`<span class="font-bold text-black">\${data.room}</span>\` : ''}
-                                                    </div>
-                                                </div>
-                                            \` : \`
-                                                <div class="pl-2 text-gray-400 text-sm">
-                                                    \${bell.label}
-                                                </div>
-                                            \`}
+                                            \${innerHtml}
                                         </div>
                                     </div>
                                 \`;
                                 container.insertAdjacentHTML('beforeend', html);
                             });
+
+                            attachHoverEffects();
                         }
 
+                        function renderCycle() {
+    const container = document.getElementById('timetable-list');
+    container.innerHTML = '';
+    container.className = 'overflow-x-auto pb-4'; // Added padding for scale effect
+    
+    const weekA = ['1', '2', '3', '4', '5'];
+    const weekB = ['6', '7', '8', '9', '10'];
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
+    let gridHtml = '<div class="flex flex-col gap-8 min-w-[800px]">';
+    
+    [weekA, weekB].forEach((weekIds, wIdx) => {
+        const weekLabel = wIdx === 0 ? 'Week A' : 'Week B';
+        gridHtml += \`
+            <div>
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1">\${weekLabel}</h3>
+                <div class="grid grid-cols-5 gap-2">
+                    \${weekIds.map((dNum, i) => \`
+                        <div class="text-center text-xs font-medium text-gray-500 mb-1">\${dayLabels[i]}</div>
+                    \`).join('')}
+                    
+                    \${weekIds.map(dNum => {
+                        const dayData = daysData[dNum];
+                        if (!dayData) return '<div></div>';
+                        
+                        const periods = ['1', '2', '3', '4', '5'].map(p => {
+                            let pData = dayData.periods[p];
+                            if (pData) pData = enrichPeriod(pData);
+                            return pData;
+                        });
+                        
+                        // Changed gap-1 to gap-0 to remove hovering obstacles
+                        return \`
+                            <div class="flex flex-col gap-0 border border-gray-100 rounded-lg overflow-hidden">
+                                \${periods.map(p => {
+                                    if (!p) return '<div class="h-12 bg-gray-50/30"></div>';
+                                    const color = p.color ? '#' + p.color : '#e5e7eb';
+                                    // Changed to 20 alpha for more transparency and added border-b for internal separation
+                                    return \`
+                                        <div class="period-card h-12 flex flex-col justify-center px-2 text-xs relative group cursor-default transition-all border-b border-white/50 last:border-b-0"
+                                             style="background-color: \${color}20; border-left: 4px solid \${color};"
+                                             data-subject="\${p.subjectCode}">
+                                            <div class="font-bold truncate text-gray-800">\${p.subjectCode}</div>
+                                            <div class="truncate text-gray-500 text-[10px]">\${p.room || ''}</div>
+                                        </div>
+                                    \`;
+                                }).join('')}
+                            </div>
+                        \`;
+                    }).join('')}
+                </div>
+            </div>
+        \`;
+    });
+
+    gridHtml += '</div>';
+    container.innerHTML = gridHtml;
+    
+    attachHoverEffects();
+}
+
+                        function attachHoverEffects() {
+                            const cards = document.querySelectorAll('.period-card');
+                            cards.forEach(card => {
+                                card.addEventListener('mouseenter', () => {
+                                    const subject = card.getAttribute('data-subject');
+                                    if (!subject) return;
+
+                                    cards.forEach(c => {
+                                        if (c.getAttribute('data-subject') === subject) {
+                                            c.classList.add('opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
+                                            c.style.transform = 'scale(1.02)';
+                                            c.style.zIndex = '10';
+                                        } else {
+                                            c.classList.add('opacity-25');
+                                        }
+                                    });
+                                });
+                                
+                                card.addEventListener('mouseleave', () => {
+                                    cards.forEach(c => {
+                                        c.classList.remove('opacity-25', 'opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
+                                        c.style.transform = '';
+                                        c.style.zIndex = '';
+                                    });
+                                });
+                            });
+                        }
+
+                        function getNextTimeForSubject(subjectCode) {
+                            if (!subjectCode) return '';
+                           
+                            let searchDate = new Date();
+                            // If user is looking at a future date in day view, obscure?
+                            // No, always "Next from NOW"
+                            
+                            for (let i=0; i<14; i++) {
+                                searchDate.setDate(searchDate.getDate() + (i===0?0:1)); // Start today
+                                const sStr = searchDate.toISOString().split('T')[0];
+                                const dInfo = calendarMap[sStr];
+                                if (dInfo && daysData[dInfo.dayNumber]) {
+                                    const dayP = daysData[dInfo.dayNumber].periods;
+                                    for (let pId of ['1','2','3','4','5']) {
+                                        // Simple period order check if today?
+                                        // Ignoring time check for MVP simplicity, assume "Next" = "Next logical slot"
+                                        if (dayP[pId]) {
+                                            const enriched = enrichPeriod(dayP[pId]);
+                                            if (enriched.subjectCode === subjectCode) {
+                                                return \`\${dInfo.dayName} P\${pId}\`;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            return 'None soon';
+                        }
+                        
                         function formatTime(t) {
                             if (!t) return '';
                             const [h, m] = t.split(':').map(Number);
@@ -241,48 +387,23 @@ app.get('/', async (c) => {
                             currentDateStr = \`\${year}-\${month}-\${day}\`;
                             render();
                         }
-
-                        // Determine Date Logic (Previous/Next in calendar)
-                        // Using simple date addition for now as per original request to handle dates
-                        // Ideally we'd skip weekends based on calendarMap keys
-                        function findNextSchoolDay(currentStr, limit=30) {
-                           // Search forward in calendarMap
-                           // But calendarMap keys are unsorted or string based.
-                           // Simplest is to just iterate +1 day until found
-                           let d = new Date(currentStr);
-                           for(let i=0; i<limit; i++) {
-                               d.setDate(d.getDate() + 1);
-                               const s = d.toISOString().split('T')[0];
-                               if (calendarMap[s]) return s;
-                           }
-                           return null;
-                        }
-                         function findPrevSchoolDay(currentStr, limit=30) {
-                           let d = new Date(currentStr);
-                           for(let i=0; i<limit; i++) {
-                               d.setDate(d.getDate() - 1);
-                               const s = d.toISOString().split('T')[0];
-                               if (calendarMap[s]) return s;
-                           }
-                           return null;
-                        }
-
-
-                        // Event Listeners
-                        document.getElementById('btn-prev').onclick = () => {
-                             // Try to match simple date decrement for UX smoothness, or "Strict School Day"
-                             // Let's stick to simple date decrement but verify if it exists in calendarMap?
-                             // Original code checked 'dates' array.
-                             // Let's replicate simple date decrement
-                             changeDate(-1);
-                        };
+                        
+                        document.getElementById('btn-prev').onclick = () => changeDate(-1);
                         document.getElementById('btn-next').onclick = () => changeDate(1);
                         document.getElementById('btn-reset').onclick = () => {
                             currentDateStr = getInitialDate();
                             render();
                         };
+                        
+                        document.getElementById('tab-day').onclick = () => {
+                            currentView = 'day';
+                            render();
+                        };
+                        document.getElementById('tab-cycle').onclick = () => {
+                            currentView = 'cycle';
+                            render();
+                        };
 
-                        // Init
                         document.getElementById('loader').classList.add('hidden');
                         document.getElementById('content').classList.remove('hidden');
                         render();
