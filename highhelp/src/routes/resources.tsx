@@ -13,9 +13,9 @@ app.get('/resources', async (c) => {
 
     const subject = c.req.query('subject')
 
-    // 1. Landing Page (No Subject) -> Show Recent Resources + Subject Selector at Bottom
+    
     if (!subject) {
-        // Fetch recent resources globally
+    
         const showDeleted = user && canViewDeleted(user);
         const sql = `
             SELECT r.*, u.first_name, u.last_name, u.tags 
@@ -31,7 +31,7 @@ app.get('/resources', async (c) => {
             <Layout title="Resources" user={user}>
                 <div class="mx-auto space-y-12">
 
-                    {/* Recent Resources Section */}
+                    
                     <section>
                         <h1 class="text-3xl font-bold mb-6">Recent Resources</h1>
                         <div class="space-y-4">
@@ -75,7 +75,7 @@ app.get('/resources', async (c) => {
 
                     <hr class="border-gray-200" />
 
-                    {/* Subject Selector at Bottom */}
+                    
                     <section>
                         <h2 class="text-xl font-bold mb-4">Browse/Upload by Subject</h2>
                         <SubjectSelector baseUrl="/resources" type="standard" />
@@ -85,7 +85,7 @@ app.get('/resources', async (c) => {
         )
     }
 
-    // 2. Subject Page -> Unchanged Logic
+    
     const showDeleted = user && canViewDeleted(user);
     const sql = `
         SELECT r.*, u.first_name, u.last_name, u.tags 
@@ -154,7 +154,7 @@ app.get('/resources', async (c) => {
                 </div>
             </div>
 
-            {/* Grid View Container */}
+            {/* Grid View */}
             <div id="grid-view-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {results?.length === 0 ? (
                     <div class="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
@@ -201,7 +201,7 @@ app.get('/resources', async (c) => {
                 )}
             </div>
 
-            {/* List View Container (Table) */}
+            {/* Table */}
             <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -288,7 +288,7 @@ app.post('/resources', async (c) => {
 
             await logAction(c.env.DB, user.id, 'CREATE_RESOURCE', `Uploaded resource '${title}' in ${subject}`, res.meta.last_row_id, 'resources');
 
-            // Award +3 points for upload
+
             await updatePoints(user.id, 3, c.env.DB);
 
         }
@@ -328,7 +328,7 @@ app.get('/download/*', async (c) => {
         const object = await c.env.BUCKET.get(key);
         if (!object) return c.text('File not found', 404);
 
-        // Increment Download Count if ID is present
+        
         const id = c.req.query('id');
         if (id) {
             await c.env.DB.prepare('UPDATE resources SET download_count = download_count + 1 WHERE id = ?').bind(id).run();

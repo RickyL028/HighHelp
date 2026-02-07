@@ -1,7 +1,5 @@
 import { Hono } from 'hono'
 import { Bindings } from './types'
-
-// Import Routes
 import homeRoutes from './routes/home'
 import authRoutes from './routes/auth'
 import profileRoutes from './routes/profile'
@@ -19,12 +17,8 @@ import { PermissionLevel } from './permissions'
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.use('*', async (c, next) => {
-    // Whitelist public assets if needed, but Hono usually serves static separate/handled.
-    // Allow login/auth related to avoid lockout loops or if they need to fetch auth status.
-    // However, goal is "cannot view anything".
-    // We allow /api/auth paths so they can logout.
     if (c.req.path.startsWith('/api/auth')) return next();
-    if (c.req.path.startsWith('/public')) return next(); // If static
+    if (c.req.path.startsWith('/public')) return next(); 
 
     const user = await getUser(c);
     if (user && user.permission_level === PermissionLevel.BANNED) {
@@ -48,7 +42,6 @@ app.get('/api/proxy/day-data', async (c) => {
     }
 })
 
-// Mount Routes
 app.route('/', homeRoutes)
 app.route('/', authRoutes)
 app.route('/', profileRoutes)

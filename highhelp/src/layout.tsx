@@ -8,8 +8,6 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content="Welcome to the official website for High's Class of 2027" />
-        
-        <!-- Social Media Previews -->
         <meta property="og:title" content="${props.title} - HighHelp" />
         <meta property="og:description" content="Welcome to the official website for High's Class of 2027" />
         <meta property="og:type" content="website" />
@@ -26,7 +24,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                     colors: {
                       primary: '#3E2723', // Deep Brown
                       secondary: '#3E2723', // Blue
-                      background: '#F8F9FA', // Neutral Light
+                      background: '#F8F9FA', // Neutral Light // TODO: modify this during if light/dark mode
                       'brown-800': '#3E2723',
                       'blue-600': '#1E88E5',
                     },
@@ -79,15 +77,15 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                 </div>
               </div>
               
-              <!-- Mobile menu button -->
+              
               <div class="-mr-2 flex md:hidden">
                 <button type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-200 hover:text-white hover:bg-[#633200] focus:outline-none" aria-controls="mobile-menu" aria-expanded="false" id="mobile-menu-btn">
                   <span class="sr-only">Open main menu</span>
-                  <!-- Icon when menu is closed. -->
+                  
                   <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" id="menu-icon-closed">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
-                  <!-- Icon when menu is open. -->
+                  
                   <svg class="hidden h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" id="menu-icon-open">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -96,7 +94,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
             </div>
           </div>
 
-          <!-- Mobile menu, show/hide based on menu state. -->
+
           <div class="hidden md:hidden" id="mobile-menu">
             <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-[#4E342E]">
               <a href="/timetable" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Timetable</a>
@@ -140,17 +138,17 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                     btn.addEventListener('click', () => {
                         const isExpanded = btn.getAttribute('aria-expanded') === 'true';
                         
-                        // Toggle state
+                        
                         btn.setAttribute('aria-expanded', !isExpanded);
                         menu.classList.toggle('hidden');
                         
-                        // Toggle icons
-                        if (isExpanded) { // Closing
+                        
+                        if (isExpanded) { 
                             iconClosed.classList.remove('hidden');
                             iconClosed.classList.add('block');
                             iconOpen.classList.remove('block');
                             iconOpen.classList.add('hidden');
-                        } else { // Opening
+                        } else { 
                             iconClosed.classList.remove('block');
                             iconClosed.classList.add('hidden');
                             iconOpen.classList.remove('hidden');
@@ -174,7 +172,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
         </footer>
         `}
         <script>
-            // Client-side date hydration
+            // date & localisation
             document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('.local-date').forEach(el => {
                     const ts = el.getAttribute('data-timestamp');
@@ -189,7 +187,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                     }
                 });
 
-                // Shared UI Logic: Search & View Toggle
+                
                 const searchInput = document.getElementById('search-input');
                 const viewGridBtn = document.getElementById('view-grid');
                 const viewListBtn = document.getElementById('view-list');
@@ -204,15 +202,12 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                             const text = item.getAttribute('data-search-text') || '';
                             if (text.toLowerCase().includes(term)) {
                                 item.classList.remove('hidden');
-                                // If inside a table row, we might need to handle empty states, but simpler is fine for now
                             } else {
                                 item.classList.add('hidden');
                             }
                         });
                     });
                 }
-
-                // View Toggle Logic
                 if (viewGridBtn && viewListBtn && gridContainer && listContainer) {
                     viewGridBtn.addEventListener('click', () => {
                         gridContainer.classList.remove('hidden');
@@ -235,7 +230,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                     });
                 }
 
-                // Global Timetable Sync on Reload
+                // timetable sync *important
                 (function() {
                     const raw = localStorage.getItem('studentData');
                     if (!raw) return;

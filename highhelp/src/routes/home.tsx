@@ -8,7 +8,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 app.get('/', async (c) => {
     const user = await getUser(c)
 
-    // Parallel Fetching for Performance
+    // fetching
     const [
         { results: latestAnnouncements },
         { results: latestResources },
@@ -16,7 +16,6 @@ app.get('/', async (c) => {
         { results: latestQuestions },
         { results: latestEssays }
     ] = await Promise.all([
-        // 1. Announcements (Filtered deleted)
         c.env.DB.prepare(`
             SELECT a.*, u.first_name, u.last_name, u.tags 
             FROM announcements a 
@@ -26,7 +25,6 @@ app.get('/', async (c) => {
             LIMIT 3
         `).all(),
 
-        // 2. Resources (Filtered deleted)
         c.env.DB.prepare(`
             SELECT r.*, u.first_name, u.last_name, u.tags 
             FROM resources r 
@@ -35,8 +33,6 @@ app.get('/', async (c) => {
             ORDER BY r.created_at DESC 
             LIMIT 3
         `).all(),
-
-        // 3. Past Papers (Papers table, just created papers, no 'is_deleted' on papers usually)
         c.env.DB.prepare(`
             SELECT p.*, count(q.id) as question_count 
             FROM papers p 
@@ -45,8 +41,6 @@ app.get('/', async (c) => {
             ORDER BY p.created_at DESC 
             LIMIT 3
         `).all(),
-
-        // 4. Q&A (Questions only)
         c.env.DB.prepare(`
             SELECT p.*, u.first_name, u.last_name, u.tags,
             (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.is_deleted = 0) as comment_count
@@ -56,8 +50,6 @@ app.get('/', async (c) => {
             ORDER BY p.created_at DESC 
             LIMIT 3
         `).all(),
-
-        // 5. Essays
         c.env.DB.prepare(`
             SELECT e.* 
             FROM essays e 
@@ -68,7 +60,6 @@ app.get('/', async (c) => {
     ]);
 
 
-    // Half Yearly Date (Backend Adjustable)
     const HALF_YEARLY_DATE = "2026-05-25T09:00:00";
     const c1d = "2026-02-02T09:00:00";
 
@@ -106,7 +97,7 @@ app.get('/', async (c) => {
                     </div>
                 </div>
 
-                {/* Logo */}
+                {/* Homepage logo */}
                 <div class="flex flex-col items-center justify-center space-y-4 py-4">
                     <img
                         src="https://assets.schools.nsw.gov.au/content/dam/doe/sws/schools/s/sydneyboys-h/logo.png"
@@ -117,7 +108,7 @@ app.get('/', async (c) => {
                     <p class="text-lg text-gray-600">Designed and programmed specifically for, and by, class of 2027.</p>
                 </div>
 
-                {/* --- LATEST UPDATES GRID --- */}
+                {/* lastest updates */}
                 <div class="max-w-7xl mx-auto space-y-12">
 
                     {/* 1. Announcements */}
@@ -243,7 +234,7 @@ app.get('/', async (c) => {
                 </div>
 
 
-                {/* Countdown Script (Unchanged) */}
+                
                 <script dangerouslySetInnerHTML={{
                     __html: `
                     (function() {

@@ -8,7 +8,7 @@ import { SUBJECTS } from '../constants'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// 1. Landing / Subject List
+
 app.get('/essays', async (c) => {
 
     const user = await getUser(c) as User | null
@@ -16,8 +16,7 @@ app.get('/essays', async (c) => {
     if (user && Number(user.permission_level) === 0) return c.redirect('/about#application')
     const subject = c.req.query('subject')
 
-    // View: Recent Essays (Global)
-    // View: Recent Essays (Global)
+    
     if (!subject) {
         const showDeleted = user && canViewDeleted(user);
         const sql = `
@@ -91,7 +90,7 @@ app.get('/essays', async (c) => {
         )
     }
 
-    // View: Subject Specific
+    
     const showDeleted = user && canViewDeleted(user);
     const sql = `
         SELECT e.*,
@@ -133,7 +132,7 @@ app.get('/essays', async (c) => {
                     </div>
                 </div>
 
-                {/* Grid View Container */}
+                {/* Grid View */}
                 <div id="grid-view-container" class="space-y-4">
                     {results?.length === 0 ? (
                         <div class="bg-gray-50 p-8 text-center rounded border border-dashed border-gray-300">
@@ -178,7 +177,7 @@ app.get('/essays', async (c) => {
                     )}
                 </div>
 
-                {/* List View Container (Table) */}
+                {/* Table */}
                 <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -229,13 +228,13 @@ app.get('/essays', async (c) => {
     )
 })
 
-// 2. Submit Essay Page
+
 app.get('/essays/create', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
     if (Number(user.permission_level) === 0) return c.redirect('/about#application')
 
-    // Check Points
+    
     if (user.points < -2) {
         return c.html(
             <Layout title="Insufficient Points" user={user}>
@@ -317,7 +316,7 @@ app.get('/essays/create', async (c) => {
     )
 })
 
-// 3. Handle Create Essay
+
 app.post('/essays', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
@@ -340,22 +339,22 @@ app.post('/essays', async (c) => {
         if (title && subject && question) {
             let fileKey = null;
 
-            // Handle File Upload
+            
             if (file && file.size > 0 && file.name !== 'undefined') {
                 const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
                 fileKey = `essays/${Date.now()}-${safeName}`
                 await c.env.BUCKET.put(fileKey, file)
             }
 
-            // Must have either content or file
+
             if (!content && !fileKey) {
                 return c.text("Please provide either essay text or a file.", 400)
             }
 
-            // Deduct 1 point
+            
             await updatePoints(user.id, -1, c.env.DB);
 
-            // Create Essay
+            
             const res = await c.env.DB.prepare('INSERT INTO essays (title, content, author_id, subject, question, full_marks, file_key) VALUES (?, ?, ?, ?, ?, ?, ?)')
                 .bind(title, content, user.id, subject, question, fullMarks, fileKey)
                 .run()
@@ -369,13 +368,13 @@ app.post('/essays', async (c) => {
     }
 })
 
-// 4. View Essay
+
 app.get('/essays/view/:id', async (c) => {
     const user = await getUser(c)
     if (user && Number(user.permission_level) === 0) return c.redirect('/about#application')
     const essayId = c.req.param('id')
 
-    // Fetch Essay
+    
     const essay = await c.env.DB.prepare(`
         SELECT * FROM essays WHERE id = ?
     `).bind(essayId).first<any>()
@@ -384,7 +383,7 @@ app.get('/essays/view/:id', async (c) => {
         return c.text('Essay not found', 404)
     }
 
-    // Fetch Feedback
+    
     const showDeleted = user && canViewDeleted(user);
     const sqlComments = `
         SELECT c.*, u.first_name, u.last_name, u.tags 
@@ -403,7 +402,7 @@ app.get('/essays/view/:id', async (c) => {
                     <a href={`/essays?subject=${encodeURIComponent(essay.subject)}`} class="text-blue-600 hover:underline text-sm">← Back to {essay.subject}</a>
                 </div>
 
-                {/* Essay Container */}
+                {/* Essay */}
                 <div class={`bg-white rounded-lg shadow-md border overflow-hidden mb-8 ${essay.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
                     <div class="p-6 border-b border-gray-100">
                         {essay.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
@@ -423,7 +422,7 @@ app.get('/essays/view/:id', async (c) => {
                             </div>
                         )}
 
-                        {/* File Download */}
+                        
                         {essay.file_key && (
                             <div class="mb-1">
                                 <a href={`/download/${essay.file_key}`} target="_blank" class="inline-flex items-center bg-blue-100 text-blue-800 px-4 py-2 rounded hover:bg-blue-200 transition font-sm">
@@ -432,7 +431,7 @@ app.get('/essays/view/:id', async (c) => {
                             </div>
                         )}
 
-                        {/* Text Content */}
+
                         {essay.content && (
                             <div class="p-4 bg-gray-50 rounded border border-gray-200 font-serif whitespace-pre-wrap leading-relaxed">
                                 {essay.content}
@@ -493,7 +492,7 @@ app.get('/essays/view/:id', async (c) => {
                     </div>
                 </div>
 
-                {/* Add Feedback Form */}
+                {/* Feedback */}
                 {user ? (
                     <div class="bg-blue-50 p-6 rounded-lg border border-blue-100">
                         <h3 class="text-lg font-bold text-blue-900 mb-2">Respond</h3>
@@ -526,7 +525,7 @@ app.get('/essays/view/:id', async (c) => {
     )
 })
 
-// 5. Handle Feedback
+// Feedback
 app.post('/essays/feedback', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
@@ -545,7 +544,7 @@ app.post('/essays/feedback', async (c) => {
 
         await logAction(c.env.DB, user.id, 'SUBMIT_FEEDBACK', `Feedback on essay ${essayId}`, res.meta.last_row_id, 'essay_comments');
 
-        // Award +1 point for feedback
+        
         await updatePoints(user.id, 1, c.env.DB);
     }
 
@@ -559,7 +558,7 @@ app.post('/essays/view/:id/delete', async (c) => {
     if (!user) return c.redirect('/login')
     const id = c.req.param('id')
 
-    // Fetch essay to check author
+    
     const essay = await c.env.DB.prepare('SELECT * FROM essays WHERE id = ?').bind(id).first() as any;
     if (!essay) return c.notFound();
 

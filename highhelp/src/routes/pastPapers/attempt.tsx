@@ -5,14 +5,14 @@ import { Bindings } from '../../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// Question Attempt View
+
 app.get('/past-papers/attempt/:id', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
 
     const qId = c.req.param('id')
 
-    // Fetch Question Details
+    
     const q = await c.env.DB.prepare(`
         SELECT q.*, p.subject, p.school_name, p.academic_year, 
                group_concat(t.name, ', ') as topic_names
@@ -33,14 +33,13 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     if (user) {
         if (mode === 'review') {
-            // In Review Mode: 'attempt' is the generic container for the CURRENT review effort
-            // 'originalAttempt' is the historical data
+            
             originalAttempt = await c.env.DB.prepare(`
                 SELECT * FROM user_question_attempts 
                 WHERE user_id = ? AND question_id = ?
             `).bind(user.id, qId).first<any>();
 
-            // Current review session (lazy load: get the latest one or null)
+            
             attempt = await c.env.DB.prepare(`
                 SELECT * FROM user_review_attempts 
                 WHERE user_id = ? AND question_id = ?
@@ -48,7 +47,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
             `).bind(user.id, qId).first<any>();
 
         } else {
-            // Standard Practice Mode
+
             attempt = await c.env.DB.prepare(`
                 SELECT * FROM user_question_attempts 
                 WHERE user_id = ? AND question_id = ?
@@ -56,7 +55,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
         }
     }
 
-    // Context Navigation
+    
     const source = c.req.query('source');
     const filterTopic = c.req.query('topic');
     const filterYear = c.req.query('year');
@@ -73,7 +72,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
     const currentParams = `source=${source || ''}&mode=${mode || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
     if (source === 'practice') {
-        // Fetch ALL IDs matching the filters to find current position
+        
         let query = `
             SELECT q.id
             FROM exam_questions q
@@ -82,7 +81,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
             LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             WHERE p.subject = ? AND q.is_deleted = 0
         `;
-        // KEY FIX: user?.id || null
+        
         const params: any[] = [user?.id || null, q.subject];
 
         if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
@@ -111,8 +110,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
         }
 
     } else if (source === 'review') {
-        // Fetch ALL Reviewable IDs to find current position
-        // This query must match the one in browse.tsx (review tab) to maintain consistency
+        
         const query = `
             SELECT q.id
             FROM exam_questions q
@@ -134,7 +132,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
         }
 
     } else {
-        // Default: Next/Prev in same paper
+        
         const neighbors = await c.env.DB.prepare(`
             SELECT id FROM exam_questions 
             WHERE paper_id = ? AND ordering_index > ? AND is_deleted = 0
@@ -151,7 +149,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
         prevId = prevNeighbors?.id;
     }
 
-    // Format Date safely
+    
     const completedDate = attempt?.updated_at ? new Date(attempt.updated_at).toLocaleDateString() : '';
 
     return c.html(
@@ -225,7 +223,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-y-auto p-6 flex flex-col">
                         <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" class="flex-1 flex flex-col">
 
-                            {/* Previous Feedback (Review Mode) */}
+                            
                             {mode === 'review' && originalAttempt && (
                                 <div class="mb-6 bg-amber-50 rounded-lg p-4 border border-amber-200">
                                     <h3 class="font-bold text-amber-800 text-sm mb-2 uppercase tracking-wide flex items-center gap-2">
@@ -247,14 +245,14 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                                 </div>
                                             </div>
                                         )}
-                                        {/* Optionally show previous answer? Maybe overkill or spoiler if they want to retry blindly. */}
+                                        
                                     </div>
                                 </div>
                             )}
 
                             <input type="hidden" name="next_id" value={nextId || ''} />
 
-                            {/* State: Check Answer vs Attempting */}
+                            
                             <div class="flex-1">
                                 <h3 class="font-bold text-gray-700 mb-4 uppercase text-sm tracking-wide">Your Response</h3>
 
@@ -363,7 +361,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
 // Save Attempt
 app.post('/past-papers/attempt/:id/save', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login') // Strict check
+    if (!user) return c.redirect('/login') 
 
     const qId = c.req.param('id')
     const body = await c.req.parseBody()
@@ -372,55 +370,26 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     const response = (body['response_content'] as string) || '';
     const selected = (body['selected_option'] as string) || null;
     const notes = (body['marker_notes'] as string) || '';
-    const action = body['action']; // save, complete, undone
+    const action = body['action']; 
     const nextId = body['next_id'];
 
-    // Determine completion status
+    
     let completedValue = 1;
     if (action === 'undone') completedValue = 0;
 
     const mode = c.req.query('mode');
 
     if (mode === 'review') {
-        // SAVE TO REVIEW ATTEMPTS
-        // In review mode, 'is_completed' means did they get full marks? 
-        // The prompt says "note if its wrong again another review question will be generated" -> implies "not done".
-        // "marked with review completed" -> implies full marks.
-        // Let's assume user decides "complete" means "I am done reviewing".
-        // But functionally, if they mark it correct (marks == q.marks), it should be complete.
 
-        // Actually, let's trust the user's "self-marking".
-        // We will store the review attempt.
-        // Logic: Insert new row? Or update the 'active' review attempt?
-        // Schema: user_review_attempts (id, user_id, question_id, ...).
-        // If we want to keep HISTORY of reviews, we insert new.
-        // If we want just "current review state", we upsert.
-        // Prompt says "students should be able to re do their review questions".
-        // Let's just INSERT a new attempt every time they save in review mode? Or Upsert for the current session?
-        // Let's UPSERT based on (user, question) for simplicity, just like attempts. 
-        // Wait, schema has PK id. Unique constraint? 
-        // Migration I wrote: NO UNIQUE constraint on (user_id, question_id).
-        // So we can insert multiple.
-        // But for "state management" (to review vs review completed), we need to know the LATEST status.
-        // Let's insert for history, to be safe.
-
-        // UPDATE: To manage the "state" in the Browse tab, we look for the LATEST review attempt.
-        // So Inserting is fine.
 
         await c.env.DB.prepare(`
             INSERT INTO user_review_attempts (user_id, question_id, response_content, selected_option, marks_awarded, is_completed, created_at)
             VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `).bind(user.id, qId, response, selected, marks, (marks === parseInt(body['max_marks'] as string || '100') || action === 'complete') ? 1 : 0).run();
 
-        // Note: I need max_marks from the form or query to determine "correctness" automatically for "review completed" logic if I rely on marks.
-        // But I don't have access to question marks here easily without a query.
-        // Simplified: Trust 'action' === 'complete' OR just save.
-        // The prompt says "after reviewing the question should be left in the tab but marked with review completed".
-        // Let's assume if they click "Save & Mark Complete", it is completed.
-        // Also if they get full marks (which I can't verify easily without fetch, but let's assume 'complete' button does it).
 
     } else {
-        // STANDARD PRACTICE SAVE
+        
         await c.env.DB.prepare(`
             INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -445,11 +414,11 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
 
-    // Removed duplicate 'mode' declaration here
+    
 
     const params = `source=${source || ''}&mode=${mode || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
-    // Auto-Advance logic
+    
     if (action === 'complete' && nextId) {
         return c.redirect(`/past-papers/attempt/${nextId}?${params}`);
     }

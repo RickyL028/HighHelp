@@ -1,6 +1,6 @@
 import { getSortedSubjects } from '../utils'
 
-// Redesigned Subject Selector (Compact Pills)
+// usage: subject select filters for pages
 export const SubjectSelector = (props: { baseUrl: string, type: 'standard' | 'essay' }) => {
     const { popular, others } = getSortedSubjects(props.type);
 

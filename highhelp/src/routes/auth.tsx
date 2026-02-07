@@ -5,7 +5,7 @@ import { Bindings } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// --- AUTHENTICATION ROUTES ---
+
 
 app.get('/api/auth/login', (c) => {
     const clientId = c.env.PORTAL_API_CLIENT_ID;
@@ -15,7 +15,7 @@ app.get('/api/auth/login', (c) => {
         return c.text('Configuration Error: Missing Client ID or Redirect URI', 500);
     }
 
-    // Generate random state
+    // random state
     const state = Math.random().toString(36).substring(7);
     setCookie(c, 'oauth_state', state, {
         path: '/',
@@ -116,8 +116,7 @@ app.get('/api/auth/callback', async (c) => {
         });
         const timetableData = await timetableResponse.json();
 
-        // Fetch Calendar Data (Full Year to allow navigation)
-        // Default only returns today, so we specific a range.
+        
         const currentYear = new Date().getFullYear();
         const calendarResponse = await fetch(`https://student.sbhs.net.au/api/calendar/days.json?from=${currentYear}-01-01&to=${currentYear}-12-31`, {
             headers: { 'Authorization': `Bearer ${accessToken}` }

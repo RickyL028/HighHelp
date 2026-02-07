@@ -13,18 +13,14 @@ app.get('/', async (c) => {
     return c.html(
         <Layout title="Classes" user={user}>
             <div class="max-w-4xl mx-auto py-6" id="app-container">
-                {/* Progress Bar */}
+                
                 <div id="daily-progress-bar" class="fixed left-0 top-0 h-full w-1.5 bg-gray-200 z-50 hidden transition-all duration-500 ease-in-out origin-top"></div>
-
-                {/* Loader */}
                 <div id="loader" class="text-center py-12">
                     <p class="text-gray-500">Loading timetable...</p>
                 </div>
 
-                {/* Content (Hidden initially) */}
-                <div id="content" class="hidden">
-
-                    {/* Tabs */}
+                
+                <div id="content" class="hidden"> {/* framework */}
                     <div class="flex border-b border-gray-200 mb-6">
                         <button id="tab-day" class="flex items-center gap-2 px-4 py-2 border-b-2 border-red-500 text-red-500 font-medium text-sm focus:outline-none transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -36,9 +32,6 @@ app.get('/', async (c) => {
                         </button>
                     </div>
 
-
-                    {/* Big Timer */}
-                    {/* Big Timer */}
                     <div id="big-timer-display" class="mb-6 bg-white border border-gray-200 rounded-2xl p-6 text-black transform transition-all relative overflow-hidden hidden">
                         <div class="absolute top-0 right-0 w-32 h-32 bg-gray-100 opacity-50 rounded-full -mr-10 -mt-10 blur-2xl"></div>
                         <div class="absolute bottom-0 left-0 w-24 h-24 bg-red-500 opacity-5 rounded-full -ml-10 -mb-10 blur-xl"></div>
@@ -57,34 +50,32 @@ app.get('/', async (c) => {
                         </div>
                     </div>
 
-                    {/* Header Control Bar */}
-                    <div class="flex items-center gap-2 mb-6">
-                        {/* Prev Button */}
+                    
+                    <div class="flex items-center gap-2 mb-6"> {/* Prev - date - rest - next */}
+                        
                         <button id="btn-prev" class="w-10 h-10 flex items-center justify-center rounded-lg border border-red-500 text-red-500 hover:bg-red-50 transition-colors">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                         </button>
 
-                        {/* Date Display */}
+                        
                         <div class="flex-grow flex items-center justify-center border border-gray-200 rounded-lg h-10 bg-white shadow-sm px-4">
                             <span id="date-display" class="font-bold text-gray-800 text-sm"></span>
                         </div>
 
-                        {/* Reset Button */}
+                        
                         <button id="btn-reset" class="h-10 px-4 flex items-center justify-center rounded-lg border border-red-500 text-red-500 font-medium text-sm hover:bg-red-50 transition-colors">
                             Reset
                         </button>
 
-
-
-                        {/* Next Button */}
+                        
                         <button id="btn-next" class="w-10 h-10 flex items-center justify-center rounded-lg border border-red-500 text-red-500 hover:bg-red-50 transition-colors">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                         </button>
                     </div>
 
-                    {/* Timetable List List */}
+                    
                     <div id="timetable-list" class="space-y-4">
-                        {/* Dynamic Content */}
+                        {/* managed by later code */}
                     </div>
                 </div>
 
@@ -121,14 +112,14 @@ app.get('/', async (c) => {
                             return;
                         }
 
-                        // Data mappings for static/cycle view
+                        
                         const calendarMap = studentData.calendar; 
                         const daysData = studentData.timetable.days || {};
                         const subjectsData = studentData.timetable.subjects || [];
 
-                        // State
+                        
                         let currentDateStr = new URLSearchParams(window.location.search).get('date') || getInitialDate();
-                        let currentView = 'day'; // 'day' or 'cycle'
+                        let currentView = 'day'; 
                         let tickerInterval = null;
                         let hoveredPeriodData = null;
                         let activeSubject = null;
@@ -140,9 +131,9 @@ app.get('/', async (c) => {
                             if (isAfterSchool) {
                                 now.setDate(now.getDate() + 1);
                             }
-                            // Ensure not weekend initially
-                            if (now.getDay() === 0) now.setDate(now.getDate() + 1); // Sun -> Mon
-                            if (now.getDay() === 6) now.setDate(now.getDate() + 2); // Sat -> Mon
+                            
+                            if (now.getDay() === 0) now.setDate(now.getDate() + 1);
+                            if (now.getDay() === 6) now.setDate(now.getDate() + 2);
 
                              const year = now.getFullYear();
                              const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -172,7 +163,8 @@ app.get('/', async (c) => {
                                 return null;
                             }
 
-                            // Check cache first (synced by layout.tsx or previous visits)
+                            
+                            
                             const cached = localStorage.getItem('todayData_' + date);
                             if (cached) {
                                 try {
@@ -199,7 +191,7 @@ app.get('/', async (c) => {
                             }
                         }
 
-                        // Listen for global refreshes that might happen while we are viewing "today"
+                        
                         window.addEventListener('todayDataRefreshed', (e) => {
                             if (e.detail.date === currentDateStr) {
                                 console.log('Today data updated via global sync, re-rendering...');
@@ -209,7 +201,7 @@ app.get('/', async (c) => {
 
                         function render() {
                             activeSubject = null;
-                            // Update Tab UI
+                            
                             const tabDay = document.getElementById('tab-day');
                             const tabCycle = document.getElementById('tab-cycle');
                             const headerControls = document.querySelector('#content > .flex.items-center.gap-2.mb-6');
@@ -234,13 +226,13 @@ app.get('/', async (c) => {
                         }
 
                         async function renderDay() {
-                            // Update URL
+                            
                             const url = new URL(window.location);
                             url.searchParams.set('date', currentDateStr);
                             window.history.replaceState({}, '', url);
 
                             const dayInfo = calendarMap[currentDateStr];
-                            // Day Header
+                            
                             const d = new Date(currentDateStr);
                             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                             const dayName = days[d.getDay()];
@@ -249,7 +241,7 @@ app.get('/', async (c) => {
                             const year = d.getFullYear();
                             const dateFormatted = \`\${dayName}, \${day}/\${month}/\${year}\`;
                             
-                            // Date Picker Injection
+                            
                             const dateDisplay = document.getElementById('date-display');
                             dateDisplay.innerHTML = \`
                                 <div class="relative cursor-pointer group flex items-center gap-2">
@@ -260,7 +252,7 @@ app.get('/', async (c) => {
                                            value="\${currentDateStr}">
                                 </div>
                             \`;
-                            // Attach listener
+                            
                             const picker = document.getElementById('date-picker-input');
                             if(picker) {
                                 picker.onchange = (e) => {
@@ -273,7 +265,7 @@ app.get('/', async (c) => {
                             container.innerHTML = '<div class="text-center py-12 text-gray-500">Checking for updates...</div>';
                             container.className = 'space-y-4';
 
-                            // Fetch Live Data
+                            
                             const apiData = await fetchDayData(currentDateStr);
 
                             container.innerHTML = '';
@@ -283,33 +275,33 @@ app.get('/', async (c) => {
                                 return;
                             }
 
-                            // Prepare Data Sources
+                            
                             let periodsData = {};
                             let currentBellTimes = DEFAULT_BELL_TIMES;
                             let dayVariations = {};
 
                             if (apiData) {
-                                // Dynamic bells from API
+                                
                                 if (apiData.bells && apiData.bells.length > 0) {
                                     currentBellTimes = apiData.bells.map(b => ({
-                                        period: b.period || b.bell, // Use period as ID
+                                        period: b.period || b.bell,  
                                         startTime: b.startTime,
                                         endTime: b.endTime || '23:59',
                                         label: b.bellDisplay || b.bell || b.period
                                     }));
                                 }
                                 
-                                // Periods
+                                
                                 if (apiData.timetable && apiData.timetable.timetable && apiData.timetable.timetable.periods) {
                                     periodsData = apiData.timetable.timetable.periods;
                                 }
 
-                                // Variations
+                                
                                 if (apiData.classVariations) {
                                     dayVariations = apiData.classVariations;
                                 }
                             } else {
-                                // Fallback to Static Data
+                                
                                 if (dayInfo && daysData[dayInfo.dayNumber]) {
                                     const dr = daysData[dayInfo.dayNumber];
                                     periodsData = { ...dr.periods };
@@ -332,11 +324,11 @@ app.get('/', async (c) => {
                                     variationTags.push('CHANGED');
                                     
                                     if (!data) {
-                                        // If no previous class, it's a new one (maybe?) or just filling in
+                                        
                                         data = { title: variation.title || 'Variation', teacher: variation.teacher };
                                     }
 
-                                    // Override fields
+
                                     if (variation.title) data.title = variation.title;
                                     
                                     if (variation.casualSurname) {
@@ -352,20 +344,20 @@ app.get('/', async (c) => {
                                         variationTags.push('Room Change');
                                     }
                                     
-                                    // Re-enrich to catch colors if subject code matched new title
+                                    
                                     data = enrichPeriod(data);
                                 }
 
                                 const hasContent = !!data && (!!data.title || !!data.subject);
                                 const stripColor = data?.color ? \`#\${data.color}\` : '#e5e7eb';
                                 
-                                // Reduce space for non-class periods
+                                
                                 const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD';
                                 const containerClass = isMinorPeriod ? 'min-h-[1.5rem]' : 'min-h-[3rem]';
                                 const timeWidth = 'w-24'; 
                                 const textSize = 'text-sm';
 
-                                // NEW: Past check
+                                
                                 const isPast = isTimePast(currentDateStr, bell.endTime);
                                 const opacityClass = isPast ? 'opacity-90 grayscale-[0.1]' : '';
 
@@ -379,39 +371,39 @@ app.get('/', async (c) => {
                                     const changedBadge = highlightChange ? \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded animate-pulse">\${variationTags[0] || 'UPDATED'}</span>\` : '';
 
                                     innerHtml = \`
-    <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
-         data-subject="\${data.subjectCode}"
-         data-title="\${data.title || data.subject || ''}"
-         data-teacher="\${data.fullTeacher || data.teacher || ''}"
-         data-room="\${data.room || ''}"
-         data-start="\${bell.startTime}"
-         data-end="\${bell.endTime}"
-         data-color="\${stripColor}">
-        <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" 
-             style="background-color: \${stripColor};">
-        </div>
+                                        <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
+                                            data-subject="\${data.subjectCode}"
+                                            data-title="\${data.title || data.subject || ''}"
+                                            data-teacher="\${data.fullTeacher || data.teacher || ''}"
+                                            data-room="\${data.room || ''}"
+                                            data-start="\${bell.startTime}"
+                                            data-end="\${bell.endTime}"
+                                            data-color="\${stripColor}">
+                                            <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" 
+                                                style="background-color: \${stripColor};">
+                                            </div>
 
-        <div class="pl-3 font-medium text-gray-900 \${textSize} flex items-center">
-            \${data.title || data.subject || 'Unknown'}
-            \${changedBadge}
-        </div>
-        
-        <div class="pl-3 flex items-center gap-4 \${textSize}">
-            <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
-            \${data.room ? \`<span class="font-bold text-black \${highlightChange && variation && variation.roomTo ? 'text-red-600' : ''}">\${data.room}</span>\` : ''}
-        </div>
-        
-        <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
-            <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2">
-                <span class="font-bold text-sm">\${data.title}</span>
-                <span class="text-gray-300">\${nextTimeStr}</span>
-            </div>
-            \${highlightChange ? '<div class="text-red-400 font-bold mb-1">' + variationTags.join(', ') + '</div>' : ''}
-            <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
-            \${miniCycle}
-        </div>
-    </div>
-\`;
+                                            <div class="pl-3 font-medium text-gray-900 \${textSize} flex items-center">
+                                                \${data.title || data.subject || 'Unknown'}
+                                                \${changedBadge}
+                                            </div>
+                                            
+                                            <div class="pl-3 flex items-center gap-4 \${textSize}">
+                                                <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
+                                                \${data.room ? \`<span class="font-bold text-black \${highlightChange && variation && variation.roomTo ? 'text-red-600' : ''}">\${data.room}</span>\` : ''}
+                                            </div>
+                                            
+                                            <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
+                                                <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2">
+                                                    <span class="font-bold text-sm">\${data.title}</span>
+                                                    <span class="text-gray-300">\${nextTimeStr}</span>
+                                                </div>
+                                                \${highlightChange ? '<div class="text-red-400 font-bold mb-1">' + variationTags.join(', ') + '</div>' : ''}
+                                                <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
+                                                \${miniCycle}
+                                            </div>
+                                        </div>
+                                    \`;
                                 } else {
                                     if (bell.period === 'EoD') return;
                                     innerHtml = \`
@@ -463,7 +455,7 @@ app.get('/', async (c) => {
                                                 const dayData = daysData[dNum];
                                                 if (!dayData) return '<div></div>';
                                                 
-                                                // Include Period 0
+                                                
                                                 const displayPeriods = ['0', '1', '2', '3', '4', '5'];
                                                 const periods = displayPeriods.map(p => {
                                                     let pData = dayData.periods[p];
@@ -476,7 +468,7 @@ app.get('/', async (c) => {
                                                         \${periods.map(p => {
                                                             if (!p) return '<div class="h-10 bg-gray-50/30"></div>';
                                                             const color = p.color ? '#' + p.color : '#e5e7eb';
-                                                            // Using 10 alpha for higher transparency
+                                                            
                                                             return \`
                                                                 <div class="period-card h-10 flex flex-col justify-center px-1 text-xs relative group cursor-default transition-all border-b border-white/50 last:border-b-0"
                                                                      style="background-color: \${color}10; border-left: 3px solid \${color};"
@@ -503,14 +495,14 @@ app.get('/', async (c) => {
                         function getMiniCycleHtml(subjectCode, color) {
                             if (!subjectCode) return '';
 
-                            // Calculate today's day number for highlighting
+                            
                             const t = new Date();
                             const tStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
                             const todayInfo = calendarMap[tStr];
                             const todayNum = todayInfo ? todayInfo.dayNumber : null;
                             
                             let html = '<div class="grid grid-cols-5 gap-1 gap-y-2">';
-                            // 2 rows (Week A, Week B)
+                            
                             
                             for (let week=0; week<2; week++) {
                                 for (let day=1; day<=5; day++) {
@@ -528,7 +520,7 @@ app.get('/', async (c) => {
                                     const bgClass = hasSubject ? '' : 'bg-gray-700';
                                     const style = hasSubject ? \`background-color: \${color};\` : '';
                                     
-                                    // Highlight today
+                                    
                                     let extraClass = '';
                                     if (todayNum && dayNum.toString() === todayNum) {
                                         extraClass = 'ring-2 ring-white ring-offset-1 ring-offset-gray-800'; 
@@ -548,44 +540,44 @@ app.get('/', async (c) => {
                                 const subject = card.getAttribute('data-subject');
 
                                 card.addEventListener('click', (e) => {
-                                    e.stopPropagation(); // Don't trigger document clear
+                                    e.stopPropagation(); 
 
-                                    // If this card is already the active one, toggle off
+                                    
                                     if (activeSubject === subject) {
                                         activeSubject = null;
                                         resetCards(cards);
                                         return;
                                     }
                                     
-                                    // Reset previous state first to avoid bugs (z-index artifacts, etc)
+                                    
                                     resetCards(cards);
 
-                                    // Lock this subject
+                                    
                                     activeSubject = subject;
                                     highlightCards(cards, subject, card);
                                 });
 
                                 card.addEventListener('mouseenter', () => {
-                                    if (activeSubject) return; // Don't override click lock
+                                    if (activeSubject) return; 
                                     highlightCards(cards, subject, card);
                                 });
                                 
                                 card.addEventListener('mouseleave', () => {
-                                    if (activeSubject) return; // Don't clear if locked
+                                    if (activeSubject) return; 
                                     resetCards(cards);
                                 });
                             });
                         }
 
                         function highlightCards(cards, subject, sourceCard) {
-                            // 1. Z-Index fix for wrapper
+                            
                             const wrapper = sourceCard.closest('.flex.items-center');
                             if(wrapper) {
                                 wrapper.style.zIndex = '50';
                                 wrapper.style.position = 'relative';
                             }
 
-                            // 2. Ticker Update
+                            
                             const start = sourceCard.getAttribute('data-start');
                             const end = sourceCard.getAttribute('data-end');
                             const title = sourceCard.getAttribute('data-title');
@@ -597,11 +589,11 @@ app.get('/', async (c) => {
                                 updateTicker();
                             }
 
-                            // 3. Highlight Matching Cards & Tooltip
+                            
                             if (!subject) return;
 
                             cards.forEach(c => {
-                                // Dim others / Highlight Matches
+                                
                                 if (c.getAttribute('data-subject') === subject) {
                                     c.classList.add('opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
                                     c.style.transform = 'scale(1.02)';
@@ -614,8 +606,7 @@ app.get('/', async (c) => {
                                 }
                             });
 
-                            // 4. Force Tooltip Show (for click/mobile) by inline style
-                            // Reset tooltips first
+                            
                             document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = '');
                             
                             const tooltip = sourceCard.querySelector('.tooltip-content');
@@ -628,7 +619,7 @@ app.get('/', async (c) => {
                             hoveredPeriodData = null;
                             updateTicker();
 
-                            // Reset wrapper z-index
+                            
                             cards.forEach(c => {
                                 const wrapper = c.closest('.flex.items-center');
                                 if(wrapper) {
@@ -636,13 +627,13 @@ app.get('/', async (c) => {
                                     wrapper.style.position = '';
                                 }
                                 
-                                // Reset card styles
+                                
                                 c.classList.remove('opacity-25', 'opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
                                 c.style.transform = '';
                                 c.style.zIndex = '';
                             });
 
-                            // Reset tooltips
+                            
                             document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = '');
                         }
 
@@ -761,12 +752,12 @@ app.get('/', async (c) => {
 
                         function startTicker() {
                             if (tickerInterval) clearInterval(tickerInterval);
-                            updateTicker(); // First run
+                            updateTicker();
                             if(!tickerInterval) tickerInterval = setInterval(updateTicker, 1000);
                         }
 
                         function findNextPeriod(now) {
-                             // Look ahead 14 days
+                             
                              for(let i=0; i<14; i++) {
                                 const d = new Date(now);
                                 d.setDate(d.getDate() + i);
@@ -780,14 +771,13 @@ app.get('/', async (c) => {
                                 const dData = daysData[dayInfo.dayNumber];
                                 if (!dData) continue;
                                 
-                                // Standard Bells fallback
+                                
                                 const bells = DEFAULT_BELL_TIMES;
                                 
                                 for(let bell of bells) {
-                                    // Skip "End of Day" or invalid periods for "Next Class"
+                                    
                                     if(bell.period === 'EoD' || bell.period === 'RC' || bell.period === '0') {
-                                        // Maybe user considers RC a period? Let's include RC, exclude 0 if desired? 
-                                        // Usually students care about Period 1. Let's include everything that is a valid subject.
+                                        
                                     }
                                     
                                     const [h, m] = bell.startTime.split(':').map(Number);
@@ -796,9 +786,9 @@ app.get('/', async (c) => {
                                     
                                     if (bellStart <= now) continue;
                                     
-                                    // Check if actual class exists
+                                    
                                     let pData = dData.periods ? dData.periods[bell.period] : null;
-                                    // Check Rolcall?
+                                    
                                     if (bell.period === 'RC' && dData.rollcall) pData = dData.rollcall;
 
                                     if(pData) {
@@ -832,8 +822,8 @@ app.get('/', async (c) => {
                             const btDetails = document.getElementById('bt-details');
                             const btLabel = document.getElementById('bt-label');
 
-                            // --- Progress Bar Logic (Only shows if ON today's page and it is today) ---
-                            // Because progress bar is fixed to the specific day view logic
+                            // progress bar
+                            
                             if (currentDateStr === todayStr && progressBar) {
                                 progressBar.classList.remove('hidden');
                                 const startMins = 8 * 60; 
@@ -866,7 +856,7 @@ app.get('/', async (c) => {
                                 progressBar.classList.add('hidden');
                             }
 
-                            // --- Big Timer Logic ---
+                            // big timer
                             if (bigTimer) {
                                 bigTimer.classList.remove('hidden');
                                 
@@ -883,58 +873,58 @@ app.get('/', async (c) => {
                                      
                                      mainText = hoveredPeriodData.title || "Selected Class";
                                      subText = \`<span class= "font-bold text-black"> \${hoveredPeriodData.room || ''}</span>\${hoveredPeriodData.room && hoveredPeriodData.teacher ? ' • ' : ''}\${hoveredPeriodData.teacher || ''}\`;
-            timerLabel = "Until Start";
+                                    timerLabel = "Until Start";
 
-            if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) {
-                subText = \`<span class="font-bold text-black">Selected Period</span>\`;
-                                     }
-                                } else {
-                                     const next = findNextPeriod(now);
-            if (next) {
-                targetTime = next.date;
-            mainText = next.subject;
-            subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
-            timerLabel = "Until Start";
-                                     } else {
-                mainText = "No Upcoming Classes";
-            subText = "Relax!";
-            btTimer.textContent = "--:--:--";
-            return;
-                                     }
-                                }
+                                    if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) {
+                                        subText = \`<span class="font-bold text-black">Selected Period</span>\`;
+                                                            }
+                                                        } else {
+                                                            const next = findNextPeriod(now);
+                                    if (next) {
+                                        targetTime = next.date;
+                                    mainText = next.subject;
+                                    subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
+                                    timerLabel = "Until Start";
+                                                            } else {
+                                        mainText = "No Upcoming Classes";
+                                    subText = "Relax!";
+                                    btTimer.textContent = "--:--:--";
+                                    return;
+                                                            }
+                                                        }
 
-            if (targetTime) {
-                let diff = targetTime - now;
+                                    if (targetTime) {
+                                        let diff = targetTime - now;
 
-            btSubject.textContent = mainText;
-            btDetails.innerHTML = subText;
-            btLabel.textContent = timerLabel;
+                                    btSubject.textContent = mainText;
+                                    btDetails.innerHTML = subText;
+                                    btLabel.textContent = timerLabel;
 
-            if (diff < 0) {
-                btTimer.textContent = "Started";
-            btLabel.textContent = "Time Since: " + formatDuration(Math.abs(diff));
-                                    } else {
-                btTimer.textContent = formatDuration(diff);
-                                    }
-                                }
-                            }
-                        }
+                                    if (diff < 0) {
+                                        btTimer.textContent = "Started";
+                                    btLabel.textContent = "Time Since: " + formatDuration(Math.abs(diff));
+                                                            } else {
+                                        btTimer.textContent = formatDuration(diff);
+                                                            }
+                                                        }
+                                                    }
+                                                }
 
             function formatDuration(ms) {
-                            const dHours = Math.floor(ms / (1000 * 60 * 60));
-            const dMins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-            const dSecs = Math.floor((ms % (1000 * 60)) / 1000);
+                    const dHours = Math.floor(ms / (1000 * 60 * 60));
+                    const dMins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+                    const dSecs = Math.floor((ms % (1000 * 60)) / 1000);
+                    
+                    
+                    if (dHours > 24) {
+                        const days = Math.floor(dHours / 24);
+                        const h = dHours % 24;
+                        return \`\${days}d \${h}h \${dMins}m\`;
+                    }
                             
-                            // If > 24 hours, maybe show Days?
-                            if (dHours > 24) {
-                                const days = Math.floor(dHours / 24);
-            const h = dHours % 24;
-            return \`\${days}d \${h}h \${dMins}m\`;
-                            }
-                            
-                            const hStr = dHours > 0 ? \`\${String(dHours)}:\` : '';
-            return \`\${hStr}\${String(dMins).padStart(2, '0')}:\${String(dSecs).padStart(2, '0')}\`;
-                        }
+                    const hStr = dHours > 0 ? \`\${String(dHours)}:\` : '';
+                        return \`\${hStr}\${String(dMins).padStart(2, '0')}:\${String(dSecs).padStart(2, '0')}\`;
+                    }
 
                     })();
             `

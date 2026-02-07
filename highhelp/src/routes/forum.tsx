@@ -5,7 +5,7 @@ import { canPostGeneral, canViewDeleted, canCommentModeration } from '../permiss
 import { SubjectSelector } from '../components/SubjectSelector'
 
 import { Bindings, User } from '../types'
-import { ANNOUNCEMENT_SUBJECTS } from '../constants' // Reusing subject list for dropdown
+import { ANNOUNCEMENT_SUBJECTS } from '../constants' 
 
 const app = new Hono<{ Bindings: Bindings }>()
 interface PostDetail {
@@ -18,19 +18,17 @@ interface PostDetail {
     first_name: string | null;
     last_name: string | null;
     tags: string | null;
-    // Add these missing fields:
-    is_deleted: number; // or boolean, depending on how SQLite returns it (usually 0/1)
+    is_deleted: number; 
     author_id: number;
 }
-// 1. Forum Landing / Subject List
+
 app.get('/forum', async (c) => {
     const user = await getUser(c) as User | null
     const subject = c.req.query('subject')
 
-    // View: Recent Discussions (Global)
-    // View: Recent Discussions (Global)
+    
     if (!subject) {
-        // Fetch recent posts
+        
         const showDeleted = user && canViewDeleted(user);
         const sql = `
             SELECT p.*, u.first_name, u.last_name, u.tags, 
@@ -103,7 +101,7 @@ app.get('/forum', async (c) => {
         )
     }
 
-    // View: Subject Specific Posts
+    
     const showDeleted = user && canViewDeleted(user);
     const sql = `
         SELECT p.*, u.first_name, u.last_name, u.tags,
@@ -194,7 +192,7 @@ app.get('/forum', async (c) => {
                     )}
                 </div>
 
-                {/* List View Container (Table) */}
+                {/* List View */}
                 <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
@@ -245,7 +243,7 @@ app.get('/forum', async (c) => {
     )
 })
 
-// 2. Create Post Page
+// Create Post Page
 app.get('/forum/create', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
@@ -291,7 +289,7 @@ app.get('/forum/create', async (c) => {
     )
 })
 
-// 3. Handle Create Post
+// Handle Create Post
 app.post('/forum', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
@@ -312,17 +310,16 @@ app.post('/forum', async (c) => {
         await logAction(c.env.DB, user.id, 'CREATE_POST', `Created question '${title}' in ${subject}`, res.meta.last_row_id, 'posts');
     }
 
-    // Redirect to the subject page or the specific post (need ID to redirect to post, but simple redirect to subject is fine for MVP)
+    
     return c.redirect(`/forum?subject=${encodeURIComponent(subject)}`)
 })
 
-// 4. Single Post View
+// Single Post View
 app.get('/forum/post/:id', async (c) => {
     const user = await getUser(c)
     const postId = c.req.param('id')
 
-    // Fetch Post
-    // FIX: Cast the result to 'PostDetail | null' so TypeScript knows the shape of the data
+    
     const post = await c.env.DB.prepare(`
         SELECT p.*, u.first_name, u.last_name, u.tags 
         FROM posts p 
@@ -334,8 +331,6 @@ app.get('/forum/post/:id', async (c) => {
         return c.text('Post not found', 404)
     }
 
-    // Fetch Comments
-    // FIX: Filter deleted comments unless admin
     const showDeleted = user && canViewDeleted(user);
     const sqlComments = `
         SELECT c.*, u.first_name, u.last_name, u.tags 
@@ -348,11 +343,11 @@ app.get('/forum/post/:id', async (c) => {
     const { results: comments } = await c.env.DB.prepare(sqlComments).bind(postId).all()
 
     return c.html(
-        // Now 'post.title' is known to be a string
+        
         <Layout title={post.title} user={user}>
             <div class="mx-auto">
                 <div class="mb-4">
-                    {/* Now 'post.subject' is known to be a string */}
+                    
                     <a href={`/forum?subject=${encodeURIComponent(post.subject)}`} class="text-blue-600 hover:underline text-sm">← Back to {post.subject}</a>
                 </div>
 
@@ -362,7 +357,7 @@ app.get('/forum/post/:id', async (c) => {
                         {post.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
                         <div class="flex items-center gap-2 mb-2">
                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">{post.type}</span>
-                            {/* Now 'post.created_at' is known to be a string/date */}
+                            
                             <span class="text-gray-400 text-sm local-date" data-timestamp={post.created_at} data-format="datetime">| {new Date(post.created_at).toLocaleString()}</span>
                         </div>
                         <h1 class="text-3xl font-bold text-gray-900 mb-4">{post.title}</h1>
@@ -371,7 +366,7 @@ app.get('/forum/post/:id', async (c) => {
                     <div class="bg-gray-50 px-6 py-3 flex items-center justify-between">
                         <div class="text-sm text-gray-600 flex items-center">
                             <span class="font-bold mr-1">Asked by:</span> {post.first_name ? `${post.first_name} ${post.last_name}` : 'Unknown'}
-                            {/* Now 'post.tags' is known to be string | null */}
+                            
                             <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(post.tags) }}></span>
                         </div>
                         {!post.is_deleted && user && (canCommentModeration(user) || user.id === post.author_id) && (
@@ -382,7 +377,7 @@ app.get('/forum/post/:id', async (c) => {
                     </div>
                 </div>
 
-                {/* Comments Section (unchanged) */}
+                {/* Comments Section */}
                 <div class="mb-8">
                     <h2 class="text-xl font-bold text-gray-900 mb-4">{comments?.length || 0} Answers / Comments</h2>
 
@@ -408,7 +403,7 @@ app.get('/forum/post/:id', async (c) => {
                     </div>
                 </div>
 
-                {/* Add Comment Form (unchanged) */}
+                {/* Add Comment  */}
                 {user ? (
                     <div class="bg-blue-50 p-6 rounded-lg border border-blue-100">
                         <h3 class="text-lg font-bold text-blue-900 mb-4">Add Your Answer</h3>
@@ -434,7 +429,7 @@ app.get('/forum/post/:id', async (c) => {
     )
 })
 
-// 5. Handle Add Comment
+// Add Comment
 app.post('/forum/comment', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
@@ -452,7 +447,7 @@ app.post('/forum/comment', async (c) => {
 
         await logAction(c.env.DB, user.id, 'CREATE_COMMENT', `Commented on post ${postId}`, res.meta.last_row_id, 'comments');
 
-        // Award +0.3 points for answering
+        
         await updatePoints(user.id, 0.3, c.env.DB);
     }
 
@@ -468,7 +463,7 @@ app.post('/forum/post/:id/delete', async (c) => {
     const post = await c.env.DB.prepare('SELECT * FROM posts WHERE id = ?').bind(id).first() as any;
     if (!post) return c.notFound();
 
-    // Allow self-delete or global comment moderator
+    
     if (!canCommentModeration(user) && user.id !== post.author_id) return c.text('Unauthorised', 403);
 
     await c.env.DB.prepare('UPDATE posts SET is_deleted = 1 WHERE id = ?').bind(id).run();
@@ -487,7 +482,7 @@ app.post('/forum/comment/:id/delete', async (c) => {
     const comment = await c.env.DB.prepare('SELECT * FROM comments WHERE id = ?').bind(id).first() as any;
     if (!comment) return c.notFound();
 
-    // Allow self-delete or global comment moderator
+    
     if (!canCommentModeration(user) && user.id !== comment.author_id) return c.text('Unauthorised', 403);
 
     await c.env.DB.prepare('UPDATE comments SET is_deleted = 1 WHERE id = ?').bind(id).run();

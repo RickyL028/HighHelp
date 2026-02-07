@@ -6,7 +6,7 @@ import { Bindings } from '../../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// Create Paper Form
+
 app.get('/past-papers/create', async (c) => {
     const user = await getUser(c)
     const subject = c.req.query('subject')
@@ -71,7 +71,7 @@ app.get('/past-papers/create', async (c) => {
                         <p class="text-sm text-gray-500 mb-4">Define the structure to auto-generate placeholder questions.</p>
 
                         <div id="segments-container" class="space-y-4">
-                            {/* Default Segment 1 */}
+                        
                             <div class="grid grid-cols-12 gap-4 items-end bg-gray-50 p-4 rounded-lg">
                                 <div class="col-span-4">
                                     <label class="block text-xs font-bold text-gray-500 uppercase">Section</label>
@@ -125,7 +125,7 @@ app.get('/past-papers/create', async (c) => {
     )
 })
 
-// Process Create Paper
+
 app.post('/past-papers/create', async (c) => {
     const user = await getUser(c)
     const body = await c.req.parseBody()
@@ -149,7 +149,7 @@ app.post('/past-papers/create', async (c) => {
 
     const paperId = paperRes.id;
 
-    // Process placeholders
+    
     const statements = [];
     let globalOrderIndex = 1;
 

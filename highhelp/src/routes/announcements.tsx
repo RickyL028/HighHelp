@@ -225,7 +225,7 @@ app.post('/announcements', async (c) => {
 
 
 
-// 6. Single Announcement View (New)
+
 app.get('/announcements/:id', async (c) => {
     const user = await getUser(c)
     const id = c.req.param('id')
@@ -275,32 +275,32 @@ app.get('/announcements/:id', async (c) => {
         </Layout>
     )
 })
-// Add this to handle the delete action
+
 app.post('/announcements/:id/delete', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
 
     const id = Number(c.req.param('id'));
 
-    // 1. Fetch announcement to check existence and permissions
+    
     const ann = await c.env.DB.prepare('SELECT * FROM announcements WHERE id = ?').bind(id).first<any>()
 
     if (!ann) return c.notFound()
 
-    // 2. Verify Permissions (Must be author OR have moderation rights)
+    
     if (user.id !== ann.author_id && !canModerateSubject(user, ann.subject)) {
         return c.text('You are not authorized to delete this announcement.', 403)
     }
 
-    // 3. Perform Soft Delete (set is_deleted = 1)
+    
     await c.env.DB.prepare('UPDATE announcements SET is_deleted = 1 WHERE id = ?')
         .bind(id)
         .run()
 
-    // 4. Log the action
+    
     await logAction(c.env.DB, user.id, 'DELETE_ANNOUNCEMENT', `Deleted announcement '${ann.title}'`, id, 'announcements')
 
-    // 5. Redirect back to list
+    
     return c.redirect('/announcements')
 })
 export default app
