@@ -36,6 +36,26 @@ app.get('/', async (c) => {
                         </button>
                     </div>
 
+
+                    {/* Big Timer */}
+                    <div id="big-timer-display" class="mb-6 bg-gradient-to-br from-white-900 to-white-800 rounded-2xl p-6 text-black shadow-2xl transform transition-all relative overflow-hidden hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                        <div class="absolute bottom-0 left-0 w-24 h-24 bg-red-500 opacity-10 rounded-full -ml-10 -mb-10 blur-xl"></div>
+
+                        <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div class="text-center md:text-left min-w-0">
+                                <h2 class="text-gray-400 text-sm font-bold uppercase tracking-widest mb-1">Next</h2>
+                                <div id="bt-subject" class="text-2xl font-bold truncate">Checking...</div>
+                                <div id="bt-details" class="text-sm text-gray-400 mt-1 flex items-center gap-2 justify-center md:justify-start"></div>
+                            </div>
+
+                            <div class="text-center whitespace-nowrap">
+                                <div id="bt-timer" class="text-5xl md:text-6xl font-mono font-bold tracking-tighter tabular-nums leading-none">--:--:--</div>
+                                <div id="bt-label" class="text-xs text-red-400 font-bold mt-2 uppercase tracking-wide">Until Start</div>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Header Control Bar */}
                     <div class="flex items-center gap-2 mb-6">
                         {/* Prev Button */}
@@ -53,10 +73,7 @@ app.get('/', async (c) => {
                             Reset
                         </button>
 
-                        {/* Countdown Timer */}
-                        <div id="countdown-timer" class="h-10 px-3 font-mono font-bold text-gray-600 bg-white border border-gray-200 rounded-lg flex items-center justify-center shadow-sm min-w-[5rem]">
-                            --:--
-                        </div>
+
 
                         {/* Next Button */}
                         <button id="btn-next" class="w-10 h-10 flex items-center justify-center rounded-lg border border-red-500 text-red-500 hover:bg-red-50 transition-colors">
@@ -523,6 +540,13 @@ app.get('/', async (c) => {
                             cards.forEach(card => {
                                 card.addEventListener('mouseenter', () => {
                                     const subject = card.getAttribute('data-subject');
+                                    // Fix Z-Index for wrapper to ensure tooltip shows
+                                    const wrapper = card.closest('.flex.items-center');
+                                    if(wrapper) {
+                                        wrapper.style.zIndex = '50';
+                                        wrapper.style.position = 'relative';
+                                    }
+
                                     // Capture time
                                     const start = card.getAttribute('data-start');
                                     const end = card.getAttribute('data-end');
@@ -548,6 +572,12 @@ app.get('/', async (c) => {
                                 card.addEventListener('mouseleave', () => {
                                     hoveredPeriodData = null;
                                     updateTicker(); // Immediate update
+
+                                    const wrapper = card.closest('.flex.items-center');
+                                    if(wrapper) {
+                                        wrapper.style.zIndex = '';
+                                        wrapper.style.position = '';
+                                    }
 
                                     cards.forEach(c => {
                                         c.classList.remove('opacity-25', 'opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
@@ -671,41 +701,89 @@ app.get('/', async (c) => {
                             if(!tickerInterval) tickerInterval = setInterval(updateTicker, 1000);
                         }
 
+                        function findNextPeriod(now) {
+                             // Look ahead 14 days
+                             for(let i=0; i<14; i++) {
+                                const d = new Date(now);
+                                d.setDate(d.getDate() + i);
+                                const y = d.getFullYear();
+                                const m = String(d.getMonth() + 1).padStart(2, '0');
+                                const day = String(d.getDate()).padStart(2, '0');
+                                const dateStr = \`\${y}-\${m}-\${day}\`;
+                                
+                                const dayInfo = calendarMap[dateStr];
+                                if (!dayInfo) continue;
+                                const dData = daysData[dayInfo.dayNumber];
+                                if (!dData) continue;
+                                
+                                // Standard Bells fallback
+                                const bells = DEFAULT_BELL_TIMES;
+                                
+                                for(let bell of bells) {
+                                    // Skip "End of Day" or invalid periods for "Next Class"
+                                    if(bell.period === 'EoD' || bell.period === 'RC' || bell.period === '0') {
+                                        // Maybe user considers RC a period? Let's include RC, exclude 0 if desired? 
+                                        // Usually students care about Period 1. Let's include everything that is a valid subject.
+                                    }
+                                    
+                                    const [h, m] = bell.startTime.split(':').map(Number);
+                                    const bellStart = new Date(d);
+                                    bellStart.setHours(h, m, 0, 0);
+                                    
+                                    if (bellStart <= now) continue;
+                                    
+                                    // Check if actual class exists
+                                    let pData = dData.periods ? dData.periods[bell.period] : null;
+                                    // Check Rolcall?
+                                    if (bell.period === 'RC' && dData.rollcall) pData = dData.rollcall;
+
+                                    if(pData) {
+                                        const enriched = enrichPeriod(pData);
+                                        if (enriched && (enriched.subject || enriched.title)) {
+                                            return {
+                                                date: bellStart,
+                                                period: bell.label || bell.period,
+                                                subject: enriched.title || enriched.subject || 'Unknown',
+                                                room: enriched.room,
+                                                teacher: enriched.fullTeacher || enriched.teacher,
+                                                isToday: i === 0,
+                                                dayLabel: i === 0 ? 'Today' : (i === 1 ? 'Tomorrow' : dayInfo.dayName)
+                                            };
+                                        }
+                                    }
+                                }
+                             }
+                             return null;
+                        }
+
                         function updateTicker() {
                             const now = new Date();
                             const t = new Date();
                             const todayStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
                             
                             const progressBar = document.getElementById('daily-progress-bar');
-                            const timerDisplay = document.getElementById('countdown-timer');
-                            
-                            // Only run on Today
-                            if (currentDateStr !== todayStr) {
-                                if(progressBar) progressBar.classList.add('hidden');
-                                if(timerDisplay) timerDisplay.textContent = '--:--'; 
-                                return;
-                            }
-                            
-                            if(progressBar) progressBar.classList.remove('hidden');
+                            const bigTimer = document.getElementById('big-timer-display');
+                            const btSubject = document.getElementById('bt-subject');
+                            const btTimer = document.getElementById('bt-timer');
+                            const btDetails = document.getElementById('bt-details');
+                            const btLabel = document.getElementById('bt-label');
 
-                            // Progress Bar
-                            // Define day as 8:00 (Start P0/RC) to 15:10 (End)
-                            const startMins = 8 * 60; // 8:00
-                            const endMins = 15 * 60 + 10; // 15:10
-                            const currentMins = now.getHours() * 60 + now.getMinutes() + (now.getSeconds()/60);
-                            
-                            let pct = (currentMins - startMins) / (endMins - startMins);
-                            if (pct < 0) pct = 0;
-                            if (pct > 1) pct = 1;
-                            
-                            if(progressBar) {
+                            // --- Progress Bar Logic (Only shows if ON today's page and it is today) ---
+                            // Because progress bar is fixed to the specific day view logic
+                            if (currentDateStr === todayStr && progressBar) {
+                                progressBar.classList.remove('hidden');
+                                const startMins = 8 * 60; 
+                                const endMins = 15 * 60 + 10;
+                                const currentMins = now.getHours() * 60 + now.getMinutes() + (now.getSeconds()/60);
+                                
+                                let pct = (currentMins - startMins) / (endMins - startMins);
+                                if (pct < 0) pct = 0;
+                                if (pct > 1) pct = 1;
+                                
                                 progressBar.style.height = \`\${pct * 100}%\`;
                                 
-                                let activeColor = '#e5e7eb'; // default gray
+                                let activeColor = '#e5e7eb';
                                 const cards = document.querySelectorAll('.period-card');
-                                
-                                // Find current active period based on time
-                                let foundActive = false;
                                 cards.forEach(card => {
                                      const s = card.dataset.start;
                                      const e = card.dataset.end;
@@ -714,72 +792,89 @@ app.get('/', async (c) => {
                                          const [eh, em] = e.split(':').map(Number);
                                          const sTime = new Date(now); sTime.setHours(sh, sm, 0, 0);
                                          const eTime = new Date(now); eTime.setHours(eh, em, 0, 0);
-                                         
                                          if (now >= sTime && now < eTime) {
                                              activeColor = card.dataset.color || '#e5e7eb';
-                                             foundActive = true;
                                          }
                                      }
                                 });
-                                
-                                // If not explicit active period (e.g. recess), keep gray? Or Keep previous?
-                                // User said "colour of the lesson". If between lessons, maybe gray is fine.
                                 progressBar.style.backgroundColor = activeColor;
+                            } else if (progressBar) {
+                                progressBar.classList.add('hidden');
                             }
-                            
-                            // Countdown
-                            if (timerDisplay) {
-                                let targetTime = null;
-                                let showText = '';
+
+                            // --- Big Timer Logic ---
+                            if (bigTimer) {
+                                bigTimer.classList.remove('hidden');
                                 
+                                let targetTime = null;
+                                let timerLabel = "Until Start";
+                                let mainText = "";
+                                let subText = "";
+
                                 if (hoveredPeriodData) {
+                                     // Hovering a specific period
                                      const [h, m] = hoveredPeriodData.start.split(':').map(Number);
-                                     targetTime = new Date(now); targetTime.setHours(h, m, 0, 0);
+                                     // Date depends on text? Hovering assumes "rendered day"
+                                     const [ry, rm, rd] = currentDateStr.split('-').map(Number);
+                                     targetTime = new Date(ry, rm-1, rd);
+                                     targetTime.setHours(h, m, 0, 0);
+                                     
+                                     mainText = "Hovered Class"; // Or subject name if we could grab it easily
+                                     subText = "Selected Period";
+                                     timerLabel = "Until Start";
+                                     
+                                     // Correction: If hovering a past period today?
+                                     // The logic below calculates diff.
                                 } else {
-                                     // Next period
-                                     const cards = document.querySelectorAll('.period-card');
-                                     for (const card of cards) {
-                                         const s = card.dataset.start;
-                                         if(!s) continue;
-                                         const [h, m] = s.split(':').map(Number);
-                                         const sTime = new Date(now); sTime.setHours(h, m, 0, 0);
-                                         
-                                         if (sTime > now) {
-                                             targetTime = sTime;
-                                             break;
-                                         }
+                                     // Normal Mode: Find NEXT period
+                                     const next = findNextPeriod(now);
+                                     if (next) {
+                                         targetTime = next.date;
+                                         mainText = next.subject;
+                                         subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
+                                         timerLabel = "Until Start";
+                                     } else {
+                                         // No future classes found
+                                         mainText = "No Upcoming Classes";
+                                         subText = "Relax!";
+                                         btTimer.textContent = "--:--:--";
+                                         return;
                                      }
                                 }
-                                
-                                if (!targetTime) {
-                                    // Make sure we handle "End of Day" gracefully
-                                    const endDayTime = new Date(now);
-                                    endDayTime.setHours(15, 10, 0, 0);
-                                    if (now > endDayTime) {
-                                        timerDisplay.textContent = "End";
-                                    } else if (!hoveredPeriodData) {
-                                         // If we are before end of day but no next period found? (Maybe current is last)
-                                         // Then countdown to End of Day?
-                                         timerDisplay.textContent = "Last";
-                                    } else {
-                                         // Hovering past period
-                                         timerDisplay.textContent = "Ended";
-                                    }
-                                } else {
+
+                                if (targetTime) {
                                     let diff = targetTime - now;
+                                    
+                                    // Visual update
+                                    btSubject.textContent = mainText;
+                                    btDetails.innerHTML = subText;
+                                    btLabel.textContent = timerLabel;
+
                                     if (diff < 0) {
                                          // Past
-                                         timerDisplay.textContent = "Ended";
+                                         btTimer.textContent = "Started";
+                                         btLabel.textContent = "Time Since Start: " + formatDuration(Math.abs(diff));
                                     } else {
-                                        const dHours = Math.floor(diff / (1000 * 60 * 60));
-                                        const dMins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                                        const dSecs = Math.floor((diff % (1000 * 60)) / 1000);
-                                        // Format
-                                        const hStr = dHours > 0 ? \`\${String(dHours)}:\` : '';
-                                        timerDisplay.textContent = \`\${hStr}\${String(dMins).padStart(2,'0')}:\${String(dSecs).padStart(2,'0')}\`;
+                                        btTimer.textContent = formatDuration(diff);
                                     }
                                 }
                             }
+                        }
+
+                        function formatDuration(ms) {
+                            const dHours = Math.floor(ms / (1000 * 60 * 60));
+                            const dMins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+                            const dSecs = Math.floor((ms % (1000 * 60)) / 1000);
+                            
+                            // If > 24 hours, maybe show Days?
+                            if (dHours > 24) {
+                                const days = Math.floor(dHours / 24);
+                                const h = dHours % 24;
+                                return \`\${days}d \${h}h \${dMins}m\`;
+                            }
+                            
+                            const hStr = dHours > 0 ? \`\${String(dHours)}:\` : '';
+                            return \`\${hStr}\${String(dMins).padStart(2,'0')}:\${String(dSecs).padStart(2,'0')}\`;
                         }
 
                     })();
