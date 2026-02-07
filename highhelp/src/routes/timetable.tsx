@@ -131,6 +131,7 @@ app.get('/', async (c) => {
                         let currentView = 'day'; // 'day' or 'cycle'
                         let tickerInterval = null;
                         let hoveredPeriodData = null;
+                        let activeSubject = null;
 
                         function getInitialDate() {
                             const now = new Date();
@@ -207,6 +208,7 @@ app.get('/', async (c) => {
                         });
 
                         function render() {
+                            activeSubject = null;
                             // Update Tab UI
                             const tabDay = document.getElementById('tab-day');
                             const tabCycle = document.getElementById('tab-cycle');
@@ -399,7 +401,7 @@ app.get('/', async (c) => {
             \${data.room ? \`<span class="font-bold text-black \${highlightChange && variation && variation.roomTo ? 'text-red-600' : ''}">\${data.room}</span>\` : ''}
         </div>
         
-        <div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
+        <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
             <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2">
                 <span class="font-bold text-sm">\${data.title}</span>
                 <span class="text-gray-300">\${nextTimeStr}</span>
@@ -541,58 +543,107 @@ app.get('/', async (c) => {
 
                         function attachHoverEffects() {
                             const cards = document.querySelectorAll('.period-card');
+                            
                             cards.forEach(card => {
-                                card.addEventListener('mouseenter', () => {
-                                    const subject = card.getAttribute('data-subject');
-                                    // Fix Z-Index for wrapper to ensure tooltip shows
-                                    const wrapper = card.closest('.flex.items-center');
-                                    if(wrapper) {
-                                        wrapper.style.zIndex = '50';
-                                        wrapper.style.position = 'relative';
-                                    }
+                                const subject = card.getAttribute('data-subject');
 
-                                    // Capture time & details
-                                    const start = card.getAttribute('data-start');
-                                    const end = card.getAttribute('data-end');
-                                    const title = card.getAttribute('data-title');
-                                    const teacher = card.getAttribute('data-teacher');
-                                    const room = card.getAttribute('data-room');
+                                card.addEventListener('click', (e) => {
+                                    e.stopPropagation(); // Don't trigger document clear
+
+                                    // If this card is already the active one, toggle off
+                                    if (activeSubject === subject) {
+                                        activeSubject = null;
+                                        resetCards(cards);
+                                        return;
+                                    }
                                     
-                                    if(start) {
-                                        hoveredPeriodData = { start, end, title, teacher, room };
-                                        updateTicker(); // Immediate update
-                                    }
+                                    // Reset previous state first to avoid bugs (z-index artifacts, etc)
+                                    resetCards(cards);
 
-                                    if (!subject) return;
+                                    // Lock this subject
+                                    activeSubject = subject;
+                                    highlightCards(cards, subject, card);
+                                });
 
-                                    cards.forEach(c => {
-                                        if (c.getAttribute('data-subject') === subject) {
-                                            c.classList.add('opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
-                                            c.style.transform = 'scale(1.02)';
-                                            c.style.zIndex = '10';
-                                        } else {
-                                            c.classList.add('opacity-25');
-                                        }
-                                    });
+                                card.addEventListener('mouseenter', () => {
+                                    if (activeSubject) return; // Don't override click lock
+                                    highlightCards(cards, subject, card);
                                 });
                                 
                                 card.addEventListener('mouseleave', () => {
-                                    hoveredPeriodData = null;
-                                    updateTicker(); // Immediate update
-
-                                    const wrapper = card.closest('.flex.items-center');
-                                    if(wrapper) {
-                                        wrapper.style.zIndex = '';
-                                        wrapper.style.position = '';
-                                    }
-
-                                    cards.forEach(c => {
-                                        c.classList.remove('opacity-25', 'opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
-                                        c.style.transform = '';
-                                        c.style.zIndex = '';
-                                    });
+                                    if (activeSubject) return; // Don't clear if locked
+                                    resetCards(cards);
                                 });
                             });
+                        }
+
+                        function highlightCards(cards, subject, sourceCard) {
+                            // 1. Z-Index fix for wrapper
+                            const wrapper = sourceCard.closest('.flex.items-center');
+                            if(wrapper) {
+                                wrapper.style.zIndex = '50';
+                                wrapper.style.position = 'relative';
+                            }
+
+                            // 2. Ticker Update
+                            const start = sourceCard.getAttribute('data-start');
+                            const end = sourceCard.getAttribute('data-end');
+                            const title = sourceCard.getAttribute('data-title');
+                            const teacher = sourceCard.getAttribute('data-teacher');
+                            const room = sourceCard.getAttribute('data-room');
+                            
+                            if(start) {
+                                hoveredPeriodData = { start, end, title, teacher, room };
+                                updateTicker();
+                            }
+
+                            // 3. Highlight Matching Cards & Tooltip
+                            if (!subject) return;
+
+                            cards.forEach(c => {
+                                // Dim others / Highlight Matches
+                                if (c.getAttribute('data-subject') === subject) {
+                                    c.classList.add('opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
+                                    c.style.transform = 'scale(1.02)';
+                                    c.style.zIndex = '10';
+                                } else {
+                                    c.classList.add('opacity-25');
+                                    c.classList.remove('opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
+                                    c.style.transform = '';
+                                    c.style.zIndex = '';
+                                }
+                            });
+
+                            // 4. Force Tooltip Show (for click/mobile) by inline style
+                            // Reset tooltips first
+                            document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = '');
+                            
+                            const tooltip = sourceCard.querySelector('.tooltip-content');
+                            if (tooltip) {
+                                tooltip.style.display = 'block';
+                            }
+                        }
+
+                        function resetCards(cards) {
+                            hoveredPeriodData = null;
+                            updateTicker();
+
+                            // Reset wrapper z-index
+                            cards.forEach(c => {
+                                const wrapper = c.closest('.flex.items-center');
+                                if(wrapper) {
+                                    wrapper.style.zIndex = '';
+                                    wrapper.style.position = '';
+                                }
+                                
+                                // Reset card styles
+                                c.classList.remove('opacity-25', 'opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
+                                c.style.transform = '';
+                                c.style.zIndex = '';
+                            });
+
+                            // Reset tooltips
+                            document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = '');
                         }
 
                         function getNextSubjectOccurrence(subjectCode, currentDateStr, currentPeriodId) {
@@ -681,7 +732,13 @@ app.get('/', async (c) => {
                     currentView = 'cycle';
                 render();
                         };
-
+                        document.addEventListener('click', (e) => {
+                            if (activeSubject && !e.target.closest('.period-card')) {
+                                activeSubject = null;
+                                const cards = document.querySelectorAll('.period-card');
+                                resetCards(cards);
+                            }
+                        });
                 document.getElementById('loader').classList.add('hidden');
                 document.getElementById('content').classList.remove('hidden');
                 render();
