@@ -230,7 +230,7 @@ app.get('/', async (c) => {
                                 let innerHtml = '';
                                 if (hasContent) {
                                     // Calculate time to next
-                                    const nextTimeStr = getNextTimeForSubject(data.subjectCode);
+                                    const nextTimeStr = getNextSubjectOccurrence(data.subjectCode, currentDateStr, bell.period);
                                     const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
 
                                     innerHtml = \`
@@ -348,13 +348,15 @@ app.get('/', async (c) => {
 
                         function getMiniCycleHtml(subjectCode, color) {
                             if (!subjectCode) return '';
-                            // 2 rows, 5 cols
-                            // Week A: days 1-5, Week B: days 6-10
+
+                            // Calculate today's day number for highlighting
+                            const t = new Date();
+                            const tStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
+                            const todayInfo = calendarMap[tStr];
+                            const todayNum = todayInfo ? todayInfo.dayNumber : null;
                             
                             let html = '<div class="grid grid-cols-5 gap-1 gap-y-2">';
-                            // Labels? Maybe too small. Just dots. 
-                            // Add headers 'A' and 'B'? 
-                            // Let's do 2 rows.
+                            // 2 rows (Week A, Week B)
                             
                             for (let week=0; week<2; week++) {
                                 for (let day=1; day<=5; day++) {
@@ -362,13 +364,8 @@ app.get('/', async (c) => {
                                     const dData = daysData[dayNum.toString()];
                                     let hasSubject = false;
                                     if (dData && dData.periods) {
-                                        // Check all periods
                                         Object.values(dData.periods).forEach(p => {
                                             if (!p) return;
-                                            // Need to enrich or check title match
-                                            // We can check title or quick match if we know current subjectCode
-                                            // subjectCode is richer, so compare titles
-                                            // Re-enrich is safe
                                             const e = enrichPeriod(p);
                                             if (e && e.subjectCode === subjectCode) hasSubject = true;
                                         });
@@ -377,7 +374,13 @@ app.get('/', async (c) => {
                                     const bgClass = hasSubject ? '' : 'bg-gray-700';
                                     const style = hasSubject ? \`background-color: \${color};\` : '';
                                     
-                                    html += \`<div class="h-1.5 rounded-full w-full \${bgClass}" style="\${style}"></div>\`;
+                                    // Highlight today
+                                    let extraClass = '';
+                                    if (todayNum && dayNum.toString() === todayNum) {
+                                        extraClass = 'ring-2 ring-white ring-offset-1 ring-offset-gray-800'; 
+                                    }
+
+                                    html += \`<div class="h-1.5 rounded-full w-full \${bgClass} \${extraClass}" style="\${style}"></div>\`;
                                 }
                             }
                             html += '</div>';
@@ -412,85 +415,106 @@ app.get('/', async (c) => {
                             });
                         }
 
-                        function getNextTimeForSubject(subjectCode) {
+                        function getNextSubjectOccurrence(subjectCode, currentDateStr, currentPeriodId) {
                             if (!subjectCode) return '';
-                           
-                            let searchDate = new Date();
-                            for (let i=0; i<14; i++) {
-                                searchDate.setDate(searchDate.getDate() + (i===0?0:1)); 
-                                const sStr = searchDate.toISOString().split('T')[0];
-                                const dInfo = calendarMap[sStr];
-                                if (dInfo && daysData[dInfo.dayNumber]) {
+                            const pOrder = ['0', '1', '2', '3', '4', '5'];
+                            let pInd = pOrder.indexOf(currentPeriodId);
+                            if (pInd === -1) pInd = -1; 
+
+                            const [y, m, d] = currentDateStr.split('-').map(Number);
+                            let searchDate = new Date(y, m - 1, d);
+                            let checkFromIndex = pInd + 1;
+
+                            for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
+                                if (dayOffset > 0) {
+                                    searchDate.setDate(searchDate.getDate() + 1);
+                                    checkFromIndex = 0; 
+                                }
+
+                                const dy = searchDate.getFullYear();
+                                const dm = String(searchDate.getMonth() + 1).padStart(2, '0');
+                                const dd = String(searchDate.getDate()).padStart(2, '0');
+                                const sStr = \`\${dy}-\${dm}-\${dd}\`;
+
+                const dInfo = calendarMap[sStr];
+                if (dInfo && daysData[dInfo.dayNumber]) {
                                     const dayP = daysData[dInfo.dayNumber].periods;
-                                    // Check periods 0 to 5
-                                    for (let pId of ['0','1','2','3','4','5']) {
-                                        if (dayP[pId]) {
-                                            const enriched = enrichPeriod(dayP[pId]);
-                                            if (enriched.subjectCode === subjectCode) {
-                                                // If today, check if passed? (Optional enhancement)
-                                                return \`Next: \${dInfo.dayName.slice(0, dInfo.dayName.length - 1)} P\${pId}\`;
+
+                for (let i = checkFromIndex; i < pOrder.length; i++) {
+                                        const pId = pOrder[i];
+                const pData = dayP[pId];
+                if (pData) {
+                                            // Check if same subject
+                                            const enriched = enrichPeriod(pData);
+                if (enriched && enriched.subjectCode === subjectCode) {
+                    let dayLabel = '';
+                if (dayOffset === 0) {
+                    dayLabel = 'Today';
+                                                } else if (dayOffset === 1) {
+                    dayLabel = 'Next Day';
+                                                } else {
+                                                    const dName = dInfo.dayName || '';
+                dayLabel = dName.replace(/[AB]$/, '');
+                                                }
+                                                return \`Next: \${dayLabel} P\${pId}\`;
                                             }
                                         }
                                     }
                                 }
                             }
-                            return '';
+                return '/';
                         }
-                        
-                        function formatTime(t) {
+
+                function formatTime(t) {
                             if (!t) return '';
-                            const [h, m] = t.split(':').map(Number);
+                const [h, m] = t.split(':').map(Number);
                             const suffix = h >= 12 ? 'PM' : 'AM';
-                            const h12 = h % 12 || 12;
-                            return \`\${h12}:\${m.toString().padStart(2, '0')} \${suffix}\`;
+                const h12 = h % 12 || 12;
+                return \`\${h12}:\${m.toString().padStart(2, '0')} \${suffix}\`;
                         }
 
-                        function changeDate(delta) {
-                            let d = new Date(currentDateStr);
-                            let count = 0;
-                            // Search for next weekday, prevent infinite loop with safe cap
-                            while(count < 7) {
-                                d.setDate(d.getDate() + delta);
-                                const day = d.getDay();
-                                if (day !== 0 && day !== 6) {
-                                    // Found a weekday
-                                    break;
-                                }
-                                count++;
+                function changeDate(delta) {
+                            const [y, m, day] = currentDateStr.split('-').map(Number);
+                let d = new Date(y, m - 1, day);
+                let count = 0;
+                while(count < 7) {
+                    d.setDate(d.getDate() + delta);
+                const dw = d.getDay();
+                if (dw !== 0 && dw !== 6) break;
+                count++;
                             }
-
-                            const year = d.getFullYear();
-                            const month = String(d.getMonth() + 1).padStart(2, '0');
-                            const day = String(d.getDate()).padStart(2, '0');
-                            currentDateStr = \`\${year}-\${month}-\${day}\`;
-                            render();
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const dy = String(d.getDate()).padStart(2, '0');
+                currentDateStr = \`\${year}-\${month}-\${dy}\`;
+                render();
                         }
                         
                         document.getElementById('btn-prev').onclick = () => changeDate(-1);
                         document.getElementById('btn-next').onclick = () => changeDate(1);
                         document.getElementById('btn-reset').onclick = () => {
-                            currentDateStr = getInitialDate();
-                            render();
+                    currentDateStr = getInitialDate();
+                render();
                         };
                         
                         document.getElementById('tab-day').onclick = () => {
-                            currentView = 'day';
-                            render();
+                    currentView = 'day';
+                render();
                         };
                         document.getElementById('tab-cycle').onclick = () => {
-                            currentView = 'cycle';
-                            render();
+                    currentView = 'cycle';
+                render();
                         };
 
-                        document.getElementById('loader').classList.add('hidden');
-                        document.getElementById('content').classList.remove('hidden');
-                        render();
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+                render();
 
                     })();
-                    `
+                `
                 }}></script>
             </div>
-        </Layout>
+        </Layout >
     )
 })
 
