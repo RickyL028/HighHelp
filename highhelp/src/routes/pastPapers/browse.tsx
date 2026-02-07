@@ -13,9 +13,9 @@ app.get('/past-papers', async (c) => {
     const subject = c.req.query('subject')
     const tab = c.req.query('tab') || 'browse';
 
-    // 1. Landing Page -> Subject Selector
+    
     if (!subject) {
-        // Fetch recent papers globally
+    
         const recentPapers = await c.env.DB.prepare(`
             SELECT p.*, count(q.id) as question_count 
             FROM papers p 
@@ -38,7 +38,7 @@ app.get('/past-papers', async (c) => {
         )
     }
 
-    // 2. Subject View
+    
     const canUpload = user && canUploadPastPaper(user, subject);
 
     // Tabs Config
@@ -122,7 +122,7 @@ app.get('/past-papers', async (c) => {
         const limit = 20;
         const offset = (page - 1) * limit;
 
-        // Filters
+        
         const filterTopic = c.req.query('topic');
         const filterYear = c.req.query('year');
         const filterStatus = c.req.query('status'); // done, undone
@@ -131,7 +131,7 @@ app.get('/past-papers', async (c) => {
         const filterMarksMin = c.req.query('marks_min');
         const filterMarksMax = c.req.query('marks_max');
         const sort = c.req.query('sort') || 'school_asc';
-        const mode = c.req.query('mode'); // 'select'
+        const mode = c.req.query('mode'); 
 
         let query = `
             SELECT q.*, p.school_name, p.academic_year, 
@@ -144,7 +144,7 @@ app.get('/past-papers', async (c) => {
             LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             WHERE p.subject = ? AND q.is_deleted = 0
         `;
-        // KEY FIX: user?.id || null to prevent "Internal Server Error" (bind undefined)
+        
         const params: any[] = [user?.id || null, subject];
 
         if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
@@ -162,7 +162,7 @@ app.get('/past-papers', async (c) => {
 
         query += ` GROUP BY q.id`;
 
-        // Sort
+        
         if (sort === 'year_desc') query += ` ORDER BY p.academic_year DESC, q.ordering_index ASC`;
         else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`;
         else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`;
@@ -179,7 +179,7 @@ app.get('/past-papers', async (c) => {
             <div>
                 <h1 class="text-3xl font-bold mb-6">Practice Questions</h1>
 
-                {/* Filters Bar */}
+                
                 <form action="/past-papers" method="get" class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 space-y-4">
                     <input type="hidden" name="subject" value={subject} />
                     <input type="hidden" name="tab" value="practice" />
@@ -245,7 +245,8 @@ app.get('/past-papers', async (c) => {
                     </div>
                 </form>
 
-                {/* Question List */}
+
+
                 <div class="space-y-4">
                     {questions.results.length === 0 ? (
                         <div class="text-center py-12 text-gray-500">No questions found matching your filters.</div>
@@ -317,7 +318,7 @@ app.get('/past-papers', async (c) => {
                     )
                     }
                 </div>
-                {/* Pagination (Simple) */}
+                
                 <div class="mt-8 flex justify-center gap-2">
                     {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border rounded bg-white hover:bg-gray-50">Previous</a>}
                     <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border rounded bg-white hover:bg-gray-50">Next</a>
@@ -327,7 +328,7 @@ app.get('/past-papers', async (c) => {
 
     } else if (tab === 'review') {
         if (!user) return c.redirect('/login')
-        // Review Logic
+        
         const query = `
             SELECT q.*, p.school_name, p.academic_year, 
                    group_concat(t.name, ', ') as topic_names,
@@ -406,14 +407,14 @@ app.get('/past-papers', async (c) => {
     return c.html(
         <Layout title={`Past Papers - ${subject}`} user={user}>
             <div class="mx-auto">
-                {/* Breadcrumbs */}
+                
                 <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
                     <a href="/past-papers" class="hover:underline">Past Papers</a>
                     <span>/</span>
                     <span class="font-bold text-gray-700">{subject}</span>
                 </div>
 
-                {/* Tabs */}
+                
                 <div class="border-b border-gray-200 mb-8">
                     <nav class="-mb-px flex space-x-8">
                         {tabs.map(t => (

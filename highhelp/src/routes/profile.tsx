@@ -133,7 +133,7 @@ app.post('/profile', async (c) => {
     const action = body['action']
 
     if (action === 'update_tags') {
-        // 1. Fetch current tags safely
+        
         let currentTags: Record<string, number> = {};
         try {
             currentTags = user.tags ? JSON.parse(user.tags) : {};
@@ -143,33 +143,24 @@ app.post('/profile', async (c) => {
 
         const newTags: Record<string, number> = {};
 
-        // 2. Iterate over the EXISTING keys from the DB
         for (const tag of Object.keys(currentTags)) {
-
-            // --- THE FIX ---
-            // We replicate exactly how the Frontend created the input name.
-            // If the tag is "Dean's List", the key becomes "tag_Dean%27s%20List"
+            
             const formKey = `tag_${encodeURIComponent(tag)}`;
 
-            // 3. Check if that specific key exists in the form body
             if (body[formKey] === '1') {
                 newTags[tag] = 1;
             } else {
                 newTags[tag] = 0;
             }
         }
-
-        // 4. Update Database
         await c.env.DB.prepare('UPDATE users SET tags = ? WHERE id = ?')
             .bind(JSON.stringify(newTags), user.id).run();
-
-        // Redirect back to profile to show changes
         return c.redirect('/profile')
     }
 
-    // Handle password change or other actions here...
+    
     if (action === 'change_password') {
-        // ... your password logic
+        // TODO: change password
     }
 
     return c.redirect('/profile')

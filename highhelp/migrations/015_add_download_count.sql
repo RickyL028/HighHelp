@@ -1,0 +1,1 @@
+ALTER TABLE resources ADD COLUMN download_count INTEGER DEFAULT 0;

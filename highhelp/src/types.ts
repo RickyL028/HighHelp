@@ -8,7 +8,7 @@ export interface User {
     permission_level: number;
     created_at: string;
     tags?: string | null;
-    points: number; // Defaults to 0
+    points: number; // Defaults to 0 but actually +2 because logic change
 }
 
 export interface Topic {

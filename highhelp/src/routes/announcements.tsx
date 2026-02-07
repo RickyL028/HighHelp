@@ -117,8 +117,8 @@ app.get('/announcements', async (c) => {
                             class={`search-item bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors group h-full flex flex-col justify-between ${a.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
                             data-search-text={`${a.title} ${a.content} ${a.subject} ${a.first_name || ''} ${a.last_name || ''}`}
                         >
-                            <div>
-                                <h2 class="text-lg font-bold text-gray-900 mb-1 leading-snug">{a.title}</h2>
+                            <div class="cursor-pointer" onclick={`window.open('/announcements/${a.id}', '_blank')`}>
+                                <h2 class="text-lg font-bold text-gray-900 mb-1 leading-snug group-hover:text-blue-700 transition-colors">{a.title}</h2>
 
                                 <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
                                     <span class="font-bold text-blue-700 uppercase tracking-wide">{a.subject}</span>
@@ -223,22 +223,84 @@ app.post('/announcements', async (c) => {
     return c.redirect('/announcements')
 })
 
+
+
+
+app.get('/announcements/:id', async (c) => {
+    const user = await getUser(c)
+    const id = c.req.param('id')
+
+    const ann = await c.env.DB.prepare(`
+        SELECT a.*, u.first_name, u.last_name, u.tags 
+        FROM announcements a 
+        LEFT JOIN users u ON a.author_id = u.id 
+        WHERE a.id = ?
+    `).bind(id).first<any>();
+
+    if (!ann) return c.notFound();
+    if (ann.is_deleted && (!user || !canViewDeleted(user))) return c.notFound();
+
+    return c.html(
+        <Layout title={ann.title} user={user}>
+            <div class="mx-auto max-w-4xl">
+                <div class="mb-4">
+                    <a href={`/announcements?subject=${encodeURIComponent(ann.subject)}`} class="text-blue-600 hover:underline text-sm">← Back to {ann.subject} Announcements</a>
+                </div>
+
+                <div class={`bg-white rounded border border-gray-300 overflow-hidden mb-8 ${ann.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
+                    <div class="p-8 border-b border-gray-100">
+                        {ann.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">{ann.subject}</span>
+                            <span class="text-gray-400 text-sm local-date" data-timestamp={ann.created_at} data-format="datetime">| {new Date(ann.created_at).toLocaleString()}</span>
+                        </div>
+                        <h1 class="text-3xl font-bold text-gray-900 mb-6 leading-tight">{ann.title}</h1>
+                        <div class="prose max-w-none text-gray-800 whitespace-pre-wrap leading-relaxed">
+                            {ann.content}
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-8 py-4 flex items-center justify-between">
+                        <div class="text-sm text-gray-600 flex items-center">
+                            <span class="font-bold mr-1">Posted by:</span> {ann.first_name ? `${ann.first_name} ${ann.last_name}` : 'Unknown'}
+                            <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(ann.tags) }}></span>
+                        </div>
+                        {!ann.is_deleted && user && (canModerateSubject(user, ann.subject) || user.id === ann.author_id) && (
+                            <form action={`/announcements/${ann.id}/delete`} method="post">
+                                <button class="text-red-500 font-bold text-sm hover:underline" onclick="return confirm('Delete this announcement?')">Delete Post</button>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </Layout>
+    )
+})
+
 app.post('/announcements/:id/delete', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
-    const id = c.req.param('id')
 
-    const ann = await c.env.DB.prepare('SELECT * FROM announcements WHERE id = ?').bind(id).first() as any;
-    if (!ann) return c.notFound();
+    const id = Number(c.req.param('id'));
 
-    if (!canModerateSubject(user, ann.subject) && user.id !== ann.author_id) {
-        return c.text('Unauthorised', 403);
+    
+    const ann = await c.env.DB.prepare('SELECT * FROM announcements WHERE id = ?').bind(id).first<any>()
+
+    if (!ann) return c.notFound()
+
+    
+    if (user.id !== ann.author_id && !canModerateSubject(user, ann.subject)) {
+        return c.text('You are not authorized to delete this announcement.', 403)
     }
 
-    await c.env.DB.prepare('UPDATE announcements SET is_deleted = 1 WHERE id = ?').bind(id).run();
-    await logAction(c.env.DB, user.id, 'DELETE_ANNOUNCEMENT', `Deleted announcement ${id}`, Number(id), 'announcements');
+    
+    await c.env.DB.prepare('UPDATE announcements SET is_deleted = 1 WHERE id = ?')
+        .bind(id)
+        .run()
 
-    return c.redirect('/announcements');
+    
+    await logAction(c.env.DB, user.id, 'DELETE_ANNOUNCEMENT', `Deleted announcement '${ann.title}'`, id, 'announcements')
+
+    
+    return c.redirect('/announcements')
 })
-
 export default app

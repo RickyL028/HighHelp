@@ -17,7 +17,6 @@ export const PRIORITY_STANDARD = [
     "Engineering Studies"
 ];
 
-// Helper to update user points
 export async function updatePoints(userId: number, amount: number, db: D1Database) {
     try {
         await db.prepare('UPDATE users SET points = points + ? WHERE id = ?').bind(amount, userId).run();
@@ -44,12 +43,12 @@ export async function getUser(c: any) {
     return await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first()
 }
 
-// New Helper to sort subjects based on the requested priority
+// sort subjects based on the requested priority
 export const getSortedSubjects = (type: 'standard' | 'essay') => {
-    // Cast the priority list to match the type of the elements in SUBJECTS
+    
     const priorityList = (type === 'essay' ? PRIORITY_ESSAY : PRIORITY_STANDARD) as typeof SUBJECTS[number][];
 
-    // Now TypeScript knows 's' is the specific literal type, not just a generic 'string'
+    
     const popular = priorityList.filter(s => SUBJECTS.includes(s));
 
     const others = SUBJECTS
@@ -59,7 +58,7 @@ export const getSortedSubjects = (type: 'standard' | 'essay') => {
     return { popular, others };
 }
 
-// Helper to render tags pill
+// render tags pill
 export const renderTags = (tagsJson: string | null) => {
     if (!tagsJson) return '';
     try {

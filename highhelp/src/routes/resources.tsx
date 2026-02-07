@@ -13,9 +13,9 @@ app.get('/resources', async (c) => {
 
     const subject = c.req.query('subject')
 
-    // 1. Landing Page (No Subject) -> Show Recent Resources + Subject Selector at Bottom
+    
     if (!subject) {
-        // Fetch recent resources globally
+    
         const showDeleted = user && canViewDeleted(user);
         const sql = `
             SELECT r.*, u.first_name, u.last_name, u.tags 
@@ -31,7 +31,7 @@ app.get('/resources', async (c) => {
             <Layout title="Resources" user={user}>
                 <div class="mx-auto space-y-12">
 
-                    {/* Recent Resources Section */}
+                    
                     <section>
                         <h1 class="text-3xl font-bold mb-6">Recent Resources</h1>
                         <div class="space-y-4">
@@ -75,7 +75,7 @@ app.get('/resources', async (c) => {
 
                     <hr class="border-gray-200" />
 
-                    {/* Subject Selector at Bottom */}
+                    
                     <section>
                         <h2 class="text-xl font-bold mb-4">Browse/Upload by Subject</h2>
                         <SubjectSelector baseUrl="/resources" type="standard" />
@@ -85,7 +85,7 @@ app.get('/resources', async (c) => {
         )
     }
 
-    // 2. Subject Page -> Unchanged Logic
+    
     const showDeleted = user && canViewDeleted(user);
     const sql = `
         SELECT r.*, u.first_name, u.last_name, u.tags 
@@ -154,7 +154,7 @@ app.get('/resources', async (c) => {
                 </div>
             </div>
 
-            {/* Grid View Container */}
+            {/* Grid View */}
             <div id="grid-view-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {results?.length === 0 ? (
                     <div class="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
@@ -187,8 +187,8 @@ app.get('/resources', async (c) => {
                             </div>
 
                             <div class="flex justify-between items-center mt-auto pt-2">
-                                <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 font-bold text-xs hover:underline flex items-center gap-1 uppercase tracking-wide">
-                                    Download
+                                <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 font-bold text-xs hover:underline flex items-center gap-1 uppercase tracking-wide">
+                                    Download (count: {r.download_count || 0})
                                 </a>
                                 {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
                                     <form action={`/resources/${r.id}/delete`} method="post">
@@ -201,7 +201,7 @@ app.get('/resources', async (c) => {
                 )}
             </div>
 
-            {/* List View Container (Table) */}
+            {/* Table */}
             <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -210,13 +210,14 @@ app.get('/resources', async (c) => {
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploader</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Downloads</th>
                             <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         {results?.length === 0 ? (
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={5}>No resources uploaded for this subject yet.</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={6}>No resources uploaded for this subject yet.</td>
                             </tr>
                         ) : (
                             results.map((r: any) => (
@@ -237,8 +238,11 @@ app.get('/resources', async (c) => {
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {r.first_name ? `${r.first_name} ${r.last_name}` : 'Unknown'}
                                     </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                        {r.download_count || 0}
+                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex items-center justify-end gap-3">
-                                        <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 hover:text-blue-900">Download</a>
+                                        <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 hover:text-blue-900">Download</a>
                                         {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
                                             <form action={`/resources/${r.id}/delete`} method="post">
                                                 <button class="text-red-500 hover:text-red-700">Delete</button>
@@ -284,7 +288,7 @@ app.post('/resources', async (c) => {
 
             await logAction(c.env.DB, user.id, 'CREATE_RESOURCE', `Uploaded resource '${title}' in ${subject}`, res.meta.last_row_id, 'resources');
 
-            // Award +3 points for upload
+
             await updatePoints(user.id, 3, c.env.DB);
 
         }
@@ -323,6 +327,13 @@ app.get('/download/*', async (c) => {
         const key = path.slice(prefix.length);
         const object = await c.env.BUCKET.get(key);
         if (!object) return c.text('File not found', 404);
+
+        
+        const id = c.req.query('id');
+        if (id) {
+            await c.env.DB.prepare('UPDATE resources SET download_count = download_count + 1 WHERE id = ?').bind(id).run();
+        }
+
         return new Response(object.body, {
             headers: {
                 'etag': object.httpEtag,
