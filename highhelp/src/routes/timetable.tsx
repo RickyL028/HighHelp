@@ -38,13 +38,14 @@ app.get('/', async (c) => {
 
 
                     {/* Big Timer */}
-                    <div id="big-timer-display" class="mb-6 bg-gradient-to-br from-white-900 to-white-800 rounded-2xl p-6 text-black shadow-2xl transform transition-all relative overflow-hidden hidden">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                        <div class="absolute bottom-0 left-0 w-24 h-24 bg-red-500 opacity-10 rounded-full -ml-10 -mb-10 blur-xl"></div>
+                    {/* Big Timer */}
+                    <div id="big-timer-display" class="mb-6 bg-white border border-gray-200 rounded-2xl p-6 text-black transform transition-all relative overflow-hidden hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-gray-100 opacity-50 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                        <div class="absolute bottom-0 left-0 w-24 h-24 bg-red-500 opacity-5 rounded-full -ml-10 -mb-10 blur-xl"></div>
 
                         <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                             <div class="text-center md:text-left min-w-0">
-                                <h2 class="text-gray-400 text-sm font-bold uppercase tracking-widest mb-1">Next</h2>
+                                <h2 class="text-gray-400 text-sm font-bold uppercase tracking-widest mb-1">Time till</h2>
                                 <div id="bt-subject" class="text-2xl font-bold truncate">Checking...</div>
                                 <div id="bt-details" class="text-sm text-gray-400 mt-1 flex items-center gap-2 justify-center md:justify-start"></div>
                             </div>
@@ -339,7 +340,7 @@ app.get('/', async (c) => {
                                     if (variation.casualSurname) {
                                         data.fullTeacher = variation.casualSurname;
                                         data.teacher = variation.casual || variation.casualSurname;
-                                        variationTags.push('Cover: ' + variation.casualSurname);
+                                        variationTags.push('Sub: ' + variation.casualSurname);
                                     } else if (variation.teacher && variation.teacher !== data.teacher) {
                                         data.teacher = variation.teacher;
                                     }
@@ -378,6 +379,9 @@ app.get('/', async (c) => {
                                     innerHtml = \`
     <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
          data-subject="\${data.subjectCode}"
+         data-title="\${data.title || data.subject || ''}"
+         data-teacher="\${data.fullTeacher || data.teacher || ''}"
+         data-room="\${data.room || ''}"
          data-start="\${bell.startTime}"
          data-end="\${bell.endTime}"
          data-color="\${stripColor}">
@@ -547,12 +551,15 @@ app.get('/', async (c) => {
                                         wrapper.style.position = 'relative';
                                     }
 
-                                    // Capture time
+                                    // Capture time & details
                                     const start = card.getAttribute('data-start');
                                     const end = card.getAttribute('data-end');
+                                    const title = card.getAttribute('data-title');
+                                    const teacher = card.getAttribute('data-teacher');
+                                    const room = card.getAttribute('data-room');
                                     
                                     if(start) {
-                                        hoveredPeriodData = { start, end };
+                                        hoveredPeriodData = { start, end, title, teacher, room };
                                         updateTicker(); // Immediate update
                                     }
 
@@ -812,75 +819,70 @@ app.get('/', async (c) => {
                                 let subText = "";
 
                                 if (hoveredPeriodData) {
-                                     // Hovering a specific period
                                      const [h, m] = hoveredPeriodData.start.split(':').map(Number);
-                                     // Date depends on text? Hovering assumes "rendered day"
                                      const [ry, rm, rd] = currentDateStr.split('-').map(Number);
                                      targetTime = new Date(ry, rm-1, rd);
                                      targetTime.setHours(h, m, 0, 0);
                                      
-                                     mainText = "Hovered Class"; // Or subject name if we could grab it easily
-                                     subText = "Selected Period";
-                                     timerLabel = "Until Start";
-                                     
-                                     // Correction: If hovering a past period today?
-                                     // The logic below calculates diff.
+                                     mainText = hoveredPeriodData.title || "Selected Class";
+                                     subText = \`<span class= "font-bold text-black"> \${hoveredPeriodData.room || ''}</span>\${hoveredPeriodData.room && hoveredPeriodData.teacher ? ' • ' : ''}\${hoveredPeriodData.teacher || ''}\`;
+            timerLabel = "Until Start";
+
+            if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) {
+                subText = \`<span class="font-bold text-black">Selected Period</span>\`;
+                                     }
                                 } else {
-                                     // Normal Mode: Find NEXT period
                                      const next = findNextPeriod(now);
-                                     if (next) {
-                                         targetTime = next.date;
-                                         mainText = next.subject;
-                                         subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
-                                         timerLabel = "Until Start";
+            if (next) {
+                targetTime = next.date;
+            mainText = next.subject;
+            subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
+            timerLabel = "Until Start";
                                      } else {
-                                         // No future classes found
-                                         mainText = "No Upcoming Classes";
-                                         subText = "Relax!";
-                                         btTimer.textContent = "--:--:--";
-                                         return;
+                mainText = "No Upcoming Classes";
+            subText = "Relax!";
+            btTimer.textContent = "--:--:--";
+            return;
                                      }
                                 }
 
-                                if (targetTime) {
-                                    let diff = targetTime - now;
-                                    
-                                    // Visual update
-                                    btSubject.textContent = mainText;
-                                    btDetails.innerHTML = subText;
-                                    btLabel.textContent = timerLabel;
+            if (targetTime) {
+                let diff = targetTime - now;
 
-                                    if (diff < 0) {
-                                         // Past
-                                         btTimer.textContent = "Started";
-                                         btLabel.textContent = "Time Since Start: " + formatDuration(Math.abs(diff));
+            btSubject.textContent = mainText;
+            btDetails.innerHTML = subText;
+            btLabel.textContent = timerLabel;
+
+            if (diff < 0) {
+                btTimer.textContent = "Started";
+            btLabel.textContent = "Time Since: " + formatDuration(Math.abs(diff));
                                     } else {
-                                        btTimer.textContent = formatDuration(diff);
+                btTimer.textContent = formatDuration(diff);
                                     }
                                 }
                             }
                         }
 
-                        function formatDuration(ms) {
+            function formatDuration(ms) {
                             const dHours = Math.floor(ms / (1000 * 60 * 60));
-                            const dMins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-                            const dSecs = Math.floor((ms % (1000 * 60)) / 1000);
+            const dMins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+            const dSecs = Math.floor((ms % (1000 * 60)) / 1000);
                             
                             // If > 24 hours, maybe show Days?
                             if (dHours > 24) {
                                 const days = Math.floor(dHours / 24);
-                                const h = dHours % 24;
-                                return \`\${days}d \${h}h \${dMins}m\`;
+            const h = dHours % 24;
+            return \`\${days}d \${h}h \${dMins}m\`;
                             }
                             
                             const hStr = dHours > 0 ? \`\${String(dHours)}:\` : '';
-                            return \`\${hStr}\${String(dMins).padStart(2,'0')}:\${String(dSecs).padStart(2,'0')}\`;
+            return \`\${hStr}\${String(dMins).padStart(2, '0')}:\${String(dSecs).padStart(2, '0')}\`;
                         }
 
                     })();
-                `
+            `
                 }}></script>
-            </div>
+            </div >
         </Layout >
     )
 })
