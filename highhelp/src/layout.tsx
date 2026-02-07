@@ -43,7 +43,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                 <a href="/" class="font-bold text-xl tracking-tight">HighHelp</a>
                 <div class="hidden md:block">
                   <div class="ml-10 flex items-baseline space-x-4">
-                    <a href="/classes" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Classes</a>
+                    <a href="/timetable" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Timetable</a>
                     <a href="/resources" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Resources</a>
                     <a href="/announcements" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Announcements</a>
                     <a href="/past-papers" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Past Papers</a>
@@ -99,7 +99,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
           <!-- Mobile menu, show/hide based on menu state. -->
           <div class="hidden md:hidden" id="mobile-menu">
             <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-[#4E342E]">
-              <a href="/classes" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Classes</a>
+              <a href="/timetable" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Timetable</a>
               <a href="/resources" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Resources</a>
               <a href="/announcements" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Announcements</a>
               <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Past Papers</a>
