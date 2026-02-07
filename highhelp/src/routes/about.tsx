@@ -220,7 +220,10 @@ app.get('/about', async (c) => {
                                     <p class="text-yellow-700 text-sm">Your account status does not allow for verification at this time or your permissions are currently restricted.</p>
                                 </div>
                             </div>
-                        )}
+                        )
+
+                        }
+                        <a href="https://forms.gle/vKmPN3crhgEPUg9r5"><u>Apply for roles here [click]</u></a>.
                     </section>
                     <section id="faq" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">FAQs</h2>

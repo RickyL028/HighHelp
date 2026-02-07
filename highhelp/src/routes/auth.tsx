@@ -197,7 +197,7 @@ app.get('/login', (c) => {
 
 
                 <div class="w-full md:w-1/2 p-8 flex flex-col justify-center">
-                    <h2 class="text-2xl font-bold mb-6 text-blue-900">Manual Login</h2>
+                    <h2 class="text-2xl font-bold mb-6 text-blue-900">Manual Login (Timetable will NOT work)</h2>
                     <form action="/login" method="post" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Email Address</label>

@@ -8,6 +8,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/', async (c) => {
     const user = await getUser(c)
+    if (!user) return c.redirect('/login')
 
     return c.html(
         <Layout title="Classes" user={user}>
