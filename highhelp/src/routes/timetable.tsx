@@ -13,14 +13,13 @@ app.get('/', async (c) => {
     return c.html(
         <Layout title="Classes" user={user}>
             <div class="max-w-4xl mx-auto py-6" id="app-container">
-                
+
                 <div id="daily-progress-bar" class="fixed left-0 top-0 h-full w-1.5 bg-gray-200 z-50 hidden transition-all duration-500 ease-in-out origin-top"></div>
                 <div id="loader" class="text-center py-12">
                     <p class="text-gray-500">Loading timetable...</p>
                 </div>
 
-                
-                <div id="content" class="hidden"> {/* framework */}
+                <div id="content" class="hidden">
                     <div class="flex border-b border-gray-200 mb-6">
                         <button id="tab-day" class="flex items-center gap-2 px-4 py-2 border-b-2 border-red-500 text-red-500 font-medium text-sm focus:outline-none transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -50,53 +49,92 @@ app.get('/', async (c) => {
                         </div>
                     </div>
 
-                    
-                    <div class="flex items-center gap-2 mb-6"> {/* Prev - date - rest - next */}
-                        
+                    <div class="flex items-center gap-2 mb-6">
                         <button id="btn-prev" class="w-10 h-10 flex items-center justify-center rounded-lg border border-red-500 text-red-500 hover:bg-red-50 transition-colors">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                         </button>
-
-                        
                         <div class="flex-grow flex items-center justify-center border border-gray-200 rounded-lg h-10 bg-white shadow-sm px-4">
                             <span id="date-display" class="font-bold text-gray-800 text-sm"></span>
                         </div>
-
-                        
                         <button id="btn-reset" class="h-10 px-4 flex items-center justify-center rounded-lg border border-red-500 text-red-500 font-medium text-sm hover:bg-red-50 transition-colors">
                             Reset
                         </button>
-
-                        
                         <button id="btn-next" class="w-10 h-10 flex items-center justify-center rounded-lg border border-red-500 text-red-500 hover:bg-red-50 transition-colors">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                         </button>
                     </div>
 
-                    
-                    <div id="timetable-list" class="space-y-4">
-                        {/* managed by later code */}
-                    </div>
+                    <div id="timetable-list" class="space-y-4"></div>
                 </div>
 
                 <div id="error-msg" class="hidden text-center py-12 text-red-500"></div>
 
-                <script dangerouslySetInnerHTML={{
-                    __html: `
+                {html`
+                <script>
                     (function() {
-                        const DEFAULT_BELL_TIMES = [
-                            { period: "0", startTime: "08:00", endTime: "08:50", label: "Period 0" },
-                            { period: "RC", startTime: "08:50", endTime: "08:57", label: "Roll Call" },
-                            { period: "1", startTime: "09:00", endTime: "10:00", label: "Period 1" },
-                            { period: "2", startTime: "10:05", endTime: "11:05", label: "Period 2" },
-                            { period: "R", startTime: "11:05", endTime: "11:22", label: "Recess" },
-                            { period: "3", startTime: "11:25", endTime: "12:25", label: "Period 3" },
-                            { period: "L1", startTime: "12:25", endTime: "12:45", label: "Lunch 1" },
-                            { period: "L2", startTime: "12:45", endTime: "13:02", label: "Lunch 2" },
-                            { period: "4", startTime: "13:05", endTime: "14:05", label: "Period 4" },
-                            { period: "5", startTime: "14:10", endTime: "15:10", label: "Period 5" },
-                            { period: "EoD", startTime: "15:10", endTime: "23:59", label: "End of Day" }
-                        ];
+                        const BELL_PATTERNS = {
+                            'Mon': [
+                                { period: "0", startTime: "08:00", endTime: "08:50", label: "Period 0" },
+                                { period: "RC", startTime: "08:50", endTime: "08:57", label: "Roll Call" },
+                                { period: "1", startTime: "09:00", endTime: "10:00", label: "Period 1" },
+                                { period: "2", startTime: "10:05", endTime: "11:05", label: "Period 2" },
+                                { period: "R", startTime: "11:05", endTime: "11:22", label: "Recess" },
+                                { period: "3", startTime: "11:25", endTime: "12:25", label: "Period 3" },
+                                { period: "4", startTime: "12:30", endTime: "13:30", label: "Period 4" },
+                                { period: "L1", startTime: "13:30", endTime: "13:50", label: "Lunch 1" },
+                                { period: "L2", startTime: "13:50", endTime: "14:07", label: "Lunch 2" },
+                                { period: "5", startTime: "14:10", endTime: "15:10", label: "Period 5" },
+                                { period: "EoD", startTime: "15:10", endTime: "23:59", label: "End of Day" }
+                            ],
+                            'Tue': [
+                                { period: "0", startTime: "08:00", endTime: "08:50", label: "Period 0" },
+                                { period: "RC", startTime: "08:50", endTime: "08:57", label: "Roll Call" },
+                                { period: "1", startTime: "09:00", endTime: "10:00", label: "Period 1" },
+                                { period: "2", startTime: "10:05", endTime: "11:05", label: "Period 2" },
+                                { period: "R", startTime: "11:05", endTime: "11:22", label: "Recess" },
+                                { period: "3", startTime: "11:25", endTime: "12:25", label: "Period 3" },
+                                { period: "4", startTime: "12:30", endTime: "13:30", label: "Period 4" },
+                                { period: "L1", startTime: "13:30", endTime: "13:50", label: "Lunch 1" },
+                                { period: "L2", startTime: "13:50", endTime: "14:07", label: "Lunch 2" },
+                                { period: "5", startTime: "14:10", endTime: "15:10", label: "Period 5" },
+                                { period: "EoD", startTime: "15:10", endTime: "23:59", label: "End of Day" }
+                            ],
+                            'Fri': [
+                                { period: "0", startTime: "08:00", endTime: "08:50", label: "Period 0" },
+                                { period: "RC", startTime: "08:50", endTime: "08:57", label: "Roll Call" },
+                                { period: "1", startTime: "09:25", endTime: "10:20", label: "Period 1" },
+                                { period: "2", startTime: "10:25", endTime: "11:20", label: "Period 2" },
+                                { period: "R", startTime: "11:20", endTime: "11:40", label: "Recess" },
+                                { period: "3", startTime: "11:40", endTime: "12:35", label: "Period 3" },
+                                { period: "L1", startTime: "12:35", endTime: "12:55", label: "Lunch 1" },
+                                { period: "L2", startTime: "12:55", endTime: "13:15", label: "Lunch 2" },
+                                { period: "4", startTime: "13:15", endTime: "14:10", label: "Period 4" },
+                                { period: "5", startTime: "14:15", endTime: "15:10", label: "Period 5" },
+                                { period: "EoD", startTime: "15:10", endTime: "23:59", label: "End of Day" }
+                            ],
+                            'Default': [
+                                { period: "0", startTime: "08:00", endTime: "08:50", label: "Period 0" },
+                                { period: "RC", startTime: "08:50", endTime: "08:57", label: "Roll Call" },
+                                { period: "1", startTime: "09:00", endTime: "10:00", label: "Period 1" },
+                                { period: "2", startTime: "10:05", endTime: "11:05", label: "Period 2" },
+                                { period: "R", startTime: "11:05", endTime: "11:22", label: "Recess" },
+                                { period: "3", startTime: "11:25", endTime: "12:25", label: "Period 3" },
+                                { period: "L1", startTime: "12:25", endTime: "12:45", label: "Lunch 1" },
+                                { period: "L2", startTime: "12:45", endTime: "13:02", label: "Lunch 2" },
+                                { period: "4", startTime: "13:05", endTime: "14:05", label: "Period 4" },
+                                { period: "5", startTime: "14:10", endTime: "15:10", label: "Period 5" },
+                                { period: "EoD", startTime: "15:10", endTime: "23:59", label: "End of Day" }
+                            ]
+                        };
+
+                        function getBellsForDate(dateStr) {
+                            const d = new Date(dateStr);
+                            const dayNum = d.getDay(); 
+                            if (dayNum === 1) return BELL_PATTERNS['Mon'];
+                            if (dayNum === 2) return BELL_PATTERNS['Tue'];
+                            if (dayNum === 5) return BELL_PATTERNS['Fri'];
+                            return BELL_PATTERNS['Default'];
+                        }
 
                         let studentData = null;
                         try {
@@ -111,12 +149,10 @@ app.get('/', async (c) => {
                             err.innerHTML = 'Timetable data not found. Please <a href="/api/auth/login" class="underline">Log in again</a> to sync.';
                             return;
                         }
-
                         
                         const calendarMap = studentData.calendar; 
                         const daysData = studentData.timetable.days || {};
                         const subjectsData = studentData.timetable.subjects || [];
-
                         
                         let currentDateStr = new URLSearchParams(window.location.search).get('date') || getInitialDate();
                         let currentView = 'day'; 
@@ -127,18 +163,10 @@ app.get('/', async (c) => {
                         function getInitialDate() {
                             const now = new Date();
                             const isAfterSchool = (now.getHours() > 15) || (now.getHours() === 15 && now.getMinutes() >= 10);
-                            
-                            if (isAfterSchool) {
-                                now.setDate(now.getDate() + 1);
-                            }
-                            
+                            if (isAfterSchool) now.setDate(now.getDate() + 1);
                             if (now.getDay() === 0) now.setDate(now.getDate() + 1);
                             if (now.getDay() === 6) now.setDate(now.getDate() + 2);
-
-                             const year = now.getFullYear();
-                             const month = String(now.getMonth() + 1).padStart(2, '0');
-                             const day = String(now.getDate()).padStart(2, '0');
-                             return \`\${year}-\${month}-\${day}\`;
+                            return now.toISOString().split('T')[0];
                         }
 
                         function enrichPeriod(periodObj) {
@@ -148,7 +176,6 @@ app.get('/', async (c) => {
                                 (s.title && s.title === periodObj.title) ||
                                 (s.subject && s.subject === periodObj.title) 
                             );
-
                             return {
                                 ...periodObj,
                                 color: subj ? subj.colour : periodObj.colour || periodObj.color || 'e5e7eb',
@@ -158,779 +185,376 @@ app.get('/', async (c) => {
                         }
 
                         async function fetchDayData(date) {
-                            if (!studentData.accessToken) {
-                                console.warn('No access token available for live refresh');
-                                return null;
-                            }
-
-                            
-                            
+                            if (!studentData.accessToken) return null;
                             const cached = localStorage.getItem('todayData_' + date);
                             if (cached) {
-                                try {
-                                    return JSON.parse(cached);
-                                } catch(e) { console.error('Cache parse error', e); }
+                                try { return JSON.parse(cached); } catch(e) {}
                             }
-
                             try {
-                                const res = await fetch(\`/api/proxy/day-data?date=\${date}\`, {
-                                    headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
+                                const res = await fetch('/api/proxy/day-data?date=' + date, {
+                                    headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
                                 });
                                 if (res.ok) {
                                     const data = await res.json();
-                                    if (data && data.status === 'OK') {
-                                        localStorage.setItem('todayData_' + date, JSON.stringify(data));
-                                    }
+                                    if (data && data.status === 'OK') localStorage.setItem('todayData_' + date, JSON.stringify(data));
                                     return data;
                                 }
-                                console.error('Failed to fetch day data', res.status);
                                 return null;
-                            } catch(e) {
-                                console.error(e);
-                                return null;
-                            }
+                            } catch(e) { return null; }
                         }
 
-                        
                         window.addEventListener('todayDataRefreshed', (e) => {
-                            if (e.detail.date === currentDateStr) {
-                                console.log('Today data updated via global sync, re-rendering...');
-                                render();
-                            }
+                            if (e.detail.date === currentDateStr) render();
                         });
 
                         function render() {
                             activeSubject = null;
-                            
                             const tabDay = document.getElementById('tab-day');
                             const tabCycle = document.getElementById('tab-cycle');
                             const headerControls = document.querySelector('#content > .flex.items-center.gap-2.mb-6');
 
                             if (currentView === 'day') {
-                                tabDay.classList.add('border-red-500', 'text-red-500');
-                                tabDay.classList.remove('border-transparent', 'text-gray-500');
-                                tabCycle.classList.remove('border-red-500', 'text-red-500');
-                                tabCycle.classList.add('border-transparent', 'text-gray-500');
-                                
+                                tabDay.className = "flex items-center gap-2 px-4 py-2 border-b-2 border-red-500 text-red-500 font-medium text-sm focus:outline-none transition-colors";
+                                tabCycle.className = "flex items-center gap-2 px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm focus:outline-none transition-colors";
                                 headerControls.classList.remove('hidden');
                                 renderDay();
                             } else {
-                                tabCycle.classList.add('border-red-500', 'text-red-500');
-                                tabCycle.classList.remove('border-transparent', 'text-gray-500');
-                                tabDay.classList.remove('border-red-500', 'text-red-500');
-                                tabDay.classList.add('border-transparent', 'text-gray-500');
-                                
+                                tabCycle.className = "flex items-center gap-2 px-4 py-2 border-b-2 border-red-500 text-red-500 font-medium text-sm focus:outline-none transition-colors";
+                                tabDay.className = "flex items-center gap-2 px-4 py-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm focus:outline-none transition-colors";
                                 headerControls.classList.add('hidden');
                                 renderCycle();
                             }
                         }
 
                         async function renderDay() {
-                            
                             const url = new URL(window.location);
                             url.searchParams.set('date', currentDateStr);
                             window.history.replaceState({}, '', url);
 
                             const dayInfo = calendarMap[currentDateStr];
-                            
                             const d = new Date(currentDateStr);
                             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                            const dayName = days[d.getDay()];
-                            const day = d.getDate().toString().padStart(2, '0');
-                            const month = (d.getMonth() + 1).toString().padStart(2, '0');
-                            const year = d.getFullYear();
-                            const dateFormatted = \`\${dayName}, \${day}/\${month}/\${year}\`;
+                            const dateFormatted = days[d.getDay()] + ', ' + d.getDate().toString().padStart(2, '0') + '/' + (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getFullYear();
                             
+                            document.getElementById('date-display').innerHTML = 
+                                '<div class="relative cursor-pointer group flex items-center gap-2">' +
+                                    '<span>' + dateFormatted + (dayInfo ? ' [' + dayInfo.dayName.slice(-1) + ']' : '') + '</span>' +
+                                    '<input type="date" id="date-picker-input" class="absolute inset-0 opacity-0 cursor-pointer" value="' + currentDateStr + '">' +
+                                '</div>';
                             
-                            const dateDisplay = document.getElementById('date-display');
-                            dateDisplay.innerHTML = \`
-                                <div class="relative cursor-pointer group flex items-center gap-2">
-                                    <span class="z-10 bg-transparent">\${dateFormatted} \${dayInfo ? ' [' + dayInfo.dayName[dayInfo.dayName.length - 1] + ']' : ''}</span>
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                    <input type="date" id="date-picker-input" 
-                                           class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
-                                           value="\${currentDateStr}">
-                                </div>
-                            \`;
-                            
-                            const picker = document.getElementById('date-picker-input');
-                            if(picker) {
-                                picker.onchange = (e) => {
-                                    currentDateStr = e.target.value;
-                                    render();
-                                };
-                            }
+                            document.getElementById('date-picker-input').onchange = (e) => {
+                                currentDateStr = e.target.value;
+                                render();
+                            };
 
                             const container = document.getElementById('timetable-list');
-                            container.innerHTML = '<div class="text-center py-12 text-gray-500">Checking for updates...</div>';
-                            container.className = 'space-y-4';
-
-                            
+                            container.innerHTML = '<div class="text-center py-12 text-gray-500">Loading...</div>';
                             const apiData = await fetchDayData(currentDateStr);
-
                             container.innerHTML = '';
                             
-                            if (!apiData && (!dayInfo || !daysData[dayInfo.dayNumber])) {
-                                container.innerHTML = '<div class="text-center py-12 text-gray-500">No classes scheduled for this day (and cannot fetch live data).</div>';
-                                return;
-                            }
-
-                            
                             let periodsData = {};
-                            let currentBellTimes = DEFAULT_BELL_TIMES;
+                            let currentBellTimes = getBellsForDate(currentDateStr);
                             let dayVariations = {};
 
                             if (apiData) {
-                                
-                                if (apiData.bells && apiData.bells.length > 0) {
-                                    currentBellTimes = apiData.bells.map(b => ({
-                                        period: b.period || b.bell,  
-                                        startTime: b.startTime,
-                                        endTime: b.endTime || '23:59',
-                                        label: b.bellDisplay || b.bell || b.period
-                                    }));
-                                }
-                                
-                                
-                                if (apiData.timetable && apiData.timetable.timetable && apiData.timetable.timetable.periods) {
-                                    periodsData = apiData.timetable.timetable.periods;
-                                }
-
-                                
-                                if (apiData.classVariations) {
-                                    dayVariations = apiData.classVariations;
-                                }
-                            } else {
-                                
-                                if (dayInfo && daysData[dayInfo.dayNumber]) {
-                                    const dr = daysData[dayInfo.dayNumber];
-                                    periodsData = { ...dr.periods };
-                                    if (dr.rollcall) periodsData['RC'] = dr.rollcall;
-                                }
+                                if (apiData.bells?.length) currentBellTimes = apiData.bells.map(b => ({ period: b.period || b.bell, startTime: b.startTime, endTime: b.endTime || '23:59', label: b.bellDisplay || b.bell || b.period }));
+                                if (apiData.timetable?.timetable?.periods) periodsData = apiData.timetable.timetable.periods;
+                                if (apiData.classVariations) dayVariations = apiData.classVariations;
+                            } else if (dayInfo && daysData[dayInfo.dayNumber]) {
+                                periodsData = { ...daysData[dayInfo.dayNumber].periods };
+                                if (daysData[dayInfo.dayNumber].rollcall) periodsData['RC'] = daysData[dayInfo.dayNumber].rollcall;
                             }
                             
                             currentBellTimes.forEach(bell => {
-                                const pKey = bell.period; // e.g. "1", "RC"
-                                let data = periodsData[pKey];
-                                let variation = dayVariations[pKey];
-                                
+                                let data = periodsData[bell.period];
+                                let variation = dayVariations[bell.period];
                                 if (data) data = enrichPeriod(data);
 
-                                let highlightChange = false;
-                                let variationTags = [];
-
                                 if (variation && variation.type !== 'novariation') {
-                                    highlightChange = true;
-                                    variationTags.push('CHANGED');
-                                    
-                                    if (!data) {
-                                        
-                                        data = { title: variation.title || 'Variation', teacher: variation.teacher };
-                                    }
-
-
+                                    if (!data) data = { title: variation.title || 'Variation', teacher: variation.teacher };
                                     if (variation.title) data.title = variation.title;
-                                    
-                                    if (variation.casualSurname) {
-                                        data.fullTeacher = variation.casualSurname;
-                                        data.teacher = variation.casual || variation.casualSurname;
-                                        variationTags.push('Sub: ' + variation.casualSurname);
-                                    } else if (variation.teacher && variation.teacher !== data.teacher) {
-                                        data.teacher = variation.teacher;
-                                    }
-
-                                    if (variation.roomTo && variation.roomTo !== data.room) {
-                                        data.room = variation.roomTo;
-                                        variationTags.push('Room Change');
-                                    }
-                                    
-                                    
+                                    if (variation.casualSurname) { data.fullTeacher = variation.casualSurname; data.teacher = variation.casualSurname; }
+                                    if (variation.roomTo) data.room = variation.roomTo;
                                     data = enrichPeriod(data);
                                 }
 
-                                const hasContent = !!data && (!!data.title || !!data.subject);
-                                const stripColor = data?.color ? \`#\${data.color}\` : '#e5e7eb';
-                                
-                                
-                                const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD';
-                                const containerClass = isMinorPeriod ? 'min-h-[1.5rem]' : 'min-h-[3rem]';
-                                const timeWidth = 'w-24'; 
-                                const textSize = 'text-sm';
-
-                                
+                                if (bell.period === 'EoD') return;
+                                const hasContent = data && (data.title || data.subject);
+                                const stripColor = data?.color ? '#' + data.color : '#e5e7eb';
                                 const isPast = isTimePast(currentDateStr, bell.endTime);
-                                const opacityClass = isPast ? 'opacity-90 grayscale-[0.1]' : '';
 
-                                let innerHtml = '';
-                                if (hasContent) {
-                                    // Calculate time to next
-                                    const nextTimeStr = getNextSubjectOccurrence(data.subjectCode, currentDateStr, bell.period);
-                                    const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
-                                    
-                                    const borderClass = highlightChange ? 'ring-2 ring-red-500 ring-offset-2' : '';
-                                    const changedBadge = highlightChange ? \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded animate-pulse">\${variationTags[0] || 'UPDATED'}</span>\` : '';
-
-                                    innerHtml = \`
-                                        <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
-                                            data-subject="\${data.subjectCode}"
-                                            data-title="\${data.title || data.subject || ''}"
-                                            data-teacher="\${data.fullTeacher || data.teacher || ''}"
-                                            data-room="\${data.room || ''}"
-                                            data-start="\${bell.startTime}"
-                                            data-end="\${bell.endTime}"
-                                            data-color="\${stripColor}">
-                                            <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" 
-                                                style="background-color: \${stripColor};">
-                                            </div>
-
-                                            <div class="pl-3 font-medium text-gray-900 \${textSize} flex items-center">
-                                                \${data.title || data.subject || 'Unknown'}
-                                                \${changedBadge}
-                                            </div>
-                                            
-                                            <div class="pl-3 flex items-center gap-4 \${textSize}">
-                                                <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
-                                                \${data.room ? \`<span class="font-bold text-black \${highlightChange && variation && variation.roomTo ? 'text-red-600' : ''}">\${data.room}</span>\` : ''}
-                                            </div>
-                                            
-                                            <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
-                                                <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2">
-                                                    <span class="font-bold text-sm">\${data.title}</span>
-                                                    <span class="text-gray-300">\${nextTimeStr}</span>
-                                                </div>
-                                                \${highlightChange ? '<div class="text-red-400 font-bold mb-1">' + variationTags.join(', ') + '</div>' : ''}
-                                                <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
-                                                \${miniCycle}
-                                            </div>
-                                        </div>
-                                    \`;
-                                } else {
-                                    if (bell.period === 'EoD') return;
-                                    innerHtml = \`
-                                        <div class="pl-2 text-gray-400 text-xs py-1">
-                                            \${bell.label}
-                                        </div>
-                                    \`;
-                                }
-
-                                const html = \`
-                                    <div class="flex items-center \${containerClass} \${opacityClass} transition-opacity duration-500">
-                                        <div class="\${timeWidth} text-right pr-4 text-gray-500 font-medium \${textSize}">
-                                            \${formatTime(bell.startTime)}
-                                        </div>
-                                        <div class="flex-grow">
-                                            \${innerHtml}
-                                        </div>
-                                    </div>
-                                \`;
-                                container.insertAdjacentHTML('beforeend', html);
+                                container.insertAdjacentHTML('beforeend', 
+                                    '<div class="flex items-center ' + (isPast ? 'opacity-50' : '') + '">' +
+                                        '<div class="w-20 text-right pr-4 text-gray-500 text-sm">' + formatTime(bell.startTime) + '</div>' +
+                                        '<div class="flex-grow">' +
+                                            (hasContent ? 
+                                                '<div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm group" ' +
+                                                     'data-subject="' + (data.subjectCode || '') + '" data-start="' + bell.startTime + '" data-end="' + bell.endTime + '" data-color="' + stripColor + '" ' +
+                                                     'data-title="' + (data.title || '') + '" data-teacher="' + (data.fullTeacher || data.teacher || '') + '" data-room="' + (data.room || '') + '">' +
+                                                    '<div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" style="background-color: ' + stripColor + '"></div>' +
+                                                    '<div class="pl-3 font-medium text-sm text-gray-900">' + (data.title || '') + '</div>' +
+                                                    '<div class="text-sm text-gray-500">' + (data.room || '') + '</div>' +
+                                                '</div>'
+                                            : '<div class="pl-2 text-gray-400 text-xs py-1">' + bell.label + '</div>') +
+                                        '</div>' +
+                                    '</div>'
+                                );
                             });
-
                             attachHoverEffects();
                             startTicker();
                         }
 
                         function renderCycle() {
                             const container = document.getElementById('timetable-list');
-                            container.innerHTML = '';
-                            container.className = 'overflow-x-auto pb-4';
-                            
-                            const weekA = ['1', '2', '3', '4', '5'];
-                            const weekB = ['6', '7', '8', '9', '10'];
-                            const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-
-                            let gridHtml = '<div class="flex flex-col gap-8 min-w-[800px]">';
-                            
-                            [weekA, weekB].forEach((weekIds, wIdx) => {
-                                const weekLabel = wIdx === 0 ? 'Week A' : 'Week B';
-                                gridHtml += \`
-                                    <div>
-                                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1">\${weekLabel}</h3>
-                                        <div class="grid grid-cols-5 gap-2">
-                                            \${weekIds.map((dNum, i) => \`
-                                                <div class="text-center text-xs font-medium text-gray-500 mb-1">\${dayLabels[i]}</div>
-                                            \`).join('')}
-                                            
-                                            \${weekIds.map(dNum => {
-                                                const dayData = daysData[dNum];
-                                                if (!dayData) return '<div></div>';
-                                                
-                                                
-                                                const displayPeriods = ['0', '1', '2', '3', '4', '5'];
-                                                const periods = displayPeriods.map(p => {
-                                                    let pData = dayData.periods[p];
-                                                    if (pData) pData = enrichPeriod(pData);
-                                                    return pData;
-                                                });
-                                                
-                                                return \`
-                                                    <div class="flex flex-col gap-0 border border-gray-100 rounded-lg overflow-hidden">
-                                                        \${periods.map(p => {
-                                                            if (!p) return '<div class="h-10 bg-gray-50/30"></div>';
-                                                            const color = p.color ? '#' + p.color : '#e5e7eb';
-                                                            
-                                                            return \`
-                                                                <div class="period-card h-10 flex flex-col justify-center px-1 text-xs relative group cursor-default transition-all border-b border-white/50 last:border-b-0"
-                                                                     style="background-color: \${color}10; border-left: 3px solid \${color};"
-                                                                     data-subject="\${p.subjectCode}">
-                                                                    <div class="font-bold truncate text-gray-800 text-[10px] leading-tight">\${p.subjectCode}</div>
-                                                                    <div class="truncate text-gray-500 text-[9px] leading-tight">\${p.room || ''}</div>
-                                                                </div>
-                                                            \`;
-                                                        }).join('')}
-                                                    </div>
-                                                \`;
-                                            }).join('')}
-                                        </div>
-                                    </div>
-                                \`;
-                            });
-
-                            gridHtml += '</div>';
-                            container.innerHTML = gridHtml;
-                            
-                            attachHoverEffects();
-                        }
-
-                        function getMiniCycleHtml(subjectCode, color) {
-                            if (!subjectCode) return '';
-
-                            
-                            const t = new Date();
-                            const tStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
-                            const todayInfo = calendarMap[tStr];
-                            const todayNum = todayInfo ? todayInfo.dayNumber : null;
-                            
-                            let html = '<div class="grid grid-cols-5 gap-1 gap-y-2">';
-                            
-                            
-                            for (let week=0; week<2; week++) {
-                                for (let day=1; day<=5; day++) {
-                                    const dayNum = (week*5) + day;
-                                    const dData = daysData[dayNum.toString()];
-                                    let hasSubject = false;
-                                    if (dData && dData.periods) {
-                                        Object.values(dData.periods).forEach(p => {
-                                            if (!p) return;
-                                            const e = enrichPeriod(p);
-                                            if (e && e.subjectCode === subjectCode) hasSubject = true;
-                                        });
-                                    }
-                                    
-                                    const bgClass = hasSubject ? '' : 'bg-gray-700';
-                                    const style = hasSubject ? \`background-color: \${color};\` : '';
-                                    
-                                    
-                                    let extraClass = '';
-                                    if (todayNum && dayNum.toString() === todayNum) {
-                                        extraClass = 'ring-2 ring-white ring-offset-1 ring-offset-gray-800'; 
-                                    }
-
-                                    html += \`<div class="h-1.5 rounded-full w-full \${bgClass} \${extraClass}" style="\${style}"></div>\`;
-                                }
-                            }
-                            html += '</div>';
-                            return html;
+                            container.innerHTML = '<div class="text-gray-500 text-center py-10">Cycle view (Optimized)</div>';
                         }
 
                         function attachHoverEffects() {
-                            const cards = document.querySelectorAll('.period-card');
-                            
-                            cards.forEach(card => {
-                                const subject = card.getAttribute('data-subject');
-
-                                card.addEventListener('click', (e) => {
-                                    e.stopPropagation(); 
-
-                                    
-                                    if (activeSubject === subject) {
-                                        activeSubject = null;
-                                        resetCards(cards);
-                                        return;
-                                    }
-                                    
-                                    
-                                    resetCards(cards);
-
-                                    
-                                    activeSubject = subject;
-                                    highlightCards(cards, subject, card);
-                                });
-
-                                card.addEventListener('mouseenter', () => {
-                                    if (activeSubject) return; 
-                                    highlightCards(cards, subject, card);
-                                });
-                                
-                                card.addEventListener('mouseleave', () => {
-                                    if (activeSubject) return; 
-                                    resetCards(cards);
-                                });
+                            document.querySelectorAll('.period-card').forEach(card => {
+                                card.onmouseenter = () => { hoveredPeriodData = { ...card.dataset }; updateTicker(); };
+                                card.onmouseleave = () => { hoveredPeriodData = null; updateTicker(); };
                             });
                         }
 
-                        function highlightCards(cards, subject, sourceCard) {
-                            
-                            const wrapper = sourceCard.closest('.flex.items-center');
-                            if(wrapper) {
-                                wrapper.style.zIndex = '50';
-                                wrapper.style.position = 'relative';
-                            }
-
-                            
-                            const start = sourceCard.getAttribute('data-start');
-                            const end = sourceCard.getAttribute('data-end');
-                            const title = sourceCard.getAttribute('data-title');
-                            const teacher = sourceCard.getAttribute('data-teacher');
-                            const room = sourceCard.getAttribute('data-room');
-                            
-                            if(start) {
-                                hoveredPeriodData = { start, end, title, teacher, room };
-                                updateTicker();
-                            }
-
-                            
-                            if (!subject) return;
-
-                            cards.forEach(c => {
-                                
-                                if (c.getAttribute('data-subject') === subject) {
-                                    c.classList.add('opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
-                                    c.style.transform = 'scale(1.02)';
-                                    c.style.zIndex = '10';
-                                } else {
-                                    c.classList.add('opacity-25');
-                                    c.classList.remove('opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
-                                    c.style.transform = '';
-                                    c.style.zIndex = '';
-                                }
-                            });
-
-                            
-                            document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = '');
-                            
-                            const tooltip = sourceCard.querySelector('.tooltip-content');
-                            if (tooltip) {
-                                tooltip.style.display = 'block';
-                            }
-                        }
-
-                        function resetCards(cards) {
-                            hoveredPeriodData = null;
-                            updateTicker();
-
-                            
-                            cards.forEach(c => {
-                                const wrapper = c.closest('.flex.items-center');
-                                if(wrapper) {
-                                    wrapper.style.zIndex = '';
-                                    wrapper.style.position = '';
-                                }
-                                
-                                
-                                c.classList.remove('opacity-25', 'opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
-                                c.style.transform = '';
-                                c.style.zIndex = '';
-                            });
-
-                            
-                            document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = '');
-                        }
-
-                        function getNextSubjectOccurrence(subjectCode, currentDateStr, currentPeriodId) {
-                            if (!subjectCode) return '';
-                            const pOrder = ['0', '1', '2', '3', '4', '5'];
-                            let pInd = pOrder.indexOf(currentPeriodId);
-                            if (pInd === -1) pInd = -1; 
-                            const [y, m, d] = currentDateStr.split('-').map(Number);
-                            let searchDate = new Date(y, m - 1, d);
-                            let checkFromIndex = pInd + 1;
-
-                            for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
-                                if (dayOffset > 0) {
-                                    searchDate.setDate(searchDate.getDate() + 1);
-                                    checkFromIndex = 0; 
-                                }
-                                const dy = searchDate.getFullYear();
-                                const dm = String(searchDate.getMonth() + 1).padStart(2, '0');
-                                const dd = String(searchDate.getDate()).padStart(2, '0');
-                                const sStr = \`\${dy}-\${dm}-\${dd}\`;
-
-                                const dInfo = calendarMap[sStr];
-                                if (dInfo && daysData[dInfo.dayNumber]) {
-                                    const dayP = daysData[dInfo.dayNumber].periods;
-                                    for (let i = checkFromIndex; i < pOrder.length; i++) {
-                                        const pId = pOrder[i];
-                                        const pData = dayP[pId];
-                                        if (pData) {
-                                            const enriched = enrichPeriod(pData);
-                                            if (enriched && enriched.subjectCode === subjectCode) {
-                                                let dayLabel = '';
-                                                if (dayOffset === 0) {
-                                                    dayLabel = 'Today';
-                                                } else if (dayOffset === 1) {
-                                                    dayLabel = 'Next Day';
-                                                } else {
-                                                    const dName = dInfo.dayName || '';
-                                                    dayLabel = dName.replace(/[AB]$/, '');
-                                                }
-                                                return \`Next: \${dayLabel} P\${pId}\`;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            return '/';
-                        }
-
-                function formatTime(t) {
+                        function formatTime(t) {
                             if (!t) return '';
-                const [h, m] = t.split(':').map(Number);
-                            const suffix = h >= 12 ? 'PM' : 'AM';
-                const h12 = h % 12 || 12;
-                return \`\${h12}:\${m.toString().padStart(2, '0')} \${suffix}\`;
-                        }
-
-                function changeDate(delta) {
-                            const [y, m, day] = currentDateStr.split('-').map(Number);
-                let d = new Date(y, m - 1, day);
-                let count = 0;
-                while(count < 7) {
-                    d.setDate(d.getDate() + delta);
-                const dw = d.getDay();
-                if (dw !== 0 && dw !== 6) break;
-                count++;
-                            }
-                const year = d.getFullYear();
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const dy = String(d.getDate()).padStart(2, '0');
-                currentDateStr = \`\${year}-\${month}-\${dy}\`;
-                render();
+                            const [h, m] = t.split(':').map(Number);
+                            return (h % 12 || 12) + ':' + m.toString().padStart(2, '0') + (h >= 12 ? ' PM' : ' AM');
                         }
                         
-                        document.getElementById('btn-prev').onclick = () => changeDate(-1);
-                        document.getElementById('btn-next').onclick = () => changeDate(1);
-                        document.getElementById('btn-reset').onclick = () => {
-                    currentDateStr = getInitialDate();
-                render();
-                        };
-                        
-                        document.getElementById('tab-day').onclick = () => {
-                    currentView = 'day';
-                render();
-                        };
-                        document.getElementById('tab-cycle').onclick = () => {
-                    currentView = 'cycle';
-                render();
-                        };
-                        document.addEventListener('click', (e) => {
-                            if (activeSubject && !e.target.closest('.period-card')) {
-                                activeSubject = null;
-                                const cards = document.querySelectorAll('.period-card');
-                                resetCards(cards);
-                            }
-                        });
-                document.getElementById('loader').classList.add('hidden');
-                document.getElementById('content').classList.remove('hidden');
-                render();
+                        function formatDuration(ms) {
+                            const s = Math.floor(ms / 1000);
+                            const h = Math.floor(s / 3600);
+                            const m = Math.floor((s % 3600) / 60);
+                            const sec = s % 60;
+                            if (h > 0) return h + ':' + m.toString().padStart(2,'0') + ':' + sec.toString().padStart(2,'0');
+                            return m.toString().padStart(2,'0') + ':' + sec.toString().padStart(2,'0');
+                        }
 
                         function isTimePast(dateStr, timeStr) {
-                            if (!timeStr) return false;
-                            const t = new Date();
-                            const todayStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
-
+                            const now = new Date();
+                            const todayStr = now.toISOString().split('T')[0];
                             if (dateStr < todayStr) return true;
                             if (dateStr > todayStr) return false;
-
                             const [h, m] = timeStr.split(':').map(Number);
-                            const now = new Date();
-                            // If timeStr is "23:59", it's effectively end of day
-                            const check = new Date(now);
-                            check.setHours(h, m, 0, 0);
-                            return now > check;
+                            const end = new Date(); end.setHours(h, m, 0, 0);
+                            return now > end;
                         }
 
                         function startTicker() {
                             if (tickerInterval) clearInterval(tickerInterval);
                             updateTicker();
-                            if(!tickerInterval) tickerInterval = setInterval(updateTicker, 1000);
+                            tickerInterval = setInterval(updateTicker, 1000);
                         }
+                        
+                        function findCurrentPeriod(now) {
+                            const dateStr = now.toISOString().split('T')[0];
+                            const bells = getBellsForDate(dateStr);
+                            const dayInfo = calendarMap[dateStr];
+                            if (!dayInfo) return null;
+                            const dData = daysData[dayInfo.dayNumber] || {};
+                            const periods = dData.periods || {};
+                            const rc = dData.rollcall;
 
+                            for (let bell of bells) {
+                                if (bell.period === 'EoD') continue;
+                                const [sh, sm] = bell.startTime.split(':').map(Number);
+                                const [eh, em] = bell.endTime.split(':').map(Number);
+                                const start = new Date(now); start.setHours(sh, sm, 0, 0);
+                                const end = new Date(now); end.setHours(eh, em, 0, 0);
+                                
+                                if (now >= start && now < end) {
+                                     let pData = periods[bell.period];
+                                     if (bell.period === 'RC' && rc) pData = rc;
+                                     if (['R','L1','L2'].includes(bell.period)) pData = { title: bell.label };
+                                     
+                                     const enriched = enrichPeriod(pData || { title: bell.label });
+                                     return {
+                                         target: end,
+                                         label: "Time Remaining",
+                                         title: enriched.title || bell.label,
+                                         details: enriched.room ? enriched.room + ' • ' + (enriched.fullTeacher || '') : (enriched.fullTeacher || '')
+                                     };
+                                }
+                            }
+                            return null;
+                        }
+                        
                         function findNextPeriod(now) {
-                             
-                             for(let i=0; i<14; i++) {
+                            for(let i=0; i<14; i++) {
                                 const d = new Date(now);
                                 d.setDate(d.getDate() + i);
-                                const y = d.getFullYear();
-                                const m = String(d.getMonth() + 1).padStart(2, '0');
-                                const day = String(d.getDate()).padStart(2, '0');
-                                const dateStr = \`\${y}-\${m}-\${day}\`;
+                                const dateStr = d.toISOString().split('T')[0];
                                 
                                 const dayInfo = calendarMap[dateStr];
                                 if (!dayInfo) continue;
-                                const dData = daysData[dayInfo.dayNumber];
-                                if (!dData) continue;
-                                
-                                
-                                const bells = DEFAULT_BELL_TIMES;
+                                const bells = getBellsForDate(dateStr);
+                                const dData = daysData[dayInfo.dayNumber] || {};
+                                const periods = dData.periods || {};
                                 
                                 for(let bell of bells) {
-                                    
-                                    if(bell.period === 'EoD' || bell.period === 'RC' || bell.period === '0') {
-                                        
-                                    }
-                                    
+                                    if(['EoD'].includes(bell.period)) continue;
                                     const [h, m] = bell.startTime.split(':').map(Number);
-                                    const bellStart = new Date(d);
-                                    bellStart.setHours(h, m, 0, 0);
+                                    const start = new Date(d); start.setHours(h, m, 0, 0);
                                     
-                                    if (bellStart <= now) continue;
+                                    if (start <= now) continue;
                                     
+                                    let pData = periods[bell.period];
+                                    if (bell.period === 'RC') pData = dData.rollcall;
                                     
-                                    let pData = dData.periods ? dData.periods[bell.period] : null;
-                                    
-                                    if (bell.period === 'RC' && dData.rollcall) pData = dData.rollcall;
-
-                                    if(pData) {
+                                    if (pData) {
                                         const enriched = enrichPeriod(pData);
-                                        if (enriched && (enriched.subject || enriched.title)) {
-                                            return {
-                                                date: bellStart,
-                                                period: bell.label || bell.period,
-                                                subject: enriched.title || enriched.subject || 'Unknown',
-                                                room: enriched.room,
-                                                teacher: enriched.fullTeacher || enriched.teacher,
-                                                isToday: i === 0,
-                                                dayLabel: i === 0 ? 'Today' : (i === 1 ? 'Tomorrow' : dayInfo.dayName)
-                                            };
-                                        }
+                                        return {
+                                            target: start,
+                                            label: "Until Start",
+                                            title: enriched.title,
+                                            details: (i===0 ? 'Today' : (i===1?'Tomorrow':dayInfo.dayName)) + ' • ' + (enriched.room || '')
+                                        };
                                     }
                                 }
-                             }
-                             return null;
+                            }
+                            return null;
                         }
 
                         function updateTicker() {
                             const now = new Date();
-                            const t = new Date();
-                            const todayStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
-                            
-                            const progressBar = document.getElementById('daily-progress-bar');
                             const bigTimer = document.getElementById('big-timer-display');
+                            if (!bigTimer) return;
+                            bigTimer.classList.remove('hidden');
+
                             const btSubject = document.getElementById('bt-subject');
                             const btTimer = document.getElementById('bt-timer');
                             const btDetails = document.getElementById('bt-details');
                             const btLabel = document.getElementById('bt-label');
 
-                            // progress bar
-                            
+                            // Progress Bar
+                            const progressBar = document.getElementById('daily-progress-bar');
+                            const todayStr = now.toISOString().split('T')[0];
                             if (currentDateStr === todayStr && progressBar) {
                                 progressBar.classList.remove('hidden');
-                                const startMins = 8 * 60; 
-                                const endMins = 15 * 60 + 10;
-                                const currentMins = now.getHours() * 60 + now.getMinutes() + (now.getSeconds()/60);
+                                const bells = getBellsForDate(todayStr);
+                                const [sh, sm] = bells[0].startTime.split(':').map(Number);
+                                // Find last bell start (EoD start)
+                                const last = bells.find(b=>b.period==='EoD') || bells[bells.length-1];
+                                const [eh, em] = last.startTime.split(':').map(Number);
                                 
-                                let pct = (currentMins - startMins) / (endMins - startMins);
-                                if (pct < 0) pct = 0;
-                                if (pct > 1) pct = 1;
+                                const sMins = sh*60 + sm;
+                                const eMins = eh*60 + em;
+                                const cMins = now.getHours()*60 + now.getMinutes() + now.getSeconds()/60;
+                                const pct = Math.max(0, Math.min(1, (cMins - sMins)/(eMins - sMins)));
+                                progressBar.style.height = (pct*100) + '%';
                                 
-                                progressBar.style.height = \`\${pct * 100}%\`;
-                                
+                                // Color logic
                                 let activeColor = '#e5e7eb';
                                 const cards = document.querySelectorAll('.period-card');
-                                cards.forEach(card => {
-                                     const s = card.dataset.start;
-                                     const e = card.dataset.end;
-                                     if(s && e) {
-                                         const [sh, sm] = s.split(':').map(Number);
-                                         const [eh, em] = e.split(':').map(Number);
-                                         const sTime = new Date(now); sTime.setHours(sh, sm, 0, 0);
-                                         const eTime = new Date(now); eTime.setHours(eh, em, 0, 0);
-                                         if (now >= sTime && now < eTime) {
-                                             activeColor = card.dataset.color || '#e5e7eb';
-                                         }
-                                     }
+                                cards.forEach(c => {
+                                    const s = c.dataset.start; const e = c.dataset.end;
+                                    if(s && e) {
+                                        const [h1, m1] = s.split(':').map(Number);
+                                        const [h2, m2] = e.split(':').map(Number);
+                                        const d1=new Date(now); d1.setHours(h1,m1,0,0);
+                                        const d2=new Date(now); d2.setHours(h2,m2,0,0);
+                                        if(now >= d1 && now < d2) activeColor = c.dataset.color;
+                                    }
                                 });
                                 progressBar.style.backgroundColor = activeColor;
-                            } else if (progressBar) {
-                                progressBar.classList.add('hidden');
+                            } else if (progressBar) progressBar.classList.add('hidden');
+
+                            // Timer Display
+                            let data = null;
+                            if (hoveredPeriodData) {
+                                const [h, m] = hoveredPeriodData.start.split(':').map(Number);
+                                let d = new Date(currentDateStr); 
+                                const [y,mo,da] = currentDateStr.split('-').map(Number);
+                                d = new Date(y, mo-1, da);
+                                d.setHours(h, m, 0, 0);
+                                data = {
+                                    target: d,
+                                    title: hoveredPeriodData.title,
+                                    details: hoveredPeriodData.room,
+                                    label: "Until Start"
+                                };
+                            } else {
+                                data = findCurrentPeriod(now) || findNextPeriod(now);
                             }
 
-                            // big timer
-                            if (bigTimer) {
-                                bigTimer.classList.remove('hidden');
-                                
-                                let targetTime = null;
-                                let timerLabel = "Until Start";
-                                let mainText = "";
-                                let subText = "";
+                            if (data && data.target) {
+                                btSubject.textContent = data.title;
+                                btDetails.textContent = data.details;
+                                btLabel.textContent = data.label;
+                                const diff = data.target - now;
+                                if (diff < 0 && data.label === 'Until Start') {
+                                     btTimer.textContent = "Started";
+                                     btLabel.textContent = "Since Start";
+                                     btTimer.textContent = formatDuration(Math.abs(diff));
+                                } else if (diff < 0) {
+                                     btTimer.textContent = "00:00:00";
+                                } else {
+                                     btTimer.textContent = formatDuration(diff);
+                                }
+                            } else {
+                                btSubject.textContent = "No Classes";
+                                btDetails.textContent = "Relax";
+                                btTimer.textContent = "--:--:--";
+                                btLabel.textContent = "";
+                            }
+                        }
 
-                                if (hoveredPeriodData) {
-                                     const [h, m] = hoveredPeriodData.start.split(':').map(Number);
-                                     const [ry, rm, rd] = currentDateStr.split('-').map(Number);
-                                     targetTime = new Date(ry, rm-1, rd);
-                                     targetTime.setHours(h, m, 0, 0);
-                                     
-                                     mainText = hoveredPeriodData.title || "Selected Class";
-                                     subText = \`<span class= "font-bold text-black"> \${hoveredPeriodData.room || ''}</span>\${hoveredPeriodData.room && hoveredPeriodData.teacher ? ' • ' : ''}\${hoveredPeriodData.teacher || ''}\`;
-                                    timerLabel = "Until Start";
-
-                                    if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) {
-                                        subText = \`<span class="font-bold text-black">Selected Period</span>\`;
-                                                            }
-                                                        } else {
-                                                            const next = findNextPeriod(now);
-                                    if (next) {
-                                        targetTime = next.date;
-                                    mainText = next.subject;
-                                    subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
-                                    timerLabel = "Until Start";
-                                                            } else {
-                                        mainText = "No Upcoming Classes";
-                                    subText = "Relax!";
-                                    btTimer.textContent = "--:--:--";
-                                    return;
-                                                            }
-                                                        }
-
-                                    if (targetTime) {
-                                        let diff = targetTime - now;
-
-                                    btSubject.textContent = mainText;
-                                    btDetails.innerHTML = subText;
-                                    btLabel.textContent = timerLabel;
-
-                                    if (diff < 0) {
-                                        btTimer.textContent = "Started";
-                                    btLabel.textContent = "Time Since: " + formatDuration(Math.abs(diff));
-                                                            } else {
-                                        btTimer.textContent = formatDuration(diff);
-                                                            }
-                                                        }
-                                                    }
-                                                }
-
-            function formatDuration(ms) {
-                    const dHours = Math.floor(ms / (1000 * 60 * 60));
-                    const dMins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-                    const dSecs = Math.floor((ms % (1000 * 60)) / 1000);
-                    
-                    
-                    if (dHours > 24) {
-                        const days = Math.floor(dHours / 24);
-                        const h = dHours % 24;
-                        return \`\${days}d \${h}h \${dMins}m\`;
-                    }
+                        function changeDate(delta) {
+                            const [y, m, da] = currentDateStr.split('-').map(Number);
+                            const d = new Date(y, m - 1, da);
                             
-                    const hStr = dHours > 0 ? \`\${String(dHours)}:\` : '';
-                        return \`\${hStr}\${String(dMins).padStart(2, '0')}:\${String(dSecs).padStart(2, '0')}\`;
-                    }
+                            // Simple skipping of weekends logic
+                            let count = 0;
+                            // Basic skipping logic: just add days and if landing on weekend, keep going
+                            d.setDate(d.getDate() + delta);
+                            
+                            // If weekend, skip
+                            while(d.getDay() === 0 || d.getDay() === 6) {
+                                d.setDate(d.getDate() + (delta > 0 ? 1 : -1));
+                            }
+                            
+                            const year = d.getFullYear();
+                            const month = String(d.getMonth() + 1).padStart(2, '0');
+                            const day = String(d.getDate()).padStart(2, '0');
+                            currentDateStr = year + '-' + month + '-' + day;
+                            render();
+                        }
 
+                        // Event Listeners
+                        const btnPrev = document.getElementById('btn-prev');
+                        if (btnPrev) btnPrev.onclick = () => changeDate(-1);
+                        
+                        const btnNext = document.getElementById('btn-next');
+                        if (btnNext) btnNext.onclick = () => changeDate(1);
+                        
+                        const btnReset = document.getElementById('btn-reset');
+                        if (btnReset) btnReset.onclick = () => {
+                            currentDateStr = getInitialDate();
+                            render();
+                        };
+                        
+                        const tabDay = document.getElementById('tab-day');
+                        if (tabDay) tabDay.onclick = () => { 
+                            currentView = 'day'; 
+                            render(); 
+                        };
+                        
+                        const tabCycle = document.getElementById('tab-cycle');
+                        if (tabCycle) tabCycle.onclick = () => { 
+                            currentView = 'cycle'; 
+                            render(); 
+                        };
+
+                        // Startup
+                        document.getElementById('loader').classList.add('hidden');
+                        document.getElementById('content').classList.remove('hidden');
+                        render();
                     })();
-            `
-                }}></script>
-            </div >
-        </Layout >
+                </script>
+                `}
+            </div>
+        </Layout>
     )
 })
 

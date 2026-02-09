@@ -66,7 +66,7 @@ app.get('/', async (c) => {
     return c.html(
         <Layout title="Home" user={user}>
             <div class="space-y-12 px-4 md:px-0 pb-12 pt-12">
-
+                <p>* testing and debugging stage, particularly for timetable. Full release date will be Week 2~Week 4</p>
                 {/* Countdowns Section */}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto items-center">
                     {/* School Starts */}
