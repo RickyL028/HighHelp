@@ -771,37 +771,52 @@ app.get('/', async (c) => {
                                 const dData = daysData[dayInfo.dayNumber];
                                 if (!dData) continue;
                                 
-                                
                                 const bells = DEFAULT_BELL_TIMES;
                                 
                                 for(let bell of bells) {
-                                    
-                                    if(bell.period === 'EoD' || bell.period === 'RC' || bell.period === '0') {
-                                        
-                                    }
-                                    
-                                    const [h, m] = bell.startTime.split(':').map(Number);
+                                    if(bell.period === 'EoD') continue;
+
+                                    const [sh, sm] = bell.startTime.split(':').map(Number);
                                     const bellStart = new Date(d);
-                                    bellStart.setHours(h, m, 0, 0);
+                                    bellStart.setHours(sh, sm, 0, 0);
+
+                                    const [eh, em] = bell.endTime.split(':').map(Number);
+                                    const bellEnd = new Date(d);
+                                    bellEnd.setHours(eh, em, 0, 0);
                                     
-                                    if (bellStart <= now) continue;
+                                    // If this period ended in the past, skip
+                                    if (bellEnd <= now) continue;
                                     
-                                    
-                                    let pData = dData.periods ? dData.periods[bell.period] : null;
-                                    
-                                    if (bell.period === 'RC' && dData.rollcall) pData = dData.rollcall;
+                                    let pData = null;
+                                    let isBreak = false;
+
+                                    if (['R', 'L1', 'L2'].includes(bell.period)) {
+                                        isBreak = true;
+                                        pData = { title: bell.label, isBreak: true };
+                                    } else {
+                                        if (dData.periods && dData.periods[bell.period]) {
+                                            pData = dData.periods[bell.period];
+                                        } else if (bell.period === 'RC' && dData.rollcall) {
+                                            pData = dData.rollcall;
+                                        } else if (bell.period === '0' && dData.periods && dData.periods['0']) {
+                                            pData = dData.periods['0'];
+                                        }
+                                    }
 
                                     if(pData) {
-                                        const enriched = enrichPeriod(pData);
+                                        const enriched = isBreak ? pData : enrichPeriod(pData);
                                         if (enriched && (enriched.subject || enriched.title)) {
+                                            const isCurrent = (now >= bellStart && now < bellEnd);
+                                            
+                                            // Returns the relevant target time: End if current (Time Left), Start if future
                                             return {
-                                                date: bellStart,
+                                                date: isCurrent ? bellEnd : bellStart,
+                                                isCurrent: isCurrent,
                                                 period: bell.label || bell.period,
                                                 subject: enriched.title || enriched.subject || 'Unknown',
                                                 room: enriched.room,
                                                 teacher: enriched.fullTeacher || enriched.teacher,
-                                                isToday: i === 0,
-                                                dayLabel: i === 0 ? 'Today' : (i === 1 ? 'Tomorrow' : dayInfo.dayName)
+                                                dayLabel: i === 0 ? 'Today' : (i===1 ? 'Tomorrow' : dayInfo.dayName)
                                             };
                                         }
                                     }
@@ -877,21 +892,21 @@ app.get('/', async (c) => {
 
                                     if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) {
                                         subText = \`<span class="font-bold text-black">Selected Period</span>\`;
-                                                            }
-                                                        } else {
-                                                            const next = findNextPeriod(now);
+                                    }
+                                } else {
+                                    const next = findNextPeriod(now);
                                     if (next) {
                                         targetTime = next.date;
-                                    mainText = next.subject;
-                                    subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
-                                    timerLabel = "Until Start";
-                                                            } else {
+                                        mainText = next.subject;
+                                        subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
+                                        timerLabel = next.isCurrent ? "Time Left" : "Until Start";
+                                    } else {
                                         mainText = "No Upcoming Classes";
-                                    subText = "Relax!";
-                                    btTimer.textContent = "--:--:--";
-                                    return;
-                                                            }
-                                                        }
+                                        subText = "Relax!";
+                                        btTimer.textContent = "--:--:--";
+                                        return;
+                                    }
+                                }
 
                                     if (targetTime) {
                                         let diff = targetTime - now;
