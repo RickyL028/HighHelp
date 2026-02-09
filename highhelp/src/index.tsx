@@ -18,7 +18,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.use('*', async (c, next) => {
     if (c.req.path.startsWith('/api/auth')) return next();
-    if (c.req.path.startsWith('/public')) return next(); 
+    if (c.req.path.startsWith('/public')) return next();
 
     const user = await getUser(c);
     if (user && user.permission_level === PermissionLevel.BANNED) {
@@ -26,6 +26,7 @@ app.use('*', async (c, next) => {
     }
     await next();
 })
+
 
 app.get('/api/proxy/day-data', async (c) => {
     const date = c.req.query('date')

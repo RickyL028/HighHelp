@@ -201,6 +201,7 @@ app.get('/', async (c) => {
 
                         function render() {
                             activeSubject = null;
+                            hoveredPeriodData = null;
                             
                             const tabDay = document.getElementById('tab-day');
                             const tabCycle = document.getElementById('tab-cycle');
@@ -753,7 +754,7 @@ app.get('/', async (c) => {
                         function startTicker() {
                             if (tickerInterval) clearInterval(tickerInterval);
                             updateTicker();
-                            if(!tickerInterval) tickerInterval = setInterval(updateTicker, 1000);
+                            tickerInterval = setInterval(updateTicker, 1000);
                         }
 
                         function findNextPeriod(now) {
