@@ -123,6 +123,11 @@ app.get('/', async (c) => {
                         let tickerInterval = null;
                         let hoveredPeriodData = null;
                         let activeSubject = null;
+                        
+                        // Cache for bell times to ensure timer uses correct schedule (e.g. Mon vs Wed)
+                        let bellCache = {};
+                        let pendingFetches = {};
+                        let isTickerUpdating = false;
 
                         function getInitialDate() {
                             const now = new Date();
@@ -163,31 +168,65 @@ app.get('/', async (c) => {
                                 return null;
                             }
 
-                            
-                            
-                            const cached = localStorage.getItem('todayData_' + date);
-                            if (cached) {
-                                try {
-                                    return JSON.parse(cached);
-                                } catch(e) { console.error('Cache parse error', e); }
-                            }
+                            // Dedup fetches
+                            if (pendingFetches[date]) return pendingFetches[date];
 
-                            try {
-                                const res = await fetch(\`/api/proxy/day-data?date=\${date}\`, {
-                                    headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
-                                });
-                                if (res.ok) {
-                                    const data = await res.json();
-                                    if (data && data.status === 'OK') {
-                                        localStorage.setItem('todayData_' + date, JSON.stringify(data));
+                            const fetchPromise = (async () => {
+                                let data = null;
+                                try {
+                                    // FORCE REFRESH: Always fetch from network first
+                                    const res = await fetch(\`/api/proxy/day-data?date=\${date}\`, {
+                                        headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
+                                    });
+                                    if (res.ok) {
+                                        data = await res.json();
+                                        if (data && data.status === 'OK') {
+                                            localStorage.setItem('todayData_' + date, JSON.stringify(data));
+                                            
+                                            // Update bell cache
+                                            if (data.bells && data.bells.length > 0) {
+                                                bellCache[date] = data.bells.map(b => ({
+                                                    period: b.period || b.bell,  
+                                                    startTime: b.startTime,
+                                                    endTime: b.endTime || '23:59',
+                                                    label: b.bellDisplay || b.bell || b.period
+                                                }));
+                                            }
+                                        }
+                                        return data;
                                     }
-                                    return data;
+                                    console.error('Failed to fetch day data', res.status);
+                                } catch(e) {
+                                    console.error(e);
                                 }
-                                console.error('Failed to fetch day data', res.status);
+
+                                // Fallback to cache if network failed
+                                if (!data) {
+                                    const cached = localStorage.getItem('todayData_' + date);
+                                    if (cached) {
+                                        try {
+                                            data = JSON.parse(cached);
+                                            // Populate bell cache from local storage if needed
+                                            if (data && data.bells && data.bells.length > 0) {
+                                                bellCache[date] = data.bells.map(b => ({
+                                                    period: b.period || b.bell,  
+                                                    startTime: b.startTime,
+                                                    endTime: b.endTime || '23:59',
+                                                    label: b.bellDisplay || b.bell || b.period
+                                                }));
+                                            }
+                                            return data;
+                                        } catch(e) { console.error('Cache parse error', e); }
+                                    }
+                                }
                                 return null;
-                            } catch(e) {
-                                console.error(e);
-                                return null;
+                            })();
+
+                            pendingFetches[date] = fetchPromise;
+                            try {
+                                return await fetchPromise;
+                            } finally {
+                                delete pendingFetches[date];
                             }
                         }
 
@@ -278,18 +317,23 @@ app.get('/', async (c) => {
 
                             
                             let periodsData = {};
-                            let currentBellTimes = DEFAULT_BELL_TIMES;
+                            let currentBells = null;
                             let dayVariations = {};
 
                             if (apiData) {
                                 
                                 if (apiData.bells && apiData.bells.length > 0) {
-                                    currentBellTimes = apiData.bells.map(b => ({
-                                        period: b.period || b.bell,  
-                                        startTime: b.startTime,
-                                        endTime: b.endTime || '23:59',
-                                        label: b.bellDisplay || b.bell || b.period
-                                    }));
+                                    if(bellCache[currentDateStr]) {
+                                        currentBells = bellCache[currentDateStr];
+                                    } else {
+                                        currentBells = apiData.bells.map(b => ({
+                                            period: b.period || b.bell,  
+                                            startTime: b.startTime,
+                                            endTime: b.endTime || '23:59',
+                                            label: b.bellDisplay || b.bell || b.period
+                                        }));
+                                        bellCache[currentDateStr] = currentBells;
+                                    }
                                 }
                                 
                                 
@@ -310,7 +354,10 @@ app.get('/', async (c) => {
                                 }
                             }
                             
-                            currentBellTimes.forEach(bell => {
+                            // Fallback if no bells found
+                            const bellsToUse = currentBells || DEFAULT_BELL_TIMES;
+                            
+                            bellsToUse.forEach(bell => {
                                 const pKey = bell.period; // e.g. "1", "RC"
                                 let data = periodsData[pKey];
                                 let variation = dayVariations[pKey];
@@ -753,13 +800,13 @@ app.get('/', async (c) => {
 
                         function startTicker() {
                             if (tickerInterval) clearInterval(tickerInterval);
-                            updateTicker();
+                            updateTicker(); // This is now async but that's fine
                             tickerInterval = setInterval(updateTicker, 1000);
                         }
 
-                        function findNextPeriod(now) {
+                        async function findNextPeriod(now) {
                              
-                             for(let i=0; i<14; i++) {
+                             for(let i=0; i<30; i++) { // Increased lookahead slightly
                                 const d = new Date(now);
                                 d.setDate(d.getDate() + i);
                                 const y = d.getFullYear();
@@ -772,7 +819,20 @@ app.get('/', async (c) => {
                                 const dData = daysData[dayInfo.dayNumber];
                                 if (!dData) continue;
                                 
-                                const bells = DEFAULT_BELL_TIMES;
+                                // GET CORRECT BELLS FOR THIS DAY
+                                let bells = bellCache[dateStr];
+                                if (!bells) {
+                                    // Try to fetch if missing
+                                    try {
+                                        const fetched = await fetchDayData(dateStr);
+                                        if (fetched && bellCache[dateStr]) {
+                                            bells = bellCache[dateStr];
+                                        }
+                                    } catch(e) { console.error('Ticker fetch error', e); }
+                                }
+                                
+                                // Fallback
+                                if (!bells) bells = DEFAULT_BELL_TIMES;
                                 
                                 for(let bell of bells) {
                                     if(bell.period === 'EoD') continue;
@@ -786,12 +846,21 @@ app.get('/', async (c) => {
                                     bellEnd.setHours(eh, em, 0, 0);
                                     
                                     // If this period ended in the past, skip
+                                    // Note: for i=0 (today), we compare against exact 'now'.
+                                    // For i>0 (future days), 'now' is smaller than bellStart, so we don't skip.
                                     if (bellEnd <= now) continue;
                                     
                                     let pData = null;
                                     let isBreak = false;
 
-                                    if (['R', 'L1', 'L2'].includes(bell.period)) {
+                                    // Handle breaks (rec/lunch)
+                                    // Some days use L1/L2, others MTL1/MTL2, others WFL1/WFL2.
+                                    // The bell.period should match what's appropriate.
+                                    // If the period code indicates a break, use it.
+                                    // Common break codes: R, L1, L2, MTL1, MTL2, WFL1, WFL2, Recess, Lunch
+                                    const breakCodes = ['R', 'L1', 'L2', 'MTL1', 'MTL2', 'WFL1', 'WFL2', 'Recess', 'Lunch'];
+                                    
+                                    if (breakCodes.includes(bell.period) || bell.type === 'L' || bell.type === 'R') {
                                         isBreak = true;
                                         pData = { title: bell.label, isBreak: true };
                                     } else {
@@ -826,105 +895,119 @@ app.get('/', async (c) => {
                              return null;
                         }
 
-                        function updateTicker() {
-                            const now = new Date();
-                            const t = new Date();
-                            const todayStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
+                        async function updateTicker() {
+                            if (isTickerUpdating) return;
+                            isTickerUpdating = true;
                             
-                            const progressBar = document.getElementById('daily-progress-bar');
-                            const bigTimer = document.getElementById('big-timer-display');
-                            const btSubject = document.getElementById('bt-subject');
-                            const btTimer = document.getElementById('bt-timer');
-                            const btDetails = document.getElementById('bt-details');
-                            const btLabel = document.getElementById('bt-label');
+                            try {
+                                const now = new Date();
+                                const t = new Date();
+                                const todayStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
+                                
+                                const progressBar = document.getElementById('daily-progress-bar');
+                                const bigTimer = document.getElementById('big-timer-display');
+                                const btSubject = document.getElementById('bt-subject');
+                                const btTimer = document.getElementById('bt-timer');
+                                const btDetails = document.getElementById('bt-details');
+                                const btLabel = document.getElementById('bt-label');
 
-                            // progress bar
-                            
-                            if (currentDateStr === todayStr && progressBar) {
-                                progressBar.classList.remove('hidden');
-                                const startMins = 8 * 60; 
-                                const endMins = 15 * 60 + 10;
-                                const currentMins = now.getHours() * 60 + now.getMinutes() + (now.getSeconds()/60);
+                                // progress bar
                                 
-                                let pct = (currentMins - startMins) / (endMins - startMins);
-                                if (pct < 0) pct = 0;
-                                if (pct > 1) pct = 1;
-                                
-                                progressBar.style.height = \`\${pct * 100}%\`;
-                                
-                                let activeColor = '#e5e7eb';
-                                const cards = document.querySelectorAll('.period-card');
-                                cards.forEach(card => {
-                                     const s = card.dataset.start;
-                                     const e = card.dataset.end;
-                                     if(s && e) {
-                                         const [sh, sm] = s.split(':').map(Number);
-                                         const [eh, em] = e.split(':').map(Number);
-                                         const sTime = new Date(now); sTime.setHours(sh, sm, 0, 0);
-                                         const eTime = new Date(now); eTime.setHours(eh, em, 0, 0);
-                                         if (now >= sTime && now < eTime) {
-                                             activeColor = card.dataset.color || '#e5e7eb';
+                                if (currentDateStr === todayStr && progressBar) {
+                                    progressBar.classList.remove('hidden');
+                                    const startMins = 8 * 60; 
+                                    const endMins = 15 * 60 + 10;
+                                    const currentMins = now.getHours() * 60 + now.getMinutes() + (now.getSeconds()/60);
+                                    
+                                    let pct = (currentMins - startMins) / (endMins - startMins);
+                                    if (pct < 0) pct = 0;
+                                    if (pct > 1) pct = 1;
+                                    
+                                    progressBar.style.height = \`\${pct * 100}%\`;
+                                    
+                                    let activeColor = '#e5e7eb';
+                                    const cards = document.querySelectorAll('.period-card');
+                                    cards.forEach(card => {
+                                         const s = card.dataset.start;
+                                         const e = card.dataset.end;
+                                         if(s && e) {
+                                             const [sh, sm] = s.split(':').map(Number);
+                                             const [eh, em] = e.split(':').map(Number);
+                                             const sTime = new Date(now); sTime.setHours(sh, sm, 0, 0);
+                                             const eTime = new Date(now); eTime.setHours(eh, em, 0, 0);
+                                             if (now >= sTime && now < eTime) {
+                                                 activeColor = card.dataset.color || '#e5e7eb';
+                                             }
                                          }
-                                     }
-                                });
-                                progressBar.style.backgroundColor = activeColor;
-                            } else if (progressBar) {
-                                progressBar.classList.add('hidden');
-                            }
-
-                            // big timer
-                            if (bigTimer) {
-                                bigTimer.classList.remove('hidden');
-                                
-                                let targetTime = null;
-                                let timerLabel = "Until Start";
-                                let mainText = "";
-                                let subText = "";
-
-                                if (hoveredPeriodData) {
-                                     const [h, m] = hoveredPeriodData.start.split(':').map(Number);
-                                     const [ry, rm, rd] = currentDateStr.split('-').map(Number);
-                                     targetTime = new Date(ry, rm-1, rd);
-                                     targetTime.setHours(h, m, 0, 0);
-                                     
-                                     mainText = hoveredPeriodData.title || "Selected Class";
-                                     subText = \`<span class= "font-bold text-black"> \${hoveredPeriodData.room || ''}</span>\${hoveredPeriodData.room && hoveredPeriodData.teacher ? ' • ' : ''}\${hoveredPeriodData.teacher || ''}\`;
-                                    timerLabel = "Until Start";
-
-                                    if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) {
-                                        subText = \`<span class="font-bold text-black">Selected Period</span>\`;
-                                    }
-                                } else {
-                                    const next = findNextPeriod(now);
-                                    if (next) {
-                                        targetTime = next.date;
-                                        mainText = next.subject;
-                                        subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
-                                        timerLabel = next.isCurrent ? "Time Left" : "Until Start";
-                                    } else {
-                                        mainText = "No Upcoming Classes";
-                                        subText = "Relax!";
-                                        btTimer.textContent = "--:--:--";
-                                        return;
-                                    }
+                                    });
+                                    progressBar.style.backgroundColor = activeColor;
+                                } else if (progressBar) {
+                                    progressBar.classList.add('hidden');
                                 }
 
-                                    if (targetTime) {
-                                        let diff = targetTime - now;
+                                // big timer
+                                if (bigTimer) {
+                                    bigTimer.classList.remove('hidden');
+                                    
+                                    let targetTime = null;
+                                    let timerLabel = "Until Start";
+                                    let mainText = "";
+                                    let subText = "";
 
-                                    btSubject.textContent = mainText;
-                                    btDetails.innerHTML = subText;
-                                    btLabel.textContent = timerLabel;
+                                    if (hoveredPeriodData) {
+                                         const [h, m] = hoveredPeriodData.start.split(':').map(Number);
+                                         const [ry, rm, rd] = currentDateStr.split('-').map(Number);
+                                         targetTime = new Date(ry, rm-1, rd);
+                                         targetTime.setHours(h, m, 0, 0);
+                                         
+                                         mainText = hoveredPeriodData.title || "Selected Class";
+                                         subText = \`<span class= "font-bold text-black"> \${hoveredPeriodData.room || ''}</span>\${hoveredPeriodData.room && hoveredPeriodData.teacher ? ' • ' : ''}\${hoveredPeriodData.teacher || ''}\`;
+                                        timerLabel = "Until Start";
 
-                                    if (diff < 0) {
-                                        btTimer.textContent = "Started";
-                                    btLabel.textContent = "Time Since: " + formatDuration(Math.abs(diff));
-                                                            } else {
-                                        btTimer.textContent = formatDuration(diff);
+                                        if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) {
+                                            subText = \`<span class="font-bold text-black">Selected Period</span>\`;
+                                        }
+                                    } else {
+                                        const next = await findNextPeriod(now);
+                                        if (next) {
+                                            targetTime = next.date;
+                                            mainText = next.subject;
+                                            subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
+                                            timerLabel = next.isCurrent ? "Time Left" : "Until Start";
+                                        } else {
+                                            mainText = "No Upcoming Classes";
+                                            subText = "Relax!";
+                                            btTimer.textContent = "--:--:--";
+                                            // Don't return, let it clear
+                                        }
+                                    }
+
+                                        if (targetTime) {
+                                            let diff = targetTime - now;
+
+                                        btSubject.textContent = mainText;
+                                        btDetails.innerHTML = subText;
+                                        btLabel.textContent = timerLabel;
+
+                                        if (diff < 0) {
+                                            btTimer.textContent = "Started";
+                                        btLabel.textContent = "Time Since: " + formatDuration(Math.abs(diff));
+                                                                } else {
+                                            btTimer.textContent = formatDuration(diff);
+                                                                }
+                                                            } else if (mainText === "No Upcoming Classes") {
+                                                                btSubject.textContent = mainText;
+                                                                btDetails.innerHTML = subText;
+                                                                btLabel.textContent = "";
+                                                                btTimer.textContent = "--:--:--";
                                                             }
                                                         }
-                                                    }
-                                                }
+                            } catch(e) {
+                                console.error('Ticker error', e); 
+                            } finally {
+                                isTickerUpdating = false;
+                            }
+                        }
 
             function formatDuration(ms) {
                     const dHours = Math.floor(ms / (1000 * 60 * 60));
