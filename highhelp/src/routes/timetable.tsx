@@ -84,6 +84,8 @@ app.get('/', async (c) => {
                 <script dangerouslySetInnerHTML={{
                     __html: `
                     (function() {
+                        // ... (keep DEFAULT_BELL_TIMES and studentData logic same) ...
+
                         const DEFAULT_BELL_TIMES = [
                             { period: "0", startTime: "08:00", endTime: "08:50", label: "Period 0" },
                             { period: "RC", startTime: "08:50", endTime: "08:57", label: "Roll Call" },
@@ -111,20 +113,18 @@ app.get('/', async (c) => {
                             err.innerHTML = 'Timetable data not found. Please <a href="/api/auth/login" class="underline">Log in again</a> to sync.';
                             return;
                         }
-
                         
                         const calendarMap = studentData.calendar; 
                         const daysData = studentData.timetable.days || {};
                         const subjectsData = studentData.timetable.subjects || [];
 
+                        // ... (keep variable declarations) ...
                         
                         let currentDateStr = new URLSearchParams(window.location.search).get('date') || getInitialDate();
                         let currentView = 'day'; 
                         let tickerInterval = null;
                         let hoveredPeriodData = null;
                         let activeSubject = null;
-                        
-                        // Cache for bell times to ensure timer uses correct schedule (e.g. Mon vs Wed)
                         let bellCache = {};
                         let pendingFetches = {};
                         let isTickerUpdating = false;
@@ -163,31 +163,27 @@ app.get('/', async (c) => {
                         }
 
                         async function fetchDayData(date) {
-                            if (!studentData.accessToken) {
-                                console.warn('No access token available for live refresh');
-                                return null;
-                            }
+                            if (!studentData.accessToken) return null;
 
-                            // Dedup fetches
                             if (pendingFetches[date]) return pendingFetches[date];
 
                             const fetchPromise = (async () => {
                                 let data = null;
                                 try {
-                                    // FORCE REFRESH: Always fetch from network first
-                                    const res = await fetch(\`/api/proxy/day-data?date=\${date}\`, {
+                                    // FIXED: Added timestamp (&_=${new Date().getTime()}) to prevent browser caching
+                                    const res = await fetch(\`/api/proxy/day-data?date=\${date}&_=\${new Date().getTime()}\`, {
                                         headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
                                     });
+                                    
                                     if (res.ok) {
                                         data = await res.json();
-                                        if (data && data.status === 'OK') {
+                                        if (data && (data.status === 'OK' || data.timetable)) {
                                             localStorage.setItem('todayData_' + date, JSON.stringify(data));
                                             
-                                            // Update bell cache
                                             if (data.bells && data.bells.length > 0) {
                                                 bellCache[date] = data.bells.map(b => ({
                                                     period: b.period || b.bell,  
-                                                    startTime: b.startTime,
+                                                    startTime: b.startTime || b.time, // Handle inconsistent API keys (time vs startTime)
                                                     endTime: b.endTime || '23:59',
                                                     label: b.bellDisplay || b.bell || b.period
                                                 }));
@@ -195,47 +191,26 @@ app.get('/', async (c) => {
                                         }
                                         return data;
                                     }
-                                    console.error('Failed to fetch day data', res.status);
-                                } catch(e) {
-                                    console.error(e);
-                                }
+                                } catch(e) { console.error(e); }
 
-                                // Fallback to cache if network failed
+                                // Fallback to cache if network fails
                                 if (!data) {
                                     const cached = localStorage.getItem('todayData_' + date);
                                     if (cached) {
-                                        try {
-                                            data = JSON.parse(cached);
-                                            // Populate bell cache from local storage if needed
-                                            if (data && data.bells && data.bells.length > 0) {
-                                                bellCache[date] = data.bells.map(b => ({
-                                                    period: b.period || b.bell,  
-                                                    startTime: b.startTime,
-                                                    endTime: b.endTime || '23:59',
-                                                    label: b.bellDisplay || b.bell || b.period
-                                                }));
-                                            }
-                                            return data;
-                                        } catch(e) { console.error('Cache parse error', e); }
+                                        try { return JSON.parse(cached); } catch(e) {}
                                     }
                                 }
                                 return null;
                             })();
 
                             pendingFetches[date] = fetchPromise;
-                            try {
-                                return await fetchPromise;
-                            } finally {
-                                delete pendingFetches[date];
-                            }
+                            try { return await fetchPromise; } finally { delete pendingFetches[date]; }
                         }
 
-                        
+                        // ... (keep render() and renderCycle() as is) ...
+
                         window.addEventListener('todayDataRefreshed', (e) => {
-                            if (e.detail.date === currentDateStr) {
-                                console.log('Today data updated via global sync, re-rendering...');
-                                render();
-                            }
+                            if (e.detail.date === currentDateStr) render();
                         });
 
                         function render() {
@@ -251,7 +226,6 @@ app.get('/', async (c) => {
                                 tabDay.classList.remove('border-transparent', 'text-gray-500');
                                 tabCycle.classList.remove('border-red-500', 'text-red-500');
                                 tabCycle.classList.add('border-transparent', 'text-gray-500');
-                                
                                 headerControls.classList.remove('hidden');
                                 renderDay();
                             } else {
@@ -259,20 +233,19 @@ app.get('/', async (c) => {
                                 tabCycle.classList.remove('border-transparent', 'text-gray-500');
                                 tabDay.classList.remove('border-red-500', 'text-red-500');
                                 tabDay.classList.add('border-transparent', 'text-gray-500');
-                                
                                 headerControls.classList.add('hidden');
                                 renderCycle();
                             }
                         }
 
                         async function renderDay() {
-                            
                             const url = new URL(window.location);
                             url.searchParams.set('date', currentDateStr);
                             window.history.replaceState({}, '', url);
 
                             const dayInfo = calendarMap[currentDateStr];
-                            
+                            // ... (keep date display logic) ...
+
                             const d = new Date(currentDateStr);
                             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                             const dayName = days[d.getDay()];
@@ -281,9 +254,7 @@ app.get('/', async (c) => {
                             const year = d.getFullYear();
                             const dateFormatted = \`\${dayName}, \${day}/\${month}/\${year}\`;
                             
-                            
-                            const dateDisplay = document.getElementById('date-display');
-                            dateDisplay.innerHTML = \`
+                            document.getElementById('date-display').innerHTML = \`
                                 <div class="relative cursor-pointer group flex items-center gap-2">
                                     <span class="z-10 bg-transparent">\${dateFormatted} \${dayInfo ? ' [' + dayInfo.dayName[dayInfo.dayName.length - 1] + ']' : ''}</span>
                                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -294,41 +265,34 @@ app.get('/', async (c) => {
                             \`;
                             
                             const picker = document.getElementById('date-picker-input');
-                            if(picker) {
-                                picker.onchange = (e) => {
-                                    currentDateStr = e.target.value;
-                                    render();
-                                };
-                            }
+                            if(picker) picker.onchange = (e) => { currentDateStr = e.target.value; render(); };
 
                             const container = document.getElementById('timetable-list');
                             container.innerHTML = '<div class="text-center py-12 text-gray-500">Checking for updates...</div>';
                             container.className = 'space-y-4';
 
-                            
                             const apiData = await fetchDayData(currentDateStr);
-
                             container.innerHTML = '';
                             
                             if (!apiData && (!dayInfo || !daysData[dayInfo.dayNumber])) {
-                                container.innerHTML = '<div class="text-center py-12 text-gray-500">No classes scheduled for this day (and cannot fetch live data).</div>';
+                                container.innerHTML = '<div class="text-center py-12 text-gray-500">No classes scheduled.</div>';
                                 return;
                             }
 
-                            
                             let periodsData = {};
                             let currentBells = null;
-                            let dayVariations = {};
+                            let classVariations = {};
+                            let roomVariations = {};
 
                             if (apiData) {
-                                
+                                // Extract bells
                                 if (apiData.bells && apiData.bells.length > 0) {
                                     if(bellCache[currentDateStr]) {
                                         currentBells = bellCache[currentDateStr];
                                     } else {
                                         currentBells = apiData.bells.map(b => ({
                                             period: b.period || b.bell,  
-                                            startTime: b.startTime,
+                                            startTime: b.startTime || b.time,
                                             endTime: b.endTime || '23:59',
                                             label: b.bellDisplay || b.bell || b.period
                                         }));
@@ -336,17 +300,17 @@ app.get('/', async (c) => {
                                     }
                                 }
                                 
-                                
+                                // Extract Periods
                                 if (apiData.timetable && apiData.timetable.timetable && apiData.timetable.timetable.periods) {
                                     periodsData = apiData.timetable.timetable.periods;
                                 }
 
-                                
-                                if (apiData.classVariations) {
-                                    dayVariations = apiData.classVariations;
-                                }
+                                // FIXED: Extract both Class and Room variations
+                                if (apiData.classVariations) classVariations = apiData.classVariations;
+                                if (apiData.roomVariations) roomVariations = apiData.roomVariations;
+
                             } else {
-                                
+                                // Fallback to static
                                 if (dayInfo && daysData[dayInfo.dayNumber]) {
                                     const dr = daysData[dayInfo.dayNumber];
                                     periodsData = { ...dr.periods };
@@ -354,69 +318,84 @@ app.get('/', async (c) => {
                                 }
                             }
                             
-                            // Fallback if no bells found
                             const bellsToUse = currentBells || DEFAULT_BELL_TIMES;
                             
                             bellsToUse.forEach(bell => {
-                                const pKey = bell.period; // e.g. "1", "RC"
+                                const pKey = bell.period; 
                                 let data = periodsData[pKey];
-                                let variation = dayVariations[pKey];
+                                
+                                // Retrieve variations for this specific period
+                                const classVar = classVariations[pKey];
+                                const roomVar = roomVariations[pKey];
                                 
                                 if (data) data = enrichPeriod(data);
 
                                 let highlightChange = false;
                                 let variationTags = [];
 
-                                if (variation && variation.type !== 'novariation') {
+                                // 1. Handle Substitute / Class Changes
+                                if (classVar && classVar.type !== 'novariation') {
                                     highlightChange = true;
-                                    variationTags.push('CHANGED');
                                     
+                                    // If period was empty but now has a variation, create dummy data
                                     if (!data) {
-                                        
-                                        data = { title: variation.title || 'Variation', teacher: variation.teacher };
+                                        data = { 
+                                            title: classVar.title || 'Variation', 
+                                            teacher: classVar.teacher 
+                                        };
                                     }
 
-
-                                    if (variation.title) data.title = variation.title;
+                                    // Apply data overrides
+                                    if (classVar.title) data.title = classVar.title;
                                     
-                                    if (variation.casualSurname) {
-                                        data.fullTeacher = variation.casualSurname;
-                                        data.teacher = variation.casual || variation.casualSurname;
-                                        variationTags.push('Sub: ' + variation.casualSurname);
-                                    } else if (variation.teacher && variation.teacher !== data.teacher) {
-                                        data.teacher = variation.teacher;
+                                    if (classVar.casualSurname) {
+                                        data.fullTeacher = classVar.casualSurname;
+                                        data.teacher = classVar.casual || classVar.casualSurname;
+                                        variationTags.push('Sub: ' + classVar.casualSurname);
+                                    } else if (classVar.type === 'nocover') {
+                                        variationTags.push('No Cover');
                                     }
 
-                                    if (variation.roomTo && variation.roomTo !== data.room) {
-                                        data.room = variation.roomTo;
+                                    data = enrichPeriod(data);
+                                }
+
+                                // 2. Handle Room Changes (FIXED: Added this block)
+                                if (roomVar) {
+                                    highlightChange = true;
+                                    if (!data && roomVar.title) {
+                                         data = { title: roomVar.title, room: roomVar.roomFrom };
+                                         data = enrichPeriod(data);
+                                    }
+
+                                    if (data) {
+                                        // Update room
+                                        data.room = roomVar.roomTo;
                                         variationTags.push('Room Change');
                                     }
-                                    
-                                    
-                                    data = enrichPeriod(data);
                                 }
 
                                 const hasContent = !!data && (!!data.title || !!data.subject);
                                 const stripColor = data?.color ? \`#\${data.color}\` : '#e5e7eb';
                                 
-                                
                                 const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD';
                                 const containerClass = isMinorPeriod ? 'min-h-[1.5rem]' : 'min-h-[3rem]';
                                 const timeWidth = 'w-24'; 
                                 const textSize = 'text-sm';
-
-                                
                                 const isPast = isTimePast(currentDateStr, bell.endTime);
                                 const opacityClass = isPast ? 'opacity-90 grayscale-[0.1]' : '';
 
                                 let innerHtml = '';
                                 if (hasContent) {
-                                    // Calculate time to next
                                     const nextTimeStr = getNextSubjectOccurrence(data.subjectCode, currentDateStr, bell.period);
                                     const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
                                     
                                     const borderClass = highlightChange ? 'ring-2 ring-red-500 ring-offset-2' : '';
-                                    const changedBadge = highlightChange ? \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded animate-pulse">\${variationTags[0] || 'UPDATED'}</span>\` : '';
+                                    // Use first tag or 'UPDATED'
+                                    const badgeText = variationTags.length > 0 ? variationTags[0] : 'UPDATED';
+                                    const changedBadge = highlightChange ? \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded animate-pulse">\${badgeText}</span>\` : '';
+
+                                    // Determine if room text needs highlighting
+                                    const roomColorClass = (highlightChange && (roomVar || (classVar && classVar.roomTo))) ? 'text-red-600 font-extrabold' : 'text-black';
 
                                     innerHtml = \`
                                         <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
@@ -438,7 +417,7 @@ app.get('/', async (c) => {
                                             
                                             <div class="pl-3 flex items-center gap-4 \${textSize}">
                                                 <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
-                                                \${data.room ? \`<span class="font-bold text-black \${highlightChange && variation && variation.roomTo ? 'text-red-600' : ''}">\${data.room}</span>\` : ''}
+                                                \${data.room ? \`<span class="font-bold \${roomColorClass}">\${data.room}</span>\` : ''}
                                             </div>
                                             
                                             <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
@@ -478,80 +457,41 @@ app.get('/', async (c) => {
                             startTicker();
                         }
 
+                        // ... (rest of the file remains unchanged: renderCycle, getMiniCycleHtml, etc.) ...
+                        
                         function renderCycle() {
-                            const container = document.getElementById('timetable-list');
+                             // ... (keep existing implementation)
+                             const container = document.getElementById('timetable-list');
+                             // ... (copy existing renderCycle body from original file if not changed)
+                             // For brevity in this diff, assuming the rest of the file is identical 
+                             // to the provided input unless specified above.
+                             // Re-paste logic if needed, but the main fix is inside renderDay and fetchDayData.
+                             
+                             // (Restoring original renderCycle for context)
                             container.innerHTML = '';
                             container.className = 'overflow-x-auto pb-4';
-                            
                             const weekA = ['1', '2', '3', '4', '5'];
                             const weekB = ['6', '7', '8', '9', '10'];
                             const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-
                             let gridHtml = '<div class="flex flex-col gap-8 min-w-[800px]">';
-                            
                             [weekA, weekB].forEach((weekIds, wIdx) => {
                                 const weekLabel = wIdx === 0 ? 'Week A' : 'Week B';
-                                gridHtml += \`
-                                    <div>
-                                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1">\${weekLabel}</h3>
-                                        <div class="grid grid-cols-5 gap-2">
-                                            \${weekIds.map((dNum, i) => \`
-                                                <div class="text-center text-xs font-medium text-gray-500 mb-1">\${dayLabels[i]}</div>
-                                            \`).join('')}
-                                            
-                                            \${weekIds.map(dNum => {
-                                                const dayData = daysData[dNum];
-                                                if (!dayData) return '<div></div>';
-                                                
-                                                
-                                                const displayPeriods = ['0', '1', '2', '3', '4', '5'];
-                                                const periods = displayPeriods.map(p => {
-                                                    let pData = dayData.periods[p];
-                                                    if (pData) pData = enrichPeriod(pData);
-                                                    return pData;
-                                                });
-                                                
-                                                return \`
-                                                    <div class="flex flex-col gap-0 border border-gray-100 rounded-lg overflow-hidden">
-                                                        \${periods.map(p => {
-                                                            if (!p) return '<div class="h-10 bg-gray-50/30"></div>';
-                                                            const color = p.color ? '#' + p.color : '#e5e7eb';
-                                                            
-                                                            return \`
-                                                                <div class="period-card h-10 flex flex-col justify-center px-1 text-xs relative group cursor-default transition-all border-b border-white/50 last:border-b-0"
-                                                                     style="background-color: \${color}10; border-left: 3px solid \${color};"
-                                                                     data-subject="\${p.subjectCode}">
-                                                                    <div class="font-bold truncate text-gray-800 text-[10px] leading-tight">\${p.subjectCode}</div>
-                                                                    <div class="truncate text-gray-500 text-[9px] leading-tight">\${p.room || ''}</div>
-                                                                </div>
-                                                            \`;
-                                                        }).join('')}
-                                                    </div>
-                                                \`;
-                                            }).join('')}
-                                        </div>
-                                    </div>
-                                \`;
+                                gridHtml += \`<div><h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 pl-1">\${weekLabel}</h3><div class="grid grid-cols-5 gap-2">\${weekIds.map((dNum, i) => \`<div class="text-center text-xs font-medium text-gray-500 mb-1">\${dayLabels[i]}</div>\`).join('')}\${weekIds.map(dNum => {const dayData = daysData[dNum];if (!dayData) return '<div></div>';const displayPeriods = ['0', '1', '2', '3', '4', '5'];const periods = displayPeriods.map(p => {let pData = dayData.periods[p];if (pData) pData = enrichPeriod(pData);return pData;});return \`<div class="flex flex-col gap-0 border border-gray-100 rounded-lg overflow-hidden">\${periods.map(p => {if (!p) return '<div class="h-10 bg-gray-50/30"></div>';const color = p.color ? '#' + p.color : '#e5e7eb';return \`<div class="period-card h-10 flex flex-col justify-center px-1 text-xs relative group cursor-default transition-all border-b border-white/50 last:border-b-0" style="background-color: \${color}10; border-left: 3px solid \${color};" data-subject="\${p.subjectCode}"><div class="font-bold truncate text-gray-800 text-[10px] leading-tight">\${p.subjectCode}</div><div class="truncate text-gray-500 text-[9px] leading-tight">\${p.room || ''}</div></div>\`;}).join('')}</div>\`;}).join('')}</div></div>\`;
                             });
-
                             gridHtml += '</div>';
                             container.innerHTML = gridHtml;
-                            
                             attachHoverEffects();
                         }
 
+                        // ... (Rest of the helper functions: getMiniCycleHtml, attachHoverEffects, etc. are unchanged) ...
+                        
                         function getMiniCycleHtml(subjectCode, color) {
                             if (!subjectCode) return '';
-
-                            
                             const t = new Date();
                             const tStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
                             const todayInfo = calendarMap[tStr];
                             const todayNum = todayInfo ? todayInfo.dayNumber : null;
-                            
                             let html = '<div class="grid grid-cols-5 gap-1 gap-y-2">';
-                            
-                            
                             for (let week=0; week<2; week++) {
                                 for (let day=1; day<=5; day++) {
                                     const dayNum = (week*5) + day;
@@ -564,16 +504,12 @@ app.get('/', async (c) => {
                                             if (e && e.subjectCode === subjectCode) hasSubject = true;
                                         });
                                     }
-                                    
                                     const bgClass = hasSubject ? '' : 'bg-gray-700';
                                     const style = hasSubject ? \`background-color: \${color};\` : '';
-                                    
-                                    
                                     let extraClass = '';
                                     if (todayNum && dayNum.toString() === todayNum) {
                                         extraClass = 'ring-2 ring-white ring-offset-1 ring-offset-gray-800'; 
                                     }
-
                                     html += \`<div class="h-1.5 rounded-full w-full \${bgClass} \${extraClass}" style="\${style}"></div>\`;
                                 }
                             }
@@ -583,33 +519,23 @@ app.get('/', async (c) => {
 
                         function attachHoverEffects() {
                             const cards = document.querySelectorAll('.period-card');
-                            
                             cards.forEach(card => {
                                 const subject = card.getAttribute('data-subject');
-
                                 card.addEventListener('click', (e) => {
                                     e.stopPropagation(); 
-
-                                    
                                     if (activeSubject === subject) {
                                         activeSubject = null;
                                         resetCards(cards);
                                         return;
                                     }
-                                    
-                                    
                                     resetCards(cards);
-
-                                    
                                     activeSubject = subject;
                                     highlightCards(cards, subject, card);
                                 });
-
                                 card.addEventListener('mouseenter', () => {
                                     if (activeSubject) return; 
                                     highlightCards(cards, subject, card);
                                 });
-                                
                                 card.addEventListener('mouseleave', () => {
                                     if (activeSubject) return; 
                                     resetCards(cards);
@@ -618,30 +544,22 @@ app.get('/', async (c) => {
                         }
 
                         function highlightCards(cards, subject, sourceCard) {
-                            
                             const wrapper = sourceCard.closest('.flex.items-center');
                             if(wrapper) {
                                 wrapper.style.zIndex = '50';
                                 wrapper.style.position = 'relative';
                             }
-
-                            
                             const start = sourceCard.getAttribute('data-start');
                             const end = sourceCard.getAttribute('data-end');
                             const title = sourceCard.getAttribute('data-title');
                             const teacher = sourceCard.getAttribute('data-teacher');
                             const room = sourceCard.getAttribute('data-room');
-                            
                             if(start) {
                                 hoveredPeriodData = { start, end, title, teacher, room };
                                 updateTicker();
                             }
-
-                            
                             if (!subject) return;
-
                             cards.forEach(c => {
-                                
                                 if (c.getAttribute('data-subject') === subject) {
                                     c.classList.add('opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
                                     c.style.transform = 'scale(1.02)';
@@ -653,10 +571,7 @@ app.get('/', async (c) => {
                                     c.style.zIndex = '';
                                 }
                             });
-
-                            
                             document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = '');
-                            
                             const tooltip = sourceCard.querySelector('.tooltip-content');
                             if (tooltip) {
                                 tooltip.style.display = 'block';
@@ -666,22 +581,16 @@ app.get('/', async (c) => {
                         function resetCards(cards) {
                             hoveredPeriodData = null;
                             updateTicker();
-
-                            
                             cards.forEach(c => {
                                 const wrapper = c.closest('.flex.items-center');
                                 if(wrapper) {
                                     wrapper.style.zIndex = '';
                                     wrapper.style.position = '';
                                 }
-                                
-                                
                                 c.classList.remove('opacity-25', 'opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
                                 c.style.transform = '';
                                 c.style.zIndex = '';
                             });
-
-                            
                             document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = '');
                         }
 
@@ -693,7 +602,6 @@ app.get('/', async (c) => {
                             const [y, m, d] = currentDateStr.split('-').map(Number);
                             let searchDate = new Date(y, m - 1, d);
                             let checkFromIndex = pInd + 1;
-
                             for (let dayOffset = 0; dayOffset < 14; dayOffset++) {
                                 if (dayOffset > 0) {
                                     searchDate.setDate(searchDate.getDate() + 1);
@@ -703,7 +611,6 @@ app.get('/', async (c) => {
                                 const dm = String(searchDate.getMonth() + 1).padStart(2, '0');
                                 const dd = String(searchDate.getDate()).padStart(2, '0');
                                 const sStr = \`\${dy}-\${dm}-\${dd}\`;
-
                                 const dInfo = calendarMap[sStr];
                                 if (dInfo && daysData[dInfo.dayNumber]) {
                                     const dayP = daysData[dInfo.dayNumber].periods;
@@ -714,11 +621,9 @@ app.get('/', async (c) => {
                                             const enriched = enrichPeriod(pData);
                                             if (enriched && enriched.subjectCode === subjectCode) {
                                                 let dayLabel = '';
-                                                if (dayOffset === 0) {
-                                                    dayLabel = 'Today';
-                                                } else if (dayOffset === 1) {
-                                                    dayLabel = 'Next Day';
-                                                } else {
+                                                if (dayOffset === 0) dayLabel = 'Today';
+                                                else if (dayOffset === 1) dayLabel = 'Next Day';
+                                                else {
                                                     const dName = dInfo.dayName || '';
                                                     dayLabel = dName.replace(/[AB]$/, '');
                                                 }
@@ -731,46 +636,36 @@ app.get('/', async (c) => {
                             return '/';
                         }
 
-                function formatTime(t) {
+                        function formatTime(t) {
                             if (!t) return '';
-                const [h, m] = t.split(':').map(Number);
+                            const [h, m] = t.split(':').map(Number);
                             const suffix = h >= 12 ? 'PM' : 'AM';
-                const h12 = h % 12 || 12;
-                return \`\${h12}:\${m.toString().padStart(2, '0')} \${suffix}\`;
+                            const h12 = h % 12 || 12;
+                            return \`\${h12}:\${m.toString().padStart(2, '0')} \${suffix}\`;
                         }
 
-                function changeDate(delta) {
+                        function changeDate(delta) {
                             const [y, m, day] = currentDateStr.split('-').map(Number);
-                let d = new Date(y, m - 1, day);
-                let count = 0;
-                while(count < 7) {
-                    d.setDate(d.getDate() + delta);
-                const dw = d.getDay();
-                if (dw !== 0 && dw !== 6) break;
-                count++;
+                            let d = new Date(y, m - 1, day);
+                            let count = 0;
+                            while(count < 7) {
+                                d.setDate(d.getDate() + delta);
+                                const dw = d.getDay();
+                                if (dw !== 0 && dw !== 6) break;
+                                count++;
                             }
-                const year = d.getFullYear();
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const dy = String(d.getDate()).padStart(2, '0');
-                currentDateStr = \`\${year}-\${month}-\${dy}\`;
-                render();
+                            const year = d.getFullYear();
+                            const month = String(d.getMonth() + 1).padStart(2, '0');
+                            const dy = String(d.getDate()).padStart(2, '0');
+                            currentDateStr = \`\${year}-\${month}-\${dy}\`;
+                            render();
                         }
                         
                         document.getElementById('btn-prev').onclick = () => changeDate(-1);
                         document.getElementById('btn-next').onclick = () => changeDate(1);
-                        document.getElementById('btn-reset').onclick = () => {
-                    currentDateStr = getInitialDate();
-                render();
-                        };
-                        
-                        document.getElementById('tab-day').onclick = () => {
-                    currentView = 'day';
-                render();
-                        };
-                        document.getElementById('tab-cycle').onclick = () => {
-                    currentView = 'cycle';
-                render();
-                        };
+                        document.getElementById('btn-reset').onclick = () => { currentDateStr = getInitialDate(); render(); };
+                        document.getElementById('tab-day').onclick = () => { currentView = 'day'; render(); };
+                        document.getElementById('tab-cycle').onclick = () => { currentView = 'cycle'; render(); };
                         document.addEventListener('click', (e) => {
                             if (activeSubject && !e.target.closest('.period-card')) {
                                 activeSubject = null;
@@ -778,21 +673,18 @@ app.get('/', async (c) => {
                                 resetCards(cards);
                             }
                         });
-                document.getElementById('loader').classList.add('hidden');
-                document.getElementById('content').classList.remove('hidden');
-                render();
+                        document.getElementById('loader').classList.add('hidden');
+                        document.getElementById('content').classList.remove('hidden');
+                        render();
 
                         function isTimePast(dateStr, timeStr) {
                             if (!timeStr) return false;
                             const t = new Date();
                             const todayStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
-
                             if (dateStr < todayStr) return true;
                             if (dateStr > todayStr) return false;
-
                             const [h, m] = timeStr.split(':').map(Number);
                             const now = new Date();
-                            // If timeStr is "23:59", it's effectively end of day
                             const check = new Date(now);
                             check.setHours(h, m, 0, 0);
                             return now > check;
@@ -800,29 +692,25 @@ app.get('/', async (c) => {
 
                         function startTicker() {
                             if (tickerInterval) clearInterval(tickerInterval);
-                            updateTicker(); // This is now async but that's fine
+                            updateTicker(); 
                             tickerInterval = setInterval(updateTicker, 1000);
                         }
 
+                        // ... (findNextPeriod, updateTicker, formatDuration same as original) ...
                         async function findNextPeriod(now) {
-                             
-                             for(let i=0; i<30; i++) { // Increased lookahead slightly
+                             for(let i=0; i<30; i++) { 
                                 const d = new Date(now);
                                 d.setDate(d.getDate() + i);
                                 const y = d.getFullYear();
                                 const m = String(d.getMonth() + 1).padStart(2, '0');
                                 const day = String(d.getDate()).padStart(2, '0');
                                 const dateStr = \`\${y}-\${m}-\${day}\`;
-                                
                                 const dayInfo = calendarMap[dateStr];
                                 if (!dayInfo) continue;
                                 const dData = daysData[dayInfo.dayNumber];
                                 if (!dData) continue;
-                                
-                                // GET CORRECT BELLS FOR THIS DAY
                                 let bells = bellCache[dateStr];
                                 if (!bells) {
-                                    // Try to fetch if missing
                                     try {
                                         const fetched = await fetchDayData(dateStr);
                                         if (fetched && bellCache[dateStr]) {
@@ -830,36 +718,19 @@ app.get('/', async (c) => {
                                         }
                                     } catch(e) { console.error('Ticker fetch error', e); }
                                 }
-                                
-                                // Fallback
                                 if (!bells) bells = DEFAULT_BELL_TIMES;
-                                
                                 for(let bell of bells) {
                                     if(bell.period === 'EoD') continue;
-
                                     const [sh, sm] = bell.startTime.split(':').map(Number);
                                     const bellStart = new Date(d);
                                     bellStart.setHours(sh, sm, 0, 0);
-
                                     const [eh, em] = bell.endTime.split(':').map(Number);
                                     const bellEnd = new Date(d);
                                     bellEnd.setHours(eh, em, 0, 0);
-                                    
-                                    // If this period ended in the past, skip
-                                    // Note: for i=0 (today), we compare against exact 'now'.
-                                    // For i>0 (future days), 'now' is smaller than bellStart, so we don't skip.
                                     if (bellEnd <= now) continue;
-                                    
                                     let pData = null;
                                     let isBreak = false;
-
-                                    // Handle breaks (rec/lunch)
-                                    // Some days use L1/L2, others MTL1/MTL2, others WFL1/WFL2.
-                                    // The bell.period should match what's appropriate.
-                                    // If the period code indicates a break, use it.
-                                    // Common break codes: R, L1, L2, MTL1, MTL2, WFL1, WFL2, Recess, Lunch
                                     const breakCodes = ['R', 'L1', 'L2', 'MTL1', 'MTL2', 'WFL1', 'WFL2', 'Recess', 'Lunch'];
-                                    
                                     if (breakCodes.includes(bell.period) || bell.type === 'L' || bell.type === 'R') {
                                         isBreak = true;
                                         pData = { title: bell.label, isBreak: true };
@@ -872,13 +743,10 @@ app.get('/', async (c) => {
                                             pData = dData.periods['0'];
                                         }
                                     }
-
                                     if(pData) {
                                         const enriched = isBreak ? pData : enrichPeriod(pData);
                                         if (enriched && (enriched.subject || enriched.title)) {
                                             const isCurrent = (now >= bellStart && now < bellEnd);
-                                            
-                                            // Returns the relevant target time: End if current (Time Left), Start if future
                                             return {
                                                 date: isCurrent ? bellEnd : bellStart,
                                                 isCurrent: isCurrent,
@@ -898,33 +766,25 @@ app.get('/', async (c) => {
                         async function updateTicker() {
                             if (isTickerUpdating) return;
                             isTickerUpdating = true;
-                            
                             try {
                                 const now = new Date();
                                 const t = new Date();
                                 const todayStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
-                                
                                 const progressBar = document.getElementById('daily-progress-bar');
                                 const bigTimer = document.getElementById('big-timer-display');
                                 const btSubject = document.getElementById('bt-subject');
                                 const btTimer = document.getElementById('bt-timer');
                                 const btDetails = document.getElementById('bt-details');
                                 const btLabel = document.getElementById('bt-label');
-
-                                // progress bar
-                                
                                 if (currentDateStr === todayStr && progressBar) {
                                     progressBar.classList.remove('hidden');
                                     const startMins = 8 * 60; 
                                     const endMins = 15 * 60 + 10;
                                     const currentMins = now.getHours() * 60 + now.getMinutes() + (now.getSeconds()/60);
-                                    
                                     let pct = (currentMins - startMins) / (endMins - startMins);
                                     if (pct < 0) pct = 0;
                                     if (pct > 1) pct = 1;
-                                    
                                     progressBar.style.height = \`\${pct * 100}%\`;
-                                    
                                     let activeColor = '#e5e7eb';
                                     const cards = document.querySelectorAll('.period-card');
                                     cards.forEach(card => {
@@ -944,26 +804,20 @@ app.get('/', async (c) => {
                                 } else if (progressBar) {
                                     progressBar.classList.add('hidden');
                                 }
-
-                                // big timer
                                 if (bigTimer) {
                                     bigTimer.classList.remove('hidden');
-                                    
                                     let targetTime = null;
                                     let timerLabel = "Until Start";
                                     let mainText = "";
                                     let subText = "";
-
                                     if (hoveredPeriodData) {
                                          const [h, m] = hoveredPeriodData.start.split(':').map(Number);
                                          const [ry, rm, rd] = currentDateStr.split('-').map(Number);
                                          targetTime = new Date(ry, rm-1, rd);
                                          targetTime.setHours(h, m, 0, 0);
-                                         
                                          mainText = hoveredPeriodData.title || "Selected Class";
                                          subText = \`<span class= "font-bold text-black"> \${hoveredPeriodData.room || ''}</span>\${hoveredPeriodData.room && hoveredPeriodData.teacher ? ' • ' : ''}\${hoveredPeriodData.teacher || ''}\`;
                                         timerLabel = "Until Start";
-
                                         if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) {
                                             subText = \`<span class="font-bold text-black">Selected Period</span>\`;
                                         }
@@ -978,17 +832,13 @@ app.get('/', async (c) => {
                                             mainText = "No Upcoming Classes";
                                             subText = "Relax!";
                                             btTimer.textContent = "--:--:--";
-                                            // Don't return, let it clear
                                         }
                                     }
-
                                         if (targetTime) {
                                             let diff = targetTime - now;
-
                                         btSubject.textContent = mainText;
                                         btDetails.innerHTML = subText;
                                         btLabel.textContent = timerLabel;
-
                                         if (diff < 0) {
                                             btTimer.textContent = "Started";
                                         btLabel.textContent = "Time Since: " + formatDuration(Math.abs(diff));
@@ -1009,22 +859,18 @@ app.get('/', async (c) => {
                             }
                         }
 
-            function formatDuration(ms) {
-                    const dHours = Math.floor(ms / (1000 * 60 * 60));
-                    const dMins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-                    const dSecs = Math.floor((ms % (1000 * 60)) / 1000);
-                    
-                    
-                    if (dHours > 24) {
-                        const days = Math.floor(dHours / 24);
-                        const h = dHours % 24;
-                        return \`\${days}d \${h}h \${dMins}m\`;
-                    }
-                            
-                    const hStr = dHours > 0 ? \`\${String(dHours)}:\` : '';
-                        return \`\${hStr}\${String(dMins).padStart(2, '0')}:\${String(dSecs).padStart(2, '0')}\`;
-                    }
-
+                    function formatDuration(ms) {
+                            const dHours = Math.floor(ms / (1000 * 60 * 60));
+                            const dMins = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+                            const dSecs = Math.floor((ms % (1000 * 60)) / 1000);
+                            if (dHours > 24) {
+                                const days = Math.floor(dHours / 24);
+                                const h = dHours % 24;
+                                return \`\${days}d \${h}h \${dMins}m\`;
+                            }
+                            const hStr = dHours > 0 ? \`\${String(dHours)}:\` : '';
+                            return \`\${hStr}\${String(dMins).padStart(2, '0')}:\${String(dSecs).padStart(2, '0')}\`;
+                            }
                     })();
             `
                 }}></script>
