@@ -10,22 +10,34 @@ import forumRoutes from './routes/forum'
 import essaysRoutes from './routes/essays'
 import aboutRoutes from './routes/about'
 import classesRoutes from './routes/timetable'
-
+import canvasRoutes from './routes/calender/canvas'
 import { getUser } from './utils'
 import { PermissionLevel } from './permissions'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.use('*', async (c, next) => {
+    
     if (c.req.path.startsWith('/api/auth')) return next();
     if (c.req.path.startsWith('/public')) return next();
 
+    
+    const host = c.req.header('host');
+    if (host && host.includes('workers.dev')) {
+        const url = new URL(c.req.url);
+        url.hostname = 'highhelp.org';
+        return c.redirect(url.toString(), 301);
+    }
+
+    
     const user = await getUser(c);
     if (user && user.permission_level === PermissionLevel.BANNED) {
         return c.text('You have been banned from HighHelp.', 403);
     }
+
+    
     await next();
-})
+});
 
 
 app.get('/api/proxy/day-data', async (c) => {
@@ -52,6 +64,7 @@ app.route('/', announcementsRoutes)
 app.route('/', forumRoutes)
 app.route('/', essaysRoutes)
 app.route('/timetable', classesRoutes)
+app.route('/canvas', canvasRoutes)
 app.route('/', aboutRoutes)
 
 export default app
