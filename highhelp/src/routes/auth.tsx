@@ -63,40 +63,107 @@ app.get('/api/auth/callback', async (c) => {
         });
 
         const tokenData: any = await tokenResponse.json();
-        if (!tokenData.access_token) return c.text('Failed to retrieve token', 400);
-        
+
+
+        if (!tokenData.access_token) {
+            return c.text('Failed to retrieve access token: ' + JSON.stringify(tokenData), 400);
+        }
+
         const accessToken = tokenData.access_token;
 
-        // Fetch User Info
+        // Get Info
         const userResponse = await fetch('https://student.sbhs.net.au/api/details/userinfo.json', {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
+
         const userData: any = await userResponse.json();
 
-        // Database Ops
+        if (!userData.studentId) {
+            return c.text('Failed to retrieve user info: ' + JSON.stringify(userData), 400);
+        }
+
+        // Check/Upsert
         let user = await c.env.DB.prepare('SELECT * FROM users WHERE student_id = ?').bind(userData.studentId).first();
 
         if (!user) {
-            user = await c.env.DB.prepare(`
+            // new user
+            const result = await c.env.DB.prepare(`
                 INSERT INTO users (student_id, first_name, last_name, email, role, permission_level)
                 VALUES (?, ?, ?, ?, 'student', 0)
                 RETURNING *
-            `).bind(userData.studentId, userData.givenName, userData.surname, userData.email).first();
+            `).bind(
+                userData.studentId,
+                userData.givenName,
+                userData.surname,
+                userData.email
+            ).first();
+            user = result;
         }
 
-        // Set Session Cookie
+        if (!user) return c.text('Database Error: Failed to create user', 500);
+
+        // Fetch Timetable Data
+        const timetableResponse = await fetch('https://student.sbhs.net.au/api/timetable/timetable.json', {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const timetableData = await timetableResponse.json();
+
+        
+        const currentYear = new Date().getFullYear();
+        const calendarResponse = await fetch(`https://student.sbhs.net.au/api/calendar/days.json?from=${currentYear}-01-01&to=${currentYear}-12-31`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const calendarData = await calendarResponse.json();
+
+        const studentData = {
+            timetable: timetableData,
+            calendar: calendarData
+        };
+
+        // Set Cookie
         const isLocal = c.req.url.includes('localhost');
         setCookie(c, 'user_id', String(user.id), {
             path: '/',
-            httpOnly: true, // Important: Prevents XSS attacks stealing the session
+            httpOnly: true,
             secure: !isLocal,
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: 60 * 60 * 24 * 7, // 1 week
             sameSite: 'Lax'
         });
-        
-        // RECOMMENDATION: Store the accessToken in the DB instead of sending to client
-        // For now, we redirect to home.
-        return c.redirect('/');
+
+        // Return HTML to save to localStorage and redirect
+        return c.html(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Redirecting...</title>
+                <style>
+                    body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f9fafb; color: #374151; }
+                    .container { text-align: center; }
+                    .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="spinner"></div>
+                    <p>Setting up your session...</p>
+                </div>
+                <script>
+                    try {
+                        const studentData = {
+                            ...${JSON.stringify(studentData)},
+                            accessToken: "${accessToken}"
+                        };
+                        localStorage.setItem('studentData', JSON.stringify(studentData));
+                        window.location.href = '/';
+                    } catch (e) {
+                        console.error('Error saving data', e);
+                        document.body.innerHTML = '<p style="color:red">Error saving session data. Please try again or contact support.</p>';
+                    }
+                </script>
+            </body>
+            </html>
+        `);
 
     } catch (e: any) {
         return c.text(`Authentication Failed: ${e.message}`, 500);
@@ -106,15 +173,38 @@ app.get('/api/auth/callback', async (c) => {
 app.get('/login', (c) => {
     return c.html(
         <Layout title="Login">
-            <div class="flex flex-col w-full min-h-screen justify-center items-center">
-                <div class="max-w-md w-full flex flex-col items-center p-8 rounded-xl">
-                    <h2 class="text-3xl font-bold mb-6 text-gray-800">Student Portal Login</h2>
-                    <p class="text-gray-600 mb-8 text-center text-lg">Log in via SBHS</p>
+            <div class="flex flex-col md:flex-row min-h-[600px]">
 
-                    <a href="/api/auth/login" class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg text-center hover:bg-blue-700 transition shadow-lg flex items-center justify-center gap-2 text-xl">
-                        <span>Log In with SBHS</span>
+
+                <div class="w-full md:w-1/2 p-8 flex flex-col justify-center items-center bg-gray-50 border-r border-gray-200">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800">Student Portal Login</h2>
+                    <p class="text-gray-600 mb-6 text-center">Log in with your school account.</p>
+
+                    <a href="/api/auth/login" class="w-3/4 bg-blue-600 text-white font-bold py-3 mb-6 rounded text-center hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2">
+                        <span>Log In with Student Portal</span>
                     </a>
+                    <p class="text-gray-600 mb-6 text-center"></p>
                 </div>
+
+
+                <div class="w-full md:w-1/2 p-8 flex flex-col justify-center">
+                    <h2 class="text-2xl font-bold mb-6 text-blue-900">[DEPRECIATED] Manual Login</h2>
+                    <form action="/login" method="post" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Email Address</label>
+                            <input type="email" name="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border" placeholder="student@student.sbhs.nsw.edu.au" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">PIN</label>
+                            <input type="password" name="password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border" placeholder="••••••••" />
+                        </div>
+                        <button type="submit" class="w-full bg-blue-800 text-white font-bold py-3 mb-6 rounded hover:bg-blue-900 transition">
+                            Log In
+                        </button>
+                        <p class="text-gray-600 mb-6 text-center">PS: This method is neither supported nor recommended - unless you are really, really concerned with your student portal privacy (and don't care about the timetable or 27 million potential bugs).. Then contact <u><a href = './about#contact'>us</a></u></p>
+                    </form>
+                </div>
+
             </div>
         </Layout>
     )
