@@ -1,0 +1,30 @@
+{
+    "name": "HighHelp",
+    "short_name": "HighHelp",
+    "id": "/timetable",
+    "description": "Student companion app for SBHS - Timetable, Resources, and more.",
+    "start_url": "/timetable",
+    "display": "standalone",
+    "background_color": "#3E2723",
+    "theme_color": "#3E2723",
+    "icons": [
+        {
+            "src": "/image-3-3.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/image-3-3.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/image-3-3.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

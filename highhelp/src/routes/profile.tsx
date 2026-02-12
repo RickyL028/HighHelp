@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags, censorEmail, getFruitPermission } from '../utils'
+import { getUser, renderTags, censorEmail, getFruitPermission, formatDate } from '../utils'
 import { Bindings, User } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -66,7 +66,7 @@ app.get('/profile', async (c) => {
 
                             <div>
                                 <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest">Joined</label>
-                                <p class="text-sm text-gray-600">{new Date(user.created_at).toLocaleDateString()}</p>
+                                <p class="text-sm text-gray-600">{formatDate(user.created_at)}</p>
                             </div>
                         </div>
                     </div>
@@ -133,7 +133,7 @@ app.post('/profile', async (c) => {
     const action = body['action']
 
     if (action === 'update_tags') {
-        
+
         let currentTags: Record<string, number> = {};
         try {
             currentTags = user.tags ? JSON.parse(user.tags) : {};
@@ -144,7 +144,7 @@ app.post('/profile', async (c) => {
         const newTags: Record<string, number> = {};
 
         for (const tag of Object.keys(currentTags)) {
-            
+
             const formKey = `tag_${encodeURIComponent(tag)}`;
 
             if (body[formKey] === '1') {
@@ -158,7 +158,7 @@ app.post('/profile', async (c) => {
         return c.redirect('/profile')
     }
 
-    
+
     if (action === 'change_password') {
         // TODO: change password
     }
@@ -198,7 +198,7 @@ app.get('/profile/contributions', async (c) => {
                                     <div class="bg-white p-4 rounded border border-gray-300 flex justify-between items-center group hover:border-blue-500 transition-colors">
                                         <div>
                                             <h3 class="font-bold text-gray-800">{r.title}</h3>
-                                            <p class="text-sm text-gray-500">{r.subject} • {new Date(r.created_at).toLocaleDateString()}</p>
+                                            <p class="text-sm text-gray-500">{r.subject} • {formatDate(r.created_at)}</p>
                                         </div>
                                         <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 text-sm hover:underline">Download</a>
                                     </div>
@@ -223,7 +223,7 @@ app.get('/profile/contributions', async (c) => {
                                     <div class="bg-white p-4 rounded border border-gray-300 hover:border-purple-500 transition-colors">
                                         <div class="flex justify-between">
                                             <h3 class="font-bold text-gray-800">{a.title}</h3>
-                                            <span class="text-xs text-gray-400">{new Date(a.created_at).toLocaleDateString()}</span>
+                                            <span class="text-xs text-gray-400">{formatDate(a.created_at)}</span>
                                         </div>
                                         <p class="text-sm text-gray-600 mt-1 line-clamp-1">{a.content}</p>
                                     </div>

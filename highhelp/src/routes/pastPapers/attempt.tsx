@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getUser } from '../../utils'
+import { getUser, formatDate } from '../../utils'
 import { Bindings } from '../../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -12,7 +12,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     const qId = c.req.param('id')
 
-    
+
     const q = await c.env.DB.prepare(`
         SELECT q.*, p.subject, p.school_name, p.academic_year, 
                group_concat(t.name, ', ') as topic_names
@@ -33,13 +33,13 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     if (user) {
         if (mode === 'review') {
-            
+
             originalAttempt = await c.env.DB.prepare(`
                 SELECT * FROM user_question_attempts 
                 WHERE user_id = ? AND question_id = ?
             `).bind(user.id, qId).first<any>();
 
-            
+
             attempt = await c.env.DB.prepare(`
                 SELECT * FROM user_review_attempts 
                 WHERE user_id = ? AND question_id = ?
@@ -55,7 +55,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
         }
     }
 
-    
+
     const source = c.req.query('source');
     const filterTopic = c.req.query('topic');
     const filterYear = c.req.query('year');
@@ -72,7 +72,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
     const currentParams = `source=${source || ''}&mode=${mode || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
     if (source === 'practice') {
-        
+
         let query = `
             SELECT q.id
             FROM exam_questions q
@@ -81,7 +81,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
             LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             WHERE p.subject = ? AND q.is_deleted = 0
         `;
-        
+
         const params: any[] = [user?.id || null, q.subject];
 
         if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
@@ -110,7 +110,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
         }
 
     } else if (source === 'review') {
-        
+
         const query = `
             SELECT q.id
             FROM exam_questions q
@@ -132,7 +132,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
         }
 
     } else {
-        
+
         const neighbors = await c.env.DB.prepare(`
             SELECT id FROM exam_questions 
             WHERE paper_id = ? AND ordering_index > ? AND is_deleted = 0
@@ -149,8 +149,8 @@ app.get('/past-papers/attempt/:id', async (c) => {
         prevId = prevNeighbors?.id;
     }
 
-    
-    const completedDate = attempt?.updated_at ? new Date(attempt.updated_at).toLocaleDateString() : '';
+
+    const completedDate = attempt?.updated_at ? formatDate(attempt.updated_at) : '';
 
     return c.html(
         <Layout title={`Question - ${q.subject}`} user={user}>
@@ -223,7 +223,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-y-auto p-6 flex flex-col">
                         <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" class="flex-1 flex flex-col">
 
-                            
+
                             {mode === 'review' && originalAttempt && (
                                 <div class="mb-6 bg-amber-50 rounded-lg p-4 border border-amber-200">
                                     <h3 class="font-bold text-amber-800 text-sm mb-2 uppercase tracking-wide flex items-center gap-2">
@@ -245,14 +245,14 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                                 </div>
                                             </div>
                                         )}
-                                        
+
                                     </div>
                                 </div>
                             )}
 
                             <input type="hidden" name="next_id" value={nextId || ''} />
 
-                            
+
                             <div class="flex-1">
                                 <h3 class="font-bold text-gray-700 mb-4 uppercase text-sm tracking-wide">Your Response</h3>
 
@@ -361,7 +361,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
 // Save Attempt
 app.post('/past-papers/attempt/:id/save', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login') 
+    if (!user) return c.redirect('/login')
 
     const qId = c.req.param('id')
     const body = await c.req.parseBody()
@@ -370,10 +370,10 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     const response = (body['response_content'] as string) || '';
     const selected = (body['selected_option'] as string) || null;
     const notes = (body['marker_notes'] as string) || '';
-    const action = body['action']; 
+    const action = body['action'];
     const nextId = body['next_id'];
 
-    
+
     let completedValue = 1;
     if (action === 'undone') completedValue = 0;
 
@@ -389,7 +389,7 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
 
 
     } else {
-        
+
         await c.env.DB.prepare(`
             INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -414,11 +414,11 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
 
-    
+
 
     const params = `source=${source || ''}&mode=${mode || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
-    
+
     if (action === 'complete' && nextId) {
         return c.redirect(`/past-papers/attempt/${nextId}?${params}`);
     }

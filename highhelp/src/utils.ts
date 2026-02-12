@@ -45,10 +45,10 @@ export async function getUser(c: any) {
 
 // sort subjects based on the requested priority
 export const getSortedSubjects = (type: 'standard' | 'essay') => {
-    
+
     const priorityList = (type === 'essay' ? PRIORITY_ESSAY : PRIORITY_STANDARD) as typeof SUBJECTS[number][];
 
-    
+
     const popular = priorityList.filter(s => SUBJECTS.includes(s));
 
     const others = SUBJECTS
@@ -98,4 +98,15 @@ export async function logAction(db: D1Database, userId: number, actionType: stri
     } catch (e) {
         console.error('Failed to log action', e);
     }
+}
+
+export const formatDate = (dateInput: string | number | Date) => {
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) return 'N/A';
+
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = String(date.getFullYear()).slice(-2);
+
+    return `${d}-${m}-${y}`;
 }

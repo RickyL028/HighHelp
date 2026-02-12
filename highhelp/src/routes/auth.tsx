@@ -191,25 +191,25 @@ app.get('/login', (c) => {
                     <a href="/api/auth/login" class="w-3/4 bg-blue-600 text-white font-bold py-3 mb-6 rounded text-center hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2">
                         <span>Log In with Student Portal</span>
                     </a>
-                    <p class="text-gray-600 mb-6 text-center">Note: This is purely for login and no sensitive information will be collected (to avoid Deputy)</p>
+                    <p class="text-gray-600 mb-6 text-center"></p>
                 </div>
 
 
                 <div class="w-full md:w-1/2 p-8 flex flex-col justify-center">
-                    <h2 class="text-2xl font-bold mb-6 text-blue-900">Manual Login (Timetable will NOT work)</h2>
+                    <h2 class="text-2xl font-bold mb-6 text-blue-900">[DEPRECIATED] Manual Login</h2>
                     <form action="/login" method="post" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Email Address</label>
                             <input type="email" name="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border" placeholder="student@student.sbhs.nsw.edu.au" />
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Password</label>
+                            <label class="block text-sm font-medium text-gray-700">PIN</label>
                             <input type="password" name="password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border" placeholder="••••••••" />
                         </div>
                         <button type="submit" class="w-full bg-blue-800 text-white font-bold py-3 mb-6 rounded hover:bg-blue-900 transition">
                             Log In
                         </button>
-                        <p class="text-gray-600 mb-6 text-center">Note: Manual login is available only after logging in with the Student Portal the first time - and setting a password.</p>
+                        <p class="text-gray-600 mb-6 text-center">PS: This method is neither supported nor recommended - unless you are really, really concerned with your student portal privacy (and don't care about the timetable or 27 million potential bugs).. Then contact <u><a href = './about#contact'>us</a></u></p>
                     </form>
                 </div>
 

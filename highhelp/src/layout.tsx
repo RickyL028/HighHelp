@@ -14,6 +14,12 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="${props.title} - HighHelp" />
         <meta name="twitter:description" content="Welcome to the official website for High's Class of 2027" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#3E2723" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="HighHelp" />
+        <link rel="apple-touch-icon" href="/icon-512.png" />
 
         <title>${props.title} - HighHelp</title>
         <script src="https://cdn.tailwindcss.com"></script>
@@ -54,6 +60,13 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
               <div class="hidden md:block">
                 <div class="ml-4 flex items-center md:ml-6 text-sm font-medium">
                   ${props.user ? html`
+  <div class="flex items-center">
+    <button id="install-button" class="hidden items-center space-x-1 bg-[#633200] border border-white/20 hover:bg-[#b05800] px-3 py-1.5 rounded-md text-white text-xs font-semibold transition-all mr-6 group">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 group-hover:bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        <span>Add to Dock</span>
+    </button>
   <div class="relative group">
       <button class="flex items-center space-x-2 text-white hover:text-blue-100 focus:outline-none py-2">
           <span>Hello, ${props.user.first_name}</span>
@@ -71,9 +84,19 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
 
       </div>
   </div>
+  </div>
 ` : html`
-  <a href="/login" class="bg-[#633200] hover:bg-[#b05800] px-3 py-2 rounded-md">Login</a>
+  <div class="flex items-center">
+    <button id="install-button" class="hidden items-center space-x-1 bg-[#633200] border border-white/20 hover:bg-[#b05800] px-3 py-1.5 rounded-md text-white text-xs font-semibold transition-all mr-6 group">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 group-hover:bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        <span>Add to Dock</span>
+    </button>
+    <a href="/login" class="bg-[#633200] hover:bg-[#b05800] px-3 py-2 rounded-md">Login</a>
+  </div>
 `}
+
                 </div>
               </div>
               
@@ -106,6 +129,14 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
               <a href="/about" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">About</a>
             </div>
             <div class="pt-4 pb-4 border-t border-gray-700">
+              <div class="px-5 mb-4">
+                  <button id="mobile-install-button" class="hidden w-full items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-md text-white font-medium transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Add to Dock</span>
+                  </button>
+              </div>
               ${props.user ? html`
                 <div class="flex items-center px-5">
                     <div class="ml-3">
@@ -179,10 +210,17 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                     const format = el.getAttribute('data-format');
                     if (ts) {
                         const date = new Date(ts);
+                        const d = String(date.getDate()).padStart(2, '0');
+                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                        const y = String(date.getFullYear()).slice(-2);
+                        const dateFormatted = \`\${ d } -\${ m } -\${ y } \`;
+
                         if (format === 'datetime') {
-                             el.textContent = date.toLocaleString();
+                             const hours = String(date.getHours()).padStart(2, '0');
+                             const minutes = String(date.getMinutes()).padStart(2, '0');
+                             el.textContent = \`\${ dateFormatted } \${ hours }:\${ minutes } \`;
                         } else {
-                             el.textContent = date.toLocaleDateString();
+                             el.textContent = dateFormatted;
                         }
                     }
                 });
@@ -257,6 +295,72 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                         .catch(err => console.error('Global sync error:', err));
                     } catch(e) { console.error(e); }
                 })();
+
+                // PWA Installation
+                let deferredPrompt;
+                const installBtn = document.getElementById('install-button');
+                const mobileInstallBtn = document.getElementById('mobile-install-button');
+
+                // Detect if it's Safari on macOS/iOS
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+
+                if (!isStandalone && isSafari) {
+                    // For Safari, we can't trigger the prompt, but we can show the button 
+                    // and provide instructions when clicked.
+                    if (installBtn) {
+                        installBtn.classList.remove('hidden');
+                        installBtn.classList.add('flex');
+                    }
+                    if (mobileInstallBtn) {
+                        mobileInstallBtn.classList.remove('hidden');
+                        mobileInstallBtn.classList.add('flex');
+                    }
+                }
+
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    deferredPrompt = e;
+                    if (installBtn) {
+                        installBtn.classList.remove('hidden');
+                        installBtn.classList.add('flex');
+                    }
+                    if (mobileInstallBtn) {
+                        mobileInstallBtn.classList.remove('hidden');
+                        mobileInstallBtn.classList.add('flex');
+                    }
+                });
+
+                const triggerInstall = async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        if (outcome === 'accepted') {
+                            if (installBtn) installBtn.classList.add('hidden');
+                            if (mobileInstallBtn) mobileInstallBtn.classList.add('hidden');
+                        }
+                        deferredPrompt = null;
+                    } else if (isSafari) {
+                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                        if (isIOS) {
+                            alert('To add to Home Screen: tap the Share button and select "Add to Home Screen".');
+                        } else {
+                            alert('To add to Dock: go to File > Add to Dock... in the Safari menu bar.');
+                        }
+                    }
+                };
+
+                if (installBtn) installBtn.addEventListener('click', triggerInstall);
+                if (mobileInstallBtn) mobileInstallBtn.addEventListener('click', triggerInstall);
+
+                // Service Worker Registration
+                if ('serviceWorker' in navigator) {
+                    window.addEventListener('load', () => {
+                        navigator.serviceWorker.register('/sw.js')
+                            .then(reg => console.log('SW registered'))
+                            .catch(err => console.error('SW registration failed', err));
+                    });
+                }
             });
         </script>
       </body>
