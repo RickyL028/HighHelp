@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, updatePoints, renderTags, logAction } from '../utils'
+import { getUser, updatePoints, renderTags, logAction, formatDate } from '../utils'
 import { canPostGeneral, canViewDeleted, canCommentModeration } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 import { Bindings, User } from '../types'
@@ -16,7 +16,7 @@ app.get('/essays', async (c) => {
     if (user && Number(user.permission_level) === 0) return c.redirect('/about#application')
     const subject = c.req.query('subject')
 
-    
+
     if (!subject) {
         const showDeleted = user && canViewDeleted(user);
         const sql = `
@@ -57,7 +57,7 @@ app.get('/essays', async (c) => {
                                                 <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
                                                     <span class="font-bold text-blue-700 uppercase tracking-wide">{e.subject}</span>
                                                     <span class="text-gray-300">•</span>
-                                                    <span class="local-date" data-timestamp={e.created_at}>{new Date(e.created_at).toLocaleDateString()}</span>
+                                                    <span class="local-date" data-timestamp={e.created_at}>{formatDate(e.created_at)}</span>
                                                     {e.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                                 </div>
 
@@ -90,7 +90,7 @@ app.get('/essays', async (c) => {
         )
     }
 
-    
+
     const showDeleted = user && canViewDeleted(user);
     const sql = `
         SELECT e.*,
@@ -158,7 +158,7 @@ app.get('/essays', async (c) => {
                                         <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
                                             <span class="font-bold text-blue-700 uppercase tracking-wide">{e.subject}</span>
                                             <span class="text-gray-300">•</span>
-                                            <span class="local-date" data-timestamp={e.created_at}>{new Date(e.created_at).toLocaleDateString()}</span>
+                                            <span class="local-date" data-timestamp={e.created_at}>{formatDate(e.created_at)}</span>
                                             {e.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                         </div>
 
@@ -202,7 +202,7 @@ app.get('/essays', async (c) => {
                                         onclick={`window.location.href='/essays/view/${e.id}'`}
                                     >
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 local-date" data-timestamp={e.created_at}>
-                                            {new Date(e.created_at).toLocaleDateString()}
+                                            {formatDate(e.created_at)}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                             {e.title}
@@ -234,7 +234,7 @@ app.get('/essays/create', async (c) => {
     if (!user) return c.redirect('/login')
     if (Number(user.permission_level) === 0) return c.redirect('/about#application')
 
-    
+
     if (user.points < -2) {
         return c.html(
             <Layout title="Insufficient Points" user={user}>
@@ -339,7 +339,7 @@ app.post('/essays', async (c) => {
         if (title && subject && question) {
             let fileKey = null;
 
-            
+
             if (file && file.size > 0 && file.name !== 'undefined') {
                 const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
                 fileKey = `essays/${Date.now()}-${safeName}`
@@ -351,10 +351,10 @@ app.post('/essays', async (c) => {
                 return c.text("Please provide either essay text or a file.", 400)
             }
 
-            
+
             await updatePoints(user.id, -1, c.env.DB);
 
-            
+
             const res = await c.env.DB.prepare('INSERT INTO essays (title, content, author_id, subject, question, full_marks, file_key) VALUES (?, ?, ?, ?, ?, ?, ?)')
                 .bind(title, content, user.id, subject, question, fullMarks, fileKey)
                 .run()
@@ -374,7 +374,7 @@ app.get('/essays/view/:id', async (c) => {
     if (user && Number(user.permission_level) === 0) return c.redirect('/about#application')
     const essayId = c.req.param('id')
 
-    
+
     const essay = await c.env.DB.prepare(`
         SELECT * FROM essays WHERE id = ?
     `).bind(essayId).first<any>()
@@ -383,7 +383,7 @@ app.get('/essays/view/:id', async (c) => {
         return c.text('Essay not found', 404)
     }
 
-    
+
     const showDeleted = user && canViewDeleted(user);
     const sqlComments = `
         SELECT c.*, u.first_name, u.last_name, u.tags 
@@ -408,7 +408,7 @@ app.get('/essays/view/:id', async (c) => {
                         {essay.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
                         <div class="flex items-center gap-2 mb-2">
                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Essay</span>
-                            <span class="text-gray-400 text-sm local-date" data-timestamp={essay.created_at} data-format="datetime">| {new Date(essay.created_at).toLocaleString()}</span>
+                            <span class="text-gray-400 text-sm local-date" data-timestamp={essay.created_at} data-format="datetime">| {formatDate(essay.created_at)}</span>
                             {essay.full_marks && (
                                 <span class="text-gray-500 text-sm font-medium ml-auto">Full Marks: {essay.full_marks}</span>
                             )}
@@ -422,7 +422,7 @@ app.get('/essays/view/:id', async (c) => {
                             </div>
                         )}
 
-                        
+
                         {essay.file_key && (
                             <div class="mb-1">
                                 <a href={`/download/${essay.file_key}`} target="_blank" class="inline-flex items-center bg-blue-100 text-blue-800 px-4 py-2 rounded hover:bg-blue-200 transition font-sm">
@@ -468,7 +468,7 @@ app.get('/essays/view/:id', async (c) => {
                                     </div>
                                     <div class="text-right">
                                         <div class="text-xs text-gray-400 mb-1">
-                                            <span class="local-date" data-timestamp={comment.created_at} data-format="datetime">{new Date(comment.created_at).toLocaleString()}</span>
+                                            <span class="local-date" data-timestamp={comment.created_at} data-format="datetime">{formatDate(comment.created_at)}</span>
                                         </div>
                                         {comment.grade !== null && (
                                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-bold border border-blue-200">
@@ -544,7 +544,7 @@ app.post('/essays/feedback', async (c) => {
 
         await logAction(c.env.DB, user.id, 'SUBMIT_FEEDBACK', `Feedback on essay ${essayId}`, res.meta.last_row_id, 'essay_comments');
 
-        
+
         await updatePoints(user.id, 1, c.env.DB);
     }
 
@@ -558,7 +558,7 @@ app.post('/essays/view/:id/delete', async (c) => {
     if (!user) return c.redirect('/login')
     const id = c.req.param('id')
 
-    
+
     const essay = await c.env.DB.prepare('SELECT * FROM essays WHERE id = ?').bind(id).first() as any;
     if (!essay) return c.notFound();
 

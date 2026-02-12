@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags } from '../utils'
+import { getUser, renderTags, formatDate } from '../utils'
 import { Bindings } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -123,7 +123,7 @@ app.get('/', async (c) => {
                                     <h3 class="font-bold text-lg text-gray-900 mb-2 leading-tight group-hover:text-blue-700">{a.title}</h3>
                                     <div class="flex items-center gap-2 text-xs text-gray-500 mb-3">
                                         <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-bold uppercase">{a.subject}</span>
-                                        <span class="local-date" data-timestamp={a.created_at}>{new Date(a.created_at).toLocaleDateString()}</span>
+                                        <span class="local-date" data-timestamp={a.created_at}>{formatDate(a.created_at)}</span>
                                     </div>
                                     <p class="text-gray-600 text-sm line-clamp-3 mb-4 flex-grow whitespace-pre-wrap">{a.content}</p>
                                     <div class="text-xs text-gray-400 mt-auto pt-2 border-t border-gray-50 flex items-center gap-1">
@@ -147,7 +147,7 @@ app.get('/', async (c) => {
                                     <div class="flex items-center gap-2 text-xs text-gray-500 mb-3">
                                         <span class="font-bold text-gray-700 uppercase">{r.subject}</span>
                                         <span>•</span>
-                                        <span class="local-date" data-timestamp={r.created_at}>{new Date(r.created_at).toLocaleDateString()}</span>
+                                        <span class="local-date" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                     </div>
                                     <p class="text-gray-600 text-sm line-clamp-2 mb-4 flex-grow">{r.description}</p>
                                     <div class="mt-auto pt-2 flex justify-between items-center border-t border-gray-50">
@@ -201,7 +201,7 @@ app.get('/', async (c) => {
                                             <span>•</span>
                                             <span>{q.comment_count} Answers</span>
                                             <span>•</span>
-                                            <span class="local-date" data-timestamp={q.created_at}>{new Date(q.created_at).toLocaleDateString()}</span>
+                                            <span class="local-date" data-timestamp={q.created_at}>{formatDate(q.created_at)}</span>
                                         </div>
                                     </a>
                                 ))}
@@ -223,7 +223,7 @@ app.get('/', async (c) => {
                                             <span>•</span>
                                             <span>Max: {e.full_marks || '-'}</span>
                                             <span>•</span>
-                                            <span class="local-date" data-timestamp={e.created_at}>{new Date(e.created_at).toLocaleDateString()}</span>
+                                            <span class="local-date" data-timestamp={e.created_at}>{formatDate(e.created_at)}</span>
                                         </div>
                                     </a>
                                 ))}
@@ -234,7 +234,7 @@ app.get('/', async (c) => {
                 </div>
 
 
-                
+
                 <script dangerouslySetInnerHTML={{
                     __html: `
                     (function() {

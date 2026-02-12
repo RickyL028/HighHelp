@@ -1,11 +1,11 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags, updatePoints, logAction } from '../utils'
+import { getUser, renderTags, updatePoints, logAction, formatDate } from '../utils'
 import { canPostGeneral, canViewDeleted, canCommentModeration } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 
 import { Bindings, User } from '../types'
-import { ANNOUNCEMENT_SUBJECTS } from '../constants' 
+import { ANNOUNCEMENT_SUBJECTS } from '../constants'
 
 const app = new Hono<{ Bindings: Bindings }>()
 interface PostDetail {
@@ -18,7 +18,7 @@ interface PostDetail {
     first_name: string | null;
     last_name: string | null;
     tags: string | null;
-    is_deleted: number; 
+    is_deleted: number;
     author_id: number;
 }
 
@@ -26,9 +26,9 @@ app.get('/forum', async (c) => {
     const user = await getUser(c) as User | null
     const subject = c.req.query('subject')
 
-    
+
     if (!subject) {
-        
+
         const showDeleted = user && canViewDeleted(user);
         const sql = `
             SELECT p.*, u.first_name, u.last_name, u.tags, 
@@ -68,7 +68,7 @@ app.get('/forum', async (c) => {
                                         <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
                                             <span class="font-bold text-blue-700 uppercase tracking-wide">{p.subject}</span>
                                             <span class="text-gray-300">•</span>
-                                            <span class="local-date" data-timestamp={p.created_at}>{new Date(p.created_at).toLocaleDateString()}</span>
+                                            <span class="local-date" data-timestamp={p.created_at}>{formatDate(p.created_at)}</span>
                                             <span class="text-gray-300">•</span>
                                             <span class="flex items-center">
                                                 {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
@@ -101,7 +101,7 @@ app.get('/forum', async (c) => {
         )
     }
 
-    
+
     const showDeleted = user && canViewDeleted(user);
     const sql = `
         SELECT p.*, u.first_name, u.last_name, u.tags,
@@ -170,7 +170,7 @@ app.get('/forum', async (c) => {
                                     <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
                                         <span class="font-bold text-blue-700 uppercase tracking-wide">{p.subject}</span>
                                         <span class="text-gray-300">•</span>
-                                        <span class="local-date" data-timestamp={p.created_at}>{new Date(p.created_at).toLocaleDateString()}</span>
+                                        <span class="local-date" data-timestamp={p.created_at}>{formatDate(p.created_at)}</span>
                                         <span class="text-gray-300">•</span>
                                         <span class="flex items-center">
                                             {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
@@ -217,7 +217,7 @@ app.get('/forum', async (c) => {
                                         onclick={`window.location.href='/forum/post/${p.id}'`}
                                     >
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 local-date" data-timestamp={p.created_at}>
-                                            {new Date(p.created_at).toLocaleDateString()}
+                                            {formatDate(p.created_at)}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                             {p.title}
@@ -310,7 +310,7 @@ app.post('/forum', async (c) => {
         await logAction(c.env.DB, user.id, 'CREATE_POST', `Created question '${title}' in ${subject}`, res.meta.last_row_id, 'posts');
     }
 
-    
+
     return c.redirect(`/forum?subject=${encodeURIComponent(subject)}`)
 })
 
@@ -319,7 +319,7 @@ app.get('/forum/post/:id', async (c) => {
     const user = await getUser(c)
     const postId = c.req.param('id')
 
-    
+
     const post = await c.env.DB.prepare(`
         SELECT p.*, u.first_name, u.last_name, u.tags 
         FROM posts p 
@@ -343,11 +343,11 @@ app.get('/forum/post/:id', async (c) => {
     const { results: comments } = await c.env.DB.prepare(sqlComments).bind(postId).all()
 
     return c.html(
-        
+
         <Layout title={post.title} user={user}>
             <div class="mx-auto">
                 <div class="mb-4">
-                    
+
                     <a href={`/forum?subject=${encodeURIComponent(post.subject)}`} class="text-blue-600 hover:underline text-sm">← Back to {post.subject}</a>
                 </div>
 
@@ -357,8 +357,8 @@ app.get('/forum/post/:id', async (c) => {
                         {post.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
                         <div class="flex items-center gap-2 mb-2">
                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">{post.type}</span>
-                            
-                            <span class="text-gray-400 text-sm local-date" data-timestamp={post.created_at} data-format="datetime">| {new Date(post.created_at).toLocaleString()}</span>
+
+                            <span class="text-gray-400 text-sm local-date" data-timestamp={post.created_at} data-format="datetime">| {formatDate(post.created_at)}</span>
                         </div>
                         <h1 class="text-3xl font-bold text-gray-900 mb-4">{post.title}</h1>
                         <p class="text-gray-800 whitespace-pre-wrap leading-relaxed text-lg">{post.content}</p>
@@ -366,7 +366,7 @@ app.get('/forum/post/:id', async (c) => {
                     <div class="bg-gray-50 px-6 py-3 flex items-center justify-between">
                         <div class="text-sm text-gray-600 flex items-center">
                             <span class="font-bold mr-1">Asked by:</span> {post.first_name ? `${post.first_name} ${post.last_name}` : 'Unknown'}
-                            
+
                             <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(post.tags) }}></span>
                         </div>
                         {!post.is_deleted && user && (canCommentModeration(user) || user.id === post.author_id) && (
@@ -390,7 +390,7 @@ app.get('/forum/post/:id', async (c) => {
                                         <span class="font-bold text-gray-800">{comment.first_name ? `${comment.first_name} ${comment.last_name}` : 'Unknown'}</span>
                                         <span dangerouslySetInnerHTML={{ __html: renderTags(comment.tags) }}></span>
                                     </div>
-                                    <span class="text-xs text-gray-400 local-date" data-timestamp={comment.created_at} data-format="datetime">{new Date(comment.created_at).toLocaleString()}</span>
+                                    <span class="text-xs text-gray-400 local-date" data-timestamp={comment.created_at} data-format="datetime">{formatDate(comment.created_at)}</span>
                                 </div>
                                 <p class="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
                                 {!comment.is_deleted && user && (canCommentModeration(user) || user.id === comment.author_id) && (
@@ -447,7 +447,7 @@ app.post('/forum/comment', async (c) => {
 
         await logAction(c.env.DB, user.id, 'CREATE_COMMENT', `Commented on post ${postId}`, res.meta.last_row_id, 'comments');
 
-        
+
         await updatePoints(user.id, 0.3, c.env.DB);
     }
 
@@ -463,7 +463,7 @@ app.post('/forum/post/:id/delete', async (c) => {
     const post = await c.env.DB.prepare('SELECT * FROM posts WHERE id = ?').bind(id).first() as any;
     if (!post) return c.notFound();
 
-    
+
     if (!canCommentModeration(user) && user.id !== post.author_id) return c.text('Unauthorised', 403);
 
     await c.env.DB.prepare('UPDATE posts SET is_deleted = 1 WHERE id = ?').bind(id).run();
@@ -482,7 +482,7 @@ app.post('/forum/comment/:id/delete', async (c) => {
     const comment = await c.env.DB.prepare('SELECT * FROM comments WHERE id = ?').bind(id).first() as any;
     if (!comment) return c.notFound();
 
-    
+
     if (!canCommentModeration(user) && user.id !== comment.author_id) return c.text('Unauthorised', 403);
 
     await c.env.DB.prepare('UPDATE comments SET is_deleted = 1 WHERE id = ?').bind(id).run();

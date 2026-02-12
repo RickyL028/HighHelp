@@ -49,10 +49,10 @@
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
 	"vars": {
-		//"PORTAL_API_CLIENT_ID": "01kdpqeyf5eeb8nbpvwj1bp22w", // actual one
-		"PORTAL_API_CLIENT_ID": "01kfvv0vkzfbza9qzncmsfhwme",
-		//"APP_REDIRECT_URI": "https://highhelp.sbhs27.workers.dev/api/auth/callback"
-		"APP_REDIRECT_URI": "http://localhost:8787/api/auth/callback"
+		"PORTAL_API_CLIENT_ID": "01kdpqeyf5eeb8nbpvwj1bp22w", // actual one
+		//"PORTAL_API_CLIENT_ID": "01kfvv0vkzfbza9qzncmsfhwme",
+		"APP_REDIRECT_URI": "https://highhelp.sbhs27.workers.dev/api/auth/callback"
+		//"APP_REDIRECT_URI": "http://localhost:8787/api/auth/callback"
 	}
 	/**
 	 * Service Bindings (communicate between multiple Workers)

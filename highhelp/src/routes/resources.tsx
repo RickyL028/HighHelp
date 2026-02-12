@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getSortedSubjects, getUser, renderTags, updatePoints, logAction } from '../utils'
+import { getSortedSubjects, getUser, renderTags, updatePoints, logAction, formatDate } from '../utils'
 import { canUploadResource, canViewDeleted, canModerateSubject } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 
@@ -13,9 +13,9 @@ app.get('/resources', async (c) => {
 
     const subject = c.req.query('subject')
 
-    
+
     if (!subject) {
-    
+
         const showDeleted = user && canViewDeleted(user);
         const sql = `
             SELECT r.*, u.first_name, u.last_name, u.tags 
@@ -31,7 +31,7 @@ app.get('/resources', async (c) => {
             <Layout title="Resources" user={user}>
                 <div class="mx-auto space-y-12">
 
-                    
+
                     <section>
                         <h1 class="text-3xl font-bold mb-6">Recent Resources</h1>
                         <div class="space-y-4">
@@ -46,7 +46,7 @@ app.get('/resources', async (c) => {
                                             <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-3">
                                                 <span class="font-bold text-blue-700 uppercase tracking-wide">{r.subject}</span>
                                                 <span class="text-gray-300">•</span>
-                                                <span class="local-date" data-timestamp={r.created_at}>{new Date(r.created_at).toLocaleDateString()}</span>
+                                                <span class="local-date" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                                 <span class="text-gray-300">•</span>
                                                 <span class="flex items-center">
                                                     {r.first_name ? `${r.first_name}` : 'Unknown'}
@@ -75,7 +75,7 @@ app.get('/resources', async (c) => {
 
                     <hr class="border-gray-200" />
 
-                    
+
                     <section>
                         <h2 class="text-xl font-bold mb-4">Browse/Upload by Subject</h2>
                         <SubjectSelector baseUrl="/resources" type="standard" />
@@ -85,7 +85,7 @@ app.get('/resources', async (c) => {
         )
     }
 
-    
+
     const showDeleted = user && canViewDeleted(user);
     const sql = `
         SELECT r.*, u.first_name, u.last_name, u.tags 
@@ -172,7 +172,7 @@ app.get('/resources', async (c) => {
                                 <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
                                     <span class="font-bold text-blue-700 uppercase tracking-wide">{r.subject}</span>
                                     <span class="text-gray-300">•</span>
-                                    <span class="local-date" data-timestamp={r.created_at}>{new Date(r.created_at).toLocaleDateString()}</span>
+                                    <span class="local-date" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                     {r.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                 </div>
                                 <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-3">
@@ -226,7 +226,7 @@ app.get('/resources', async (c) => {
                                     data-search-text={`${r.title} ${r.description} ${r.subject} ${r.first_name || ''} ${r.last_name || ''}`}
                                 >
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 local-date" data-timestamp={r.created_at}>
-                                        {new Date(r.created_at).toLocaleDateString()}
+                                        {formatDate(r.created_at)}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                         {r.title}
@@ -328,7 +328,7 @@ app.get('/download/*', async (c) => {
         const object = await c.env.BUCKET.get(key);
         if (!object) return c.text('File not found', 404);
 
-        
+
         const id = c.req.query('id');
         if (id) {
             await c.env.DB.prepare('UPDATE resources SET download_count = download_count + 1 WHERE id = ?').bind(id).run();

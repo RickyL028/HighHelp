@@ -210,10 +210,17 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                     const format = el.getAttribute('data-format');
                     if (ts) {
                         const date = new Date(ts);
+                        const d = String(date.getDate()).padStart(2, '0');
+                        const m = String(date.getMonth() + 1).padStart(2, '0');
+                        const y = String(date.getFullYear()).slice(-2);
+                        const dateFormatted = \`\${ d } -\${ m } -\${ y } \`;
+
                         if (format === 'datetime') {
-                             el.textContent = date.toLocaleString();
+                             const hours = String(date.getHours()).padStart(2, '0');
+                             const minutes = String(date.getMinutes()).padStart(2, '0');
+                             el.textContent = \`\${ dateFormatted } \${ hours }:\${ minutes } \`;
                         } else {
-                             el.textContent = date.toLocaleDateString();
+                             el.textContent = dateFormatted;
                         }
                     }
                 });

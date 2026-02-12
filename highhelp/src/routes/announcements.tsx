@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags, logAction } from '../utils'
+import { getUser, renderTags, logAction, formatDate } from '../utils'
 import { canPostAnnouncement, canViewDeleted, canModerateSubject } from '../permissions'
 import { ANNOUNCEMENT_SUBJECTS } from '../constants'
 import { Bindings } from '../types'
@@ -123,7 +123,7 @@ app.get('/announcements', async (c) => {
                                 <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
                                     <span class="font-bold text-blue-700 uppercase tracking-wide">{a.subject}</span>
                                     <span class="text-gray-300">•</span>
-                                    <span class="local-date" data-timestamp={a.created_at}>{new Date(a.created_at).toLocaleDateString()}</span>
+                                    <span class="local-date" data-timestamp={a.created_at}>{formatDate(a.created_at)}</span>
                                     <span class="text-gray-300">•</span>
                                     <span class="flex items-center">
                                         {a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown'}
@@ -171,7 +171,7 @@ app.get('/announcements', async (c) => {
                                     data-search-text={`${a.title} ${a.content} ${a.subject} ${a.first_name || ''} ${a.last_name || ''}`}
                                 >
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 local-date" data-timestamp={a.created_at}>
-                                        {new Date(a.created_at).toLocaleDateString()}
+                                        {formatDate(a.created_at)}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold uppercase">{a.subject}</span>
@@ -252,7 +252,7 @@ app.get('/announcements/:id', async (c) => {
                         {ann.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
                         <div class="flex items-center gap-2 mb-4">
                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">{ann.subject}</span>
-                            <span class="text-gray-400 text-sm local-date" data-timestamp={ann.created_at} data-format="datetime">| {new Date(ann.created_at).toLocaleString()}</span>
+                            <span class="text-gray-400 text-sm local-date" data-timestamp={ann.created_at} data-format="datetime">| {formatDate(ann.created_at)}</span>
                         </div>
                         <h1 class="text-3xl font-bold text-gray-900 mb-6 leading-tight">{ann.title}</h1>
                         <div class="prose max-w-none text-gray-800 whitespace-pre-wrap leading-relaxed">
@@ -282,25 +282,25 @@ app.post('/announcements/:id/delete', async (c) => {
 
     const id = Number(c.req.param('id'));
 
-    
+
     const ann = await c.env.DB.prepare('SELECT * FROM announcements WHERE id = ?').bind(id).first<any>()
 
     if (!ann) return c.notFound()
 
-    
+
     if (user.id !== ann.author_id && !canModerateSubject(user, ann.subject)) {
         return c.text('You are not authorized to delete this announcement.', 403)
     }
 
-    
+
     await c.env.DB.prepare('UPDATE announcements SET is_deleted = 1 WHERE id = ?')
         .bind(id)
         .run()
 
-    
+
     await logAction(c.env.DB, user.id, 'DELETE_ANNOUNCEMENT', `Deleted announcement '${ann.title}'`, id, 'announcements')
 
-    
+
     return c.redirect('/announcements')
 })
 export default app
