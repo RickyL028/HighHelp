@@ -22,12 +22,23 @@ app.use('*', async (c, next) => {
     if (c.req.path.startsWith('/public')) return next();
 
     
-    const host = c.req.header('host');
-    if (host && host.includes('highhelp.org/login')) {
-        const url = new URL(c.req.url);
-        url.hostname = 'https://highhelp.sbhs27.workers.dev/';
-        return c.redirect(url.toString(), 301);
-    }
+const host = c.req.header('host');
+
+if (host && host.includes('highhelp.org')) {
+    const url = new URL(c.req.url);
+
+    // 1. Change the destination hostname
+    url.hostname = 'highhelp.sbhs27.workers.dev';
+
+    // 2. Preserve the path (e.g., /about) but ensure it goes where you want
+    // If you want EVERYTHING to go to /home, use: url.pathname = '/home';
+    
+    // 3. Add the "Anti-Cache" query parameter
+    // This creates a unique URL every time, forcing the browser to skip the cache.
+    url.searchParams.set('nocache', Date.now().toString());
+
+    return c.redirect(url.toString(), 302);
+}
 
 
     const user = await getUser(c);
