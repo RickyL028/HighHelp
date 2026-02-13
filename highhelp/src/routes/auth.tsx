@@ -184,16 +184,17 @@ app.get('/login', (c) => {
             <div class="flex flex-col md:flex-row min-h-[600px]">
 
 
-                <div class="w-full md:w-1/2 p-8 flex flex-col justify-center items-center bg-gray-50 border-r border-gray-200">
+                <div class="w-full p-8 flex flex-col justify-center items-center bg-gray-50 border-r border-gray-200">
                     <h2 class="text-2xl font-bold mb-6 text-gray-800">Student Portal Login</h2>
                     <p class="text-gray-600 mb-6 text-center">Log in with your school account.</p>
 
                     <a href="/api/auth/login" class="w-3/4 bg-blue-600 text-white font-bold py-3 mb-6 rounded text-center hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2">
                         <span>Log In with Student Portal</span>
                     </a>
+                    <a href='https://highhelp.sbhs27.workers.dev/' class="text-gray-400 mb-6 text-center">Note: highhelp.org (the new domain name) login is currently not supported. Click here to direct</a>
                     <p class="text-gray-600 mb-6 text-center"></p>
                 </div>
-
+{/* 
 
                 <div class="w-full md:w-1/2 p-8 flex flex-col justify-center">
                     <h2 class="text-2xl font-bold mb-6 text-blue-900">[DEPRECIATED] Manual Login</h2>
@@ -211,7 +212,7 @@ app.get('/login', (c) => {
                         </button>
                         <p class="text-gray-600 mb-6 text-center">PS: This method is neither supported nor recommended - unless you are really, really concerned with your student portal privacy (and don't care about the timetable or 27 million potential bugs).. Then contact <u><a href = './about#contact'>us</a></u></p>
                     </form>
-                </div>
+                </div> */}
 
             </div>
         </Layout>

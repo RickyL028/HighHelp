@@ -93,7 +93,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
         </svg>
         <span>Add to Dock</span>
     </button>
-    <a href="https://highhelp.sbhs27.workers.dev/login" class="bg-[#633200] hover:bg-[#b05800] px-3 py-2 rounded-md">Login</a>
+    <a href="/login" class="bg-[#633200] hover:bg-[#b05800] px-3 py-2 rounded-md">Login</a>
   </div>
 `}
 
@@ -151,7 +151,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                 </div>
               ` : html`
                 <div class="mt-3 px-2 space-y-1">
-                    <a href="https://highhelp.sbhs27.workers.dev/login" class="block px-3 py-2 rounded-md text-base font-medium text-white bg-[#633200] hover:bg-[#b05800]">Login</a>
+                    <a href="/login" class="block px-3 py-2 rounded-md text-base font-medium text-white bg-[#633200] hover:bg-[#b05800]">Login</a>
                 </div>
               `}
             </div>
