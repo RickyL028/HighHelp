@@ -44,7 +44,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
           <div class="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-14">
               <div class="flex items-center">
-                <a href="/" class="font-bold text-xl tracking-tight">HighHelp</a>
+                <a href="/home" class="font-bold text-xl tracking-tight">HighHelp</a>
                 <div class="hidden md:block">
                   <div class="ml-10 flex items-baseline space-x-4">
                     <a href="/timetable" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Timetable</a>
@@ -93,7 +93,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
         </svg>
         <span>Add to Dock</span>
     </button>
-    <a href="/login" class="bg-[#633200] hover:bg-[#b05800] px-3 py-2 rounded-md">Login</a>
+    <a href="https://highhelp.sbhs27.workers.dev/login" class="bg-[#633200] hover:bg-[#b05800] px-3 py-2 rounded-md">Login</a>
   </div>
 `}
 
@@ -151,7 +151,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
                 </div>
               ` : html`
                 <div class="mt-3 px-2 space-y-1">
-                    <a href="/login" class="block px-3 py-2 rounded-md text-base font-medium text-white bg-[#633200] hover:bg-[#b05800]">Login</a>
+                    <a href="https://highhelp.sbhs27.workers.dev/login" class="block px-3 py-2 rounded-md text-base font-medium text-white bg-[#633200] hover:bg-[#b05800]">Login</a>
                 </div>
               `}
             </div>

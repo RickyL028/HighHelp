@@ -17,8 +17,18 @@ import { PermissionLevel } from './permissions'
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.use('*', async (c, next) => {
+    
     if (c.req.path.startsWith('/api/auth')) return next();
     if (c.req.path.startsWith('/public')) return next();
+
+    
+    const host = c.req.header('host');
+    if (host && host.includes('highhelp.org/login')) {
+        const url = new URL(c.req.url);
+        url.hostname = 'https://highhelp.sbhs27.workers.dev/';
+        return c.redirect(url.toString(), 301);
+    }
+
 
     const user = await getUser(c);
     if (user && user.permission_level === PermissionLevel.BANNED) {
@@ -42,8 +52,8 @@ app.get('/api/proxy/day-data', async (c) => {
         return c.json({ error: 'Proxy error' }, 500)
     }
 })
-
 app.route('/', homeRoutes)
+app.route('/home', homeRoutes)
 app.route('/', authRoutes)
 app.route('/', profileRoutes)
 app.route('/', resourcesRoutes)
