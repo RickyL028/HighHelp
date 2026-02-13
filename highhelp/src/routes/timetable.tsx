@@ -778,8 +778,32 @@ app.get('/', async (c) => {
                                 const btLabel = document.getElementById('bt-label');
                                 if (currentDateStr === todayStr && progressBar) {
                                     progressBar.classList.remove('hidden');
-                                    const startMins = 8 * 60; 
-                                    const endMins = 15 * 60 + 10;
+                                    let startMins = 8 * 60; // Default 08:00
+                                    let endMins = 15 * 60 + 10; // Default 15:10
+
+                                    // Dynamic bell calculation for progress bar
+                                    const todayBells = bellCache[todayStr];
+                                    if (todayBells && todayBells.length > 0) {
+                                        const sorted = [...todayBells].sort((a,b) => (a.startTime || '').localeCompare(b.startTime || ''));
+                                        
+                                        // Set start time from first bell
+                                        const first = sorted[0];
+                                        if (first && first.startTime) {
+                                            const [h, m] = first.startTime.split(':').map(Number);
+                                            startMins = h * 60 + m;
+                                        }
+
+                                        // Set end time from last bell (excluding EoD)
+                                        let maxMins = 0;
+                                        sorted.forEach(b => {
+                                            if (b.period === 'EoD' || b.endTime.startsWith('23')) return;
+                                            const [h, m] = b.endTime.split(':').map(Number);
+                                            const mins = h * 60 + m;
+                                            if (mins > maxMins) maxMins = mins;
+                                        });
+                                        if (maxMins > startMins) endMins = maxMins;
+                                    }
+
                                     const currentMins = now.getHours() * 60 + now.getMinutes() + (now.getSeconds()/60);
                                     let pct = (currentMins - startMins) / (endMins - startMins);
                                     if (pct < 0) pct = 0;
