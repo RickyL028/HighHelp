@@ -33,7 +33,10 @@ export const TimetableDay = html`
         container.innerHTML = '<div class="text-center py-12 text-gray-500">Checking for updates...</div>';
         container.className = 'space-y-4';
 
-        const apiData = await fetchDayData(currentDateStr);
+        const [apiData, clipboardEvents] = await Promise.all([
+            fetchDayData(currentDateStr),
+            fetchClipboardData(currentDateStr)
+        ]);
         container.innerHTML = '';
         
         if (!apiData && (!dayInfo || !daysData[dayInfo.dayNumber])) {
@@ -172,6 +175,58 @@ export const TimetableDay = html`
             \`;
             container.insertAdjacentHTML('beforeend', html);
         });
+
+        // Split clipboard events
+        
+        const morningEvents = clipboardEvents.filter(e => {
+            const d = new Date(e.start);
+            return d.getHours() < 12;
+        });
+        const afternoonEvents = clipboardEvents.filter(e => {
+            const d = new Date(e.start);
+            return d.getHours() >= 12;
+        });
+
+        function renderClipboardEvent(event) {
+            const start = new Date(event.start);
+            const end = new Date(event.end);
+            const timeStr = formatTime(start.toTimeString().slice(0, 5));
+            const endTimeStr = formatTime(end.toTimeString().slice(0, 5));
+            
+            return \`
+                    <div class="flex items-center min-h-[3rem] opacity-90 transition-opacity duration-500 hover:opacity-100 mb-2">
+                    <div class="w-24 text-right pr-4 text-blue-500 font-bold text-sm">\${timeStr}</div>
+                    <div class="flex-grow">
+                        <div class="period-card relative flex items-center justify-between bg-blue-50 rounded-lg p-3 shadow-sm hover:bg-blue-100 transition-all cursor-default group border-l-4 border-blue-500">
+                            <div class="pl-2 font-medium text-gray-900 text-sm flex items-center">
+                                \${event.summary}
+                            </div>
+                            <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
+                                <div class="font-bold mb-1 text-sm border-b border-gray-600 pb-1">\${event.summary}</div>
+                                <div class="mb-1 text-gray-300 font-mono">\${timeStr} - \${endTimeStr}</div>
+                                <div class="pl-3 flex items-center gap-4 text-sm text-gray-600">
+                                    \${event.location || ''}
+                                </div>
+                                <div class="text-gray-400 italic">\${event.description || 'No description'}</div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                </div >
+    \`;
+        }
+
+        // Prepend morning events
+        if (morningEvents.length > 0) {
+            const morningHtml = morningEvents.map(renderClipboardEvent).join('');
+            container.insertAdjacentHTML('afterbegin', '<div class="mb-4 space-y-2">' + morningHtml + '</div>');
+        }
+
+        // Append afternoon events
+        if (afternoonEvents.length > 0) {
+            const afternoonHtml = afternoonEvents.map(renderClipboardEvent).join('');
+            container.insertAdjacentHTML('beforeend', '<div class="mt-4 pt-4 border-t border-gray-200 space-y-2">' + afternoonHtml + '</div>');
+        }
 
         attachHoverEffects();
         startTicker();

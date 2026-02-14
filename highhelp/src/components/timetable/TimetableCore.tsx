@@ -117,6 +117,21 @@ export const TimetableCore = html`
         try { return await fetchPromise; } finally { delete pendingFetches[date]; }
     }
 
+    async function fetchClipboardData(date) {
+        const url = localStorage.getItem('clipboardUrl');
+        if (!url) return [];
+        try {
+            const res = await fetch(\`/api/clipboard/events?url=\${encodeURIComponent(url)}&date=\${date}\`);
+            if (res.ok) {
+                const data = await res.json();
+                return data.events || [];
+            }
+        } catch (e) {
+            console.error('Failed to fetch clipboard data', e);
+        }
+        return [];
+    }
+
     function formatTime(t) {
         if (!t) return '';
         const [h, m] = t.split(':').map(Number);

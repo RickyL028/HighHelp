@@ -10,6 +10,7 @@ import forumRoutes from './routes/forum'
 import essaysRoutes from './routes/essays'
 import aboutRoutes from './routes/about'
 import classesRoutes from './routes/timetable'
+import clipboardRoutes from './components/timetable/TimetableClipboard'
 
 import { getUser } from './utils'
 import { PermissionLevel } from './permissions'
@@ -17,28 +18,28 @@ import { PermissionLevel } from './permissions'
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.use('*', async (c, next) => {
-    
+
     if (c.req.path.startsWith('/api/auth')) return next();
     if (c.req.path.startsWith('/public')) return next();
 
-    
-// const host = c.req.header('host');
 
-// if (host && host.includes('highhelp.org')) {
-//     const url = new URL(c.req.url);
+    // const host = c.req.header('host');
 
-//     // 1. Change the destination hostname
-//     url.hostname = 'highhelp.sbhs27.workers.dev';
+    // if (host && host.includes('highhelp.org')) {
+    //     const url = new URL(c.req.url);
 
-//     // 2. Preserve the path (e.g., /about) but ensure it goes where you want
-//     // If you want EVERYTHING to go to /home, use: url.pathname = '/home';
-    
-//     // 3. Add the "Anti-Cache" query parameter
-//     // This creates a unique URL every time, forcing the browser to skip the cache.
-//     url.searchParams.set('nocache', Date.now().toString());
+    //     // 1. Change the destination hostname
+    //     url.hostname = 'highhelp.sbhs27.workers.dev';
 
-//     return c.redirect(url.toString(), 302);
-// }
+    //     // 2. Preserve the path (e.g., /about) but ensure it goes where you want
+    //     // If you want EVERYTHING to go to /home, use: url.pathname = '/home';
+
+    //     // 3. Add the "Anti-Cache" query parameter
+    //     // This creates a unique URL every time, forcing the browser to skip the cache.
+    //     url.searchParams.set('nocache', Date.now().toString());
+
+    //     return c.redirect(url.toString(), 302);
+    // }
 
 
     const user = await getUser(c);
@@ -74,5 +75,6 @@ app.route('/', forumRoutes)
 app.route('/', essaysRoutes)
 app.route('/timetable', classesRoutes)
 app.route('/', aboutRoutes)
+app.route('/api/clipboard', clipboardRoutes)
 
 export default app

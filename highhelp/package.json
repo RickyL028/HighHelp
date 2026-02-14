@@ -17,7 +17,10 @@
 		"wrangler": "^4.65.0"
 	},
 	"dependencies": {
+		"@hono/node-server": "^1.19.9",
 		"cookie": "^1.1.1",
-		"hono": "^4.11.3"
+		"hono": "^4.11.9",
+		"ical.js": "^2.2.1",
+		"node-ical": "^0.25.1"
 	}
 }

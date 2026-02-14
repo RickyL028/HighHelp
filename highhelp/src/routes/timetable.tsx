@@ -7,6 +7,7 @@ import { TimetableCore } from '../components/timetable/TimetableCore'
 import { TimetableDay } from '../components/timetable/TimetableDay'
 import { TimetableCycle } from '../components/timetable/TimetableCycle'
 import { TimetableTicker } from '../components/timetable/TimetableTicker'
+import { TimetableConfig } from '../components/timetable/TimetableConfig'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -23,6 +24,7 @@ app.get('/', async (c) => {
                 {/* View Renderers */}
                 {TimetableDay}
                 {TimetableCycle}
+                {TimetableConfig}
 
                 {/* Ticker Logic */}
                 {TimetableTicker}
@@ -37,22 +39,46 @@ app.get('/', async (c) => {
                             
                             const tabDay = document.getElementById('tab-day');
                             const tabCycle = document.getElementById('tab-cycle');
+                            const tabConfig = document.getElementById('tab-config');
                             const headerControls = document.querySelector('#content > .flex.items-center.gap-2.mb-6');
+                            const configContainer = document.getElementById('config-container');
+                            const timetableList = document.getElementById('timetable-list');
+                            const cycleContainer = document.getElementById('cycle-view'); // Assuming cycle view has an ID or handle it via visibility toggle if inside timetable-list. 
+                            // Actually cycle view renders into same container or replaces content? 
+                            // renderCycle uses #timetable-list too usually but let's check.
+                            // renderDay clears #timetable-list. renderCycle likely does too.
+                            
+                            // Let's check how renderCycle works. It probably renders into #timetable-list.
+                            // But config container is separate div.
+                            
+                            // Reset tabs
+                            [tabDay, tabCycle, tabConfig].forEach(t => {
+                                if(t) {
+                                    t.classList.remove('border-red-500', 'text-red-500');
+                                    t.classList.add('border-transparent', 'text-gray-500');
+                                }
+                            });
 
                             if (currentView === 'day') {
                                 tabDay.classList.add('border-red-500', 'text-red-500');
                                 tabDay.classList.remove('border-transparent', 'text-gray-500');
-                                tabCycle.classList.remove('border-red-500', 'text-red-500');
-                                tabCycle.classList.add('border-transparent', 'text-gray-500');
                                 if (headerControls) headerControls.classList.remove('hidden');
+                                if (configContainer) configContainer.classList.add('hidden');
+                                if (timetableList) timetableList.classList.remove('hidden');
                                 renderDay();
-                            } else {
+                            } else if (currentView === 'cycle') {
                                 tabCycle.classList.add('border-red-500', 'text-red-500');
                                 tabCycle.classList.remove('border-transparent', 'text-gray-500');
-                                tabDay.classList.remove('border-red-500', 'text-red-500');
-                                tabDay.classList.add('border-transparent', 'text-gray-500');
                                 if (headerControls) headerControls.classList.add('hidden');
+                                if (configContainer) configContainer.classList.add('hidden');
+                                if (timetableList) timetableList.classList.remove('hidden');
                                 renderCycle();
+                            } else if (currentView === 'config') {
+                                tabConfig.classList.add('border-red-500', 'text-red-500');
+                                tabConfig.classList.remove('border-transparent', 'text-gray-500');
+                                if (headerControls) headerControls.classList.add('hidden');
+                                if (timetableList) timetableList.classList.add('hidden');
+                                if (configContainer) configContainer.classList.remove('hidden');
                             }
                         }
 
@@ -82,6 +108,7 @@ app.get('/', async (c) => {
                         document.getElementById('btn-reset').onclick = () => { currentDateStr = getInitialDate(); render(); };
                         document.getElementById('tab-day').onclick = () => { currentView = 'day'; render(); };
                         document.getElementById('tab-cycle').onclick = () => { currentView = 'cycle'; render(); };
+                        document.getElementById('tab-config').onclick = () => { currentView = 'config'; render(); };
 
                         document.addEventListener('click', (e) => {
                             if (activeSubject && !e.target.closest('.period-card')) {
