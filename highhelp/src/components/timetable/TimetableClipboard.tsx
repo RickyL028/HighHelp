@@ -64,7 +64,7 @@ app.get('/events', async (c) => {
         const vevents = comp.getAllSubcomponents('vevent')
 
         const [targetYear, targetMonth, targetDay] = dateStr.split('-').map(Number)
-        
+
         const dayEvents = vevents
             .map(vevent => new ICAL.Event(vevent))
             .filter(event => {
