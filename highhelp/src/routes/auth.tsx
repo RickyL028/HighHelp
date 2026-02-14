@@ -8,8 +8,17 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 
 app.get('/api/auth/login', (c) => {
-    const clientId = c.env.PORTAL_API_CLIENT_ID;
-    const redirectUri = c.env.APP_REDIRECT_URI;
+    
+    let clientId = c.env.PORTAL_API_CLIENT_ID;
+    let redirectUri = c.env.APP_REDIRECT_URI;
+
+    const host = c.req.header('host');
+
+    if (host && host.includes('highhelp.org')) {
+        clientId = c.env.PORTAL_API_CLIENT_ID_full;
+        redirectUri = c.env.APP_REDIRECT_URI_full;
+    }
+
 
     if (!clientId || !redirectUri) {
         return c.text('Configuration Error: Missing Client ID or Redirect URI', 500);
@@ -49,9 +58,18 @@ app.get('/api/auth/callback', async (c) => {
         return c.text('Invalid State or Missing Code. Please try logging in again.', 400);
     }
 
-    const clientId = c.env.PORTAL_API_CLIENT_ID;
-    const clientSecret = c.env.PORTAL_API_CLIENT_SECRET;
-    const redirectUri = c.env.APP_REDIRECT_URI;
+    let clientId = c.env.PORTAL_API_CLIENT_ID;
+    let clientSecret = c.env.PORTAL_API_CLIENT_SECRET;
+    let redirectUri = c.env.APP_REDIRECT_URI;
+    
+
+    const host = c.req.header('host');
+
+    if (host && host.includes('highhelp.org')) {
+        clientId = c.env.PORTAL_API_CLIENT_ID_full;
+        redirectUri = c.env.APP_REDIRECT_URI_full;
+        clientSecret = c.env.PORTAL_API_CLIENT_SECRET_full;
+    }
 
     if (!clientSecret) {
         return c.text('Configuration Error: Missing Client Secret. add PORTAL_API_CLIENT_SECRET to .dev.vars or secrets.', 500);

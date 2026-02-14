@@ -61,4 +61,7 @@ export type Bindings = Env & {
     PORTAL_API_CLIENT_ID: string;
     PORTAL_API_CLIENT_SECRET: string;
     APP_REDIRECT_URI: string;
+    PORTAL_API_CLIENT_ID_full: string;
+    PORTAL_API_CLIENT_SECRET_full: string;
+    APP_REDIRECT_URI_full: string;
 }
