@@ -12,7 +12,7 @@ app.get('/mock-exams', async (c) => {
 
     const subject = c.req.query('subject')
 
-    
+
     const exams = await c.env.DB.prepare(`
         SELECT m.*, count(mq.question_id) as question_count 
         FROM mock_exams m
@@ -23,9 +23,9 @@ app.get('/mock-exams', async (c) => {
     `).bind(user.id, subject).all()
 
     return c.html(
-        <Layout title={`Mock Exams - ${subject}`} user={user}>
+        <Layout title={`Mock Exams - ${subject}`} user={user} latex={true}>
             <div class="mx-auto space-y-8">
-                
+
                 <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
                     <a href="/past-papers" class="hover:underline">Past Papers</a>
                     <span>/</span>
@@ -39,7 +39,7 @@ app.get('/mock-exams', async (c) => {
                     </a>
                 </div>
 
-                
+
                 <div class="grid gap-4">
                     {exams.results.length === 0 ? (
                         <div class="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
@@ -94,7 +94,7 @@ app.get('/mock-exams/create', async (c) => {
     if (!user) return c.redirect('/login')
     const subject = c.req.query('subject')
 
-    
+
     const sections = await c.env.DB.prepare(`
         SELECT DISTINCT q.section_label 
         FROM exam_questions q 
@@ -106,7 +106,7 @@ app.get('/mock-exams/create', async (c) => {
     const topics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject).all()
 
     return c.html(
-        <Layout title={`Create Mock Exam - ${subject}`} user={user}>
+        <Layout title={`Create Mock Exam - ${subject}`} user={user} latex={true}>
             <div class="max-w-3xl mx-auto">
                 <div class="mb-6">
                     <a href={`/past-papers/mock-exams?subject=${encodeURIComponent(subject || '')}`} class="text-gray-500 hover:text-gray-700 text-sm">
@@ -222,7 +222,7 @@ app.post('/mock-exams/create-auto', async (c) => {
     const allowCompleted = body['allow_completed'] === '1'
     const timerMinutes = parseInt(body['timer_minutes'] as string || '0')
 
-    
+
     let filterTopics: string[] = []
     const rawTopics = body['topics']
     if (rawTopics) {
@@ -248,10 +248,10 @@ app.post('/mock-exams/create-auto', async (c) => {
         return c.text("Please specify marks for at least one section.", 400)
     }
 
-    
+
     let finalQuestions: any[] = []
 
-    
+
     const orderedDbSections = await c.env.DB.prepare(`
         SELECT DISTINCT q.section_label 
         FROM exam_questions q 
@@ -260,12 +260,12 @@ app.post('/mock-exams/create-auto', async (c) => {
         ORDER BY q.section_label ASC
     `).bind(subject).all();
 
-    
+
     const targetSections = orderedDbSections.results
         .map((s: any) => s.section_label)
         .filter((label: string) => sections[label] !== undefined);
 
-    
+
     for (const section of targetSections) {
         const desiredMarks = sections[section];
 
@@ -298,20 +298,20 @@ app.post('/mock-exams/create-auto', async (c) => {
         let currentMarks = 0
         let selectedForSection: any[] = []
 
-        
+
         const uncompleted = candidates.results.filter((q: any) => !q.is_completed)
         const completed = candidates.results.filter((q: any) => q.is_completed)
 
-        
+
         for (const q of uncompleted) {
             if (currentMarks < desiredMarks) {
-                
+
                 selectedForSection.push(q)
                 currentMarks += (q.marks || 0)
             }
         }
 
-        
+
         if (currentMarks < desiredMarks && allowCompleted) {
             for (const q of completed) {
                 if (currentMarks < desiredMarks) {
@@ -324,9 +324,9 @@ app.post('/mock-exams/create-auto', async (c) => {
         finalQuestions = [...finalQuestions, ...selectedForSection]
     }
 
-    if (finalQuestions.length === 0) return c.text("Could not find enough questions.", 400) 
+    if (finalQuestions.length === 0) return c.text("Could not find enough questions.", 400)
 
-    
+
     const examRes = await c.env.DB.prepare(`
                 INSERT INTO mock_exams (user_id, subject, exam_name, created_method, allowed_time_seconds, is_timed, status)
                 VALUES (?, ?, ?, 'auto', ?, ?, 'in_progress')
@@ -336,7 +336,7 @@ app.post('/mock-exams/create-auto', async (c) => {
     if (!examRes) return c.text("Failed to create exam", 500)
     const examId = examRes.id
 
-    
+
     const placeholders = finalQuestions.map(() => '(?, ?, ?)').join(', ')
     const values: any[] = []
     finalQuestions.forEach((q: any, index) => {
@@ -359,7 +359,7 @@ app.post('/mock-exams/create-manual', async (c) => {
     const examName = body['exam_name'] as string || 'Custom Exam'
     const timerMinutes = parseInt(body['timer_minutes'] as string || '0')
 
-    
+
 
     let questionIdsRaw = body['question_ids']
     if (!questionIdsRaw) return c.text("No questions selected", 400)
@@ -415,7 +415,7 @@ app.get('/mock-exams/:id', async (c) => {
 
     const totalMarks = stats?.total_marks || 0;
 
-    
+
     const isOwner = user && user.id === exam.user_id;
 
     const questions = await c.env.DB.prepare(`
@@ -428,8 +428,8 @@ app.get('/mock-exams/:id', async (c) => {
                 `).bind(examId).all()
 
     return c.html(
-        <Layout title={`${exam.exam_name}`} user={user} hideFooter>
-            
+        <Layout title={`${exam.exam_name}`} user={user} hideFooter latex={true}>
+
             <div class="fixed top-0 left-0 w-full bg-white shadow-md z-50 px-6 py-3 flex justify-between items-center border-b">
                 <div>
                     <h1 class="font-bold text-lg">{exam.exam_name}</h1>
@@ -437,7 +437,7 @@ app.get('/mock-exams/:id', async (c) => {
                         <span>{questions.results.length} Questions</span>
                         <span>•</span>
                         <span>{totalMarks} Marks Total</span>
-                        
+
                         {(exam.status === 'completed' || !isOwner) && (
                             <>
                                 <span>•</span>
@@ -503,7 +503,7 @@ app.get('/mock-exams/:id', async (c) => {
                 ))}
             </div>
 
-            
+
             {isOwner && exam.is_timed && exam.status !== 'completed' && (
                 <script dangerouslySetInnerHTML={{
                     __html: `
@@ -576,7 +576,7 @@ app.get('/mock-exams/:id/mark', async (c) => {
 
     const isOwner = user && user.id === exam.user_id;
 
-    
+
     const stats = await c.env.DB.prepare(`
         SELECT sum(q.marks) as total_marks 
         FROM mock_exam_questions mq
@@ -599,7 +599,7 @@ app.get('/mock-exams/:id/mark', async (c) => {
                 `).bind(exam.user_id, examId).all()
 
     return c.html(
-        <Layout title={`Marking - ${exam.exam_name}`} user={user}>
+        <Layout title={`Marking - ${exam.exam_name}`} user={user} latex={true}>
             <div class="max-w-4xl mx-auto pb-24">
                 <div class="mb-8 border-b pb-4">
                     <h1 class="text-3xl font-bold mb-2">Marking: {exam.exam_name}</h1>
@@ -685,7 +685,7 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
     const examId = c.req.param('id')
     const body = await c.req.parseBody()
 
-    
+
     const examQuestions = await c.env.DB.prepare(`SELECT question_id FROM mock_exam_questions WHERE mock_exam_id = ?`).bind(examId).all()
 
     const stmt = c.env.DB.prepare(`
@@ -697,7 +697,7 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
                 updated_at = excluded.updated_at
                 `)
 
-    
+
     for (const q of examQuestions.results) {
         const marksKey = `marks_${q.question_id}`
         const marksStr = body[marksKey]
@@ -708,7 +708,7 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
         }
     }
 
-    return c.redirect(`/past-papers/mock-exams`) 
+    return c.redirect(`/past-papers/mock-exams`)
 })
 
 export default app

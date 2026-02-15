@@ -14,7 +14,7 @@ app.get('/past-papers/paper/:id', async (c) => {
     const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
     if (!paper) return c.notFound();
 
-    
+
     const questions = await c.env.DB.prepare(`
         SELECT q.*, group_concat(t.name, ', ') as topic_names, group_concat(t.id, ',') as topic_ids,
                u.first_name as uploader_first, u.last_name as uploader_last
@@ -27,7 +27,7 @@ app.get('/past-papers/paper/:id', async (c) => {
         ORDER BY q.ordering_index ASC
     `).bind(paperId).all();
 
-    
+
     const allTopics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(paper.subject).all();
 
 
@@ -37,7 +37,7 @@ app.get('/past-papers/paper/:id', async (c) => {
     const qWithNext = qList.map((q, i) => {
         const nextQ = qList[i + 1];
 
-        
+
         const missing = [];
         if (!q.topic_ids) missing.push("Topic");
         const hasQContent = q.question_image_key || q.question_text;
@@ -59,12 +59,12 @@ app.get('/past-papers/paper/:id', async (c) => {
     // Check permissions
     // Locking: Permission >= 4 OR tag C*
     // Unlocking: Permission >= 5
-    
-    const hasCTag = user?.tags && (typeof user.tags === 'string' ? user.tags.includes('C*') : user.tags.includes('C*')); 
+
+    const hasCTag = user?.tags && (typeof user.tags === 'string' ? user.tags.includes('C*') : user.tags.includes('C*'));
     const canLock = user && (user.permission_level >= 4 || hasCTag);
     const canUnlock = user && user.permission_level >= 5;
 
-    
+
     const canLockValidate = canLock && incompleteQuestionsCount === 0;
 
 
@@ -78,7 +78,7 @@ app.get('/past-papers/paper/:id', async (c) => {
 
 
     return c.html(
-        <Layout title={`${paper.school_name} ${paper.academic_year}`} user={user}>
+        <Layout title={`${paper.school_name} ${paper.academic_year}`} user={user} latex={true}>
             <div class="mx-auto max-w-5xl">
                 <div class="mb-6 flex justify-between items-start">
                     <div>
@@ -103,7 +103,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
 
                     <div class="flex items-center gap-3">
-                        
+
                         {canEdit && (
                             <>
                                 <button onclick="document.getElementById('import-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
@@ -111,7 +111,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                     Import Text
                                 </button>
 
-                                
+
                                 <dialog id="import-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
                                     <div class="w-full max-w-lg bg-white p-6 rounded-xl">
                                         <h3 class="text-xl font-bold text-gray-800 mb-2">Import Paper from Text</h3>
@@ -147,7 +147,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                 </dialog>
                             </>
                         )}
-                        
+
                         {paper.is_locked ? (
                             canUnlock && (
                                 <form action={`/past-papers/paper/${paper.id}/toggle-lock`} method="post">
@@ -179,7 +179,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
                 </div>
 
-                
+
                 <dialog id="lock-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
                     <div class="w-full max-w-md bg-white p-6 rounded-xl">
                         <h3 class="text-xl font-bold text-red-600 mb-4 flex items-center gap-2">
@@ -206,7 +206,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
                 </dialog>
 
-                
+
                 {canManageTopics && (
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                         <details>
@@ -235,7 +235,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
                 )}
 
-                
+
                 <form action={`/past-papers/paper/${paper.id}/update-batch`} method="post" enctype="multipart/form-data">
                     <div class="space-y-4 pb-24">
                         {qWithNext.map((q: any, index: number) => {
@@ -245,7 +245,7 @@ app.get('/past-papers/paper/:id', async (c) => {
 
                             return (
                                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-4" id={`q-${q.id}`}>
-                                    
+
                                     <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition" onclick={`toggleEdit(${q.id})`}>
                                         <div class="flex items-center gap-4">
                                             <span class="font-mono text-gray-500 font-bold w-16 text-right">{q.section_label} {q.question_number}</span>
@@ -260,7 +260,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                 ) : (
                                                     <span class="text-sm text-gray-400 italic">No topics tagged</span>
                                                 )}
-                                                
+
                                                 <span class="text-xs text-gray-400 mt-1">
                                                     Last edited by: {q.uploader_first ? `${q.uploader_first} ${q.uploader_last}` : 'Original Uploader'}
                                                 </span>
@@ -279,17 +279,17 @@ app.get('/past-papers/paper/:id', async (c) => {
                                         </div>
                                     </div>
 
-                                    
+
                                     <div id={`detail-${q.id}`} class={`${canEdit ? '' : 'hidden'} border-t border-gray-100 bg-gray-50 p-6`}>
                                         {canEdit ? (
                                             <div class="space-y-6">
-                                                
+
                                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    
+
                                                     <div class="space-y-4">
                                                         <div>
                                                             <label class="block text-xs font-bold text-gray-500 uppercase">Topics</label>
-                                                            
+
                                                             <select name={`q_${q.id}_topic_ids[]`} multiple size={4} class="w-full mt-1 rounded border-gray-300 text-sm">
                                                                 {allTopics.results.map((t: any) => (
                                                                     <option value={t.id} selected={q.topic_ids?.split(',').includes(String(t.id))}>{t.name}</option>
@@ -325,12 +325,12 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                         </div>
                                                     </div>
 
-                                                    
+
                                                     <div class="space-y-4">
                                                         {['question', 'answer', 'stimulus'].map(type => {
                                                             const hasText = !!q[`${type}_text`];
                                                             const hasImage = !!q[`${type}_image_key`];
-                                                            
+
                                                             const initialMode = hasText ? 'text' : 'image';
 
                                                             return (
@@ -374,13 +374,13 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                     </div>
                                                 </div>
 
-                                                
+
                                             </div>
                                         ) : (
                                             <div class="flex flex-col gap-4">
                                                 {/* Read-Only View of Content */}
 
-                                                
+
                                                 <div>
                                                     <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Question</span>
                                                     {q.question_text ? (
@@ -415,7 +415,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                         )}
                                     </div>
 
-                                    
+
                                     {
                                         isLastInSegment && canEdit && !paper.is_locked && (
                                             <div class="bg-blue-50/50 p-2 flex justify-center gap-2 border-t border-gray-100">
@@ -490,7 +490,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                         })}
                     </div>
 
-                    
+
                     {canEdit && (
                         <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-50">
                             <div class="max-w-5xl mx-auto flex justify-between items-center">
@@ -573,7 +573,7 @@ app.post('/past-papers/question/:id/sub-question', async (c) => {
     const user = await getUser(c)
     const qId = c.req.param('id')
 
-    
+
     const q = await c.env.DB.prepare('SELECT q.*, p.subject FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE q.id = ?').bind(qId).first<any>();
     if (!q) return c.notFound();
     if (!user || !canUploadPastPaper(user, q.subject)) return c.text('Unauthorised', 403);
@@ -593,11 +593,11 @@ app.post('/past-papers/question/:id/sub-question', async (c) => {
         q.paper_id,
         q.section_label,
         q.segment_label,
-        q.question_number, 
+        q.question_number,
         user.id,
         newIdx
     ).run();
-    
+
     return c.redirect(`/past-papers/paper/${q.paper_id}#q-${qId}`);
 });
 
@@ -607,7 +607,7 @@ app.post('/past-papers/topics/create', async (c) => {
     const subject = body['subject'] as string
     const redirectId = body['redirect_paper_id']
 
-    
+
     if (!user || !canCreateTopic(user, subject)) return c.text("Unauthorised", 401)
 
     const name = body['name'] as string
@@ -628,7 +628,7 @@ app.post('/past-papers/topics/delete', async (c) => {
 
     await c.env.DB.prepare('DELETE FROM topics WHERE id = ?').bind(topicId).run()
 
-    
+
     await c.env.DB.prepare('DELETE FROM question_topics WHERE topic_id = ?').bind(topicId).run()
 
     return c.redirect(`/past-papers/paper/${redirectId}`)
@@ -639,7 +639,7 @@ app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
     const user = await getUser(c)
     const paperId = c.req.param('id')
 
-    
+
     const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
     if (!paper) return c.notFound();
 
@@ -653,7 +653,7 @@ app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
     } else {
         if (!user || (user.permission_level < 4 && !hasCTag)) return c.text("Unauthorised to lock", 403);
 
-      
+
         const invalidQuestions = await c.env.DB.prepare(`
             SELECT count(q.id) as count
             FROM exam_questions q
@@ -668,7 +668,7 @@ app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
                 (q.answer_image_key IS NULL AND q.answer_text IS NULL)
         `).bind(paperId).all<any>();
 
-        
+
         if (invalidQuestions.results.length > 0) {
             return c.text(`Cannot lock: ${invalidQuestions.results.length} questions have missing fields.`, 400);
         }
@@ -700,7 +700,7 @@ async function processBatchUpdate(c: any, paperId: string, user: any, body: any)
     }
 
     const qIds = new Set<string>();
-    
+
     for (const key of Object.keys(body)) {
         if (key.startsWith('q_')) {
             const parts = key.split('_');
@@ -712,16 +712,16 @@ async function processBatchUpdate(c: any, paperId: string, user: any, body: any)
 
     let updatedCount = 0;
 
-    
+
     for (const qId of qIds) {
         const currentQ = currentQMap.get(qId);
 
-        
+
         const newType = (body[`q_${qId}_question_type`] as string) || null;
         const newMarks = (body[`q_${qId}_marks`] as string) || null;
         const newMcAnswer = (body[`q_${qId}_mc_answer`] as string) || null;
 
-        
+
         let newQText = (body[`q_${qId}_question_text`] as string) || null;
         let newAText = (body[`q_${qId}_answer_text`] as string) || null;
         let newSText = (body[`q_${qId}_stimulus_text`] as string) || null;
@@ -737,7 +737,7 @@ async function processBatchUpdate(c: any, paperId: string, user: any, body: any)
         let newAImageKey = currentQ?.answer_image_key;
         let newSImageKey = currentQ?.stimulus_image_key;
 
-        
+
         let imageUploaded = { question: false, answer: false, stimulus: false };
         for (const type of ['question', 'answer', 'stimulus']) {
             const file = body[`q_${qId}_${type}_image`] as File;
@@ -745,12 +745,12 @@ async function processBatchUpdate(c: any, paperId: string, user: any, body: any)
                 const key = `questions/${Date.now()}-${type}-${Math.random().toString(36).slice(2)}`;
                 await c.env.BUCKET.put(key, file);
 
-                
+
                 if (type === 'question') newQImageKey = key;
                 if (type === 'answer') newAImageKey = key;
                 if (type === 'stimulus') newSImageKey = key;
 
-                
+
                 if (type === 'question') newQText = null;
                 if (type === 'answer') newAText = null;
                 if (type === 'stimulus') newSText = null;
@@ -799,7 +799,7 @@ async function processBatchUpdate(c: any, paperId: string, user: any, body: any)
             updatedCount++;
         }
 
-        
+
         const existingTopicIdsStr = currentQ?.topic_ids || '';
         const existingTopicSet = new Set(existingTopicIdsStr.split(',').filter(Boolean));
 
@@ -807,7 +807,7 @@ async function processBatchUpdate(c: any, paperId: string, user: any, body: any)
         const idsToInsert = Array.isArray(topicIds) ? topicIds : (topicIds ? [topicIds as string] : []);
         const newTopicSet = new Set(idsToInsert.map(String));
 
-        
+
         let topicsChanged = false;
         if (existingTopicSet.size !== newTopicSet.size) {
             topicsChanged = true;
@@ -843,7 +843,7 @@ app.post('/past-papers/paper/:id/update-batch', async (c) => {
     const user = await getUser(c)
     const paperId = c.req.param('id')
 
-    
+
     const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
     if (!paper) return c.notFound();
     if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
@@ -865,19 +865,19 @@ app.post('/past-papers/question/:id/update', async (c) => {
     const user = await getUser(c)
     const qId = c.req.param('id')
 
-    
+
     const q = await c.env.DB.prepare('SELECT q.*, p.subject, p.is_locked FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE q.id = ?').bind(qId).first<any>();
     if (!q) return c.notFound();
 
-    
+
     if (!user || !canUploadPastPaper(user, q.subject)) return c.text('Unauthorised', 403);
 
-    
+
     if (q.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
 
     const body = await c.req.parseBody();
 
-    
+
     let qText = (body['question_text'] as string) || null;
     let aText = (body['answer_text'] as string) || null;
     let sText = (body['stimulus_text'] as string) || null;
@@ -901,12 +901,12 @@ app.post('/past-papers/question/:id/update', async (c) => {
         }
     }
 
-    
+
     if (qText !== null) qImgKey = null;
     if (aText !== null) aImgKey = null;
     if (sText !== null) sImgKey = null;
 
-    
+
     await c.env.DB.prepare(`
         UPDATE exam_questions 
         SET question_type = ?, marks = ?, mc_answer = ?,
@@ -922,12 +922,12 @@ app.post('/past-papers/question/:id/update', async (c) => {
         qId
     ).run();
 
-    
+
     await c.env.DB.prepare('DELETE FROM question_topics WHERE question_id = ?').bind(qId).run();
 
-    
+
     const topicIds = body['topic_ids'];
-    
+
     const idsToInsert = Array.isArray(topicIds) ? topicIds : (topicIds ? [topicIds] : []);
 
     if (idsToInsert.length > 0) {
@@ -947,22 +947,22 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
     const user = await getUser(c);
     const paperId = c.req.param('id');
     const body = await c.req.parseBody();
-    const action = body['action'] as string; 
+    const action = body['action'] as string;
     const sectionLabel = body['section_label'] as string;
     const segmentLabel = body['segment_label'] as string;
 
-    
+
     const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
     if (!paper) return c.notFound();
     if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
 
-    
+
     if (paper.is_locked) return c.text('Paper is locked', 403);
 
-    
+
     await processBatchUpdate(c, paperId, user, body);
 
-    
+
     let query = `SELECT * FROM exam_questions WHERE paper_id = ? AND section_label = ? AND is_deleted = 0`;
     const params: any[] = [paperId, sectionLabel];
 
@@ -978,14 +978,14 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
     const lastQ = await c.env.DB.prepare(query).bind(...params).first<any>();
 
     if (!lastQ) {
-        
+
         return c.text('Segment not found or empty', 404);
     }
 
     if (action === 'add') {
-        
+
         const lastNum = lastQ.question_number;
-        const match = lastNum.match(/(\d+)$/); 
+        const match = lastNum.match(/(\d+)$/);
         let newNum = "";
 
         if (match) {
@@ -994,10 +994,10 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
             const nextVal = parseInt(numPart) + 1;
             newNum = prefix + nextVal;
         } else {
-            newNum = lastNum + "1"; 
+            newNum = lastNum + "1";
         }
 
-        
+
         const standardFullLabel = segmentLabel ? `${sectionLabel} ${newNum}` : `${sectionLabel} ${newNum}`;
 
 
@@ -1014,7 +1014,7 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
             newOrderIdx = lastQ.ordering_index + 1;
         }
 
-        
+
         await c.env.DB.prepare(`
             INSERT INTO exam_questions 
             (paper_id, section_label, segment_label, question_number, question_full_label, uploader_id, ordering_index)
@@ -1032,7 +1032,7 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
         await logAction(c.env.DB, user.id, 'ADD_QUESTION', `Added question ${newNum} to paper ${paperId}`, parseInt(paperId), 'papers');
 
     } else if (action === 'remove') {
-       
+
         let countQuery = `SELECT count(*) as count FROM exam_questions WHERE paper_id = ? AND section_label = ? AND is_deleted = 0`;
         const countParams: any[] = [paperId, sectionLabel];
         if (segmentLabel) {
@@ -1063,7 +1063,7 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
     if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
     if (paper.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
 
-    
+
     const body = await c.req.parseBody();
     const file = body['text_file'];
     if (!(file instanceof File)) return c.text("Invalid file uploaded", 400);
@@ -1071,18 +1071,18 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
     const rawText = await file.text();
     const text = rawText.replace(/\r\n/g, '\n');
 
-    
+
     const parts = text.split('\\e');
     const questionPart = parts[0];
     const answerKeyPart = parts.length > 1 ? parts.slice(1).join('') : '';
 
     const tokens = questionPart.split(/(\\s|\\a|\\q|\\m)/);
 
-    
+
     const toRoman = (num: number) => ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][num] || String(num);
     const toLetter = (num: number) => String.fromCharCode(65 + num); // 0->A, 1->B
 
-    
+
     let currentSectionIdx = 0;
     let currentSegmentIdx = 0;
     let currentQCount = 0;
@@ -1093,12 +1093,12 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
     let currentQ: any = null;
     let questionsToProcess: any[] = [];
 
-    
+
     let runningOrderIdx = 1;
 
     const pushCurrentQ = () => {
         if (currentQ) {
-            
+
             if (!currentQ.question_type) {
                 if (currentQ.question_text && currentQ.question_text.includes('(A)') && currentQ.question_text.includes('(B)')) {
                     currentQ.question_type = 'multiple_choice';
@@ -1119,11 +1119,11 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
         if (token === '\\s') {
             pushCurrentQ();
             currentSectionIdx++;
-            
+
             currentQCount = 0;
 
             currentSectionLabel = toRoman(currentSectionIdx);
-            
+
             i++;
         }
         else if (token === '\\a') {
@@ -1140,7 +1140,7 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
 
             let qText = content;
 
-            
+
             const boldMatch = content.match(/^\*\*([a-zA-Z0-9]+)\*\*\s*/);
             const standardMatch = content.match(/^(\d+|[a-z])[\.\)]\s*/);
 
@@ -1178,7 +1178,7 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
     }
     pushCurrentQ();
 
-    
+
     if (answerKeyPart && answerKeyPart.trim().length > 0) {
         const answers = answerKeyPart.match(/\b[A-D]\b/g);
         if (answers) {
@@ -1192,12 +1192,12 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
         }
     }
 
-    
+
     await c.env.DB.prepare('DELETE FROM exam_questions WHERE paper_id = ?').bind(paperId).run();
 
     let insertedCount = 0;
 
-    
+
     const stmt = c.env.DB.prepare(`
         INSERT INTO exam_questions 
         (paper_id, section_label, segment_label, question_number, question_text, marks, question_type, mc_answer, uploader_id, ordering_index)
@@ -1223,7 +1223,7 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
         insertedCount++;
     }
 
-    
+
     await logAction(c.env.DB, user.id, 'IMPORT_TEXT', `Fresh Import: Wiped previous questions. ${insertedCount} inserted.`, parseInt(paperId), 'papers');
 
     return c.redirect(`/past-papers/paper/${paperId}`);

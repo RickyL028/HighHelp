@@ -153,7 +153,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
     const completedDate = attempt?.updated_at ? formatDate(attempt.updated_at) : '';
 
     return c.html(
-        <Layout title={`Question - ${q.subject}`} user={user}>
+        <Layout title={`Question - ${q.subject}`} user={user} latex={true}>
             <div class="max-w-6xl mx-auto h-[calc(100vh-140px)] flex flex-col">
                 {/* Header */}
                 <div class="flex items-center justify-between mb-4 shrink-0">
