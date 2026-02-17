@@ -63,32 +63,50 @@ app.get('/events', async (c) => {
         const comp = new ICAL.Component(jcalData)
         const vevents = comp.getAllSubcomponents('vevent')
 
+        // ... imports and setup
+
+
+    // ... fetching and sanitization code ...
+
         const [targetYear, targetMonth, targetDay] = dateStr.split('-').map(Number)
 
-        const dayEvents = vevents
-            .map(vevent => new ICAL.Event(vevent))
-            .filter(event => {
-                try {
-                    const start = event.startDate.toJSDate()
-                    return (
-                        start.getFullYear() === targetYear &&
-                        (start.getMonth() + 1) === targetMonth &&
-                        start.getDate() === targetDay
-                    )
-                } catch (err) {
-                    return false; // Skip events with invalid dates
-                }
+            const dayEvents = vevents
+                .map(vevent => new ICAL.Event(vevent))
+                .filter(event => {
+                    try {
+                        
+                        const jsDate = event.startDate.toJSDate();
+
+                        
+                        const eventDateInSydney = jsDate.toLocaleDateString('en-CA', {
+                            timeZone: 'Australia/Sydney', 
+                        });
+
+                        
+                        return eventDateInSydney === dateStr;
+                    } catch (err) {
+                        return false;
+                    }
+                })
+            .map(event => {
+                
+                const start = event.startDate;
+                const end = event.endDate;
+                
+                return {
+                    summary: event.summary,
+                    description: event.description,
+                    
+                    start: start.toString(), 
+                    end: end.toString(),
+                    location: event.location,
+                    allDay: event.startDate.isDate
+                };
             })
-            .map(event => ({
-                summary: event.summary,
-                description: event.description,
-                start: event.startDate.toJSDate().toISOString(),
-                end: event.endDate.toJSDate().toISOString(),
-                location: event.location,
-                allDay: event.startDate.isDate
-            }))
 
         return c.json({ events: dayEvents })
+    
+
     } catch (e: any) {
         console.error('Calendar parse error:', e)
         return c.json({
