@@ -130,36 +130,36 @@ export const TimetableDay = html`
                 const badgeText = variationTags.length > 0 ? variationTags[0] : 'UPDATED';
                 const changedBadge = highlightChange ? \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded animate-pulse">\${badgeText}</span>\` : '';
                 const roomColorClass = (highlightChange && (roomVar || (classVar && classVar.roomTo))) ? 'text-red-600 font-extrabold' : 'text-black';
-
-                innerHtml = \`
-                    <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
-                        data-subject="\${data.subjectCode}"
-                        data-title="\${data.title || data.subject || ''}"
-                        data-teacher="\${data.fullTeacher || data.teacher || ''}"
-                        data-room="\${data.room || ''}"
-                        data-start="\${bell.startTime}"
-                        data-end="\${bell.endTime}"
-                        data-color="\${stripColor}">
-                        <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" style="background-color: \${stripColor};"></div>
-                        <div class="pl-3 font-medium text-gray-900 \${textSize} flex items-center">
-                            \${data.title || data.subject || 'Unknown'}
-                            \${changedBadge}
-                        </div>
-                        <div class="pl-3 flex items-center gap-4 \${textSize}">
-                            <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
-                            \${data.room ? \`<span class="font-bold \${roomColorClass}">\${data.room}</span>\` : ''}
-                        </div>
-                        <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
-                            <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2">
-                                <span class="font-bold text-sm">\${data.title}</span>
-                                <span class="text-gray-300">\${nextTimeStr}</span>
-                            </div>
-                            \${highlightChange ? '<div class="text-red-400 font-bold mb-1">' + variationTags.join(', ') + '</div>' : ''}
-                            <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
-                            \${miniCycle}
-                        </div>
-                    </div>
-                \`;
+                // ... inside bellsToUse.forEach ...
+innerHtml = \`
+    <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
+        data-subject="\${data.subjectCode}"
+        data-title="\${data.title || data.subject || ''}"
+        data-teacher="\${data.fullTeacher || data.teacher || ''}"
+        data-room="\${data.room || ''}"
+        data-start="\${bell.startTime}"
+        data-end="\${bell.endTime}"
+        data-link="\${data.link || ''}"
+        data-color="\${stripColor}">
+            <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" style="background-color: \${stripColor};"></div>
+            <div class="pl-3 font-medium text-gray-900 \${textSize} flex items-center">
+                \${data.title || data.subject || 'Unknown'}
+                \${changedBadge}
+            </div>
+            <div class="pl-3 flex items-center gap-4 \${textSize}">
+                <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
+                \${data.room ? \`<span class="font-bold \${roomColorClass}">\${data.room}</span>\` : ''}
+            </div>
+            <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
+                <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2">
+                    <span class="font-bold text-sm">\${data.title}</span>
+                    <span class="text-gray-300">\${nextTimeStr}</span>
+                </div>
+                \${highlightChange ? '<div class="text-red-400 font-bold mb-1">' + variationTags.join(', ') + '</div>' : ''}
+                <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
+                \${miniCycle}
+            </div>
+    </div>\`;
             } else {
                 if (bell.period === 'EoD') return;
                 innerHtml = \`

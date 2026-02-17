@@ -23,10 +23,14 @@ export const TimetableCore = html`
     } catch(e) { console.error(e); }
 
     if (!studentData || !studentData.timetable || !studentData.calendar) {
-        document.getElementById('loader').classList.add('hidden');
+        // Note: Using standard string concatenation or escaping here too
+        const loader = document.getElementById('loader');
+        if(loader) loader.classList.add('hidden');
         const err = document.getElementById('error-msg');
-        err.classList.remove('hidden');
-        err.innerHTML = 'Timetable data not found. Please <a href="/api/auth/login" class="underline">Log in again</a> to sync.';
+        if(err) {
+            err.classList.remove('hidden');
+            err.innerHTML = 'Timetable data not found. Please <a href="/api/auth/login" class="underline">Log in again</a> to sync.';
+        }
     }
 
     const calendarMap = studentData?.calendar || {}; 
@@ -42,6 +46,20 @@ export const TimetableCore = html`
     let pendingFetches = {};
     let isTickerUpdating = false;
 
+    let subjectConfig = {};
+    try {
+        const raw = localStorage.getItem('subjectConfig');
+        if (raw) subjectConfig = JSON.parse(raw);
+    } catch(e) { console.error('Error loading subject config', e); }
+
+    window.addEventListener('subjectConfigUpdated', () => {
+         try {
+            const raw = localStorage.getItem('subjectConfig');
+            if (raw) subjectConfig = JSON.parse(raw);
+            if (window.render) window.render();
+        } catch(e) { console.error('Error reloading subject config', e); }
+    });
+
     function getInitialDate() {
         const now = new Date();
         const isAfterSchool = (now.getHours() > 15) || (now.getHours() === 15 && now.getMinutes() >= 10);
@@ -56,6 +74,7 @@ export const TimetableCore = html`
          const year = now.getFullYear();
          const month = String(now.getMonth() + 1).padStart(2, '0');
          const day = String(now.getDate()).padStart(2, '0');
+         // Fixed spacing in return string
          return \`\${year}-\${month}-\${day}\`;
     }
 
@@ -67,9 +86,19 @@ export const TimetableCore = html`
             (s.subject && s.subject === periodObj.title) 
         );
 
+        let color = subj ? subj.colour : periodObj.colour || periodObj.color || 'e5e7eb';
+        let link = null;
+
+        const subjectName = subj ? (subj.title || subj.shortTitle || subj.subject) : (periodObj.title);
+        if (subjectName && subjectConfig[subjectName]) {
+            if (subjectConfig[subjectName].color) color = subjectConfig[subjectName].color;
+            if (subjectConfig[subjectName].link) link = subjectConfig[subjectName].link;
+        }
+
         return {
             ...periodObj,
-            color: subj ? subj.colour : periodObj.colour || periodObj.color || 'e5e7eb',
+            color: color,
+            link: link,
             fullTeacher: subj ? subj.fullTeacher : periodObj.fullTeacher || periodObj.teacher,
             subjectCode: subj ? (subj.shortTitle || subj.title) : (periodObj.title || 'Unknown')
         };
@@ -80,8 +109,30 @@ export const TimetableCore = html`
         if (pendingFetches[date]) return pendingFetches[date];
 
         const fetchPromise = (async () => {
+            const cachedRaw = localStorage.getItem('todayData_' + date);
+            if (cachedRaw) {
+                try {
+                    const cachedObj = JSON.parse(cachedRaw);
+                    const now = new Date().getTime();
+                    if (cachedObj.timestamp && (now - cachedObj.timestamp < 300000)) { 
+                        if (cachedObj.data && (cachedObj.data.status === 'OK' || cachedObj.data.timetable)) {
+                            if (cachedObj.data.bells && cachedObj.data.bells.length > 0) {
+                                bellCache[date] = cachedObj.data.bells.map(b => ({
+                                    period: b.period || b.bell,  
+                                    startTime: b.startTime || b.time,
+                                    endTime: b.endTime || '23:59',
+                                    label: b.bellDisplay || b.bell || b.period
+                                }));
+                            }
+                            return cachedObj.data;
+                        }
+                    }
+                } catch(e) { }
+            }
+
             let data = null;
             try {
+                // Fixed the fetch URL pathing and variable interpolation
                 const res = await fetch(\`/api/proxy/day-data?date=\${date}&_=\${new Date().getTime()}\`, {
                     headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
                 });
@@ -89,7 +140,11 @@ export const TimetableCore = html`
                 if (res.ok) {
                     data = await res.json();
                     if (data && (data.status === 'OK' || data.timetable)) {
-                        localStorage.setItem('todayData_' + date, JSON.stringify(data));
+                        const cacheObj = {
+                            timestamp: new Date().getTime(),
+                            data: data
+                        };
+                        localStorage.setItem('todayData_' + date, JSON.stringify(cacheObj));
                         
                         if (data.bells && data.bells.length > 0) {
                             bellCache[date] = data.bells.map(b => ({
@@ -104,11 +159,11 @@ export const TimetableCore = html`
                 }
             } catch(e) { console.error(e); }
 
-            if (!data) {
-                const cached = localStorage.getItem('todayData_' + date);
-                if (cached) {
-                    try { return JSON.parse(cached); } catch(e) {}
-                }
+            if (!data && cachedRaw) {
+                try { 
+                    const c = JSON.parse(cachedRaw);
+                    return c.data || c;
+                } catch(e) {}
             }
             return null;
         })();
@@ -159,6 +214,11 @@ export const TimetableCore = html`
             const subject = card.getAttribute('data-subject');
             card.addEventListener('click', (e) => {
                 e.stopPropagation(); 
+                const link = card.getAttribute('data-link');
+                if (link) {
+                    window.open(link, '_blank');
+                    return;
+                }
                 if (activeSubject === subject) {
                     activeSubject = null;
                     resetCards(cards);
@@ -192,7 +252,7 @@ export const TimetableCore = html`
         const room = sourceCard.getAttribute('data-room');
         if(start) {
             hoveredPeriodData = { start, end, title, teacher, room };
-            updateTicker();
+            if (window.updateTicker) window.updateTicker();
         }
         if (!subject) return;
         cards.forEach(c => {
@@ -207,7 +267,7 @@ export const TimetableCore = html`
                 c.style.zIndex = '';
             }
         });
-        document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = '');
+        document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = 'none');
         const tooltip = sourceCard.querySelector('.tooltip-content');
         if (tooltip) {
             tooltip.style.display = 'block';
@@ -216,7 +276,7 @@ export const TimetableCore = html`
 
     function resetCards(cards) {
         hoveredPeriodData = null;
-        updateTicker();
+        if (window.updateTicker) window.updateTicker();
         cards.forEach(c => {
             const wrapper = c.closest('.flex.items-center');
             if(wrapper) {
@@ -227,7 +287,7 @@ export const TimetableCore = html`
             c.style.transform = '';
             c.style.zIndex = '';
         });
-        document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = '');
+        document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = 'none');
     }
 
     function getMiniCycleHtml(subjectCode, color) {
@@ -236,7 +296,7 @@ export const TimetableCore = html`
         const tStr = \`\${t.getFullYear()}-\${String(t.getMonth() + 1).padStart(2, '0')}-\${String(t.getDate()).padStart(2, '0')}\`;
         const todayInfo = calendarMap[tStr];
         const todayNum = todayInfo ? todayInfo.dayNumber : null;
-        let html = '<div class="grid grid-cols-5 gap-1 gap-y-2">';
+        let htmlContent = '<div class="grid grid-cols-5 gap-1 gap-y-2">';
         for (let week=0; week<2; week++) {
             for (let day=1; day<=5; day++) {
                 const dayNum = (week*5) + day;
@@ -255,11 +315,11 @@ export const TimetableCore = html`
                 if (todayNum && dayNum.toString() === todayNum) {
                     extraClass = 'ring-2 ring-white ring-offset-1 ring-offset-gray-800'; 
                 }
-                html += \`<div class="h-1.5 rounded-full w-full \${bgClass} \${extraClass}" style="\${style}"></div>\`;
+                htmlContent += \`<div class="h-1.5 rounded-full w-full \${bgClass} \${extraClass}" style="\${style}"></div>\`;
             }
         }
-        html += '</div>';
-        return html;
+        htmlContent += '</div>';
+        return htmlContent;
     }
 
     function getNextSubjectOccurrence(subjectCode, currentDateStr, currentPeriodId) {

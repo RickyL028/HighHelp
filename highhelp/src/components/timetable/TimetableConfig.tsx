@@ -18,6 +18,24 @@ export const TimetableConfig = html`
 
             </ol>
         </div>
+
+        <h2 class="text-xl font-bold text-gray-800 mb-4 border-t border-gray-200 pt-4">Subject Configuration</h2>
+        <div class="mb-4">
+            <p class="text-gray-600 text-sm mb-3">Customize colors and add links for your subjects.</p>
+            <div id="subject-config-list" class="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                <!-- Subjects will be populated here -->
+                <div class="text-center py-4">
+                    <div class="animate-pulse flex space-x-4">
+                        <div class="flex-1 space-y-4 py-1">
+                            <div class="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div class="space-y-2">
+                                <div class="h-4 bg-gray-200 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <button id="save-config" class="bg-blue-500 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200">
             Sync
         </button>
@@ -29,16 +47,100 @@ export const TimetableConfig = html`
         const urlInput = document.getElementById('clipboard-url');
         const saveBtn = document.getElementById('save-config');
         const statusMsg = document.getElementById('config-status');
+        const subjectConfigContainer = document.getElementById('subject-config-list');
+
+        function loadSubjectConfig() {
+            let studentData = null;
+            try {
+                const raw = localStorage.getItem('studentData');
+                if (raw) studentData = JSON.parse(raw);
+            } catch(e) { console.error(e); }
+
+            const subjects = studentData?.timetable?.subjects || [];
+            
+            let config = {};
+            try {
+                const rawConfig = localStorage.getItem('subjectConfig');
+                if (rawConfig) config = JSON.parse(rawConfig);
+            } catch(e) {}
+
+            if (subjectConfigContainer) {
+                subjectConfigContainer.innerHTML = '';
+                if (subjects.length === 0) {
+                    subjectConfigContainer.innerHTML = '<p class="text-gray-500 italic">No subjects found to configure.</p>';
+                    return;
+                }
+
+                subjects.forEach(subject => {
+                    const subjectName = subject.title || subject.shortTitle || subject.subject || 'Unknown';
+                    const subjectCode = subject.shortTitle || subject.title || subjectName; // Use same key as enrichPeriod
+                    const savedSubjectConfig = config[subjectName] || {}; // Key by name for now, or code? TimetableCore uses title/shortTitle matching. 
+
+                    
+                    const currentVal = config[subjectName] || {};
+                    const defaultColor = subject.colour || '#e5e7eb';
+                    
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center gap-4 p-3 bg-gray-50 rounded-lg border border-gray-100';
+                    div.innerHTML = \`
+    <div class="flex-grow" >
+                            <h4 class="font-bold text-gray-800 text-sm">\${subjectName}</h4>
+                            <p class="text-xs text-gray-500">\${subject.fullTeacher || subject.teacher || ''}</p>
+                        </div >
+    <div class="flex flex-col gap-2 w-1/2">
+        <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-600 w-12">Color:</label>
+            <input type="color" class="subject-color h-8 w-14 rounded cursor-pointer" data-subject="\${subjectName}" value="\${currentVal.color ? '#' + currentVal.color : (defaultColor.startsWith('#') ? defaultColor : '#' + defaultColor)}">
+        </div>
+        <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-600 w-12">Link:</label>
+            <input type="text" class="subject-link shadow appearance-none border rounded w-full py-1 px-2 text-gray-700 text-xs leading-tight focus:outline-none focus:shadow-outline"
+                data-subject="\${subjectName}"
+                placeholder="https://..."
+                value="\${currentVal.link || ''}">
+        </div>
+    </div>
+\`;
+                    subjectConfigContainer.appendChild(div);
+                });
+            }
+        }
 
         if (urlInput && saveBtn && statusMsg) {
             // Load saved URL
             const savedUrl = localStorage.getItem('clipboardUrl');
             if (savedUrl) urlInput.value = savedUrl;
 
+            // Load Subject Config
+            loadSubjectConfig();
+
             saveBtn.addEventListener('click', () => {
+                // Save Clipboard URL
                 const url = urlInput.value.trim();
                 localStorage.setItem('clipboardUrl', url);
                 
+                // Save Subject Config
+                const newConfig = {};
+                document.querySelectorAll('.subject-color').forEach(input => {
+                    const subject = input.getAttribute('data-subject');
+                    const color = input.value.replace('#', '');
+                    if (!newConfig[subject]) newConfig[subject] = {};
+                    newConfig[subject].color = color;
+                });
+
+                document.querySelectorAll('.subject-link').forEach(input => {
+                    const subject = input.getAttribute('data-subject');
+                    const link = input.value.trim();
+                    if (!newConfig[subject]) newConfig[subject] = {};
+                    if (link) newConfig[subject].link = link;
+                });
+
+
+                localStorage.setItem('subjectConfig', JSON.stringify(newConfig));
+                
+                // Notify other components
+                window.dispatchEvent(new Event('subjectConfigUpdated'));
+
                 statusMsg.textContent = 'Configuration saved!';
                 statusMsg.classList.remove('hidden');
                 // Trigger reflow
@@ -49,6 +151,8 @@ export const TimetableConfig = html`
                     statusMsg.classList.add('opacity-0');
                     setTimeout(() => statusMsg.classList.add('hidden'), 300);
                 }, 2000);
+                
+                // Force re-render if needed? The user will likely switch tabs which triggers render.
             });
         }
     })();
