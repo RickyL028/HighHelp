@@ -245,6 +245,15 @@ export const TimetableCore = html`
             wrapper.style.zIndex = '50';
             wrapper.style.position = 'relative';
         }
+        
+        // MOVED UP: Tooltip logic must run before checking for subject
+        // because clipboard items do not have a subject but have tooltips.
+        document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = 'none');
+        const tooltip = sourceCard.querySelector('.tooltip-content');
+        if (tooltip) {
+            tooltip.style.display = 'block';
+        }
+
         const start = sourceCard.getAttribute('data-start');
         const end = sourceCard.getAttribute('data-end');
         const title = sourceCard.getAttribute('data-title');
@@ -254,7 +263,9 @@ export const TimetableCore = html`
             hoveredPeriodData = { start, end, title, teacher, room };
             if (window.updateTicker) window.updateTicker();
         }
+        
         if (!subject) return;
+        
         cards.forEach(c => {
             if (c.getAttribute('data-subject') === subject) {
                 c.classList.add('opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-300');
@@ -267,11 +278,6 @@ export const TimetableCore = html`
                 c.style.zIndex = '';
             }
         });
-        document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = 'none');
-        const tooltip = sourceCard.querySelector('.tooltip-content');
-        if (tooltip) {
-            tooltip.style.display = 'block';
-        }
     }
 
     function resetCards(cards) {
@@ -362,5 +368,4 @@ export const TimetableCore = html`
         }
         return '/';
     }
-</script>
-`
+</script>`

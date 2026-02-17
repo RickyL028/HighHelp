@@ -19,9 +19,9 @@ export const TimetableConfig = html`
             </ol>
         </div>
 
-        <h2 class="text-xl font-bold text-gray-800 mb-4 border-t border-gray-200 pt-4">Subject Configuration</h2>
+        <h2 class="text-xl font-bold text-gray-800 mb-4 border-t border-gray-200 pt-4">Subject Customisation</h2>
         <div class="mb-4">
-            <p class="text-gray-600 text-sm mb-3">Customize colors and add links for your subjects.</p>
+            <p class="text-gray-600 text-sm mb-3">Customise colours and add links subjects.</p>
             <div id="subject-config-list" class="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 <!-- Subjects will be populated here -->
                 <div class="text-center py-4">
