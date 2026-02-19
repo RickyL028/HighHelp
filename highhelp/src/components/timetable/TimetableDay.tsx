@@ -31,7 +31,7 @@ export const TimetableDay = html`
 
         const container = document.getElementById('timetable-list');
         container.innerHTML = '<div class="text-center py-12 text-gray-500">Checking for updates...</div>';
-        container.className = 'space-y-4';
+        container.className = 'space-y-1';
 
         const [apiData, clipboardEvents] = await Promise.all([
             fetchDayData(currentDateStr),
@@ -116,7 +116,7 @@ export const TimetableDay = html`
             const hasContent = !!data && (!!data.title || !!data.subject);
             const stripColor = data?.color ? \`#\${data.color}\` : '#e5e7eb';
             const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD';
-            const containerClass = isMinorPeriod ? 'min-h-[1.5rem]' : 'min-h-[3rem]';
+            const containerClass = isMinorPeriod ? 'min-h-[0.5rem]' : 'min-h-[2.8rem]';
             const timeWidth = 'w-24'; 
             const textSize = 'text-sm';
             const isPast = isTimePast(currentDateStr, bell.endTime);
@@ -132,7 +132,7 @@ export const TimetableDay = html`
                 const roomColorClass = (highlightChange && (roomVar || (classVar && classVar.roomTo))) ? 'text-red-600 font-extrabold' : 'text-black';
                 // ... inside bellsToUse.forEach ...
 innerHtml = \`
-    <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-3 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
+    <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-2.5 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
         data-subject="\${data.subjectCode}"
         data-title="\${data.title || data.subject || ''}"
         data-teacher="\${data.fullTeacher || data.teacher || ''}"
@@ -194,14 +194,14 @@ innerHtml = \`
             const endTimeStr = formatTime(end.toTimeString().slice(0, 5));
             
             return \`
-                    <div class="flex items-center min-h-[3rem] opacity-90 transition-opacity duration-500 hover:opacity-100 mb-2">
+                    <div class="flex items-center min-h-[2rem] opacity-90 transition-opacity duration-500 hover:opacity-100 mb-2">
                     <div class="w-24 text-right pr-4 text-blue-500 font-bold text-sm">\${timeStr}</div>
                     <div class="flex-grow">
-                        <div class="period-card relative flex items-center justify-between bg-blue-50 rounded-lg p-3 shadow-sm hover:bg-blue-100 transition-all cursor-default group border-l-4 border-blue-500">
+                        <div class="period-card relative flex items-center justify-between bg-blue-50 rounded-lg p-2.5 shadow-sm hover:bg-blue-100 transition-all cursor-default group border-l-4 border-blue-500">
                             <div class="pl-2 font-medium text-gray-900 text-sm flex items-center">
                                 \${event.summary}
                             </div>
-                            <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
+                            <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-2.5 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
                                 <div class="font-bold mb-1 text-sm border-b border-gray-600 pb-1">\${event.summary}</div>
                                 <div class="mb-1 text-gray-300 font-mono">\${timeStr} - \${endTimeStr}</div>
                                 <div class="pl-3 flex items-center gap-4 text-sm text-gray-600">
@@ -219,13 +219,13 @@ innerHtml = \`
         // Prepend morning events
         if (morningEvents.length > 0) {
             const morningHtml = morningEvents.map(renderClipboardEvent).join('');
-            container.insertAdjacentHTML('afterbegin', '<div class="mb-4 space-y-2">' + morningHtml + '</div>');
+            container.insertAdjacentHTML('afterbegin', '<div class="mb-2 space-y-2">' + morningHtml + '</div>');
         }
 
         // Append afternoon events
         if (afternoonEvents.length > 0) {
             const afternoonHtml = afternoonEvents.map(renderClipboardEvent).join('');
-            container.insertAdjacentHTML('beforeend', '<div class="mt-4 pt-4 border-t border-gray-200 space-y-2">' + afternoonHtml + '</div>');
+            container.insertAdjacentHTML('beforeend', '<div class="mt-2 pt-4 border-t border-gray-200 space-y-2">' + afternoonHtml + '</div>');
         }
 
         attachHoverEffects();
