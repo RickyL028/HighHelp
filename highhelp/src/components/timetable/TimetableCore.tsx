@@ -23,7 +23,6 @@ export const TimetableCore = html`
     } catch(e) { console.error(e); }
 
     if (!studentData || !studentData.timetable || !studentData.calendar) {
-        // Note: Using standard string concatenation or escaping here too
         const loader = document.getElementById('loader');
         if(loader) loader.classList.add('hidden');
         const err = document.getElementById('error-msg');
@@ -74,7 +73,6 @@ export const TimetableCore = html`
          const year = now.getFullYear();
          const month = String(now.getMonth() + 1).padStart(2, '0');
          const day = String(now.getDate()).padStart(2, '0');
-         // Fixed spacing in return string
          return \`\${year}-\${month}-\${day}\`;
     }
 
@@ -132,7 +130,6 @@ export const TimetableCore = html`
 
             let data = null;
             try {
-                // Fixed the fetch URL pathing and variable interpolation
                 const res = await fetch(\`/api/proxy/day-data?date=\${date}&_=\${new Date().getTime()}\`, {
                     headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
                 });
@@ -156,6 +153,15 @@ export const TimetableCore = html`
                         }
                     }
                     return data;
+                } else if (res.status === 401 || res.status === 403) {
+                    // Prompt user to re-login if response is Unauthorized or Forbidden
+                    const loader = document.getElementById('loader');
+                    if(loader) loader.classList.add('hidden');
+                    const err = document.getElementById('error-msg');
+                    if(err) {
+                        err.classList.remove('hidden');
+                        err.innerHTML = 'Unable to receive latest data. Please <a href="/api/auth/login" class="underline">Log in again</a> to continue.';
+                    }
                 }
             } catch(e) { console.error(e); }
 
@@ -246,8 +252,6 @@ export const TimetableCore = html`
             wrapper.style.position = 'relative';
         }
         
-        // MOVED UP: Tooltip logic must run before checking for subject
-        // because clipboard items do not have a subject but have tooltips.
         document.querySelectorAll('.tooltip-content').forEach(t => t.style.display = 'none');
         const tooltip = sourceCard.querySelector('.tooltip-content');
         if (tooltip) {
