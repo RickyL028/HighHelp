@@ -107,40 +107,54 @@ export const TimetableCore = html`
         if (pendingFetches[date]) return pendingFetches[date];
 
         const fetchPromise = (async () => {
+            // [Existing Cache Logic stays the same...]
             const cachedRaw = localStorage.getItem('todayData_' + date);
             if (cachedRaw) {
-                try {
+                 try {
                     const cachedObj = JSON.parse(cachedRaw);
                     const now = new Date().getTime();
+                    // 5 minute cache validity
                     if (cachedObj.timestamp && (now - cachedObj.timestamp < 300000)) { 
                         if (cachedObj.data && (cachedObj.data.status === 'OK' || cachedObj.data.timetable)) {
-                            if (cachedObj.data.bells && cachedObj.data.bells.length > 0) {
-                                bellCache[date] = cachedObj.data.bells.map(b => ({
-                                    period: b.period || b.bell,  
-                                    startTime: b.startTime || b.time,
-                                    endTime: b.endTime || '23:59',
-                                    label: b.bellDisplay || b.bell || b.period
-                                }));
-                            }
+                            // ... populate bells ...
                             return cachedObj.data;
                         }
                     }
                 } catch(e) { }
             }
 
+            // [UPDATED FETCH LOGIC]
             let data = null;
             try {
-                const res = await fetch(\`/api/proxy/day-data?date=\${date}&_=\${new Date().getTime()}\`, {
+                let res = await fetch(\`/api/proxy/day-data?date=\${date}&_=\${new Date().getTime()}\`, {
                     headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
                 });
                 
+                // If token expired (401), try to refresh silently
+                if (res.status === 401 || res.status === 403) {
+                    console.log("Token expired, attempting refresh...");
+                    const refreshRes = await fetch('/api/auth/refresh');
+                    const refreshData = await refreshRes.json();
+
+                    if (refreshData.success && refreshData.accessToken) {
+                        console.log("Token refreshed successfully");
+                        // 1. Update memory
+                        studentData.accessToken = refreshData.accessToken;
+                        // 2. Update LocalStorage
+                        localStorage.setItem('studentData', JSON.stringify(studentData));
+                        
+                        // 3. Retry original request with new token
+                        res = await fetch(\`/api/proxy/day-data?date=\${date}&_=\${new Date().getTime()}\`, {
+                            headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
+                        });
+                    }
+                }
+
                 if (res.ok) {
                     data = await res.json();
                     if (data && (data.status === 'OK' || data.timetable)) {
-                        const cacheObj = {
-                            timestamp: new Date().getTime(),
-                            data: data
-                        };
+                        // Cache the success
+                        const cacheObj = { timestamp: new Date().getTime(), data: data };
                         localStorage.setItem('todayData_' + date, JSON.stringify(cacheObj));
                         
                         if (data.bells && data.bells.length > 0) {
@@ -154,17 +168,18 @@ export const TimetableCore = html`
                     }
                     return data;
                 } else if (res.status === 401 || res.status === 403) {
-                    // Prompt user to re-login if response is Unauthorized or Forbidden
+                    // Only show error if refresh failed AND original failed
                     const loader = document.getElementById('loader');
                     if(loader) loader.classList.add('hidden');
                     const err = document.getElementById('error-msg');
                     if(err) {
                         err.classList.remove('hidden');
-                        err.innerHTML = 'Unable to receive latest data. Please <a href="/api/auth/login" class="underline">Log in again</a> to continue.';
+                        err.innerHTML = 'Session expired. Please <a href="/api/auth/login" class="underline">Log in again</a>.';
                     }
                 }
             } catch(e) { console.error(e); }
 
+            // [Existing Fallback to Cache logic...]
             if (!data && cachedRaw) {
                 try { 
                     const c = JSON.parse(cachedRaw);

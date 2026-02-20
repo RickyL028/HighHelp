@@ -91,13 +91,26 @@ app.get('/api/auth/callback', async (c) => {
         const tokenData: any = await tokenResponse.json();
 
 
+        
         if (!tokenData.access_token) {
             return c.text('Failed to retrieve access token: ' + JSON.stringify(tokenData), 400);
         }
 
         const accessToken = tokenData.access_token;
+        // [NEW CODE STARTS HERE] ----------------------------
+        const refreshToken = tokenData.refresh_token;
 
-        // Get Info
+        if (refreshToken) {
+            // Store refresh token in a secure, HTTP-only cookie for 30 days
+            setCookie(c, 'sbhs_refresh_token', refreshToken, {
+                path: '/api/auth', // Only send this cookie to auth endpoints
+                httpOnly: true,    // JavaScript cannot read this (prevents XSS theft)
+                secure: !c.req.url.includes('localhost'),
+                maxAge: 60 * 60 * 24 * 30, // 30 Days
+                sameSite: 'Lax'
+            });
+        }
+
         const userResponse = await fetch('https://student.sbhs.net.au/api/details/userinfo.json', {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
@@ -270,5 +283,57 @@ app.get('/logout', (c) => {
     deleteCookie(c, 'user_id')
     return c.redirect('/')
 })
+app.get('/api/auth/refresh', async (c) => {
+    const refreshToken = getCookie(c, 'sbhs_refresh_token');
+
+    if (!refreshToken) {
+        return c.json({ success: false, error: 'No refresh token' }, 401);
+    }
+
+    // Determine credentials based on host (reuse your existing logic)
+    const host = c.req.header('host');
+    let clientId = c.env.PORTAL_API_CLIENT_ID;
+    let clientSecret = c.env.PORTAL_API_CLIENT_SECRET;
+    
+    if (host && host.includes('highhelp.org')) {
+        clientId = c.env.PORTAL_API_CLIENT_ID_full;
+        clientSecret = c.env.PORTAL_API_CLIENT_SECRET_full;
+    }
+
+    try {
+        // Ask SBHS for a new access token
+        const response = await fetch('https://student.sbhs.net.au/api/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                grant_type: 'refresh_token',
+                refresh_token: refreshToken,
+                client_id: clientId,
+                client_secret: clientSecret
+            })
+        });
+
+        const data: any = await response.json();
+
+        if (data.access_token) {
+            // If we got a new refresh token (rotation), update the cookie
+            if (data.refresh_token) {
+                setCookie(c, 'sbhs_refresh_token', data.refresh_token, {
+                    path: '/api/auth',
+                    httpOnly: true,
+                    secure: !c.req.url.includes('localhost'),
+                    maxAge: 60 * 60 * 24 * 30,
+                    sameSite: 'Lax'
+                });
+            }
+
+            return c.json({ success: true, accessToken: data.access_token });
+        } else {
+            return c.json({ success: false, error: 'Failed to refresh' }, 401);
+        }
+    } catch (e) {
+        return c.json({ success: false, error: 'Network error' }, 500);
+    }
+});
 
 export default app
