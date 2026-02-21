@@ -236,10 +236,17 @@ export const TimetableCore = html`
             card.addEventListener('click', (e) => {
                 e.stopPropagation(); 
                 const link = card.getAttribute('data-link');
-                if (link) {
-                    window.open(link, '_blank');
-                    return;
+                const title = card.getAttribute('data-title');
+                
+                if (window.openClassModal) {
+                    window.openClassModal({
+                        subjectCode: subject,
+                        subjectName: title || subject,
+                        link: link,
+                        date: currentDateStr
+                    });
                 }
+                
                 if (activeSubject === subject) {
                     activeSubject = null;
                     resetCards(cards);

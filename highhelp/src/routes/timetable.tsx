@@ -8,7 +8,7 @@ import { TimetableDay } from '../components/timetable/TimetableDay'
 import { TimetableCycle } from '../components/timetable/TimetableCycle'
 import { TimetableTicker } from '../components/timetable/TimetableTicker'
 import { TimetableConfig } from '../components/timetable/TimetableConfig'
-
+import { TimetableModal } from '../components/timetable/TimetableModal'
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/', async (c) => {
@@ -25,6 +25,7 @@ app.get('/', async (c) => {
                 {TimetableDay}
                 {TimetableCycle}
                 {TimetableConfig}
+                {TimetableModal}
 
                 {/* Ticker Logic */}
                 {TimetableTicker}
@@ -32,6 +33,8 @@ app.get('/', async (c) => {
                 {/* Initialization Script */}
                 <script dangerouslySetInnerHTML={{
                     __html: `
+                    window.currentUserPermission = ${user.permission_level || 0};
+                    window.currentUserId = ${user.id};
                     (function() {
                         function render() {
                             activeSubject = null;
@@ -131,5 +134,75 @@ app.get('/', async (c) => {
         </Layout>
     )
 })
+
+app.get('/notes', async (c) => {
+    const user = await getUser(c);
+    if (!user) return c.json({ error: 'Unauthorized' }, 401);
+
+    const className = c.req.query('class_name');
+    const date = c.req.query('date');
+    if (!className || !date) return c.json({ error: 'Missing parameters' }, 400);
+
+    try {
+        const { results } = await c.env.DB.prepare(`
+            SELECT class_notes.*, users.first_name, users.last_name 
+            FROM class_notes 
+            JOIN users ON class_notes.user_id = users.id 
+            WHERE class_name = ? AND date = ? 
+            ORDER BY created_at ASC
+        `).bind(className, date).all();
+        return c.json({ notes: results });
+    } catch (e) {
+        console.error(e);
+        return c.json({ error: 'Database error' }, 500);
+    }
+});
+
+app.post('/notes', async (c) => {
+    const user = await getUser(c);
+    if (!user) return c.json({ error: 'Unauthorized' }, 401);
+
+    if (Number(user.permission_level) < 1) return c.json({ error: 'Forbidden' }, 403);
+
+    const body = await c.req.json();
+    const { class_name, date, content } = body;
+
+    if (!class_name || !date || !content) return c.json({ error: 'Missing parameters' }, 400);
+
+    try {
+        const { results } = await c.env.DB.prepare(`
+            INSERT INTO class_notes (user_id, class_name, date, content)
+            VALUES (?, ?, ?, ?)
+            RETURNING *
+        `).bind(user.id, class_name, date, content).all();
+
+        return c.json({ success: true, note: results[0] });
+    } catch (e) {
+        console.error(e);
+        return c.json({ error: 'Database error' }, 500);
+    }
+});
+
+app.delete('/notes/:id', async (c) => {
+    const user = await getUser(c);
+    if (!user) return c.json({ error: 'Unauthorized' }, 401);
+
+    const id = c.req.param('id');
+
+    try {
+        const note: any = await c.env.DB.prepare('SELECT user_id FROM class_notes WHERE id = ?').bind(id).first();
+        if (!note) return c.json({ error: 'Note not found' }, 404);
+
+        if (note.user_id !== user.id && Number(user.permission_level) < 5) {
+            return c.json({ error: 'Forbidden' }, 403);
+        }
+
+        await c.env.DB.prepare('DELETE FROM class_notes WHERE id = ?').bind(id).run();
+        return c.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        return c.json({ error: 'Database error' }, 500);
+    }
+});
 
 export default app
