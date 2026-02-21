@@ -46,8 +46,10 @@ app.use('*', async (c, next) => {
     if (user && user.permission_level === PermissionLevel.BANNED) {
         return c.text('You have been banned from HighHelp.', 403);
     }
+
+    
     await next();
-})
+});
 
 
 app.get('/api/proxy/day-data', async (c) => {
