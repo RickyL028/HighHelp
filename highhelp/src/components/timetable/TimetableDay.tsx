@@ -127,7 +127,7 @@ export const TimetableDay = html`
 
             const periodNotes = data?.subjectCode ? dayNotes.filter(n => n.class_name === data.subjectCode) : [];
             const notesCount = periodNotes.length;
-            const notesBadge = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded">📝 \${notesCount}</span>\` : '';
+            const notesBadge = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded">\${notesCount}</span>\` : '';
 
             let notesPreviewHtml = '';
             if (notesCount > 0) {

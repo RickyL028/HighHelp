@@ -25,8 +25,8 @@ export const TimetableModal = html`
 
             <div class="flex items-center justify-between mb-4">
                 <h4 class="font-bold text-gray-800 text-lg flex items-center gap-2">
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                    Class Notes
+                    
+                    Notes
                 </h4>
             </div>
 
@@ -36,13 +36,13 @@ export const TimetableModal = html`
 
             <!-- Add Note Section -->
             <div id="add-note-section" class="border-t border-gray-100 pt-4 hidden">
-                <textarea id="new-note-content" class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all resize-none h-24 shadow-sm" placeholder="Write a note for this class..."></textarea>
+                <textarea id="new-note-content" class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all resize-none h-24 shadow-sm" placeholder="This message can be seen by your classmates!"></textarea>
                 <div class="mt-3 flex justify-end">
                     <button id="btn-submit-note" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 shadow-sm">
-                        <span>Post Note</span>
+                        <span>Post</span>
                     </button>
-                    <button id="btn-login-note" class="hidden bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors cursor-pointer" onclick="window.location.href='/about'">
-                        Request Access to Post Notes
+                    <button id="btn-login-note" class="hidden bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors cursor-pointer" onclick="window.location.href='/about#application'">
+                        Request Verification to Post
                     </button>
                 </div>
             </div>
