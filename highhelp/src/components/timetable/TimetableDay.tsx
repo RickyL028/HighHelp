@@ -30,239 +30,258 @@ export const TimetableDay = html`
         if(picker) picker.onchange = (e) => { currentDateStr = e.target.value; render(); };
 
         const container = document.getElementById('timetable-list');
-        container.innerHTML = '<div class="text-center py-12 text-gray-500">Checking for updates...</div>';
         container.className = 'space-y-1';
 
-        const [apiData, clipboardEvents, notesRes] = await Promise.all([
-            fetchDayData(currentDateStr),
-            fetchCalendarData(currentDateStr),
-            fetch(\`/timetable/notes?date=\${currentDateStr}\`).then(res => res.json()).catch(() => ({ notes: [] }))
-        ]);
-        const dayNotes = notesRes.notes || [];
-        container.innerHTML = '';
-        
-        if (!apiData && (!dayInfo || !daysData[dayInfo.dayNumber])) {
-            container.innerHTML = '<div class="text-center py-12 text-gray-500">No classes scheduled.</div>';
-            return;
-        }
-
-        let periodsData = {};
-        let currentBells = null;
-        let classVariations = {};
-        let roomVariations = {};
-
-        if (apiData) {
-            if (apiData.bells && apiData.bells.length > 0) {
-                if(bellCache[currentDateStr]) {
-                    currentBells = bellCache[currentDateStr];
-                } else {
-                    currentBells = apiData.bells.map(b => ({
-                        period: b.period || b.bell,  
-                        startTime: b.startTime || b.time,
-                        endTime: b.endTime || '23:59',
-                        label: b.bellDisplay || b.bell || b.period
-                    }));
-                    bellCache[currentDateStr] = currentBells;
-                }
-            }
-            if (apiData.timetable?.timetable?.periods) periodsData = apiData.timetable.timetable.periods;
-            if (apiData.classVariations) classVariations = apiData.classVariations;
-            if (apiData.roomVariations) roomVariations = apiData.roomVariations;
-        } else {
-            if (dayInfo && daysData[dayInfo.dayNumber]) {
-                const dr = daysData[dayInfo.dayNumber];
-                periodsData = { ...dr.periods };
-                if (dr.rollcall) periodsData['RC'] = dr.rollcall;
-            }
-        }
-        
-        const bellsToUse = currentBells || DEFAULT_BELL_TIMES;
-        
-        bellsToUse.forEach(bell => {
-            const pKey = bell.period; 
-            let data = periodsData[pKey];
-            const classVar = classVariations[pKey];
-            const roomVar = roomVariations[pKey];
+        // 1. Extract the rendering logic into a reusable function
+        function buildUI(apiData, clipboardEvents, dayNotes) {
+            container.innerHTML = '';
             
-            
-            if (data) data = enrichPeriod(data);
-
-            let highlightChange = false;
-            let variationTags = [];
-
-            if (classVar && classVar.type !== 'novariation') {
-                highlightChange = true;
-                if (!data) data = { title: classVar.title || 'Variation', teacher: classVar.teacher };
-                if (classVar.title) data.title = classVar.title;
-                if (classVar.casualSurname) {
-                    data.fullTeacher = classVar.casualSurname;
-                    data.teacher = classVar.casual || classVar.casualSurname;
-                    variationTags.push('Sub: ' + classVar.casualSurname);
-                } else if (classVar.type === 'nocover') {
-                    variationTags.push('No Cover');
-                }
-                data = enrichPeriod(data);
+            if (!apiData && (!dayInfo || !daysData[dayInfo.dayNumber])) {
+                container.innerHTML = '<div class="text-center py-12 text-gray-500">No classes scheduled.</div>';
+                return;
             }
 
-            if (roomVar) {
-                highlightChange = true;
-                if (!data && roomVar.title) {
-                     data = { title: roomVar.title, room: roomVar.roomFrom };
-                     data = enrichPeriod(data);
+            let periodsData = {};
+            let currentBells = null;
+            let classVariations = {};
+            let roomVariations = {};
+
+            if (apiData) {
+                if (apiData.bells && apiData.bells.length > 0) {
+                    if(bellCache[currentDateStr]) {
+                        currentBells = bellCache[currentDateStr];
+                    } else {
+                        currentBells = apiData.bells.map(b => ({
+                            period: b.period || b.bell,  
+                            startTime: b.startTime || b.time,
+                            endTime: b.endTime || '23:59',
+                            label: b.bellDisplay || b.bell || b.period
+                        }));
+                        bellCache[currentDateStr] = currentBells;
+                    }
                 }
-                if (data) {
-                    data.room = roomVar.roomTo;
-                    variationTags.push('Room Change');
-                }
-            }
-
-            const hasContent = !!data && (!!data.title || !!data.subject);
-            const stripColor = data?.color ? \`#\${data.color}\` : '#e5e7eb';
-            const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD';
-            const containerClass = isMinorPeriod ? 'min-h-[0.5rem]' : 'min-h-[2.8rem]';
-            const timeWidth = 'w-24'; 
-            const textSize = 'text-sm';
-            const isPast = isTimePast(currentDateStr, bell.endTime);
-            const opacityClass = isPast ? 'opacity-90 grayscale-[0.1]' : '';
-
-            const periodNotes = data?.subjectCode ? dayNotes.filter(n => n.class_name === data.subjectCode) : [];
-            const notesCount = periodNotes.length;
-            const notesBadge = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded">\${notesCount}</span>\` : '';
-
-            let notesPreviewHtml = '';
-            if (notesCount > 0) {
-                const firstNote = periodNotes[0];
-                const previewText = firstNote.content.length > 40 ? firstNote.content.substring(0, 40) + '...' : firstNote.content;
-                notesPreviewHtml = \`<div class="mt-2 text-xs bg-gray-700 p-2 rounded italic text-gray-300 break-words">\${previewText}</div>\`;
-            }
-            let linkPreviewHtml = data?.link ? \`<div class="mt-1 text-[10px] text-blue-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> Link Available (Cmd/Ctrl + K)</div>\` : '';
-
-            if (hasContent) {
-                const nextTimeStr = getNextSubjectOccurrence(data.subjectCode, currentDateStr, bell.period);
-                const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
-                const borderClass = highlightChange ? 'ring-2 ring-red-500 ring-offset-2' : '';
-                const badgeText = variationTags.length > 0 ? variationTags[0] : 'UPDATED';
-                const changedBadge = highlightChange ? \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded animate-pulse">\${badgeText}</span>\` : '';
-                const roomColorClass = (highlightChange && (roomVar || (classVar && classVar.roomTo))) ? 'text-red-600 font-extrabold' : 'text-black';
-                // ... inside bellsToUse.forEach ...
-innerHtml = \`
-    <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-2.5 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
-        data-subject="\${data.subjectCode}"
-        data-title="\${data.title || data.subject || ''}"
-        data-teacher="\${data.fullTeacher || data.teacher || ''}"
-        data-room="\${data.room || ''}"
-        data-start="\${bell.startTime}"
-        data-end="\${bell.endTime}"
-        data-link="\${data.link || ''}"
-        data-color="\${stripColor}">
-            <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" style="background-color: \${stripColor};"></div>
-            <div class="pl-3 font-medium text-gray-900 \${textSize} flex items-center">
-                \${data.title || data.subject || 'Unknown'}
-                \${changedBadge}
-                \${notesBadge}
-            </div>
-            <div class="pl-3 flex items-center gap-4 \${textSize}">
-                <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
-                \${data.room ? \`<span class="font-bold \${roomColorClass}">\${data.room}</span>\` : ''}
-            </div>
-            <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
-                <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2">
-                    <span class="font-bold text-sm">\${data.title}</span>
-                    <span class="text-gray-300">\${nextTimeStr}</span>
-                </div>
-                \${highlightChange ? '<div class="text-red-400 font-bold mb-1">' + variationTags.join(', ') + '</div>' : ''}
-                <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
-                \${miniCycle}
-                \${linkPreviewHtml}
-                \${notesPreviewHtml}
-            </div>
-    </div>\`;
+                if (apiData.timetable?.timetable?.periods) periodsData = apiData.timetable.timetable.periods;
+                if (apiData.classVariations) classVariations = apiData.classVariations;
+                if (apiData.roomVariations) roomVariations = apiData.roomVariations;
             } else {
-                if (bell.period === 'EoD') return;
-                innerHtml = \`
-                    <div class="pl-2 text-gray-400 text-xs py-1">\${bell.label}</div>
-                \`;
+                if (dayInfo && daysData[dayInfo.dayNumber]) {
+                    const dr = daysData[dayInfo.dayNumber];
+                    periodsData = { ...dr.periods };
+                    if (dr.rollcall) periodsData['RC'] = dr.rollcall;
+                }
             }
-
-            const html = \`
-                <div class="flex items-center \${containerClass} \${opacityClass} transition-opacity duration-500">
-                    <div class="\${timeWidth} text-right pr-4 text-gray-500 font-medium \${textSize}">\${formatTime(bell.startTime)}</div>
-                    <div class="flex-grow">\${innerHtml}</div>
-                </div>
-            \`;
-            container.insertAdjacentHTML('beforeend', html);
-        });
-
-        // Split clipboard events
-        
-        const morningEvents = clipboardEvents.filter(e => {
-            const d = new Date(e.start);
-            return d.getHours() < 12;
-        });
-        const afternoonEvents = clipboardEvents.filter(e => {
-            const d = new Date(e.start);
-            return d.getHours() >= 12;
-        });
-
-        function renderClipboardEvent(event) {
-            const start = new Date(event.start);
-            const end = new Date(event.end);
-            const timeStr = formatTime(start.toTimeString().slice(0, 5));
-            const endTimeStr = formatTime(end.toTimeString().slice(0, 5));
             
-            const eventNotes = dayNotes.filter(n => n.class_name === event.summary);
-            const notesCount = eventNotes.length;
-            const notesBadgeHtml = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded">\${notesCount}</span>\` : '';
+            // Try to use newly fetched bells, otherwise cached bells, otherwise defaults
+            const bellsToUse = currentBells || bellCache[currentDateStr] || DEFAULT_BELL_TIMES;
+            
+            bellsToUse.forEach(bell => {
+                const pKey = bell.period; 
+                let data = periodsData[pKey];
+                const classVar = classVariations[pKey];
+                const roomVar = roomVariations[pKey];
+                
+                if (data) data = enrichPeriod(data);
 
-            let eventNotesPreviewHtml = '';
-            if (notesCount > 0) {
-                const firstNote = eventNotes[0];
-                const previewText = firstNote.content.length > 40 ? firstNote.content.substring(0, 40) + '...' : firstNote.content;
-                eventNotesPreviewHtml = \`<div class="mt-2 text-xs bg-gray-700 p-2 rounded italic text-gray-300 break-words">\${previewText}</div>\`;
-            }
+                let highlightChange = false;
+                let variationTags = [];
 
-            return \`
-                    <div class="flex items-center min-h-[2rem] opacity-90 transition-opacity duration-500 hover:opacity-100 mb-2">
-                    <div class="w-24 text-right pr-4 text-blue-500 font-bold text-sm">\${timeStr}</div>
-                    <div class="flex-grow">
-                        <div class="period-card relative flex items-center justify-between bg-blue-50 rounded-lg p-2.5 shadow-sm hover:bg-blue-100 transition-all cursor-default group border-l-4 border-blue-500"
-                            data-subject="\${event.summary}"
-                            data-title="\${event.summary}"
-                            data-start="\${timeStr}"
-                            data-end="\${endTimeStr}">
-                            <div class="pl-2 font-medium text-gray-900 text-sm flex items-center">
-                                \${event.summary}
-                                \${notesBadgeHtml}
-                            </div>
-                            <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-2.5 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
-                                <div class="font-bold mb-1 text-sm border-b border-gray-600 pb-1">\${event.summary}</div>
-                                <div class="mb-1 text-gray-300 font-mono">\${timeStr} - \${endTimeStr}</div>
-                                <div class="pl-3 flex items-center gap-4 text-sm text-gray-600">
-                                    \${event.location || ''}
+                if (classVar && classVar.type !== 'novariation') {
+                    highlightChange = true;
+                    if (!data) data = { title: classVar.title || 'Variation', teacher: classVar.teacher };
+                    if (classVar.title) data.title = classVar.title;
+                    if (classVar.casualSurname) {
+                        data.fullTeacher = classVar.casualSurname;
+                        data.teacher = classVar.casual || classVar.casualSurname;
+                        variationTags.push('Sub: ' + classVar.casualSurname);
+                    } else if (classVar.type === 'nocover') {
+                        variationTags.push('No Cover');
+                    }
+                    data = enrichPeriod(data);
+                }
+
+                if (roomVar) {
+                    highlightChange = true;
+                    if (!data && roomVar.title) {
+                         data = { title: roomVar.title, room: roomVar.roomFrom };
+                         data = enrichPeriod(data);
+                    }
+                    if (data) {
+                        data.room = roomVar.roomTo;
+                        variationTags.push('Room Change');
+                    }
+                }
+
+                const hasContent = !!data && (!!data.title || !!data.subject);
+                const stripColor = data?.color ? \`#\${data.color}\` : '#e5e7eb';
+                const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD';
+                const containerClass = isMinorPeriod ? 'min-h-[0.5rem]' : 'min-h-[2.8rem]';
+                const timeWidth = 'w-24'; 
+                const textSize = 'text-sm';
+                const isPast = isTimePast(currentDateStr, bell.endTime);
+                const opacityClass = isPast ? 'opacity-90 grayscale-[0.1]' : '';
+
+                const periodNotes = data?.subjectCode ? dayNotes.filter(n => n.class_name === data.subjectCode) : [];
+                const notesCount = periodNotes.length;
+                const notesBadge = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded">\${notesCount}</span>\` : '';
+
+                let notesPreviewHtml = '';
+                if (notesCount > 0) {
+                    const firstNote = periodNotes[0];
+                    const previewText = firstNote.content.length > 40 ? firstNote.content.substring(0, 40) + '...' : firstNote.content;
+                    notesPreviewHtml = \`<div class="mt-2 text-xs bg-gray-700 p-2 rounded italic text-gray-300 break-words">\${previewText}</div>\`;
+                }
+                let linkPreviewHtml = data?.link ? \`<div class="mt-1 text-[10px] text-blue-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> Link Available (Cmd/Ctrl + K)</div>\` : '';
+
+                let innerHtml = '';
+                if (hasContent) {
+                    const nextTimeStr = getNextSubjectOccurrence(data.subjectCode, currentDateStr, bell.period);
+                    const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
+                    const borderClass = highlightChange ? 'ring-2 ring-red-500 ring-offset-2' : '';
+                    const badgeText = variationTags.length > 0 ? variationTags[0] : 'UPDATED';
+                    const changedBadge = highlightChange ? \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded animate-pulse">\${badgeText}</span>\` : '';
+                    const roomColorClass = (highlightChange && (roomVar || (classVar && classVar.roomTo))) ? 'text-red-600 font-extrabold' : 'text-black';
+                    
+                    innerHtml = \`
+                        <div class="period-card relative flex items-center justify-between bg-gray-100 rounded-lg p-2.5 shadow-sm hover:bg-gray-50 transition-all cursor-default group \${borderClass}"
+                            data-subject="\${data.subjectCode}"
+                            data-title="\${data.title || data.subject || ''}"
+                            data-teacher="\${data.fullTeacher || data.teacher || ''}"
+                            data-room="\${data.room || ''}"
+                            data-start="\${bell.startTime}"
+                            data-end="\${bell.endTime}"
+                            data-link="\${data.link || ''}"
+                            data-color="\${stripColor}">
+                                <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" style="background-color: \${stripColor};"></div>
+                                <div class="pl-3 font-medium text-gray-900 \${textSize} flex items-center">
+                                    \${data.title || data.subject || 'Unknown'}
+                                    \${changedBadge}
+                                    \${notesBadge}
                                 </div>
-                                <div class="text-gray-400 italic">\${event.description || 'No description'}</div>
-                                \${eventNotesPreviewHtml}
+                                <div class="pl-3 flex items-center gap-4 \${textSize}">
+                                    <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
+                                    \${data.room ? \`<span class="font-bold \${roomColorClass}">\${data.room}</span>\` : ''}
+                                </div>
+                                <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
+                                    <div class="flex justify-between items-center mb-2 border-b border-gray-600 pb-2">
+                                        <span class="font-bold text-sm">\${data.title}</span>
+                                        <span class="text-gray-300">\${nextTimeStr}</span>
+                                    </div>
+                                    \${highlightChange ? '<div class="text-red-400 font-bold mb-1">' + variationTags.join(', ') + '</div>' : ''}
+                                    <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
+                                    \${miniCycle}
+                                    \${linkPreviewHtml}
+                                    \${notesPreviewHtml}
+                                </div>
+                        </div>\`;
+                } else {
+                    if (bell.period === 'EoD') return;
+                    innerHtml = \`
+                        <div class="pl-2 text-gray-400 text-xs py-1">\${bell.label}</div>
+                    \`;
+                }
+
+                const html = \`
+                    <div class="flex items-center \${containerClass} \${opacityClass} transition-opacity duration-500">
+                        <div class="\${timeWidth} text-right pr-4 text-gray-500 font-medium \${textSize}">\${formatTime(bell.startTime)}</div>
+                        <div class="flex-grow">\${innerHtml}</div>
+                    </div>
+                \`;
+                container.insertAdjacentHTML('beforeend', html);
+            });
+
+            // Split clipboard events
+            const morningEvents = clipboardEvents.filter(e => {
+                const d = new Date(e.start);
+                return d.getHours() < 12;
+            });
+            const afternoonEvents = clipboardEvents.filter(e => {
+                const d = new Date(e.start);
+                return d.getHours() >= 12;
+            });
+
+            function renderClipboardEvent(event) {
+                const start = new Date(event.start);
+                const end = new Date(event.end);
+                const timeStr = formatTime(start.toTimeString().slice(0, 5));
+                const endTimeStr = formatTime(end.toTimeString().slice(0, 5));
+                
+                const eventNotes = dayNotes.filter(n => n.class_name === event.summary);
+                const notesCount = eventNotes.length;
+                const notesBadgeHtml = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded">\${notesCount}</span>\` : '';
+
+                let eventNotesPreviewHtml = '';
+                if (notesCount > 0) {
+                    const firstNote = eventNotes[0];
+                    const previewText = firstNote.content.length > 40 ? firstNote.content.substring(0, 40) + '...' : firstNote.content;
+                    eventNotesPreviewHtml = \`<div class="mt-2 text-xs bg-gray-700 p-2 rounded italic text-gray-300 break-words">\${previewText}</div>\`;
+                }
+
+                return \`
+                        <div class="flex items-center min-h-[2rem] opacity-90 transition-opacity duration-500 hover:opacity-100 mb-2">
+                        <div class="w-24 text-right pr-4 text-blue-500 font-bold text-sm">\${timeStr}</div>
+                        <div class="flex-grow">
+                            <div class="period-card relative flex items-center justify-between bg-blue-50 rounded-lg p-2.5 shadow-sm hover:bg-blue-100 transition-all cursor-default group border-l-4 border-blue-500"
+                                data-subject="\${event.summary}"
+                                data-title="\${event.summary}"
+                                data-start="\${timeStr}"
+                                data-end="\${endTimeStr}">
+                                <div class="pl-2 font-medium text-gray-900 text-sm flex items-center">
+                                    \${event.summary}
+                                    \${notesBadgeHtml}
+                                </div>
+                                <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-2.5 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
+                                    <div class="font-bold mb-1 text-sm border-b border-gray-600 pb-1">\${event.summary}</div>
+                                    <div class="mb-1 text-gray-300 font-mono">\${timeStr} - \${endTimeStr}</div>
+                                    <div class="pl-3 flex items-center gap-4 text-sm text-gray-600">
+                                        \${event.location || ''}
+                                    </div>
+                                    <div class="text-gray-400 italic">\${event.description || 'No description'}</div>
+                                    \${eventNotesPreviewHtml}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-    \`;
+        \`;
+            }
+
+            // Prepend morning events
+            if (morningEvents.length > 0) {
+                const morningHtml = morningEvents.map(renderClipboardEvent).join('');
+                container.insertAdjacentHTML('afterbegin', '<div class="mb-2 space-y-2">' + morningHtml + '</div>');
+            }
+
+            // Append afternoon events
+            if (afternoonEvents.length > 0) {
+                const afternoonHtml = afternoonEvents.map(renderClipboardEvent).join('');
+                container.insertAdjacentHTML('beforeend', '<div class="mt-2 pt-4 border-t border-gray-200 space-y-2">' + afternoonHtml + '</div>');
+            }
+
+            attachHoverEffects();
+            startTicker();
         }
 
-        // Prepend morning events
-        if (morningEvents.length > 0) {
-            const morningHtml = morningEvents.map(renderClipboardEvent).join('');
-            container.insertAdjacentHTML('afterbegin', '<div class="mb-2 space-y-2">' + morningHtml + '</div>');
-        }
+        // --- 2. FAST PASS (Synchronous Render) ---
+        // Render immediately using your local/cached base timetable arrays
+        buildUI(null, [], []);
 
-        // Append afternoon events
-        if (afternoonEvents.length > 0) {
-            const afternoonHtml = afternoonEvents.map(renderClipboardEvent).join('');
-            container.insertAdjacentHTML('beforeend', '<div class="mt-2 pt-4 border-t border-gray-200 space-y-2">' + afternoonHtml + '</div>');
+        // --- 3. BACKGROUND PASS (Asynchronous Fetch & Update) ---
+        // Fetch real-time changes & calendar implicitly and re-render quietly when they arrive
+        try {
+            const [apiData, clipboardEvents, notesRes] = await Promise.all([
+                fetchDayData(currentDateStr),
+                fetchCalendarData(currentDateStr),
+                fetch(\`/timetable/notes?date=\${currentDateStr}\`).then(res => res.json()).catch(() => ({ notes: [] }))
+            ]);
+            
+            const dayNotes = notesRes?.notes || [];
+            
+            // Second Render: Overwrite DOM structure seamlessly with real-time data
+            buildUI(apiData, clipboardEvents || [], dayNotes);
+            
+        } catch (error) {
+            console.error("Failed to fetch fresh data in the background:", error);
+            // It safely degrades to leaving your base-timetable currently shown on screen intact!
         }
-
-        attachHoverEffects();
-        startTicker();
     }
 </script>
 `

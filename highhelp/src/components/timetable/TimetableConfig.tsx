@@ -9,11 +9,18 @@ export const TimetableConfig = html`
                 Calendar URLs (ICS - One per line)
             </label>
             <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline transition-all duration-200 border-gray-300 focus:border-red-500 focus:ring-1 focus:ring-red-500 resize-y" 
-                   id="calendar-urls" rows="3" placeholder="https://internal-api.clipboard.app/student-guardian-api/calendar/...&#10;https://another-calendar.com/..."></textarea>
-            <p class="text-gray-800 text-ms mt-1">If using Clipboard:</p>
+                   id="calendar-urls" rows="3" placeholder="https://internal-api.clipboard.app/student-guardian-api/calendar/123456789...&#10;https://sydneyboyshigh.instructure.com/feeds/calendars/123456789...&#10;Apple/Outlook Calendar also accepted"></textarea>
+            <p class="text-gray-800 text-ms mt-1">If including Clipboard:</p>
             <ol class="text-gray-800 text-ms mt-1">
                 <li>1. Go to <a href="https://portal.clipboard.app/sbhs/calendar" target="_blank" class="text-blue-500 hover:text-blue-600">Clipboard</a></li>
                 <li>2. On the upper right corner, click <a class="text-gray-900 font-bold">"Add to Calendar"</a></li>
+                <li>3. Copy the Calendar URL and paste it above</li>
+            </ol>
+            <br></br>
+            <p class="text-gray-800 text-ms mt-1">If including Canvas:</p>
+            <ol class="text-gray-800 text-ms mt-1">
+                <li>1. Go to <a href="https://sydneyboyshigh.instructure.com/calendar" target="_blank" class="text-blue-500 hover:text-blue-600">Canvas</a></li>
+                <li>2. On the right panel, click <a class="text-gray-900 font-bold">"Calendar Feed"</a></li>
                 <li>3. Copy the Calendar URL and paste it above</li>
             </ol>
         </div>
