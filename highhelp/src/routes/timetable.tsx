@@ -141,16 +141,23 @@ app.get('/notes', async (c) => {
 
     const className = c.req.query('class_name');
     const date = c.req.query('date');
-    if (!className || !date) return c.json({ error: 'Missing parameters' }, 400);
+    if (!date) return c.json({ error: 'Missing parameters' }, 400);
 
     try {
-        const { results } = await c.env.DB.prepare(`
+        let query = `
             SELECT class_notes.*, users.first_name, users.last_name 
             FROM class_notes 
             JOIN users ON class_notes.user_id = users.id 
-            WHERE class_name = ? AND date = ? 
-            ORDER BY created_at ASC
-        `).bind(className, date).all();
+            WHERE date = ? 
+        `;
+        let params: any[] = [date];
+        if (className) {
+            query += " AND class_name = ?";
+            params.push(className);
+        }
+        query += " ORDER BY created_at ASC";
+
+        const { results } = await c.env.DB.prepare(query).bind(...params).all();
         return c.json({ notes: results });
     } catch (e) {
         console.error(e);

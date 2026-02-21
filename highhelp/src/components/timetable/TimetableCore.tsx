@@ -285,8 +285,9 @@ export const TimetableCore = html`
         const title = sourceCard.getAttribute('data-title');
         const teacher = sourceCard.getAttribute('data-teacher');
         const room = sourceCard.getAttribute('data-room');
+        const link = sourceCard.getAttribute('data-link');
         if(start) {
-            hoveredPeriodData = { start, end, title, teacher, room };
+            hoveredPeriodData = { start, end, title, teacher, room, link };
             if (window.updateTicker) window.updateTicker();
         }
         
@@ -394,4 +395,26 @@ export const TimetableCore = html`
         }
         return '/';
     }
+
+    document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            let targetLink = hoveredPeriodData?.link;
+            if (!targetLink && activeSubject) {
+                // Find first card matching activeSubject to get link
+                const cards = document.querySelectorAll('.period-card');
+                for (let i = 0; i < cards.length; i++) {
+                    if (cards[i].getAttribute('data-subject') === activeSubject) {
+                        targetLink = cards[i].getAttribute('data-link');
+                        if (targetLink) break;
+                    }
+                }
+            }
+
+            if (targetLink) {
+                e.preventDefault();
+                window.open(targetLink, '_blank');
+            }
+        }
+    });
+
 </script>`

@@ -89,7 +89,7 @@ export const TimetableModal = html`
                     return \`
                         <div class="bg-gray-50 border border-gray-100 rounded-xl p-3.5 group relative" id="note-\${note.id}">
                             <div class="flex justify-between items-start mb-1">
-                                <span class="font-semibold text-sm text-gray-800">\${note.first_name} \${note.last_name || ''}</span>
+                                <span class="font-semibold text-sm text-gray-800">\${note.first_name ? note.first_name.charAt(0).toUpperCase() + '.' : 'Unknown'}</span>
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs text-gray-400">\${timeStr}</span>
                                     \${deleteBtn}

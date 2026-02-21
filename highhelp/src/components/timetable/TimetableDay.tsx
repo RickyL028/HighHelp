@@ -33,10 +33,12 @@ export const TimetableDay = html`
         container.innerHTML = '<div class="text-center py-12 text-gray-500">Checking for updates...</div>';
         container.className = 'space-y-1';
 
-        const [apiData, clipboardEvents] = await Promise.all([
+        const [apiData, clipboardEvents, notesRes] = await Promise.all([
             fetchDayData(currentDateStr),
-            fetchClipboardData(currentDateStr)
+            fetchClipboardData(currentDateStr),
+            fetch(\`/timetable/notes?date=\${currentDateStr}\`).then(res => res.json()).catch(() => ({ notes: [] }))
         ]);
+        const dayNotes = notesRes.notes || [];
         container.innerHTML = '';
         
         if (!apiData && (!dayInfo || !daysData[dayInfo.dayNumber])) {
@@ -82,6 +84,7 @@ export const TimetableDay = html`
             const classVar = classVariations[pKey];
             const roomVar = roomVariations[pKey];
             
+            
             if (data) data = enrichPeriod(data);
 
             let highlightChange = false;
@@ -122,7 +125,18 @@ export const TimetableDay = html`
             const isPast = isTimePast(currentDateStr, bell.endTime);
             const opacityClass = isPast ? 'opacity-90 grayscale-[0.1]' : '';
 
-            let innerHtml = '';
+            const periodNotes = data?.subjectCode ? dayNotes.filter(n => n.class_name === data.subjectCode) : [];
+            const notesCount = periodNotes.length;
+            const notesBadge = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded">📝 \${notesCount}</span>\` : '';
+
+            let notesPreviewHtml = '';
+            if (notesCount > 0) {
+                const firstNote = periodNotes[0];
+                const previewText = firstNote.content.length > 40 ? firstNote.content.substring(0, 40) + '...' : firstNote.content;
+                notesPreviewHtml = \`<div class="mt-2 text-xs bg-gray-700 p-2 rounded italic text-gray-300 break-words">\${previewText}</div>\`;
+            }
+            let linkPreviewHtml = data?.link ? \`<div class="mt-1 text-[10px] text-blue-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> Link Available (Cmd/Ctrl + K)</div>\` : '';
+
             if (hasContent) {
                 const nextTimeStr = getNextSubjectOccurrence(data.subjectCode, currentDateStr, bell.period);
                 const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
@@ -145,6 +159,7 @@ innerHtml = \`
             <div class="pl-3 font-medium text-gray-900 \${textSize} flex items-center">
                 \${data.title || data.subject || 'Unknown'}
                 \${changedBadge}
+                \${notesBadge}
             </div>
             <div class="pl-3 flex items-center gap-4 \${textSize}">
                 <span class="text-gray-900">\${data.fullTeacher || data.teacher || ''}</span>
@@ -158,6 +173,8 @@ innerHtml = \`
                 \${highlightChange ? '<div class="text-red-400 font-bold mb-1">' + variationTags.join(', ') + '</div>' : ''}
                 <div class="text-[10px] text-gray-400 mb-1 uppercase tracking-wider">Cycle</div>
                 \${miniCycle}
+                \${linkPreviewHtml}
+                \${notesPreviewHtml}
             </div>
     </div>\`;
             } else {
