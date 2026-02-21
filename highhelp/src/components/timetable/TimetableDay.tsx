@@ -35,7 +35,7 @@ export const TimetableDay = html`
 
         const [apiData, clipboardEvents, notesRes] = await Promise.all([
             fetchDayData(currentDateStr),
-            fetchClipboardData(currentDateStr),
+            fetchCalendarData(currentDateStr),
             fetch(\`/timetable/notes?date=\${currentDateStr}\`).then(res => res.json()).catch(() => ({ notes: [] }))
         ]);
         const dayNotes = notesRes.notes || [];
@@ -210,13 +210,29 @@ innerHtml = \`
             const timeStr = formatTime(start.toTimeString().slice(0, 5));
             const endTimeStr = formatTime(end.toTimeString().slice(0, 5));
             
+            const eventNotes = dayNotes.filter(n => n.class_name === event.summary);
+            const notesCount = eventNotes.length;
+            const notesBadgeHtml = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded">\${notesCount}</span>\` : '';
+
+            let eventNotesPreviewHtml = '';
+            if (notesCount > 0) {
+                const firstNote = eventNotes[0];
+                const previewText = firstNote.content.length > 40 ? firstNote.content.substring(0, 40) + '...' : firstNote.content;
+                eventNotesPreviewHtml = \`<div class="mt-2 text-xs bg-gray-700 p-2 rounded italic text-gray-300 break-words">\${previewText}</div>\`;
+            }
+
             return \`
                     <div class="flex items-center min-h-[2rem] opacity-90 transition-opacity duration-500 hover:opacity-100 mb-2">
                     <div class="w-24 text-right pr-4 text-blue-500 font-bold text-sm">\${timeStr}</div>
                     <div class="flex-grow">
-                        <div class="period-card relative flex items-center justify-between bg-blue-50 rounded-lg p-2.5 shadow-sm hover:bg-blue-100 transition-all cursor-default group border-l-4 border-blue-500">
+                        <div class="period-card relative flex items-center justify-between bg-blue-50 rounded-lg p-2.5 shadow-sm hover:bg-blue-100 transition-all cursor-default group border-l-4 border-blue-500"
+                            data-subject="\${event.summary}"
+                            data-title="\${event.summary}"
+                            data-start="\${timeStr}"
+                            data-end="\${endTimeStr}">
                             <div class="pl-2 font-medium text-gray-900 text-sm flex items-center">
                                 \${event.summary}
+                                \${notesBadgeHtml}
                             </div>
                             <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-2.5 bg-gray-800 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
                                 <div class="font-bold mb-1 text-sm border-b border-gray-600 pb-1">\${event.summary}</div>
@@ -225,11 +241,11 @@ innerHtml = \`
                                     \${event.location || ''}
                                 </div>
                                 <div class="text-gray-400 italic">\${event.description || 'No description'}</div>
-                                
+                                \${eventNotesPreviewHtml}
                             </div>
                         </div>
                     </div>
-                </div >
+                </div>
     \`;
         }
 

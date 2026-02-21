@@ -193,19 +193,34 @@ export const TimetableCore = html`
         try { return await fetchPromise; } finally { delete pendingFetches[date]; }
     }
 
-    async function fetchClipboardData(date) {
-        const url = localStorage.getItem('clipboardUrl');
-        if (!url) return [];
-        try {
-            const res = await fetch(\`/api/clipboard/events?url=\${encodeURIComponent(url)}&date=\${date}\`);
-            if (res.ok) {
-                const data = await res.json();
-                return data.events || [];
+    async function fetchCalendarData(date) {
+        let urls = [];
+        const rawUrls = localStorage.getItem('calendarUrls');
+        if (rawUrls) {
+            try { urls = JSON.parse(rawUrls); } catch(e) {}
+        } else {
+            const oldUrl = localStorage.getItem('clipboardUrl');
+            if (oldUrl) {
+                urls = [oldUrl];
+                localStorage.setItem('calendarUrls', JSON.stringify(urls));
+                localStorage.removeItem('clipboardUrl');
             }
-        } catch (e) {
-            console.error('Failed to fetch clipboard data', e);
         }
-        return [];
+        if (!urls || urls.length === 0) return [];
+        
+        let allEvents = [];
+        for (const url of urls) {
+            try {
+                const res = await fetch(\`/api/clipboard/events?url=\${encodeURIComponent(url)}&date=\${date}\`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.events) allEvents = allEvents.concat(data.events);
+                }
+            } catch (e) {
+                console.error('Failed to fetch calendar data for url', url, e);
+            }
+        }
+        return allEvents;
     }
 
     function formatTime(t) {
