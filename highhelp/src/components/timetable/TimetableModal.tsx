@@ -1,31 +1,30 @@
 import { html } from 'hono/html'
 
 export const TimetableModal = html`
-<div id="class-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 transition-opacity">
-    <div class="bg-white rounded-2xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh] shadow-2xl overflow-hidden transform transition-transform scale-95 opacity-0" id="class-modal-content">
+<div id="class-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity">
+    <div class="bg-white dark:bg-neutral-900 rounded-2xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh] shadow-2xl overflow-hidden transform transition-transform scale-95 opacity-0" id="class-modal-content">
         <!-- Header -->
-        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-neutral-800 flex justify-between items-center bg-gray-50 dark:bg-neutral-950/50">
             <div>
-                <h3 class="text-xl font-bold text-gray-900" id="modal-subject-name">Subject</h3>
-                <p class="text-sm text-gray-500" id="modal-subject-date"></p>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white" id="modal-subject-name">Subject</h3>
+                <p class="text-sm text-gray-500 dark:text-neutral-400" id="modal-subject-date"></p>
             </div>
-            <button id="modal-close-btn" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <button id="modal-close-btn" class="text-gray-400 dark:text-neutral-500 hover:text-gray-600 dark:hover:text-neutral-300 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
         
         <!-- Body -->
-        <div class="p-6 overflow-y-auto flex-grow bg-white">
+        <div class="p-6 overflow-y-auto flex-grow bg-white dark:bg-neutral-900">
             <div id="modal-link-container" class="mb-6 hidden">
-                <a id="modal-subject-link" href="#" target="_blank" class="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 font-medium rounded-xl transition-colors">
+                <a id="modal-subject-link" href="#" target="_blank" class="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 font-medium rounded-xl transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                     Open Subject Link
                 </a>
             </div>
 
             <div class="flex items-center justify-between mb-4">
-                <h4 class="font-bold text-gray-800 text-lg flex items-center gap-2">
-                    
+                <h4 class="font-bold text-gray-800 dark:text-neutral-200 text-lg flex items-center gap-2">
                     Notes
                 </h4>
             </div>
@@ -35,13 +34,13 @@ export const TimetableModal = html`
             </div>
 
             <!-- Add Note Section -->
-            <div id="add-note-section" class="border-t border-gray-100 pt-4 hidden">
-                <textarea id="new-note-content" class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all resize-none h-24 shadow-sm" placeholder="This message can be seen by your classmates!"></textarea>
+            <div id="add-note-section" class="border-t border-gray-100 dark:border-neutral-800 pt-4 hidden">
+                <textarea id="new-note-content" class="w-full border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 rounded-xl p-3 text-sm dark:text-neutral-200 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all resize-none h-24 shadow-sm" placeholder="This message can be seen by your classmates!"></textarea>
                 <div class="mt-3 flex justify-end">
                     <button id="btn-submit-note" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 shadow-sm">
                         <span>Post</span>
                     </button>
-                    <button id="btn-login-note" class="hidden bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium text-sm transition-colors cursor-pointer" onclick="window.location.href='/about#application'">
+                    <button id="btn-login-note" class="hidden bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-700 text-gray-700 dark:text-neutral-300 px-4 py-2 rounded-lg font-medium text-sm transition-colors cursor-pointer" onclick="window.location.href='/about#application'">
                         Request Verification to Post
                     </button>
                 </div>
@@ -87,15 +86,15 @@ export const TimetableModal = html`
                     const timeStr = dt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     
                     return \`
-                        <div class="bg-gray-50 border border-gray-100 rounded-xl p-3.5 group relative" id="note-\${note.id}">
+                        <div class="bg-gray-50 dark:bg-neutral-950/30 border border-gray-100 dark:border-neutral-800 rounded-xl p-3.5 group relative" id="note-\${note.id}">
                             <div class="flex justify-between items-start mb-1">
-                                <span class="font-semibold text-sm text-gray-800">\${note.first_name ? note.first_name.charAt(0).toUpperCase() + '.' : 'Unknown'}</span>
+                                <span class="font-semibold text-sm text-gray-800 dark:text-neutral-200">\${note.first_name ? note.first_name.charAt(0).toUpperCase() + '.' : 'Unknown'}</span>
                                 <div class="flex items-center gap-2">
-                                    <span class="text-xs text-gray-400">\${timeStr}</span>
+                                    <span class="text-xs text-gray-400 dark:text-neutral-500">\${timeStr}</span>
                                     \${deleteBtn}
                                 </div>
                             </div>
-                            <p class="text-gray-600 text-sm whitespace-pre-wrap">\${note.content}</p>
+                            <p class="text-gray-600 dark:text-neutral-300 text-sm whitespace-pre-wrap">\${note.content}</p>
                         </div>
                     \`;
                 }).join('');

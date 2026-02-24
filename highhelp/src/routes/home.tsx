@@ -69,28 +69,28 @@ app.get('/', async (c) => {
                 {/* Countdowns Section */}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto items-center">
                     {/* School Starts */}
-                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-default">
-                        <h2 class="text-sm font-bold text-gray-500 mb-1 uppercase tracking-wider">School Starts</h2>
-                        <div id="c1-countdown" class="text-2xl md:text-3xl font-mono font-bold text-gray-800">
+                    <div class="bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-default">
+                        <h2 class="text-sm font-bold text-gray-500 dark:text-neutral-400 mb-1 uppercase tracking-wider">School Starts</h2>
+                        <div id="c1-countdown" class="text-2xl md:text-3xl font-mono font-bold text-gray-800 dark:text-neutral-100">
                             --:--:--:--
                         </div>
                     </div>
 
                     {/* Half Yearly */}
-                    <div class="bg-white p-8 rounded-2xl border-2 border-secondary shadow-xl transform md:scale-110 z-10 hover:scale-115 transition-all duration-300 relative overflow-hidden group">
+                    <div class="bg-white dark:bg-neutral-800 p-8 rounded-2xl border-2 border-secondary shadow-xl transform md:scale-110 z-10 hover:scale-115 transition-all duration-300 relative overflow-hidden group">
                         <div class="absolute top-0 left-0 w-full h-2 bg-secondary"></div>
                         <h2 class="text-lg font-bold text-secondary mb-2 uppercase tracking-tight flex items-center justify-center gap-2">
                             Half Yearly
                         </h2>
-                        <div id="half-yearly-countdown" class="text-4xl md:text-5xl font-mono font-black text-gray-900 group-hover:text-secondary transition-colors">
+                        <div id="half-yearly-countdown" class="text-4xl md:text-5xl font-mono font-black text-gray-900 dark:text-white group-hover:text-secondary transition-colors">
                             --:--:--:--
                         </div>
                     </div>
 
                     {/* HSC */}
-                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-default">
-                        <h2 class="text-sm font-bold text-gray-500 mb-1 uppercase tracking-wider">HSC 2027</h2>
-                        <div id="hsc-countdown" class="text-2xl md:text-3xl font-mono font-bold text-gray-800">
+                    <div class="bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-default">
+                        <h2 class="text-sm font-bold text-gray-500 dark:text-neutral-400 mb-1 uppercase tracking-wider">HSC 2027</h2>
+                        <div id="hsc-countdown" class="text-2xl md:text-3xl font-mono font-bold text-gray-800 dark:text-neutral-100">
                             -- Weeks
                         </div>
                     </div>
@@ -101,31 +101,31 @@ app.get('/', async (c) => {
                     <img
                         src="https://assets.schools.nsw.gov.au/content/dam/doe/sws/schools/s/sydneyboys-h/logo.png"
                         alt="Sydney Boys High School Logo"
-                        class="h-48 w-auto object-contain drop-shadow-sm"
+                        class="h-48 w-auto object-contain drop-shadow-sm dark:invert dark:opacity-80"
                     />
-                    <h1 class="text-4xl font-bold text-gray-900 tracking-tight">HighHelp</h1>
-                    <p class="text-lg text-gray-600">Designed and programmed specifically for, and by, class of 2027.</p>
+                    <h1 class="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">HighHelp</h1>
+                    <p class="text-lg text-gray-600 dark:text-gray-400">Designed and programmed specifically for, and by, class of 2027.</p>
                 </div>
 
                 {/* lastest updates */}
                 <div class="max-w-7xl mx-auto space-y-12">
 
                     {/* 1. Announcements */}
-                    <div class="border-t pt-8">
+                    <div class="border-t dark:border-neutral-800 pt-8">
                         <div class="flex items-center justify-between mb-6">
-                            <h2 class="text-2xl font-bold text-gray-900">Announcements</h2>
-                            <a href="/announcements" class="text-blue-600 hover:underline text-sm font-bold">View All →</a>
+                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Announcements</h2>
+                            <a href="/announcements" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-bold">View All →</a>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {latestAnnouncements?.length === 0 ? <p class="text-gray-500 col-span-3">No announcements.</p> : latestAnnouncements?.map((a: any) => (
-                                <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm hover:border-blue-400 transition-all h-full flex flex-col cursor-pointer group" onclick={`window.open('/announcements/${a.id}', '_blank')`}>
-                                    <h3 class="font-bold text-lg text-gray-900 mb-2 leading-tight group-hover:text-blue-700">{a.title}</h3>
-                                    <div class="flex items-center gap-2 text-xs text-gray-500 mb-3">
-                                        <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-bold uppercase">{a.subject}</span>
+                            {latestAnnouncements?.length === 0 ? <p class="text-gray-500 dark:text-gray-400 col-span-3">No announcements.</p> : latestAnnouncements?.map((a: any) => (
+                                <div class="bg-white dark:bg-neutral-800 p-5 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm hover:border-blue-400 dark:hover:border-blue-500 transition-all h-full flex flex-col cursor-pointer group" onclick={`window.open('/announcements/${a.id}', '_blank')`}>
+                                    <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-2 leading-tight group-hover:text-blue-700 dark:group-hover:text-blue-400">{a.title}</h3>
+                                    <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                        <span class="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-bold uppercase">{a.subject}</span>
                                         <span class="local-date" data-timestamp={a.created_at}>{formatDate(a.created_at)}</span>
                                     </div>
-                                    <p class="text-gray-600 text-sm line-clamp-3 mb-4 flex-grow whitespace-pre-wrap">{a.content}</p>
-                                    <div class="text-xs text-gray-400 mt-auto pt-2 border-t border-gray-50 flex items-center gap-1">
+                                    <p class="text-gray-600 dark:text-gray-400 text-sm line-clamp-3 mb-4 flex-grow whitespace-pre-wrap">{a.content}</p>
+                                    <div class="text-xs text-gray-400 dark:text-gray-500 mt-auto pt-2 border-t border-gray-50 dark:border-neutral-700 flex items-center gap-1">
                                         By {a.first_name ? `${a.first_name}` : 'Unknown'}
                                     </div>
                                 </div>
@@ -134,26 +134,26 @@ app.get('/', async (c) => {
                     </div>
 
                     {/* 2. Resources */}
-                    <div class="border-t pt-8">
+                    <div class="border-t dark:border-neutral-800 pt-8">
                         <div class="flex items-center justify-between mb-6">
-                            <h2 class="text-2xl font-bold text-gray-900">Latest Resources</h2>
-                            <a href="/resources" class="text-blue-600 hover:underline text-sm font-bold">View All →</a>
+                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Latest Resources</h2>
+                            <a href="/resources" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-bold">View All →</a>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {latestResources?.length === 0 ? <p class="text-gray-500 col-span-3">No resources.</p> : latestResources?.map((r: any) => (
-                                <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm hover:border-blue-400 transition-all h-full flex flex-col">
-                                    <h3 class="font-bold text-lg text-gray-900 mb-2 leading-tight">{r.title}</h3>
-                                    <div class="flex items-center gap-2 text-xs text-gray-500 mb-3">
-                                        <span class="font-bold text-gray-700 uppercase">{r.subject}</span>
+                            {latestResources?.length === 0 ? <p class="text-gray-500 dark:text-gray-400 col-span-3">No resources.</p> : latestResources?.map((r: any) => (
+                                <div class="bg-white dark:bg-neutral-800 p-5 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm hover:border-blue-400 dark:hover:border-blue-500 transition-all h-full flex flex-col">
+                                    <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-2 leading-tight">{r.title}</h3>
+                                    <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                        <span class="font-bold text-gray-700 dark:text-neutral-300 uppercase">{r.subject}</span>
                                         <span>•</span>
                                         <span class="local-date" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                     </div>
-                                    <p class="text-gray-600 text-sm line-clamp-2 mb-4 flex-grow">{r.description}</p>
-                                    <div class="mt-auto pt-2 flex justify-between items-center border-t border-gray-50">
-                                        <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 font-bold text-xs hover:underline flex items-center gap-1 uppercase">
+                                    <p class="text-gray-600 dark:text-gray-400 text-sm line-clamp-2 mb-4 flex-grow">{r.description}</p>
+                                    <div class="mt-auto pt-2 flex justify-between items-center border-t border-gray-50 dark:border-neutral-700">
+                                        <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 dark:text-blue-400 font-bold text-xs hover:underline flex items-center gap-1 uppercase">
                                             Download ({r.download_count || 0})
                                         </a>
-                                        <span class="text-xs text-gray-400">{r.first_name}</span>
+                                        <span class="text-xs text-gray-400 dark:text-gray-500">{r.first_name}</span>
                                     </div>
                                 </div>
                             ))}
@@ -161,21 +161,21 @@ app.get('/', async (c) => {
                     </div>
 
                     {/* 3. Past Papers */}
-                    <div class="border-t pt-8">
+                    <div class="border-t dark:border-neutral-800 pt-8">
                         <div class="flex items-center justify-between mb-6">
-                            <h2 class="text-2xl font-bold text-gray-900">Latest Papers</h2>
-                            <a href="/past-papers" class="text-blue-600 hover:underline text-sm font-bold">Browse Bank →</a>
+                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Latest Papers</h2>
+                            <a href="/past-papers" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-bold">Browse Bank →</a>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {latestPapers?.length === 0 ? <p class="text-gray-500 col-span-3">No papers added recently.</p> : latestPapers?.map((p: any) => (
-                                <a href={`/past-papers/paper/${p.id}`} class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm hover:border-blue-400 hover:shadow-md transition-all h-full block">
-                                    <h3 class="font-bold text-lg text-gray-900 mb-1">{p.school_name}</h3>
-                                    <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-3">
-                                        <span class="bg-gray-100 px-2 py-0.5 rounded font-mono font-bold text-gray-700">{p.academic_year}</span>
+                            {latestPapers?.length === 0 ? <p class="text-gray-500 dark:text-gray-400 col-span-3">No papers added recently.</p> : latestPapers?.map((p: any) => (
+                                <a href={`/past-papers/paper/${p.id}`} class="bg-white dark:bg-neutral-800 p-5 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md transition-all h-full block">
+                                    <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-1">{p.school_name}</h3>
+                                    <div class="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                        <span class="bg-gray-100 dark:bg-neutral-700 px-2 py-0.5 rounded font-mono font-bold text-gray-700 dark:text-neutral-300">{p.academic_year}</span>
                                         <span class="capitalize">{p.paper_type || 'Trial'}</span>
-                                        <span class="text-blue-600 font-bold uppercase">{p.subject}</span>
+                                        <span class="text-blue-600 dark:text-blue-400 font-bold uppercase">{p.subject}</span>
                                     </div>
-                                    <div class="flex items-center gap-4 text-xs text-gray-500 mt-4 pt-3 border-t border-gray-50">
+                                    <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mt-4 pt-3 border-t border-gray-50 dark:border-neutral-700">
                                         <span>📝 {p.question_count || 0} Questions</span>
                                     </div>
                                 </a>
@@ -184,19 +184,19 @@ app.get('/', async (c) => {
                     </div>
 
                     {/* 4. Q&A and Essays (Split Row) */}
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-12 border-t pt-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-12 border-t dark:border-neutral-800 pt-8">
                         {/* Q&A */}
                         <div>
                             <div class="flex items-center justify-between mb-6">
-                                <h2 class="text-2xl font-bold text-gray-900">Recent Q&A</h2>
-                                <a href="/forum" class="text-blue-600 hover:underline text-sm font-bold">Visit Forum →</a>
+                                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Recent Q&A</h2>
+                                <a href="/forum" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-bold">Visit Forum →</a>
                             </div>
                             <div class="space-y-4">
-                                {latestQuestions?.length === 0 ? <p class="text-gray-500">No questions yet.</p> : latestQuestions?.map((q: any) => (
-                                    <a href={`/forum/post/${q.id}`} class="block bg-white p-4 rounded border border-gray-200 hover:bg-gray-50 transition-colors">
-                                        <h3 class="font-bold text-gray-900 truncate mb-1">{q.title}</h3>
-                                        <div class="flex items-center gap-2 text-xs text-gray-500">
-                                            <span class="text-blue-600 font-bold uppercase">{q.subject}</span>
+                                {latestQuestions?.length === 0 ? <p class="text-gray-500 dark:text-gray-400">No questions yet.</p> : latestQuestions?.map((q: any) => (
+                                    <a href={`/forum/post/${q.id}`} class="block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors">
+                                        <h3 class="font-bold text-gray-900 dark:text-white truncate mb-1">{q.title}</h3>
+                                        <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                            <span class="text-blue-600 dark:text-blue-400 font-bold uppercase">{q.subject}</span>
                                             <span>•</span>
                                             <span>{q.comment_count} Answers</span>
                                             <span>•</span>
@@ -210,15 +210,15 @@ app.get('/', async (c) => {
                         {/* Essays */}
                         <div>
                             <div class="flex items-center justify-between mb-6">
-                                <h2 class="text-2xl font-bold text-gray-900">Latest Essays</h2>
-                                <a href="/essays" class="text-blue-600 hover:underline text-sm font-bold">Exchange →</a>
+                                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Latest Essays</h2>
+                                <a href="/essays" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-bold">Exchange →</a>
                             </div>
                             <div class="space-y-4">
-                                {latestEssays?.length === 0 ? <p class="text-gray-500">No essays yet.</p> : latestEssays?.map((e: any) => (
-                                    <a href={`/essays/view/${e.id}`} class="block bg-white p-4 rounded border border-gray-200 hover:bg-gray-50 transition-colors">
-                                        <h3 class="font-bold text-gray-900 truncate mb-1">{e.title}</h3>
-                                        <div class="flex items-center gap-2 text-xs text-gray-500">
-                                            <span class="text-purple-600 font-bold uppercase">{e.subject}</span>
+                                {latestEssays?.length === 0 ? <p class="text-gray-500 dark:text-gray-400">No essays yet.</p> : latestEssays?.map((e: any) => (
+                                    <a href={`/essays/view/${e.id}`} class="block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors">
+                                        <h3 class="font-bold text-gray-900 dark:text-white truncate mb-1">{e.title}</h3>
+                                        <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                            <span class="text-purple-600 dark:text-purple-400 font-bold uppercase">{e.subject}</span>
                                             <span>•</span>
                                             <span>Max: {e.full_marks || '-'}</span>
                                             <span>•</span>
