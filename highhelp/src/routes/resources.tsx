@@ -31,28 +31,45 @@ app.get('/resources', async (c) => {
 
         return c.html(
             <Layout title="Resources" user={user}>
-                <div class="mx-auto space-y-8">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="mx-auto space-y-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
                         <h1 class="text-3xl font-bold">Resources Feed</h1>
                         <a href="#browse-subjects" class="text-blue-600 hover:underline">Browse all subjects ↓</a>
                     </div>
 
-                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 items-center justify-between">
-                        <div class="w-full md:w-1/3 relative">
+                    {/* Top Controls Bar (Search, Filters, Sort, View) */}
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col lg:flex-row gap-4 items-center">
+
+                        {/* Search Input */}
+                        <div class="w-full lg:w-1/4 relative shrink-0">
                             <input type="text" id="feed-search" placeholder="Search resources..." class="w-full pl-10 pr-4 py-2 rounded border border-gray-300 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
-                            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </div>
 
-                        <div class="flex w-full md:w-auto gap-4 items-center flex-wrap">
+                        {/* Horizontally Scrollable Filters */}
+                        <div class="w-full lg:flex-1 overflow-x-auto" id="feed-subject-filters" style="scrollbar-width: thin;">
+                            <div class="flex items-center gap-2 w-max pb-2 lg:pb-0">
+                                {allSubjects.length === 0 ? <p class="text-sm text-gray-500 italic px-2">No subjects available.</p> : null}
+                                {allSubjects.map((sub: any) => (
+                                    <label class="shrink-0 flex items-center gap-2 cursor-pointer hover:bg-gray-100 bg-gray-50 border border-gray-200 py-1.5 px-3 rounded-full transition-colors">
+                                        <input type="checkbox" value={sub} class="subject-cb rounded text-blue-600 focus:ring-blue-500 bg-white border-gray-300 w-3.5 h-3.5" />
+                                        <span class="text-sm text-gray-700 whitespace-nowrap select-none font-medium">{sub}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Sort & View Controls */}
+                        <div class="flex w-full lg:w-auto gap-4 items-center justify-between lg:justify-end shrink-0 border-t lg:border-t-0 border-gray-100 pt-3 lg:pt-0">
                             <div class="flex items-center gap-2">
                                 <label class="text-sm text-gray-600 font-medium">Sort:</label>
-                                <select id="feed-sort" class="border border-gray-300 rounded text-sm py-1 px-2 focus:outline-none focus:border-blue-500">
+                                <select id="feed-sort" class="border border-gray-300 rounded text-sm py-1.5 px-2 focus:outline-none focus:border-blue-500 bg-white">
                                     <option value="date-desc">Newest First</option>
                                     <option value="downloads-desc">Most Downloads</option>
                                 </select>
                             </div>
 
-                            <div class="flex items-center gap-2 bg-gray-100 rounded p-1 border border-gray-200">
+                            <div class="flex items-center gap-1 bg-gray-100 rounded p-1 border border-gray-200">
                                 <button id="feed-view-list" class="p-1.5 rounded bg-white shadow-sm text-blue-600 transition-colors" title="List View">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                                 </button>
@@ -63,95 +80,79 @@ app.get('/resources', async (c) => {
                         </div>
                     </div>
 
-                    <div class="flex flex-col lg:flex-row gap-6">
-                        <div class="w-full lg:w-1/4">
-                            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sticky top-4">
-                                <h3 class="font-bold text-gray-800 mb-3 pb-2 border-b border-gray-100">Filter Subjects</h3>
-                                <div class="space-y-2 max-h-96 overflow-y-auto" id="feed-subject-filters">
-                                    {allSubjects.length === 0 ? <p class="text-sm text-gray-500 italic">No subjects available.</p> : null}
-                                    {allSubjects.map((sub: any) => (
-                                        <label class="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 flex-wrap">
-                                            <input type="checkbox" value={sub} class="subject-cb rounded text-blue-600 focus:ring-blue-500 bg-gray-100 border-gray-300" />
-                                            <span class="text-sm text-gray-700 break-all">{sub}</span>
-                                        </label>
-                                    ))}
+                    {/* Feed Containers (Full width now that sidebars are removed) */}
+                    <div class="w-full">
+                        {/* Grid View Container */}
+                        <div id="feed-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 hidden">
+                            {recentResources?.map((r: any) => (
+                                <div class={`feed-item grid-style bg-white rounded border border-gray-300 p-4 hover:shadow-md transition-shadow flex-col justify-between ${r.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
+                                    data-title={r.title?.toLowerCase() || ''}
+                                    data-desc={r.description?.toLowerCase() || ''}
+                                    data-subject={r.subject}
+                                    data-date={r.created_at}
+                                    data-downloads={r.download_count || 0}>
+                                    <div>
+                                        <a href={`/resources/view/${r.id}`} class="text-lg font-bold text-gray-900 mb-1 leading-snug hover:text-blue-600 line-clamp-2">{r.title}</a>
+                                        <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-3">
+                                            <span class="font-bold text-blue-700 uppercase tracking-wide">{r.subject}</span>
+                                            <span class="text-gray-300">•</span>
+                                            <span class="local-date" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
+                                        </div>
+                                        <p class="text-gray-600 mb-4 text-sm line-clamp-2 leading-relaxed">{r.description || <span class="italic text-gray-400">No description...</span>}</p>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-100 gap-2">
+                                        <div class="text-xs text-gray-500 flex items-center min-w-0">
+                                            <span class="truncate">{r.first_name ? `${r.first_name}` : 'Unknown'}</span>
+                                            <span class="ml-1 shrink-0" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
+                                        </div>
+                                        <div class="flex items-center gap-3 shrink-0">
+                                            <span class="text-xs font-medium text-gray-400">{r.download_count || 0} dl</span>
+                                            <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 hover:text-blue-800" title="Download">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                            </a>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            ))}
                         </div>
 
-                        <div class="w-full lg:w-3/4">
-                            {/* Grid View Container */}
-                            <div id="feed-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+                        {/* List View Container */}
+                        <div id="feed-list-container" class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden hidden">
+                            <div class="divide-y divide-gray-100 feed-list">
                                 {recentResources?.map((r: any) => (
-                                    <div class={`feed-item grid-style bg-white rounded border border-gray-300 p-4 hover:shadow-md transition-shadow flex-col justify-between ${r.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
+                                    <div class={`feed-item list-style p-4 hover:bg-gray-50 flex items-center gap-4 transition-colors ${r.is_deleted ? 'bg-red-50' : ''}`}
                                         data-title={r.title?.toLowerCase() || ''}
                                         data-desc={r.description?.toLowerCase() || ''}
                                         data-subject={r.subject}
                                         data-date={r.created_at}
                                         data-downloads={r.download_count || 0}>
-                                        <div>
-                                            <a href={`/resources/view/${r.id}`} class="text-lg font-bold text-gray-900 mb-1 leading-snug hover:text-blue-600 line-clamp-2">{r.title}</a>
-                                            <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-3">
-                                                <span class="font-bold text-blue-700 uppercase tracking-wide">{r.subject}</span>
-                                                <span class="text-gray-300">•</span>
-                                                <span class="local-date" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
-                                            </div>
-                                            <p class="text-gray-600 mb-4 text-sm line-clamp-2 leading-relaxed">{r.description || <span class="italic text-gray-400">No description...</span>}</p>
+                                        <div class="hidden sm:flex shrink-0 w-10 h-10 bg-blue-50 text-blue-600 rounded-lg items-center justify-center">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                         </div>
-                                        <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-100 gap-2">
-                                            <div class="text-xs text-gray-500 flex items-center min-w-0">
-                                                <span class="truncate">{r.first_name ? `${r.first_name}` : 'Unknown'}</span>
-                                                <span class="ml-1 shrink-0" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
+                                        <div class="flex-grow min-w-0">
+                                            <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 mb-1">
+                                                <a href={`/resources/view/${r.id}`} class="text-sm font-bold text-gray-900 hover:text-blue-600 truncate">{r.title}</a>
+                                                <span class="text-xs font-bold text-blue-700 uppercase">{r.subject}</span>
                                             </div>
-                                            <div class="flex items-center gap-3 shrink-0">
-                                                <span class="text-xs font-medium text-gray-400">{r.download_count || 0} dl</span>
-                                                <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 hover:text-blue-800" title="Download">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                                </a>
+                                            <div class="text-xs text-gray-500 flex items-center gap-2">
+                                                <span class="truncate">By {r.first_name ? `${r.first_name}` : 'Unknown'}</span>
+                                                <span class="text-gray-300">•</span>
+                                                <span class="local-date whitespace-nowrap" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                             </div>
+                                        </div>
+                                        <div class="shrink-0 flex items-center gap-4">
+                                            <span class="text-xs font-medium text-gray-400 hidden sm:inline w-12 text-right">{r.download_count || 0} dl</span>
+                                            <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200">
+                                                View
+                                            </a>
                                         </div>
                                     </div>
                                 ))}
                             </div>
+                        </div>
 
-                            {/* List View Container */}
-                            <div id="feed-list-container" class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden hidden">
-                                <div class="divide-y divide-gray-100 feed-list">
-                                    {recentResources?.map((r: any) => (
-                                        <div class={`feed-item list-style p-4 hover:bg-gray-50 flex items-center gap-4 transition-colors ${r.is_deleted ? 'bg-red-50' : ''}`}
-                                            data-title={r.title?.toLowerCase() || ''}
-                                            data-desc={r.description?.toLowerCase() || ''}
-                                            data-subject={r.subject}
-                                            data-date={r.created_at}
-                                            data-downloads={r.download_count || 0}>
-                                            <div class="hidden sm:flex shrink-0 w-10 h-10 bg-blue-50 text-blue-600 rounded-lg items-center justify-center">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                            </div>
-                                            <div class="flex-grow min-w-0">
-                                                <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 mb-1">
-                                                    <a href={`/resources/view/${r.id}`} class="text-sm font-bold text-gray-900 hover:text-blue-600 truncate">{r.title}</a>
-                                                    <span class="text-xs font-bold text-blue-700 uppercase">{r.subject}</span>
-                                                </div>
-                                                <div class="text-xs text-gray-500 flex items-center gap-2">
-                                                    <span class="truncate">By {r.first_name ? `${r.first_name}` : 'Unknown'}</span>
-                                                    <span class="text-gray-300">•</span>
-                                                    <span class="local-date whitespace-nowrap" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
-                                                </div>
-                                            </div>
-                                            <div class="shrink-0 flex items-center gap-4">
-                                                <span class="text-xs font-medium text-gray-400 hidden sm:inline w-12 text-right">{r.download_count || 0} dl</span>
-                                                <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200">
-                                                    View
-                                                </a>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div id="feed-empty-state" class="hidden py-12 text-center text-gray-500 bg-white rounded-lg border border-dashed border-gray-300">
-                                No resources match your search and filters.
-                            </div>
+                        <div id="feed-empty-state" class="hidden py-12 text-center text-gray-500 bg-white rounded-lg border border-dashed border-gray-300 mt-4">
+                            No resources match your search and filters.
                         </div>
                     </div>
 
@@ -279,7 +280,7 @@ app.get('/resources', async (c) => {
         )
     }
 
-
+    // --- Rest of code remains identical ---
     const showDeleted = user && canViewDeleted(user);
     const sql = `
         SELECT r.*, u.first_name, u.last_name, u.tags 
