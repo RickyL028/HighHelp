@@ -13,9 +13,9 @@ app.get('/past-papers', async (c) => {
     const subject = c.req.query('subject')
     const tab = c.req.query('tab') || 'browse';
 
-    
+
     if (!subject) {
-    
+
         const recentPapers = await c.env.DB.prepare(`
             SELECT p.*, count(q.id) as question_count 
             FROM papers p 
@@ -29,8 +29,8 @@ app.get('/past-papers', async (c) => {
             <Layout title="Past Papers" user={user}>
                 <div class="mx-auto space-y-12">
                     <section>
-                        <h1 class="text-3xl font-bold mb-6">Past Paper Bank</h1>
-                        <p class="text-gray-600 mb-8">Select a subject to browse structured past papers.</p>
+                        <h1 class="text-3xl font-bold mb-6 dark:text-white">Past Paper Bank</h1>
+                        <p class="text-gray-600 dark:text-neutral-400 mb-8">Select a subject to browse structured past papers.</p>
                         <SubjectSelector baseUrl="/past-papers" type="standard" />
                     </section>
                 </div>
@@ -38,7 +38,7 @@ app.get('/past-papers', async (c) => {
         )
     }
 
-    
+
     const canUpload = user && canUploadPastPaper(user, subject);
 
     // Tabs Config
@@ -64,7 +64,7 @@ app.get('/past-papers', async (c) => {
         content = (
             <div>
                 <div class="flex items-center justify-between mb-6">
-                    <h1 class="text-3xl font-bold">{subject}</h1>
+                    <h1 class="text-3xl font-bold dark:text-white">{subject}</h1>
                     {canUpload && (
                         <a href={`/past-papers/create?subject=${encodeURIComponent(subject)}`} class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition">
                             + Add New Paper
@@ -74,32 +74,32 @@ app.get('/past-papers', async (c) => {
 
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <div class="relative w-full md:w-96">
-                        <input type="text" id="search-input" placeholder="Search papers..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" />
+                        <input type="text" id="search-input" placeholder="Search papers..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" />
                         <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
                 </div>
 
                 <div id="grid-view-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {papers.results.length === 0 ? (
-                        <div class="col-span-full text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                        <div class="col-span-full text-center py-12 text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-dashed border-gray-300 dark:border-neutral-700">
                             No papers found for {subject}.
                         </div>
                     ) : (
                         papers.results.map((p: any) => (
-                            <a href={`/past-papers/paper/${p.id}`} class="search-item block bg-white p-4 rounded border border-gray-300 hover:border-blue-500 transition-colors group h-full flex flex-col justify-between" data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}>
+                            <a href={`/past-papers/paper/${p.id}`} class="search-item block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors group h-full flex flex-col justify-between" data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}>
                                 <div>
-                                    <h3 class="text-lg font-bold text-gray-900 group-hover:text-blue-700 mb-1 leading-snug">{p.school_name}</h3>
+                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 mb-1 leading-snug">{p.school_name}</h3>
 
-                                    <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
-                                        <span class="font-bold text-blue-700 uppercase tracking-wide">{p.academic_year}</span>
-                                        <span class="text-gray-300">•</span>
-                                        <span class="uppercase tracking-wide">{p.paper_type || 'Trial Paper'}</span>
-                                        {p.is_locked ? <span class="text-xs font-bold text-gray-500 ml-2">✅ Checked</span> : null}
+                                    <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
+                                        <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{p.academic_year}</span>
+                                        <span class="text-gray-300 dark:text-neutral-600">•</span>
+                                        <span class="uppercase tracking-wide text-gray-600 dark:text-neutral-300">{p.paper_type || 'Trial Paper'}</span>
+                                        {p.is_locked ? <span class="text-xs font-bold text-gray-500 dark:text-neutral-400 ml-2">✅ Checked</span> : null}
                                     </div>
                                 </div>
 
                                 <div class="flex flex-col gap-1 mt-2">
-                                    <div class="flex items-center gap-3 text-xs text-gray-500 font-mono border-t border-gray-100 pt-2">
+                                    <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-neutral-400 font-mono border-t border-gray-100 dark:border-neutral-700 pt-2">
                                         <span class="flex items-center gap-1">
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                                             {p.question_count || 0} Qs
@@ -122,7 +122,7 @@ app.get('/past-papers', async (c) => {
         const limit = 20;
         const offset = (page - 1) * limit;
 
-        
+
         const filterTopic = c.req.query('topic');
         const filterYear = c.req.query('year');
         const filterStatus = c.req.query('status'); // done, undone
@@ -131,7 +131,7 @@ app.get('/past-papers', async (c) => {
         const filterMarksMin = c.req.query('marks_min');
         const filterMarksMax = c.req.query('marks_max');
         const sort = c.req.query('sort') || 'school_asc';
-        const mode = c.req.query('mode'); 
+        const mode = c.req.query('mode');
 
         let query = `
             SELECT q.*, p.school_name, p.academic_year, 
@@ -144,7 +144,7 @@ app.get('/past-papers', async (c) => {
             LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             WHERE p.subject = ? AND q.is_deleted = 0
         `;
-        
+
         const params: any[] = [user?.id || null, subject];
 
         if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
@@ -162,7 +162,7 @@ app.get('/past-papers', async (c) => {
 
         query += ` GROUP BY q.id`;
 
-        
+
         if (sort === 'year_desc') query += ` ORDER BY p.academic_year DESC, q.ordering_index ASC`;
         else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`;
         else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`;
@@ -177,35 +177,35 @@ app.get('/past-papers', async (c) => {
 
         content = (
             <div>
-                <h1 class="text-3xl font-bold mb-6">Practice Questions</h1>
+                <h1 class="text-3xl font-bold mb-6 dark:text-white">Practice Questions</h1>
 
-                
-                <form action="/past-papers" method="get" class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 space-y-4">
+                {/* Practice Questions Filters */}
+                <form action="/past-papers" method="get" class="bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-neutral-700 mb-6 space-y-4">
                     <input type="hidden" name="subject" value={subject} />
                     <input type="hidden" name="tab" value="practice" />
 
                     <div class="flex flex-wrap gap-4 items-end">
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Topic</label>
-                            <select name="topic" class="rounded border-gray-300 text-sm w-48">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Topic</label>
+                            <select name="topic" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-48">
                                 <option value="">All Topics</option>
                                 {allTopics.results.map((t: any) => <option value={t.id} selected={filterTopic == t.id}>{t.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Year</label>
-                            <input type="number" name="year" value={filterYear} placeholder="Any" class="rounded border-gray-300 text-sm w-24" />
+                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Year</label>
+                            <input type="number" name="year" value={filterYear} placeholder="Any" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-24" />
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Section</label>
-                            <select name="section" class="rounded border-gray-300 text-sm w-32">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Section</label>
+                            <select name="section" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-32">
                                 <option value="">All</option>
                                 {sections.results.map((s: any) => <option value={s.section_label} selected={filterSection == s.section_label}>{s.section_label}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Type</label>
-                            <select name="type" class="rounded border-gray-300 text-sm w-32">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Type</label>
+                            <select name="type" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-32">
                                 <option value="">All</option>
                                 <option value="multiple_choice" selected={filterType == 'multiple_choice'}>Multiple Choice</option>
                                 <option value="short_answer" selected={filterType == 'short_answer'}>Short Answer</option>
@@ -213,26 +213,26 @@ app.get('/past-papers', async (c) => {
                             </select>
                         </div>
                     </div>
-                    <div class="flex flex-wrap gap-4 items-end border-t pt-4">
+                    <div class="flex flex-wrap gap-4 items-end border-t dark:border-neutral-700 pt-4">
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Status</label>
-                            <select name="status" class="rounded border-gray-300 text-sm w-32">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Status</label>
+                            <select name="status" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-32">
                                 <option value="">All</option>
                                 <option value="done" selected={filterStatus == 'done'}>Completed</option>
                                 <option value="undone" selected={filterStatus == 'undone'}>Unattempted</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Marks Range</label>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Marks Range</label>
                             <div class="flex items-center gap-2">
-                                <input type="number" name="marks_min" value={filterMarksMin} placeholder="Min" class="rounded border-gray-300 text-sm w-20" />
+                                <input type="number" name="marks_min" value={filterMarksMin} placeholder="Min" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-20" />
                                 <span class="text-gray-400">-</span>
-                                <input type="number" name="marks_max" value={filterMarksMax} placeholder="Max" class="rounded border-gray-300 text-sm w-20" />
+                                <input type="number" name="marks_max" value={filterMarksMax} placeholder="Max" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-20" />
                             </div>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Sort</label>
-                            <select name="sort" class="rounded border-gray-300 text-sm w-32">
+                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Sort</label>
+                            <select name="sort" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-32">
                                 <option value="school_asc" selected={sort == 'school_asc'}>School A-Z</option>
                                 <option value="year_desc" selected={sort == 'year_desc'}>Year (Newest)</option>
                                 <option value="year_asc" selected={sort == 'year_asc'}>Year (Oldest)</option>
@@ -240,7 +240,7 @@ app.get('/past-papers', async (c) => {
                         </div>
                         <div class="flex gap-2">
                             <button class="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-blue-700">Filter</button>
-                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice`} class="px-4 py-2 border rounded text-gray-600 text-sm hover:bg-gray-50">Reset</a>
+                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice`} class="px-4 py-2 border dark:border-neutral-700 rounded text-gray-600 dark:text-neutral-400 text-sm hover:bg-gray-50 dark:hover:bg-neutral-700">Reset</a>
                         </div>
                     </div>
                 </form>
@@ -265,7 +265,7 @@ app.get('/past-papers', async (c) => {
                                     return (
                                         <div onclick={clickAction}
                                             class={`block p-3 rounded border transition-colors cursor-pointer group 
-                                            ${isIncomplete ? 'bg-gray-50 border-gray-200 opacity-75 grayscale' : 'bg-white border-gray-300 hover:border-blue-500 hover:bg-gray-50'}`}>
+                                            ${isIncomplete ? 'bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-75 grayscale' : 'bg-white dark:bg-neutral-800 border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-neutral-700'}`}>
                                             <div class="flex justify-between items-start">
                                                 <div class="flex gap-3">
                                                     {mode === 'select' && (
@@ -275,21 +275,21 @@ app.get('/past-papers', async (c) => {
                                                     )}
                                                     <div>
                                                         <div class="flex items-center gap-2 mb-1">
-                                                            <span class={`font-bold text-sm ${isIncomplete ? 'text-gray-500' : 'text-gray-900 group-hover:text-blue-700'}`}>{q.school_name} {q.academic_year}</span>
-                                                            <span class="text-gray-400 text-xs font-mono">| {q.section_label} {q.question_number}</span>
-                                                            {q.is_completed ? <span class="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded border border-green-200 font-bold uppercase">Done</span> : null}
+                                                            <span class={`font-bold text-sm ${isIncomplete ? 'text-gray-500 dark:text-neutral-500' : 'text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400'}`}>{q.school_name} {q.academic_year}</span>
+                                                            <span class="text-gray-400 dark:text-neutral-500 text-xs font-mono">| {q.section_label} {q.question_number}</span>
+                                                            {q.is_completed ? <span class="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-[10px] px-1.5 py-0.5 rounded border border-green-200 dark:border-green-900/60 font-bold uppercase">Done</span> : null}
                                                         </div>
-                                                        <div class="text-xs text-gray-500 flex gap-2">
+                                                        <div class="text-xs text-gray-500 dark:text-neutral-400 flex gap-2">
                                                             <span class="capitalize">{q.question_type ? q.question_type.replace('_', ' ') : '-'}</span>
-                                                            <span class="text-gray-300">•</span>
-                                                            <span class="font-medium text-gray-600">{q.topic_names || 'No topic'}</span>
+                                                            <span class="text-gray-300 dark:text-neutral-600">•</span>
+                                                            <span class="font-medium text-gray-600 dark:text-neutral-300">{q.topic_names || 'No topic'}</span>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div class="text-right">
-                                                    <span class={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border ${isIncomplete ? 'bg-gray-200 text-gray-500 border-gray-300' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>{q.marks || '?'}m</span>
+                                                    <span class={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border ${isIncomplete ? 'bg-gray-200 dark:bg-neutral-800 text-gray-500 dark:text-neutral-500 border-gray-300 dark:border-neutral-700' : 'bg-gray-100 dark:bg-neutral-900 text-gray-600 dark:text-neutral-400 border-gray-200 dark:border-neutral-800'}`}>{q.marks || '?'}m</span>
                                                     {q.marks_awarded != null && (
-                                                        <div class="text-[10px] font-bold text-blue-600 mt-1">
+                                                        <div class="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1">
                                                             {q.marks_awarded}/{q.marks}
                                                         </div>
                                                     )}
@@ -300,12 +300,12 @@ app.get('/past-papers', async (c) => {
                                 })}
                             </div>
                             {mode === 'select' && (
-                                <div class="fixed bottom-0 left-0 w-full bg-white border-t p-4 flex justify-between items-center shadow-lg z-50">
-                                    <div class="container mx-auto flex justify-between items-center">
+                                <div class="fixed bottom-0 left-0 w-full bg-white dark:bg-neutral-900 border-t dark:border-neutral-800 p-4 flex justify-between items-center shadow-lg z-50">
+                                    <div class="container mx-auto flex justify-between items-center text-gray-900 dark:text-white">
                                         <div class="flex gap-4 items-center">
-                                            <input type="text" name="exam_name" placeholder="Custom Exam Name" class="rounded border-gray-300 text-sm" />
+                                            <input type="text" name="exam_name" placeholder="Custom Exam Name" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm" />
                                             <div class="flex items-center gap-2">
-                                                <input type="number" name="timer_minutes" placeholder="Timer (mins)" class="rounded border-gray-300 text-sm w-24" />
+                                                <input type="number" name="timer_minutes" placeholder="Timer (mins)" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm w-24" />
                                             </div>
                                         </div>
                                         <button class="bg-blue-600 text-white px-8 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md">
@@ -318,17 +318,17 @@ app.get('/past-papers', async (c) => {
                     )
                     }
                 </div>
-                
+
                 <div class="mt-8 flex justify-center gap-2">
-                    {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border rounded bg-white hover:bg-gray-50">Previous</a>}
-                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border rounded bg-white hover:bg-gray-50">Next</a>
+                    {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors">Previous</a>}
+                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors">Next</a>
                 </div>
             </div>
         )
 
     } else if (tab === 'review') {
         if (!user) return c.redirect('/login')
-        
+
         const query = `
             SELECT q.*, p.school_name, p.academic_year, 
                    group_concat(t.name, ', ') as topic_names,
@@ -356,41 +356,41 @@ app.get('/past-papers', async (c) => {
 
         content = (
             <div>
-                <h1 class="text-3xl font-bold mb-6">Review Queue</h1>
-                <p class="text-gray-600 mb-8">Questions you didn't get full marks on. Review and retry them to master the content.</p>
+                <h1 class="text-3xl font-bold mb-6 dark:text-white">Review Queue</h1>
+                <p class="text-gray-600 dark:text-neutral-400 mb-8">Questions you didn't get full marks on. Review and retry them to master the content.</p>
 
                 <div class="space-y-4">
                     {questions.results.length === 0 ? (
-                        <div class="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                        <div class="text-center py-12 text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-dashed border-gray-300 dark:border-neutral-700">
                             Great work! You have no questions to review.
                         </div>
                     ) : (
                         questions.results.map((q: any) => {
                             const isReviewCompleted = !!q.review_completed || (q.review_marks != null && q.review_marks === q.marks);
                             const reviewStatus = isReviewCompleted
-                                ? <span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-bold uppercase">Review Completed</span>
-                                : <span class="bg-amber-100 text-amber-700 text-xs px-2 py-1 rounded font-bold uppercase">To Review</span>;
+                                ? <span class="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded font-bold uppercase">Review Completed</span>
+                                : <span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs px-2 py-1 rounded font-bold uppercase">To Review</span>;
 
                             return (
-                                <a href={`/past-papers/attempt/${q.id}?mode=review&source=review`} class="block bg-white p-4 rounded border border-gray-300 hover:border-blue-500 hover:bg-gray-50 transition-colors group">
+                                <a href={`/past-papers/attempt/${q.id}?mode=review&source=review`} class="block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors group">
                                     <div class="flex justify-between items-start">
                                         <div class="flex gap-4">
                                             <div>
                                                 <div class="flex items-center gap-2 mb-1">
-                                                    <span class="font-bold text-sm text-gray-900 group-hover:text-blue-700">{q.school_name} {q.academic_year}</span>
-                                                    <span class="text-gray-400 text-xs font-mono">| {q.section_label} {q.question_number}</span>
+                                                    <span class="font-bold text-sm text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400">{q.school_name} {q.academic_year}</span>
+                                                    <span class="text-gray-400 dark:text-neutral-500 text-xs font-mono">| {q.section_label} {q.question_number}</span>
                                                     {reviewStatus}
                                                 </div>
-                                                <div class="text-xs text-gray-500 flex gap-2">
+                                                <div class="text-xs text-gray-500 dark:text-neutral-400 flex gap-2">
                                                     <span class="capitalize">{q.question_type ? q.question_type.replace('_', ' ') : '-'}</span>
-                                                    <span class="text-gray-300">•</span>
-                                                    <span class="font-medium text-gray-600">{q.topic_names || 'No topic'}</span>
+                                                    <span class="text-gray-300 dark:text-neutral-600">•</span>
+                                                    <span class="font-medium text-gray-600 dark:text-neutral-300">{q.topic_names || 'No topic'}</span>
                                                 </div>
                                             </div>
                                         </div>
                                         <div class="text-right">
-                                            <div class="text-xs text-gray-500 mb-1">Original Score</div>
-                                            <span class="text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded">
+                                            <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">Original Score</div>
+                                            <span class="text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
                                                 {q.original_marks || 0}/{q.marks}
                                             </span>
                                         </div>
@@ -407,21 +407,21 @@ app.get('/past-papers', async (c) => {
     return c.html(
         <Layout title={`Past Papers - ${subject}`} user={user}>
             <div class="mx-auto">
-                
-                <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
+
+                <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-neutral-400 mb-4">
                     <a href="/past-papers" class="hover:underline">Past Papers</a>
-                    <span>/</span>
-                    <span class="font-bold text-gray-700">{subject}</span>
+                    <span class="text-gray-300 dark:text-neutral-600">/</span>
+                    <span class="font-bold text-gray-700 dark:text-neutral-200">{subject}</span>
                 </div>
 
-                
-                <div class="border-b border-gray-200 mb-8">
+
+                <div class="border-b border-gray-200 dark:border-neutral-700 mb-8">
                     <nav class="-mb-px flex space-x-8">
                         {tabs.map(t => (
                             <a href={(t as any).href}
                                 class={`
                                     whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors
-                                    ${(tab === t.id) || (t.id === 'exam' && c.req.path.includes('mock-exams')) ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                                    ${(tab === t.id) || (t.id === 'exam' && c.req.path.includes('mock-exams')) ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200 hover:border-gray-300 dark:hover:border-neutral-600'}
                                 `}>
                                 {t.label}
                             </a>

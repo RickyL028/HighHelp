@@ -38,11 +38,11 @@ app.get('/resources', async (c) => {
                     </div>
 
                     {/* Top Controls Bar (Search, Filters, Sort, View) */}
-                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex flex-col lg:flex-row gap-4 items-center">
+                    <div class="bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-neutral-700 flex flex-col lg:flex-row gap-4 items-center">
 
                         {/* Search Input */}
                         <div class="w-full lg:w-1/4 relative shrink-0">
-                            <input type="text" id="feed-search" placeholder="Search resources..." class="w-full pl-10 pr-4 py-2 rounded border border-gray-300 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
+                            <input type="text" id="feed-search" placeholder="Search resources..." class="w-full pl-10 pr-4 py-2 rounded border border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white focus:outline-none focus:border-blue-500 transition-colors text-sm" />
                             <svg class="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </div>
 
@@ -51,9 +51,9 @@ app.get('/resources', async (c) => {
                             <div class="flex items-center gap-2 w-max pb-2 lg:pb-0">
                                 {allSubjects.length === 0 ? <p class="text-sm text-gray-500 italic px-2">No subjects available.</p> : null}
                                 {allSubjects.map((sub: any) => (
-                                    <label class="shrink-0 flex items-center gap-2 cursor-pointer hover:bg-gray-100 bg-gray-50 border border-gray-200 py-1.5 px-3 rounded-full transition-colors">
-                                        <input type="checkbox" value={sub} class="subject-cb rounded text-blue-600 focus:ring-blue-500 bg-white border-gray-300 w-3.5 h-3.5" />
-                                        <span class="text-sm text-gray-700 whitespace-nowrap select-none font-medium">{sub}</span>
+                                    <label class="shrink-0 flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-neutral-700 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 py-1.5 px-3 rounded-full transition-colors">
+                                        <input type="checkbox" value={sub} class="subject-cb rounded text-blue-600 focus:ring-blue-500 bg-white dark:bg-neutral-800 border-gray-300 dark:border-neutral-600 w-3.5 h-3.5" />
+                                        <span class="text-sm text-gray-700 dark:text-neutral-300 whitespace-nowrap select-none font-medium">{sub}</span>
                                     </label>
                                 ))}
                             </div>
@@ -62,18 +62,18 @@ app.get('/resources', async (c) => {
                         {/* Sort & View Controls */}
                         <div class="flex w-full lg:w-auto gap-4 items-center justify-between lg:justify-end shrink-0 border-t lg:border-t-0 border-gray-100 pt-3 lg:pt-0">
                             <div class="flex items-center gap-2">
-                                <label class="text-sm text-gray-600 font-medium">Sort:</label>
-                                <select id="feed-sort" class="border border-gray-300 rounded text-sm py-1.5 px-2 focus:outline-none focus:border-blue-500 bg-white">
+                                <label class="text-sm text-gray-600 dark:text-neutral-400 font-medium">Sort:</label>
+                                <select id="feed-sort" class="border border-gray-300 dark:border-neutral-600 rounded text-sm py-1.5 px-2 focus:outline-none focus:border-blue-500 bg-white dark:bg-neutral-700 dark:text-white">
                                     <option value="date-desc">Newest First</option>
                                     <option value="downloads-desc">Most Downloads</option>
                                 </select>
                             </div>
 
-                            <div class="flex items-center gap-1 bg-gray-100 rounded p-1 border border-gray-200">
-                                <button id="feed-view-list" class="p-1.5 rounded bg-white shadow-sm text-blue-600 transition-colors" title="List View">
+                            <div class="flex items-center gap-1 bg-gray-100 dark:bg-neutral-900 rounded p-1 border border-gray-200 dark:border-neutral-700">
+                                <button id="feed-view-list" class="p-1.5 rounded dark:hover:bg-neutral-800 text-blue-600 transition-colors" title="List View">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                                 </button>
-                                <button id="feed-view-grid" class="p-1.5 rounded text-gray-500 hover:text-gray-700 transition-colors" title="Grid View">
+                                <button id="feed-view-grid" class="p-1.5 rounded text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors" title="Grid View">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"></path></svg>
                                 </button>
                             </div>
@@ -85,29 +85,29 @@ app.get('/resources', async (c) => {
                         {/* Grid View Container */}
                         <div id="feed-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 hidden">
                             {recentResources?.map((r: any) => (
-                                <div class={`feed-item grid-style bg-white rounded border border-gray-300 p-4 hover:shadow-md transition-shadow flex-col justify-between ${r.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
+                                <div class={`feed-item grid-style bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-4 hover:shadow-md transition-shadow flex-col justify-between ${r.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}
                                     data-title={r.title?.toLowerCase() || ''}
                                     data-desc={r.description?.toLowerCase() || ''}
                                     data-subject={r.subject}
                                     data-date={r.created_at}
                                     data-downloads={r.download_count || 0}>
                                     <div>
-                                        <a href={`/resources/view/${r.id}`} class="text-lg font-bold text-gray-900 mb-1 leading-snug hover:text-blue-600 line-clamp-2">{r.title}</a>
-                                        <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-3">
-                                            <span class="font-bold text-blue-700 uppercase tracking-wide">{r.subject}</span>
-                                            <span class="text-gray-300">•</span>
+                                        <a href={`/resources/view/${r.id}`} class="text-lg font-bold text-gray-900 dark:text-white mb-1 leading-snug hover:text-blue-600 dark:hover:text-blue-400 line-clamp-2">{r.title}</a>
+                                        <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-3">
+                                            <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{r.subject}</span>
+                                            <span class="text-gray-300 dark:text-neutral-600">•</span>
                                             <span class="local-date" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                         </div>
-                                        <p class="text-gray-600 mb-4 text-sm line-clamp-2 leading-relaxed">{r.description || <span class="italic text-gray-400">No description...</span>}</p>
+                                        <p class="text-gray-600 dark:text-neutral-300 mb-4 text-sm line-clamp-2 leading-relaxed">{r.description || <span class="italic text-gray-400 dark:text-neutral-500">No description...</span>}</p>
                                     </div>
-                                    <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-100 gap-2">
-                                        <div class="text-xs text-gray-500 flex items-center min-w-0">
+                                    <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-100 dark:border-neutral-700 gap-2">
+                                        <div class="text-xs text-gray-500 dark:text-neutral-400 flex items-center min-w-0">
                                             <span class="truncate">{r.first_name ? `${r.first_name}` : 'Unknown'}</span>
                                             <span class="ml-1 shrink-0" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
                                         </div>
                                         <div class="flex items-center gap-3 shrink-0">
-                                            <span class="text-xs font-medium text-gray-400">{r.download_count || 0} dl</span>
-                                            <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 hover:text-blue-800" title="Download">
+                                            <span class="text-xs font-medium text-gray-400 dark:text-neutral-500">{r.download_count || 0} dl</span>
+                                            <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300" title="Download">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                             </a>
                                         </div>
@@ -117,32 +117,32 @@ app.get('/resources', async (c) => {
                         </div>
 
                         {/* List View Container */}
-                        <div id="feed-list-container" class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden hidden">
-                            <div class="divide-y divide-gray-100 feed-list">
+                        <div id="feed-list-container" class="bg-white dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm overflow-hidden hidden">
+                            <div class="divide-y divide-gray-100 dark:divide-neutral-700 feed-list">
                                 {recentResources?.map((r: any) => (
-                                    <div class={`feed-item list-style p-4 hover:bg-gray-50 flex items-center gap-4 transition-colors ${r.is_deleted ? 'bg-red-50' : ''}`}
+                                    <div class={`feed-item list-style p-4 hover:bg-gray-50 dark:hover:bg-neutral-700 flex items-center gap-4 transition-colors ${r.is_deleted ? 'bg-red-50 dark:bg-red-900/20' : ''}`}
                                         data-title={r.title?.toLowerCase() || ''}
                                         data-desc={r.description?.toLowerCase() || ''}
                                         data-subject={r.subject}
                                         data-date={r.created_at}
                                         data-downloads={r.download_count || 0}>
-                                        <div class="hidden sm:flex shrink-0 w-10 h-10 bg-blue-50 text-blue-600 rounded-lg items-center justify-center">
+                                        <div class="hidden sm:flex shrink-0 w-10 h-10 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-lg items-center justify-center">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                         </div>
                                         <div class="flex-grow min-w-0">
                                             <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 mb-1">
-                                                <a href={`/resources/view/${r.id}`} class="text-sm font-bold text-gray-900 hover:text-blue-600 truncate">{r.title}</a>
-                                                <span class="text-xs font-bold text-blue-700 uppercase">{r.subject}</span>
+                                                <a href={`/resources/view/${r.id}`} class="text-sm font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 truncate">{r.title}</a>
+                                                <span class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase">{r.subject}</span>
                                             </div>
-                                            <div class="text-xs text-gray-500 flex items-center gap-2">
+                                            <div class="text-xs text-gray-500 dark:text-neutral-400 flex items-center gap-2">
                                                 <span class="truncate">By {r.first_name ? `${r.first_name}` : 'Unknown'}</span>
-                                                <span class="text-gray-300">•</span>
+                                                <span class="text-gray-300 dark:text-neutral-600">•</span>
                                                 <span class="local-date whitespace-nowrap" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                             </div>
                                         </div>
                                         <div class="shrink-0 flex items-center gap-4">
-                                            <span class="text-xs font-medium text-gray-400 hidden sm:inline w-12 text-right">{r.download_count || 0} dl</span>
-                                            <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200">
+                                            <span class="text-xs font-medium text-gray-400 dark:text-neutral-500 hidden sm:inline w-12 text-right">{r.download_count || 0} dl</span>
+                                            <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
                                                 View
                                             </a>
                                         </div>
@@ -269,10 +269,10 @@ app.get('/resources', async (c) => {
                         });
                     `}} />
 
-                    <hr class="border-gray-200 my-8" id="browse-subjects" />
+                    <hr class="border-gray-200 dark:border-neutral-700 my-8" id="browse-subjects" />
 
-                    <section class="bg-gray-50 p-6 rounded-lg border border-gray-100">
-                        <h2 class="text-xl font-bold mb-4 text-gray-800">Browse Specific Subject Directory</h2>
+                    <section class="bg-gray-50 dark:bg-neutral-800 p-6 rounded-lg border border-gray-100 dark:border-neutral-700">
+                        <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-white">Browse Specific Subject Directory</h2>
                         <SubjectSelector baseUrl="/resources" type="standard" />
                     </section>
                 </div>
@@ -300,19 +300,19 @@ app.get('/resources', async (c) => {
             </div>
 
             {user && canUploadResource(user) ? (
-                <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8">
-                    <h3 class="text-lg font-bold mb-4">Upload Resource</h3>
+                <div class="bg-gray-50 dark:bg-neutral-800 p-6 rounded-lg border border-gray-200 dark:border-neutral-700 mb-8">
+                    <h3 class="text-lg font-bold mb-4 dark:text-white">Upload Resource</h3>
                     <form action="/resources" method="post" enctype="multipart/form-data" class="space-y-4">
                         <input type="hidden" name="subject" value={subject} />
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Title - e.g. My Notes on Differentiation!</label>
-                            <input type="text" name="title" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" />
+                            <label class="block text-sm font-medium text-gray-700 dark:text-neutral-300">Title - e.g. My Notes on Differentiation!</label>
+                            <input type="text" name="title" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white shadow-sm p-2 border" />
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Description - e.g. Some class notes from my math class 11MAX2 && my personal tips!</label>
-                            <textarea name="description" rows={4} class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"></textarea>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-neutral-300">Description - e.g. Some class notes from my math class 11MAX2 && my personal tips!</label>
+                            <textarea name="description" rows={4} class="mt-1 block w-full rounded-md border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white shadow-sm p-2 border"></textarea>
                         </div>
-                        <a class="block text-sm font-medium text-gray-300">Note: inappropiate content will be removed & you may be banned :/</a>
+                        <a class="block text-sm font-medium text-gray-400 dark:text-neutral-500">Note: inappropiate content will be removed & you may be banned :/</a>
                         <div>
                             <label class="block text-sm font-medium text-gray-500">File</label>
                             <input
@@ -329,21 +329,21 @@ app.get('/resources', async (c) => {
                     </form>
                 </div>
             ) : (
-                <div class="bg-blue-50 p-4 rounded mb-8 text-center text-blue-800">
+                <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded mb-8 text-center text-blue-800 dark:text-blue-300">
                     <a href='/about#application'><u>Please agree to website guidelines before uploading resources :P</u></a>
                 </div>
             )}
 
             <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <div class="relative w-full md:w-96">
-                    <input type="text" id="search-input" placeholder="Search resources..." class="w-full pl-10 pr-4 py-2 rounded border border-gray-300 focus:outline-none focus:border-blue-500 transition-colors text-sm" />
+                    <input type="text" id="search-input" placeholder="Search resources..." class="w-full pl-10 pr-4 py-2 rounded border border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white focus:outline-none focus:border-blue-500 transition-colors text-sm" />
                     <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                 </div>
-                <div class="flex items-center gap-2 bg-gray-100 rounded p-1 border border-gray-200">
-                    <button id="view-list" class="p-1.5 rounded bg-white shadow-sm text-blue-600 transition-colors" title="List View">
+                <div class="flex items-center gap-2 bg-gray-100 dark:bg-neutral-900 rounded p-1 border border-gray-200 dark:border-neutral-700 shadow-sm">
+                    <button id="view-list" class="p-1.5 rounded dark:hover:bg-neutral-800 text-blue-600 transition-colors" title="List View">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                     </button>
-                    <button id="view-grid" class="p-1.5 rounded text-gray-500 hover:text-gray-700 transition-colors" title="Grid View">
+                    <button id="view-grid" class="p-1.5 rounded text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors" title="Grid View">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"></path></svg>
                     </button>
                 </div>
@@ -358,30 +358,30 @@ app.get('/resources', async (c) => {
                 ) : (
                     results.map((r: any) => (
                         <div
-                            class={`search-item flex-col bg-white rounded border border-gray-300 p-4 hover:shadow-md transition-shadow justify-between ${r.is_deleted ? 'border-red-500 bg-red-50' : 'flex'}`}
+                            class={`search-item flex-col bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-4 hover:shadow-md transition-shadow justify-between ${r.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'flex'}`}
                             data-search-text={`${r.title} ${r.description} ${r.subject} ${r.first_name || ''} ${r.last_name || ''}`}
                         >
                             <div>
-                                <a href={`/resources/view/${r.id}`} class="text-lg font-bold text-gray-900 mb-1 leading-snug hover:text-blue-600 line-clamp-2">{r.title}</a>
+                                <a href={`/resources/view/${r.id}`} class="text-lg font-bold text-gray-900 dark:text-white mb-1 leading-snug hover:text-blue-600 dark:hover:text-blue-400 line-clamp-2">{r.title}</a>
 
-                                <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
-                                    <span class="font-bold text-blue-700 uppercase tracking-wide">{r.subject}</span>
-                                    <span class="text-gray-300">•</span>
+                                <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
+                                    <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{r.subject}</span>
+                                    <span class="text-gray-300 dark:text-neutral-600">•</span>
                                     <span class="local-date" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                     {r.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                 </div>
 
-                                <p class="text-gray-600 mb-4 text-sm line-clamp-2 leading-relaxed">{r.description || <span class="italic text-gray-400">No description...</span>}</p>
+                                <p class="text-gray-600 dark:text-neutral-300 mb-4 text-sm line-clamp-2 leading-relaxed">{r.description || <span class="italic text-gray-400 dark:text-neutral-500">No description...</span>}</p>
                             </div>
 
-                            <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-100 gap-2">
-                                <div class="text-xs text-gray-500 flex items-center min-w-0">
+                            <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-100 dark:border-neutral-700 gap-2">
+                                <div class="text-xs text-gray-500 dark:text-neutral-400 flex items-center min-w-0">
                                     <span class="truncate">By {r.first_name ? `${r.first_name} ${r.last_name || ''}`.trim() : 'Unknown'}</span>
                                     <span class="ml-1 shrink-0" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
                                 </div>
                                 <div class="flex items-center gap-3 shrink-0">
-                                    <span class="text-xs font-medium text-gray-400">{r.download_count || 0} dl</span>
-                                    <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 hover:text-blue-800" title="Download">
+                                    <span class="text-xs font-medium text-gray-400 dark:text-neutral-500">{r.download_count || 0} dl</span>
+                                    <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300" title="Download">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                     </a>
                                     {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
@@ -399,33 +399,33 @@ app.get('/resources', async (c) => {
             </div>
 
             {/* List View Container */}
-            <div id="list-view-container" class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <div id="list-view-container" class="bg-white dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm overflow-hidden">
                 {results?.length === 0 ? (
-                    <div class="py-12 text-center text-gray-500">No resources uploaded for this subject yet.</div>
+                    <div class="py-12 text-center text-gray-500 dark:text-neutral-400">No resources uploaded for this subject yet.</div>
                 ) : (
-                    <div class="divide-y divide-gray-100">
+                    <div class="divide-y divide-gray-100 dark:divide-neutral-700">
                         {results.map((r: any) => (
                             <div
-                                class={`search-item list-style p-4 hover:bg-gray-50 flex items-center gap-4 transition-colors ${r.is_deleted ? 'bg-red-50' : ''}`}
+                                class={`search-item list-style p-4 hover:bg-gray-50 dark:hover:bg-neutral-700 flex items-center gap-4 transition-colors ${r.is_deleted ? 'bg-red-50 dark:bg-red-900/20' : ''}`}
                                 data-search-text={`${r.title} ${r.description} ${r.subject} ${r.first_name || ''} ${r.last_name || ''}`}
                             >
-                                <div class="hidden sm:flex shrink-0 w-10 h-10 bg-blue-50 text-blue-600 rounded-lg items-center justify-center">
+                                <div class="hidden sm:flex shrink-0 w-10 h-10 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-lg items-center justify-center">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                 </div>
                                 <div class="flex-grow min-w-0">
                                     <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 mb-1">
-                                        <a href={`/resources/view/${r.id}`} class="text-sm font-bold text-gray-900 hover:text-blue-600 truncate">{r.title}</a>
+                                        <a href={`/resources/view/${r.id}`} class="text-sm font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 truncate">{r.title}</a>
                                         {r.is_deleted && <span class="text-[10px] font-bold text-red-600 uppercase">Deleted</span>}
                                     </div>
-                                    <div class="text-xs text-gray-500 flex items-center gap-2">
+                                    <div class="text-xs text-gray-500 dark:text-neutral-400 flex items-center gap-2">
                                         <span class="truncate">By {r.first_name ? `${r.first_name}` : 'Unknown'}</span>
-                                        <span class="text-gray-300">•</span>
+                                        <span class="text-gray-300 dark:text-neutral-600">•</span>
                                         <span class="local-date whitespace-nowrap" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                     </div>
                                 </div>
                                 <div class="shrink-0 flex items-center gap-4">
-                                    <span class="text-xs font-medium text-gray-400 hidden sm:inline w-12 text-right">{r.download_count || 0} dl</span>
-                                    <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200">
+                                    <span class="text-xs font-medium text-gray-400 dark:text-neutral-500 hidden sm:inline w-12 text-right">{r.download_count || 0} dl</span>
+                                    <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
                                         Download
                                     </a>
                                     {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
@@ -554,31 +554,31 @@ app.get('/resources/view/:id', async (c) => {
             <div class="max-w-4xl mx-auto py-8 px-4">
                 <a href={`/resources?subject=${encodeURIComponent(resource.subject)}`} class="text-blue-600 hover:underline mb-6 inline-block">← Back to {resource.subject} Resources</a>
 
-                <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
+                <div class="bg-white dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm p-8">
                     <div class="flex items-start justify-between mb-6">
                         <div>
-                            <h1 class="text-3xl font-bold text-gray-900 mb-3">{resource.title}</h1>
-                            <div class="flex flex-wrap items-center gap-x-3 text-sm text-gray-500">
-                                <span class="bg-blue-100 text-blue-800 font-bold px-2 py-1 rounded text-xs uppercase tracking-wide">{resource.subject}</span>
+                            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-3">{resource.title}</h1>
+                            <div class="flex flex-wrap items-center gap-x-3 text-sm text-gray-500 dark:text-neutral-400">
+                                <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 font-bold px-2 py-1 rounded text-xs uppercase tracking-wide">{resource.subject}</span>
                                 <span class="local-date" data-format="datetime" data-timestamp={resource.created_at}>{formatDate(resource.created_at)}</span>
-                                <span class="text-gray-300">•</span>
+                                <span class="text-gray-300 dark:text-neutral-600">•</span>
                                 <span class="flex items-center">
-                                    Uploaded by: <b class="ml-1 text-gray-700">{resource.first_name ? `${resource.first_name} ${resource.last_name}` : 'Unknown'}</b>
+                                    Uploaded by: <b class="ml-1 text-gray-700 dark:text-neutral-200">{resource.first_name ? `${resource.first_name} ${resource.last_name}` : 'Unknown'}</b>
                                     <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(resource.tags) }}></span>
                                 </span>
                             </div>
                         </div>
-                        {resource.is_deleted && <span class="bg-red-100 text-red-800 font-bold px-3 py-1 rounded-full text-sm uppercase">Deleted</span>}
+                        {resource.is_deleted && <span class="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 font-bold px-3 py-1 rounded-full text-sm uppercase">Deleted</span>}
                     </div>
 
-                    <div class="bg-gray-50 p-6 rounded-lg mb-8 border border-gray-100">
-                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Description</h3>
-                        <p class="text-gray-800 whitespace-pre-wrap leading-relaxed">{resource.description || <span class="italic text-gray-400">No description provided.</span>}</p>
+                    <div class="bg-gray-50 dark:bg-neutral-900/50 p-6 rounded-lg mb-8 border border-gray-100 dark:border-neutral-700">
+                        <h3 class="text-sm font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider mb-2">Description</h3>
+                        <p class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap leading-relaxed">{resource.description || <span class="italic text-gray-400 dark:text-neutral-500">No description provided.</span>}</p>
                     </div>
 
-                    <div class="flex items-center justify-between border-t border-gray-100 pt-6">
-                        <div class="text-gray-500 text-sm">
-                            <span class="font-medium text-gray-700">{resource.download_count || 0}</span> downloads
+                    <div class="flex items-center justify-between border-t border-gray-100 dark:border-neutral-700 pt-6">
+                        <div class="text-gray-500 dark:text-neutral-400 text-sm">
+                            <span class="font-medium text-gray-700 dark:text-neutral-200">{resource.download_count || 0}</span> downloads
                         </div>
                         <div class="flex gap-4">
                             {!resource.is_deleted && user && (canModerateSubject(user, resource.subject) || user.id === resource.uploader_id) && (
