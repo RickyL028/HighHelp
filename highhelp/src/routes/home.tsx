@@ -79,10 +79,10 @@ app.get('/', async (c) => {
                     {/* Half Yearly */}
                     <div class="bg-white dark:bg-neutral-800 p-8 rounded-2xl border-2 border-secondary shadow-xl transform md:scale-110 z-10 hover:scale-115 transition-all duration-300 relative overflow-hidden group">
                         <div class="absolute top-0 left-0 w-full h-2 bg-secondary"></div>
-                        <h2 class="text-lg font-bold text-secondary mb-2 uppercase tracking-tight flex items-center justify-center gap-2">
+                        <h2 class="text-lg font-bold text-secondary mb-2 uppercase tracking-tight flex items-center justify-center dark:text-white gap-2">
                             Half Yearly
                         </h2>
-                        <div id="half-yearly-countdown" class="text-4xl md:text-5xl font-mono font-black text-gray-900 dark:text-white group-hover:text-secondary transition-colors">
+                        <div id="half-yearly-countdown" class="text-4xl md:text-5xl font-mono font-black text-gray-900 dark:text-white transition-colors">
                             --:--:--:--
                         </div>
                     </div>
@@ -101,7 +101,7 @@ app.get('/', async (c) => {
                     <img
                         src="https://assets.schools.nsw.gov.au/content/dam/doe/sws/schools/s/sydneyboys-h/logo.png"
                         alt="Sydney Boys High School Logo"
-                        class="h-48 w-auto object-contain drop-shadow-sm dark:invert dark:opacity-80"
+                        class="h-48 w-auto object-contain drop-shadow-sm dark:opacity-80"
                     />
                     <h1 class="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">HighHelp</h1>
                     <p class="text-lg text-gray-600 dark:text-gray-400">Designed and programmed specifically for, and by, class of 2027.</p>
