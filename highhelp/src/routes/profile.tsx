@@ -105,7 +105,7 @@ app.get('/profile', async (c) => {
                         </div>
 
                         {/* Password Change Section */}
-                        <div class="bg-white dark:bg-neutral-800 p-5 rounded-xl border border-gray-300 dark:border-neutral-700 shadow-sm">
+                        {/* <div class="bg-white dark:bg-neutral-800 p-5 rounded-xl border border-gray-300 dark:border-neutral-700 shadow-sm">
                             <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-neutral-100">Security</h2>
                             <form action="/profile" method="post" class="space-y-4">
                                 <input type="hidden" name="action" value="change_password" />
@@ -117,7 +117,7 @@ app.get('/profile', async (c) => {
                                     Update Password
                                 </button>
                             </form>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>

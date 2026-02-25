@@ -151,7 +151,7 @@ export const TimetableTicker = html`
                     if (next) {
                         targetTime = next.date;
                         mainText = next.subject;
-                        subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
+                        subText = \`<span class="font-bold text-black dark:text-white">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
                         timerLabel = next.isCurrent ? "Remaining" : "Until Start";
                     } else {
                         mainText = "No Upcoming Classes";
