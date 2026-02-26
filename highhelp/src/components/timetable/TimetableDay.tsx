@@ -48,17 +48,13 @@ export const TimetableDay = html`
 
             if (apiData) {
                 if (apiData.bells && apiData.bells.length > 0) {
-                    if(bellCache[currentDateStr]) {
-                        currentBells = bellCache[currentDateStr];
-                    } else {
-                        currentBells = apiData.bells.map(b => ({
-                            period: b.period || b.bell,  
-                            startTime: b.startTime || b.time,
-                            endTime: b.endTime || '23:59',
-                            label: b.bellDisplay || b.bell || b.period
-                        }));
-                        bellCache[currentDateStr] = currentBells;
-                    }
+                    currentBells = apiData.bells.map(b => ({
+                        period: b.period || b.bell,  
+                        startTime: b.startTime || b.time,
+                        endTime: b.endTime || '23:59',
+                        label: b.bellDisplay || b.bell || b.period
+                    }));
+                    bellCache[currentDateStr] = currentBells;
                 }
                 if (apiData.timetable?.timetable?.periods) periodsData = apiData.timetable.timetable.periods;
                 if (apiData.classVariations) classVariations = apiData.classVariations;
@@ -276,8 +272,8 @@ export const TimetableDay = html`
         // Fetch fresh data in the background and re-render quietly when they arrive
         try {
             const [apiData, clipboardEvents, notesRes] = await Promise.all([
-                fetchDayData(currentDateStr),
-                fetchCalendarData(currentDateStr),
+                fetchDayData(currentDateStr, true),
+                fetchCalendarData(currentDateStr, true),
                 fetch('/timetable/notes?date=' + currentDateStr).then(res => res.json()).catch(() => ({ notes: [] }))
             ]);
             

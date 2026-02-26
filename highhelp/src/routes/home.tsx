@@ -59,54 +59,55 @@ app.get('/', async (c) => {
         `).all()
     ]);
 
-
-    const HALF_YEARLY_DATE = "2026-05-25T09:00:00";
-    const c1d = "2026-02-02T09:00:00";
+    const HALF_YEARLY_DATE = "2026-05-15T09:00:00";
 
     return c.html(
         <Layout title="Home" user={user}>
             <div class="space-y-12 px-4 md:px-0 pb-12 pt-12">
-                {/* Countdowns Section */}
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto items-center">
-                    {/* School Starts */}
-                    <div class="bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-default">
-                        <h2 class="text-sm font-bold text-gray-500 dark:text-neutral-400 mb-1 uppercase tracking-wider">School Starts</h2>
-                        <div id="c1-countdown" class="text-2xl md:text-3xl font-mono font-bold text-gray-800 dark:text-neutral-100">
+
+                {/* Timeline & Countdowns Section */}
+                <div class="flex flex-col gap-6 max-w-4xl mx-auto mb-12 ">
+
+                    {/* Row 1: Half Yearly Banner */}
+                    <div class="flex flex-col items-center justify-center gap-4 w-full mb-6">
+
+
+                        <div id="half-yearly-countdown" class="mb-6 text-center text-5xl md:text-7xl font-mono font-black text-gray-900 dark:text-white tracking-tight">
                             --:--:--:--
                         </div>
-                    </div>
-
-                    {/* Half Yearly */}
-                    <div class="bg-white dark:bg-neutral-800 p-8 rounded-2xl border-2 border-secondary shadow-xl transform md:scale-110 z-10 hover:scale-115 transition-all duration-300 relative overflow-hidden group">
-                        <div class="absolute top-0 left-0 w-full h-2 bg-secondary"></div>
-                        <h2 class="text-lg font-bold text-secondary mb-2 uppercase tracking-tight flex items-center justify-center dark:text-white gap-2">
-                            Half Yearly
+                        <h2 class="text-xl md:text-1xl font-bold text-secondary tracking-widest flex items-center justify-center dark:text-white gap-2">
+                            Until Half Yearly
                         </h2>
-                        <div id="half-yearly-countdown" class="text-4xl md:text-5xl font-mono font-black text-gray-900 dark:text-white transition-colors">
-                            --:--:--:--
-                        </div>
                     </div>
 
-                    {/* HSC */}
-                    <div class="bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-default">
-                        <h2 class="text-sm font-bold text-gray-500 dark:text-neutral-400 mb-1 uppercase tracking-wider">HSC 2027</h2>
-                        <div id="hsc-countdown" class="text-2xl md:text-3xl font-mono font-bold text-gray-800 dark:text-neutral-100">
-                            -- Weeks
-                        </div>
-                    </div>
+
+
+
                 </div>
 
                 {/* Homepage logo */}
-                <div class="flex flex-col items-center justify-center space-y-4 py-4">
+                <div class="flex flex-col items-center justify-center space-y-4 py-4 mt-6 ">
                     <img
                         src="https://assets.schools.nsw.gov.au/content/dam/doe/sws/schools/s/sydneyboys-h/logo.png"
                         alt="Sydney Boys High School Logo"
                         class="h-48 w-auto object-contain drop-shadow-sm dark:opacity-80"
                     />
                     <h1 class="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">HighHelp</h1>
-                    <p class="text-lg text-gray-600 dark:text-gray-400">Designed and programmed specifically for, and by, class of 2027.</p>
+                    <p class="text-lg text-gray-600 dark:text-gray-400 text-center">Designed and programmed specifically for, and by, class of 2027.</p>
                 </div>
 
+                <div class="flex flex-col gap-6 max-w-4xl mx-auto">
+
+                    <div id="hsc-progress-container" class="mt-16 flex flex-wrap gap-1.5 sm:gap-2 justify-center md:justify-start">
+                    </div>
+                    <div class="flex flex-col items-center justify-center gap-4 w-full">
+                        <h2 class="w-full text-center text-xl md:text-1xl font-bold text-secondary tracking-widest flex items-center justify-center dark:text-white gap-2">
+                            six years.
+                        </h2>
+                    </div>
+
+
+                </div>
                 {/* lastest updates */}
                 <div class="max-w-7xl mx-auto space-y-12">
 
@@ -232,16 +233,44 @@ app.get('/', async (c) => {
 
                 </div>
 
-
-
                 <script dangerouslySetInnerHTML={{
                     __html: `
                     (function() {
                         const halfYearlyTarget = new Date("${HALF_YEARLY_DATE}").getTime();
-                        const c1 = new Date("${c1d}").getTime();
-                        // HSC 2027 Target: Oct 12, 2027 (Approx)
-                        const hscTarget = new Date("2027-10-12T09:00:00").getTime();
+                        
+                        // HSC Timeline Setup
+                        const hscStart = new Date("2022-01-01T00:00:00").getTime();
+                        const hscEnd = new Date("2027-10-12T09:00:00").getTime(); // Approximate HSC Start
+                        
+                        // 1. Generate HSC Progress Grid
+                        function initHscProgress() {
+                            const now = new Date().getTime();
+                            
+                            // Calculate in weeks
+                            const msPerWeek = 1000 * 60 * 60 * 24 * 7;
+                            const totalWeeks = Math.ceil((hscEnd - hscStart) / msPerWeek);
+                            const elapsedWeeks = Math.max(0, Math.floor((now - hscStart) / msPerWeek));
+                            
+                            const container = document.getElementById("hsc-progress-container");
+                            
+                            
+                            if (container) {
+                                // textContainer.innerText = \`\${elapsedWeeks} / \${totalWeeks} Weeks Completed\`;
+                                
+                                let boxesHtml = '';
+                                for(let i = 0; i < totalWeeks; i++) {
+                                    if(i < elapsedWeeks) {
+                                        boxesHtml += '<div class="w-5 h-5 md:w-3 md:h-3 bg-blue-600 dark:bg-blue-500 rounded-[1px] shadow-sm" title="Week ' + (i+1) + ' (Completed)"></div>';
+                                    } else {
+                                        boxesHtml += '<div class="w-5 h-5 md:w-3 md:h-3 bg-gray-100 dark:bg-neutral-700 border border-gray-200 dark:border-neutral-600 rounded-[1px]" title="Week ' + (i+1) + '"></div>';
+                                    }
+                                }
+                                boxesHtml += '<div class="w-5 h-5 md:w-3 md:h-3 bg-red-600 dark:bg-red-500 rounded-[1px] shadow-sm" title="Week ' + (totalWeeks+1) + ' (HSC)"></div>';
+                                container.innerHTML = boxesHtml;
+                            }
+                        }
 
+                        // 2. Continuous Countdown Timer
                         function updateCountdowns() {
                             const now = new Date().getTime();
 
@@ -254,33 +283,18 @@ app.get('/', async (c) => {
                                 const hours = Math.floor((distanceHY % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                                 const minutes = Math.floor((distanceHY % (1000 * 60 * 60)) / (1000 * 60));
                                 const seconds = Math.floor((distanceHY % (1000 * 60)) / 1000);
-                                document.getElementById("half-yearly-countdown").innerText = \`\${days}d \${hours}h \${minutes}m \${seconds}s\`;
-                            }
-
-                            // C1 Logic
-                            const distanceC1 = c1 - now;
-                            if (distanceC1 < 0) {
-                                document.getElementById("c1-countdown").innerText = "Started";
-                            } else {
-                                const days = Math.floor(distanceC1 / (1000 * 60 * 60 * 24));
-                                const hours = Math.floor((distanceC1 % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                                const minutes = Math.floor((distanceC1 % (1000 * 60 * 60)) / (1000 * 60));
-                                const seconds = Math.floor((distanceC1 % (1000 * 60)) / 1000);
-                                document.getElementById("c1-countdown").innerText = \`\${days}d \${hours}h \${minutes}m \${seconds}s\`;
-                            }
-
-                            // HSC Logic (Weeks)
-                            const distanceHSC = hscTarget - now;
-                            if (distanceHSC < 0) {
-                                document.getElementById("hsc-countdown").innerText = "Done!";
-                            } else {
-                                const weeks = Math.ceil(distanceHSC / (1000 * 60 * 60 * 24 * 7));
-                                document.getElementById("hsc-countdown").innerText = \`\${weeks} Weeks\`;
+                                
+                                // Format text nicely (added zero padding for stable width on mono font)
+                                const pad = (n) => n.toString().padStart(2, '0');
+                                document.getElementById("half-yearly-countdown").innerText = 
+                                    \`\${days}d \${pad(hours)}h \${pad(minutes)}m \${pad(seconds)}s\`;
                             }
                         }
 
+                        // Initialization
+                        initHscProgress();
                         setInterval(updateCountdowns, 1000);
-                        updateCountdowns(); // Initial call
+                        updateCountdowns();
                     })();
                 ` }} />
 

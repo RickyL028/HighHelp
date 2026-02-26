@@ -198,8 +198,17 @@ export const TimetableCore = html`
 
     async function fetchCalendarData(date, forceFetch = false) {
         if (!forceFetch) {
-            const cached = getCachedCalendarData(date);
-            if (cached) return cached;
+            const cachedRaw = localStorage.getItem('calendarData_' + date);
+            if (cachedRaw) {
+                try {
+                    const cachedObj = JSON.parse(cachedRaw);
+                    const now = new Date().getTime();
+                    // 5 minute cache validity
+                    if (cachedObj.timestamp && (now - cachedObj.timestamp < 300000)) {
+                        return cachedObj.events || [];
+                    }
+                } catch(e) {}
+            }
         }
 
         let urls = [];

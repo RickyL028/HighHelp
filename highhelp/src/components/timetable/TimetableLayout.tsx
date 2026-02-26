@@ -51,7 +51,7 @@ export const TimetableLayout = ({ children }: { children: Child }) => (
                 </div>
 
                 <button id="btn-reset" class="h-7 px-4 flex items-center justify-center rounded-lg border border-red-500 text-red-500 font-medium text-sm hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
-                    Reset
+                    Today
                 </button>
 
                 <button id="btn-next" class="w-10 h-7 flex items-center justify-center rounded-lg border border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
