@@ -261,26 +261,33 @@ export const TimetableDay = html`
         }
 
         // --- 2. FAST PASS (Synchronous Render) ---
-        // Render immediately using your local/cached base timetable arrays
+        // Render immediately using local/cached base timetable arrays
         buildUI(null, [], []);
 
-        // --- 3. BACKGROUND PASS (Asynchronous Fetch & Update) ---
-        // Fetch real-time changes & calendar implicitly and re-render quietly when they arrive
+        // --- 3. STALE PASS (Cached Render) ---
+        // If we have any cached data from previous sessions, show it immediately
+        const cachedApi = getCachedDayData(currentDateStr);
+        const cachedCal = getCachedCalendarData(currentDateStr);
+        if (cachedApi || (cachedCal && cachedCal.length > 0)) {
+            buildUI(cachedApi, cachedCal || [], []);
+        }
+
+        // --- 4. BACKGROUND PASS (Asynchronous Fetch & Update) ---
+        // Fetch fresh data in the background and re-render quietly when they arrive
         try {
             const [apiData, clipboardEvents, notesRes] = await Promise.all([
                 fetchDayData(currentDateStr),
                 fetchCalendarData(currentDateStr),
-                fetch(\`/timetable/notes?date=\${currentDateStr}\`).then(res => res.json()).catch(() => ({ notes: [] }))
+                fetch('/timetable/notes?date=' + currentDateStr).then(res => res.json()).catch(() => ({ notes: [] }))
             ]);
             
             const dayNotes = notesRes?.notes || [];
             
-            // Second Render: Overwrite DOM structure seamlessly with real-time data
+            // Final Render: Overwrite DOM structure seamlessly with real-time data
             buildUI(apiData, clipboardEvents || [], dayNotes);
             
         } catch (error) {
             console.error("Failed to fetch fresh data in the background:", error);
-            // It safely degrades to leaving your base-timetable currently shown on screen intact!
         }
     }
 </script>
