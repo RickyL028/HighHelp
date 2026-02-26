@@ -101,9 +101,9 @@ app.get('/', async (c) => {
                     <div id="hsc-progress-container" class="mt-16 flex flex-wrap gap-1.5 sm:gap-2 justify-center md:justify-start">
                     </div>
                     <div class="flex flex-col items-center justify-center gap-4 w-full">
-                        <h2 class="w-full text-center text-xl md:text-1xl font-bold text-secondary tracking-widest flex items-center justify-center dark:text-white gap-2">
-                            six years.
-                        </h2>
+                        <h4 class="w-full text-center text-xl md:text-1xl font-bold text-secondary tracking-widest flex items-center justify-center dark:text-white gap-2">
+
+                        </h4>
                     </div>
 
 

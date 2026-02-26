@@ -76,23 +76,32 @@ export const TimetableDay = html`
                 const classVar = classVariations[pKey];
                 const roomVar = roomVariations[pKey];
                 
+                // Enrich base data BEFORE checking variations so overrides don't get undone
                 if (data) data = enrichPeriod(data);
 
                 let highlightChange = false;
                 let variationTags = [];
+                let isSub = false;
+                let isNoCover = false;
+                
+                // Set default teacher string from enriched base data
+                let teacherDisplay = data ? (data.fullTeacher || data.teacher || '') : '';
 
                 if (classVar && classVar.type !== 'novariation') {
                     highlightChange = true;
-                    if (!data) data = { title: classVar.title || 'Variation', teacher: classVar.teacher };
-                    if (classVar.title) data.title = classVar.title;
-                    if (classVar.casualSurname) {
-                        data.fullTeacher = classVar.casualSurname;
-                        data.teacher = classVar.casual || classVar.casualSurname;
-                        variationTags.push('Sub: ' + classVar.casualSurname);
-                    } else if (classVar.type === 'nocover') {
-                        variationTags.push('No Cover');
+                    if (!data) {
+                        data = { title: classVar.title || 'Variation', teacher: classVar.teacher };
+                        data = enrichPeriod(data);
                     }
-                    data = enrichPeriod(data);
+                    if (classVar.title) data.title = classVar.title;
+
+                    // If it's a sub, completely replace the teacher string
+                    if (classVar.casualSurname || classVar.casual) {
+                        isSub = true;
+                        teacherDisplay = classVar.casualSurname || classVar.casual || 'Sub';
+                    } else if (classVar.type === 'nocover') {
+                        isNoCover = true;
+                    }
                 }
 
                 if (roomVar) {
@@ -133,28 +142,38 @@ export const TimetableDay = html`
                     const nextTimeStr = getNextSubjectOccurrence(data.subjectCode, currentDateStr, bell.period);
                     const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
                     const borderClass = highlightChange ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-neutral-900' : '';
-                    const badgeText = variationTags.length > 0 ? variationTags[0] : 'UPDATED';
-                    const changedBadge = highlightChange ? \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 text-[10px] font-bold rounded animate-pulse">\${badgeText}</span>\` : '';
+                    
+                    let changedBadge = '';
+                    if (variationTags.length > 0) {
+                        changedBadge = \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 text-[10px] font-bold rounded animate-pulse">\${variationTags[0]}</span>\`;
+                    }
+
                     const roomColorClass = (highlightChange && (roomVar || (classVar && classVar.roomTo))) ? 'text-red-600 dark:text-red-400 font-extrabold' : 'text-gray-900 dark:text-white';
                     
+                    const cardBgClass = isNoCover ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 line-through' : 'bg-gray-100 dark:bg-neutral-800';
+                    const titleColorClass = isNoCover ? 'text-red-700 dark:text-red-400' : 'text-gray-900 dark:text-white';
+                    
+                    // Mark the substitute teacher in bold red, or just normal styling for standard periods
+                    const teacherColorClass = isNoCover ? 'text-red-700 dark:text-red-400' : (isSub ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-900 dark:text-gray-100');
+
                     innerHtml = \`
-                        <div class="period-card relative flex items-center justify-between bg-gray-100 dark:bg-neutral-800 rounded-lg p-2.5 shadow-sm hover:bg-gray-50 dark:hover:bg-neutral-700 transition-all cursor-default group \${borderClass}"
+                        <div class="period-card relative flex items-center justify-between \${cardBgClass} rounded-lg p-2.5 shadow-sm hover:bg-opacity-80 transition-all cursor-default group \${borderClass}"
                             data-subject="\${data.subjectCode}"
                             data-title="\${data.title || data.subject || ''}"
-                            data-teacher="\${data.fullTeacher || data.teacher || ''}"
+                            data-teacher="\${teacherDisplay}"
                             data-room="\${data.room || ''}"
                             data-start="\${bell.startTime}"
                             data-end="\${bell.endTime}"
                             data-link="\${data.link || ''}"
                             data-color="\${stripColor}">
                                 <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" style="background-color: \${stripColor};"></div>
-                                <div class="pl-3 font-medium text-gray-900 dark:text-white \${textSize} flex items-center">
+                                <div class="pl-3 font-medium \${titleColorClass} \${textSize} flex items-center">
                                     \${data.title || data.subject || 'Unknown'}
                                     \${changedBadge}
                                     \${notesBadge}
                                 </div>
                                 <div class="pl-3 flex items-center gap-4 \${textSize}">
-                                    <span class="text-gray-900 dark:text-gray-100 font-medium">\${data.fullTeacher || data.teacher || ''}</span>
+                                    <span class="\${teacherColorClass}">\${teacherDisplay}</span>
                                     \${data.room ? \`<span class="font-bold \${roomColorClass}">\${data.room}</span>\` : ''}
                                 </div>
                                 <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 dark:bg-neutral-950 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
@@ -162,7 +181,7 @@ export const TimetableDay = html`
                                         <span class="font-bold text-sm">\${data.title}</span>
                                         <span class="text-gray-300 dark:text-neutral-400 font-mono">\${nextTimeStr}</span>
                                     </div>
-                                    \${highlightChange ? '<div class="text-red-400 dark:text-red-500 font-bold mb-1">' + variationTags.join(', ') + '</div>' : ''}
+                                    \${highlightChange && (variationTags.length > 0 || isSub || isNoCover) ? '<div class="text-red-400 dark:text-red-500 font-bold mb-1">' + (isNoCover ? 'No Cover' : (isSub ? 'Sub: ' + teacherDisplay : variationTags.join(', '))) + '</div>' : ''}
                                     <div class="text-[10px] text-gray-400 dark:text-neutral-500 mb-1 uppercase tracking-wider">Cycle</div>
                                     \${miniCycle}
                                     \${linkPreviewHtml}
