@@ -68,6 +68,16 @@ export const TimetableLayout = ({ children }: { children: Child }) => (
             </div>
 
             <div id="timetable-list" class="space-y-4"></div>
+            
+                    <div class="flex items-center justify-center py-10 opacity-60">
+                        <div class="h-px bg-gray-300 dark:bg-neutral-800 flex-grow"></div>
+                        <span class="mx-4 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-neutral-600">
+                            End of Day
+                        </span>
+                        <div class="h-px bg-gray-300 dark:bg-neutral-800 flex-grow"></div>
+                    </div>
+                
+
         </div>
 
         <div id="error-msg" class="hidden text-center py-12 text-red-500"></div>
