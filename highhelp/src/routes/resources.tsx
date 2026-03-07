@@ -34,7 +34,7 @@ app.get('/resources', async (c) => {
                 <div class="mx-auto space-y-6">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
                         <h1 class="text-3xl font-bold">Resources Feed</h1>
-                        <a href="#browse-subjects" class="text-blue-600 hover:underline">Browse all subjects ↓</a>
+                        <a href="#browse-subjects" class="text-blue-600 hover:underline">Upload Resources ↓</a>
                     </div>
 
                     {/* Top Controls Bar (Search, Filters, Sort, View) */}
@@ -106,7 +106,7 @@ app.get('/resources', async (c) => {
                                             <span class="ml-1 shrink-0" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
                                         </div>
                                         <div class="flex items-center gap-3 shrink-0">
-                                            <span class="text-xs font-medium text-gray-400 dark:text-neutral-500">{r.download_count || 0} dl</span>
+                                            
                                             <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300" title="Download">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                             </a>
@@ -141,7 +141,7 @@ app.get('/resources', async (c) => {
                                             </div>
                                         </div>
                                         <div class="shrink-0 flex items-center gap-4">
-                                            <span class="text-xs font-medium text-gray-400 dark:text-neutral-500 hidden sm:inline w-12 text-right">{r.download_count || 0} dl</span>
+                                            
                                             <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
                                                 View
                                             </a>
@@ -272,7 +272,7 @@ app.get('/resources', async (c) => {
                     <hr class="border-gray-200 dark:border-neutral-700 my-8" id="browse-subjects" />
 
                     <section class="bg-gray-50 dark:bg-neutral-800 p-6 rounded-lg border border-gray-100 dark:border-neutral-700">
-                        <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-white">Browse Specific Subject Directory</h2>
+                        <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-white">Upload To...</h2>
                         <SubjectSelector baseUrl="/resources" type="standard" />
                     </section>
                 </div>
@@ -380,7 +380,7 @@ app.get('/resources', async (c) => {
                                     <span class="ml-1 shrink-0" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
                                 </div>
                                 <div class="flex items-center gap-3 shrink-0">
-                                    <span class="text-xs font-medium text-gray-400 dark:text-neutral-500">{r.download_count || 0} dl</span>
+                                    
                                     <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300" title="Download">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                     </a>
@@ -424,7 +424,7 @@ app.get('/resources', async (c) => {
                                     </div>
                                 </div>
                                 <div class="shrink-0 flex items-center gap-4">
-                                    <span class="text-xs font-medium text-gray-400 dark:text-neutral-500 hidden sm:inline w-12 text-right">{r.download_count || 0} dl</span>
+                                    
                                     <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
                                         Download
                                     </a>
