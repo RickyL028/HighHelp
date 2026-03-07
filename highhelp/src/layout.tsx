@@ -299,7 +299,7 @@ ${props.latex ? html`
         ${!props.hideFooter && html`
         <footer class="bg-white/5 dark:bg-neutral-900/50 text-gray-400 dark:text-neutral-500 py-6 mt-auto">
           <div class="max-w-[95%] mx-auto px-4 text-center">
-            <p>&copy; 2025 HighHelp</p>
+            <p>&copy; 2025 ~ 2026 HighHelp</p>
           </div>
         </footer>
         `}
