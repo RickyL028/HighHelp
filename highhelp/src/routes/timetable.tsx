@@ -40,6 +40,7 @@ app.get('/', async (c) => {
                     window.currentUserId = ${user.id};
                     (function() {
                         function render() {
+                            if (window.location.pathname !== '/timetable') return;
                             activeSubject = null;
                             hoveredPeriodData = null;
                             
@@ -120,7 +121,7 @@ app.get('/', async (c) => {
                         }
 
                         window.addEventListener('todayDataRefreshed', (e) => {
-                            if (e.detail.date === currentDateStr) render();
+                            if (window.location.pathname === '/timetable' && e.detail.date === currentDateStr) render();
                         });
 
                         document.getElementById('btn-prev').onclick = () => changeDate(-1);

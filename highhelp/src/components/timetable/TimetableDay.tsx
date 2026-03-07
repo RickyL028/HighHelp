@@ -290,6 +290,10 @@ export const TimetableDay = html`
             buildUI(cachedApi, cachedCal || [], []);
         }
 
+        // Capture snapshot to prevent overwriting if user has navigated away or changed date
+        const snapshotDate = currentDateStr;
+        const snapshotView = currentView;
+
         // --- 4. BACKGROUND PASS (Asynchronous Fetch & Update) ---
         // Fetch fresh data in the background and re-render quietly when they arrive
         try {
@@ -299,6 +303,11 @@ export const TimetableDay = html`
                 fetch('/timetable/notes?date=' + currentDateStr).then(res => res.json()).catch(() => ({ notes: [] }))
             ]);
             
+            // If the user has changed view or date while we were fetching, Don't overwrite the DOM
+            if (currentDateStr !== snapshotDate || currentView !== snapshotView) {
+                return;
+            }
+
             const dayNotes = notesRes?.notes || [];
             
             // Final Render: Overwrite DOM structure seamlessly with real-time data
