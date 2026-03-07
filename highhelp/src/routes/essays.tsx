@@ -34,7 +34,7 @@ app.get('/essays', async (c) => {
                 <div class="mx-auto space-y-12">
                     <section>
                         <div class="flex justify-between items-center mb-6">
-                            <h1 class="text-3xl font-bold">Essay Exchange</h1>
+                            <h1 class="text-3xl font-bold dark:text-white">Essay Exchange</h1>
                             {user ? (
                                 <a href="/essays/create" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 transition shadow-sm">
                                     + Submit Essay
@@ -47,27 +47,27 @@ app.get('/essays', async (c) => {
                                 <p class="text-gray-500 italic">No essays submitted yet.</p>
                             ) : (
                                 recentEssays?.map((e: any) => (
-                                    <div class={`bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors group block ${e.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
+                                    <div class={`bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-4 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors group block ${e.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}>
                                         <div class="flex justify-between items-start">
                                             <div class="flex-grow">
                                                 <a href={`/essays/view/${e.id}`} class="block">
                                                     <h3 class="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors mb-1 leading-snug">{e.title}</h3>
                                                 </a>
 
-                                                <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
-                                                    <span class="font-bold text-blue-700 uppercase tracking-wide">{e.subject}</span>
-                                                    <span class="text-gray-300">•</span>
+                                                <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
+                                                    <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{e.subject}</span>
+                                                    <span class="text-gray-300 dark:text-neutral-600">•</span>
                                                     <span class="local-date" data-timestamp={e.created_at}>{formatDate(e.created_at)}</span>
                                                     {e.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                                 </div>
 
-                                                <div class="mt-2 text-xs text-gray-500 font-medium">
+                                                <div class="mt-2 text-xs text-gray-500 dark:text-neutral-400 font-medium">
                                                     <span class="flex items-center gap-4">
                                                         <span class="flex items-center gap-1">
                                                             📝 {e.feedback_count} Feedback
                                                         </span>
                                                         {e.full_marks ? (
-                                                            <span class="bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded text-gray-600">Max: {e.full_marks}</span>
+                                                            <span class="bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-neutral-400">Max: {e.full_marks}</span>
                                                         ) : null}
                                                     </span>
                                                 </div>
@@ -79,10 +79,10 @@ app.get('/essays', async (c) => {
                         </div>
                     </section>
 
-                    <hr class="border-gray-200" />
+                    <hr class="border-gray-200 dark:border-neutral-700" />
 
                     <section>
-                        <h2 class="text-xl font-bold mb-4">Browse by Subject</h2>
+                        <h2 class="text-xl font-bold mb-4 dark:text-white">Browse by Subject</h2>
                         <SubjectSelector baseUrl="/essays" type="essay" />
                     </section>
                 </div>
@@ -107,8 +107,8 @@ app.get('/essays', async (c) => {
             <div class="mx-auto">
                 <div class="flex items-center justify-between mb-6">
                     <div>
-                        <h1 class="text-3xl font-bold">{subject} Essays</h1>
-                        <a href="/essays" class="text-blue-600 hover:underline text-sm">← All Subjects</a>
+                        <h1 class="text-3xl font-bold dark:text-white">{subject} Essays</h1>
+                        <a href="/essays" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">← All Subjects</a>
                     </div>
                     {user ? (
                         <a href={`/essays/create?subject=${encodeURIComponent(subject)}`} class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 transition shadow-sm">
@@ -135,39 +135,39 @@ app.get('/essays', async (c) => {
                 {/* Grid View */}
                 <div id="grid-view-container" class="space-y-4">
                     {results?.length === 0 ? (
-                        <div class="bg-gray-50 p-8 text-center rounded border border-dashed border-gray-300">
-                            <p class="text-gray-500 mb-2">No essays in {subject} yet.</p>
+                        <div class="bg-gray-50 dark:bg-neutral-800 p-8 text-center rounded border border-dashed border-gray-300 dark:border-neutral-700">
+                            <p class="text-gray-500 dark:text-neutral-400 mb-2">No essays in {subject} yet.</p>
                             {user ? (
-                                <a href={`/essays/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 hover:underline">Submit the first essay!</a>
+                                <a href={`/essays/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 dark:text-blue-400 hover:underline">Submit the first essay!</a>
                             ) : (
-                                <a href="/login" class="text-blue-600 hover:underline">Login to submit an essay!</a>
+                                <a href="/login" class="text-blue-600 dark:text-blue-400 hover:underline">Login to submit an essay!</a>
                             )}
                         </div>
                     ) : (
                         results.map((e: any) => (
                             <div
-                                class={`search-item bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors group h-full flex flex-col justify-between ${e.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
+                                class={`search-item bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-4 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors group h-full flex flex-col justify-between ${e.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}
                                 data-search-text={`${e.title} ${e.subject} ${e.question || ''}`}
                             >
                                 <div class="flex justify-between items-start">
                                     <div class="flex-grow">
                                         <a href={`/essays/view/${e.id}`} class="block">
-                                            <h3 class="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors mb-1 leading-snug">{e.title}</h3>
+                                            <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors mb-1 leading-snug">{e.title}</h3>
                                         </a>
 
-                                        <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
-                                            <span class="font-bold text-blue-700 uppercase tracking-wide">{e.subject}</span>
-                                            <span class="text-gray-300">•</span>
+                                        <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
+                                            <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{e.subject}</span>
+                                            <span class="text-gray-300 dark:text-neutral-600">•</span>
                                             <span class="local-date" data-timestamp={e.created_at}>{formatDate(e.created_at)}</span>
                                             {e.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                         </div>
 
-                                        <div class="mt-2 text-xs text-gray-500 font-medium flex items-center gap-3">
+                                        <div class="mt-2 text-xs text-gray-500 dark:text-neutral-400 font-medium flex items-center gap-3">
                                             <span class="flex items-center gap-1">
                                                 📝 {e.feedback_count}
                                             </span>
                                             {e.full_marks ? (
-                                                <span class="bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded text-gray-600">Max: {e.full_marks}</span>
+                                                <span class="bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-neutral-400">Max: {e.full_marks}</span>
                                             ) : null}
                                         </div>
                                     </div>
@@ -297,7 +297,7 @@ app.get('/essays/create', async (c) => {
                             <input
                                 type="file"
                                 name="file"
-                                class="block w-full text-sm text-gray-500"
+                                class="block w-full text-sm text-gray-500 dark:text-neutral-400"
                                 accept=".pdf,.doc,.docx,.txt"
                                 onchange="if(this.files[0].size > 26214400){ alert('File is too big! Max size is 25MB.'); this.value = ''; }"
                             />
@@ -305,7 +305,7 @@ app.get('/essays/create', async (c) => {
                     </div>
 
                     <div class="flex items-center justify-end gap-4">
-                        <a href="/essays" class="text-gray-500 hover:text-gray-700">Cancel</a>
+                        <a href="/essays" class="text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200">Cancel</a>
                         <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md font-bold hover:bg-blue-700 transition">
                             Submit (-1 Point)
                         </button>
@@ -399,33 +399,33 @@ app.get('/essays/view/:id', async (c) => {
         <Layout title={essay.title} user={user}>
             <div class="mx-auto">
                 <div class="mb-4">
-                    <a href={`/essays?subject=${encodeURIComponent(essay.subject)}`} class="text-blue-600 hover:underline text-sm">← Back to {essay.subject}</a>
+                    <a href={`/essays?subject=${encodeURIComponent(essay.subject)}`} class="text-blue-600 dark:text-blue-400 hover:underline text-sm">← Back to {essay.subject}</a>
                 </div>
 
                 {/* Essay */}
-                <div class={`bg-white rounded-lg shadow-md border overflow-hidden mb-8 ${essay.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
-                    <div class="p-6 border-b border-gray-100">
+                <div class={`bg-white dark:bg-neutral-800 rounded-lg shadow-md border overflow-hidden mb-8 ${essay.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-neutral-700'}`}>
+                    <div class="p-6 border-b border-gray-100 dark:border-neutral-700">
                         {essay.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Essay</span>
-                            <span class="text-gray-400 text-sm local-date" data-timestamp={essay.created_at} data-format="datetime">| {formatDate(essay.created_at)}</span>
+                            <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Essay</span>
+                            <span class="text-gray-400 dark:text-neutral-500 text-sm local-date" data-timestamp={essay.created_at} data-format="datetime">| {formatDate(essay.created_at)}</span>
                             {essay.full_marks && (
-                                <span class="text-gray-500 text-sm font-medium ml-auto">Full Marks: {essay.full_marks}</span>
+                                <span class="text-gray-500 dark:text-neutral-400 text-sm font-medium ml-auto">Full Marks: {essay.full_marks}</span>
                             )}
                         </div>
 
-                        <h1 class="text-3xl font-bold text-gray-900 mb-2">{essay.title}</h1>
+                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{essay.title}</h1>
 
                         {essay.question && (
-                            <div class="bg-brown-300 border border-brown-100 p-3 rounded mb-6 text-gray-700 italic text-sm">
-                                <span class="font-bold text-brown-600 not-italic">Question:</span> {essay.question}
+                            <div class="bg-brown-300 dark:bg-amber-900/20 border border-brown-100 dark:border-amber-900/40 p-3 rounded mb-6 text-gray-700 dark:text-neutral-300 italic text-sm">
+                                <span class="font-bold text-brown-600 dark:text-amber-500 not-italic">Question:</span> {essay.question}
                             </div>
                         )}
 
 
                         {essay.file_key && (
                             <div class="mb-1">
-                                <a href={`/download/${essay.file_key}`} target="_blank" class="inline-flex items-center bg-blue-100 text-blue-800 px-4 py-2 rounded hover:bg-blue-200 transition font-sm">
+                                <a href={`/download/${essay.file_key}`} target="_blank" class="inline-flex items-center bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 px-4 py-2 rounded hover:bg-blue-200 dark:hover:bg-blue-900/60 transition font-sm">
                                     Download Essay File
                                 </a>
                             </div>
@@ -433,15 +433,15 @@ app.get('/essays/view/:id', async (c) => {
 
 
                         {essay.content && (
-                            <div class="p-4 bg-gray-50 rounded border border-gray-200 font-serif whitespace-pre-wrap leading-relaxed">
+                            <div class="p-4 bg-gray-50 dark:bg-neutral-900 rounded border border-gray-200 dark:border-neutral-700 font-serif whitespace-pre-wrap leading-relaxed text-gray-800 dark:text-neutral-200">
                                 {essay.content}
                             </div>
                         )}
                     </div>
 
-                    <div class="bg-gray-50 px-6 py-3 flex items-center justify-between">
-                        <div class="text-sm text-gray-600 flex items-center">
-                            <span class="font-bold mr-1">Posted by:</span> -
+                    <div class="bg-gray-50 dark:bg-neutral-900/50 px-6 py-3 flex items-center justify-between">
+                        <div class="text-sm text-gray-600 dark:text-neutral-400 flex items-center">
+                            <span class="font-bold mr-1 text-gray-700 dark:text-neutral-300">Posted by:</span> -
                         </div>
                         {!essay.is_deleted && user && (canCommentModeration(user) || user.id === essay.author_id) && (
                             <form action={`/essays/view/${essayId}/delete`} method="post">
@@ -453,32 +453,32 @@ app.get('/essays/view/:id', async (c) => {
 
                 {/* Feedback Section */}
                 <div class="mb-8">
-                    <h2 class="text-xl font-bold text-gray-900 mb-4">{comments?.length || 0} Feedback Items</h2>
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{comments?.length || 0} Feedback Items</h2>
 
                     <div class="space-y-4">
                         {comments?.map((comment: any) => (
-                            <div class={`bg-white p-4 rounded-lg shadow-sm border relative ${comment.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-200'}`}>
+                            <div class={`bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-sm border relative ${comment.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-neutral-700'}`}>
                                 {comment.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                                 <div class="flex justify-between items-start mb-2">
                                     <div class="flex items-center gap-2">
-                                        <span class="font-bold text-gray-800">
+                                        <span class="font-bold text-gray-800 dark:text-neutral-200">
                                             {comment.first_name ? `${comment.first_name} ${comment.last_name}` : 'Unknown'}
                                         </span>
                                         <span dangerouslySetInnerHTML={{ __html: renderTags(comment.tags) }}></span>
                                     </div>
                                     <div class="text-right">
-                                        <div class="text-xs text-gray-400 mb-1">
+                                        <div class="text-xs text-gray-400 dark:text-neutral-500 mb-1">
                                             <span class="local-date" data-timestamp={comment.created_at} data-format="datetime">{formatDate(comment.created_at)}</span>
                                         </div>
                                         {comment.grade !== null && (
-                                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-bold border border-blue-200">
+                                            <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded font-bold border border-blue-200 dark:border-blue-800">
                                                 Grade: {comment.grade} {essay.full_marks ? `/ ${essay.full_marks}` : ''}
                                             </span>
                                         )}
                                     </div>
                                 </div>
 
-                                <p class="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                                <p class="text-gray-700 dark:text-neutral-300 whitespace-pre-wrap">{comment.content}</p>
 
                                 {!comment.is_deleted && user && (canCommentModeration(user) || user.id === comment.author_id) && (
                                     <form action={`/essays/feedback/${comment.id}/delete`} method="post" class="text-right mt-1">
@@ -494,18 +494,18 @@ app.get('/essays/view/:id', async (c) => {
 
                 {/* Feedback */}
                 {user ? (
-                    <div class="bg-blue-50 p-6 rounded-lg border border-blue-100">
-                        <h3 class="text-lg font-bold text-blue-900 mb-2">Respond</h3>
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-100 dark:border-blue-900/40">
+                        <h3 class="text-lg font-bold text-blue-900 dark:text-blue-200 mb-2">Respond</h3>
 
                         <form action="/essays/feedback" method="post">
                             <input type="hidden" name="essay_id" value={essayId} />
 
                             <div class="mb-4">
-                                <label class="block text-sm font-bold text-blue-900 mb-1">Grade</label>
-                                <input type="number" step="0.5" name="grade" placeholder={essay.full_marks ? `Out of ${essay.full_marks}` : 'Score'} class="w-32 rounded-md border-blue-200 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500" />
+                                <label class="block text-sm font-bold text-blue-900 dark:text-blue-200 mb-1">Grade</label>
+                                <input type="number" step="0.5" name="grade" placeholder={essay.full_marks ? `Out of ${essay.full_marks}` : 'Score'} class="w-32 rounded-md border-blue-200 dark:border-blue-800 bg-white dark:bg-neutral-800 dark:text-white shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500" />
                             </div>
 
-                            <textarea name="content" required rows={4} class="w-full rounded-md border-blue-200 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 mb-4" placeholder="Write your feedback here..."></textarea>
+                            <textarea name="content" required rows={4} class="w-full rounded-md border-blue-200 dark:border-blue-800 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 mb-4 bg-white dark:bg-neutral-800 dark:text-white" placeholder="Write your feedback here..."></textarea>
                             <div class="text-right">
                                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition">
                                     Submit Feedback
@@ -514,9 +514,9 @@ app.get('/essays/view/:id', async (c) => {
                         </form>
                     </div>
                 ) : (
-                    <div class="bg-gray-100 p-6 rounded-lg text-center">
-                        <p class="text-gray-600 mb-2">To participate</p>
-                        <a href="/login" class="text-blue-600 font-bold hover:underline">Log in</a>
+                    <div class="bg-gray-100 dark:bg-neutral-800 p-6 rounded-lg text-center border border-gray-200 dark:border-neutral-700">
+                        <p class="text-gray-600 dark:text-neutral-400 mb-2">To participate</p>
+                        <a href="/login" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">Log in</a>
                     </div>
                 )}
 

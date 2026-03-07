@@ -22,12 +22,20 @@ export const TimetableTicker = html`
             if (!dData) continue;
             let bells = bellCache[dateStr];
             if (!bells) {
-                try {
-                    const fetched = await fetchDayData(dateStr);
-                    if (fetched && bellCache[dateStr]) {
-                        bells = bellCache[dateStr];
-                    }
-                } catch(e) { console.error('Ticker fetch error', e); }
+                const cached = getCachedDayData(dateStr);
+                if (cached && cached.bells) {
+                    bells = cached.bells.map(b => ({
+                        period: b.period || b.bell,  
+                        startTime: b.startTime || b.time,
+                        endTime: b.endTime || '23:59',
+                        label: b.bellDisplay || b.bell || b.period
+                    }));
+                    bellCache[dateStr] = bells;
+                }
+            }
+            // If still no bells and it's within first 2 days, try to fetch quietly
+            if (!bells && i < 2) {
+                fetchDayData(dateStr); // Trigger background fetch
             }
             if (!bells) bells = DEFAULT_BELL_TIMES;
             for(let bell of bells) {
@@ -151,7 +159,7 @@ export const TimetableTicker = html`
                     if (next) {
                         targetTime = next.date;
                         mainText = next.subject;
-                        subText = \`<span class="font-bold text-black">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
+                        subText = \`<span class="font-bold text-black dark:text-white">\${next.dayLabel}</span> • \${next.period}\${next.room ? ' • ' + next.room : ''}\`;
                         timerLabel = next.isCurrent ? "Remaining" : "Until Start";
                     } else {
                         mainText = "No Upcoming Classes";

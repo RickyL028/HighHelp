@@ -60,16 +60,16 @@ app.get('/forum', async (c) => {
                                 <p class="text-gray-500 italic">No discussions yet. Be the first to ask!</p>
                             ) : (
                                 recentPosts?.map((p: any) => (
-                                    <div class={`bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors group block ${p.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
+                                    <div class={`bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-4 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors group block ${p.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}>
                                         <a href={`/forum/post/${p.id}`} class="block">
-                                            <h3 class="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors mb-1 leading-snug">{p.title}</h3>
+                                            <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors mb-1 leading-snug">{p.title}</h3>
                                         </a>
 
-                                        <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
-                                            <span class="font-bold text-blue-700 uppercase tracking-wide">{p.subject}</span>
-                                            <span class="text-gray-300">•</span>
+                                        <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
+                                            <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{p.subject}</span>
+                                            <span class="text-gray-300 dark:text-neutral-600">•</span>
                                             <span class="local-date" data-timestamp={p.created_at}>{formatDate(p.created_at)}</span>
-                                            <span class="text-gray-300">•</span>
+                                            <span class="text-gray-300 dark:text-neutral-600">•</span>
                                             <span class="flex items-center">
                                                 {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
                                                 <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(p.tags) }}></span>
@@ -77,10 +77,10 @@ app.get('/forum', async (c) => {
                                             {p.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                         </div>
 
-                                        <p class="text-sm text-gray-700 mb-2 line-clamp-2">{p.content}</p>
+                                        <p class="text-sm text-gray-700 dark:text-neutral-300 mb-2 line-clamp-2">{p.content}</p>
 
                                         <div class="flex items-center justify-between">
-                                            <span class="flex items-center gap-1 text-gray-500 text-xs font-medium bg-gray-50 px-2 py-0.5 rounded">
+                                            <span class="flex items-center gap-1 text-gray-500 dark:text-neutral-400 text-xs font-medium bg-gray-50 dark:bg-neutral-900 px-2 py-0.5 rounded">
                                                 💬 {p.comment_count} Comments
                                             </span>
                                         </div>
@@ -132,14 +132,14 @@ app.get('/forum', async (c) => {
 
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <div class="relative w-full md:w-96">
-                        <input type="text" id="search-input" placeholder="Search discussions..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" />
+                        <input type="text" id="search-input" placeholder="Search discussions..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" />
                         <svg class="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
-                    <div class="flex items-center gap-2 bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
-                        <button id="view-list" class="p-2 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors" title="List View">
+                    <div class="flex items-center gap-2 bg-white dark:bg-neutral-800 rounded-lg p-1 border border-gray-200 dark:border-neutral-700 shadow-sm">
+                        <button id="view-list" class="p-2 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors" title="List View">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                         </button>
-                        <button id="view-grid" class="p-2 rounded text-gray-500 hover:bg-gray-50 transition-colors" title="Grid View">
+                        <button id="view-grid" class="p-2 rounded text-gray-500 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors" title="Grid View">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                         </button>
                     </div>
@@ -159,19 +159,19 @@ app.get('/forum', async (c) => {
                     ) : (
                         results.map((p: any) => (
                             <div
-                                class={`search-item bg-white rounded border border-gray-300 p-4 hover:bg-gray-50 transition-colors group block h-full flex flex-col justify-between ${p.is_deleted ? 'border-red-500 bg-red-50' : ''}`}
+                                class={`search-item bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-4 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors group block h-full flex flex-col justify-between ${p.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}
                                 data-search-text={`${p.title} ${p.content} ${p.subject} ${p.first_name || ''} ${p.last_name || ''}`}
                             >
                                 <div>
                                     <a href={`/forum/post/${p.id}`} class="block">
-                                        <h3 class="text-lg font-bold text-gray-900 group-hover:text-blue-700 transition-colors mb-1 leading-snug">{p.title}</h3>
+                                        <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors mb-1 leading-snug">{p.title}</h3>
                                     </a>
 
-                                    <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 mb-2">
-                                        <span class="font-bold text-blue-700 uppercase tracking-wide">{p.subject}</span>
-                                        <span class="text-gray-300">•</span>
+                                    <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
+                                        <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{p.subject}</span>
+                                        <span class="text-gray-300 dark:text-neutral-600">•</span>
                                         <span class="local-date" data-timestamp={p.created_at}>{formatDate(p.created_at)}</span>
-                                        <span class="text-gray-300">•</span>
+                                        <span class="text-gray-300 dark:text-neutral-600">•</span>
                                         <span class="flex items-center">
                                             {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
                                             <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(p.tags) }}></span>
@@ -179,11 +179,11 @@ app.get('/forum', async (c) => {
                                         {p.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                     </div>
 
-                                    <p class="text-sm text-gray-700 mb-2 line-clamp-2">{p.content}</p>
+                                    <p class="text-sm text-gray-700 dark:text-neutral-300 mb-2 line-clamp-2">{p.content}</p>
                                 </div>
 
                                 <div class="flex items-center justify-between mt-auto">
-                                    <span class="flex items-center gap-1 text-gray-500 text-xs font-medium bg-gray-50 px-2 py-0.5 rounded">
+                                    <span class="flex items-center gap-1 text-gray-500 dark:text-neutral-400 text-xs font-medium bg-gray-50 dark:bg-neutral-900 px-2 py-0.5 rounded">
                                         💬 {p.comment_count} Comments
                                     </span>
                                 </div>
@@ -193,18 +193,18 @@ app.get('/forum', async (c) => {
                 </div>
 
                 {/* List View */}
-                <div id="list-view-container" class="hidden overflow-x-auto bg-white rounded-lg shadow border border-gray-200">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                <div id="list-view-container" class="hidden overflow-x-auto bg-white dark:bg-neutral-800 rounded-lg shadow border border-gray-200 dark:border-neutral-700">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-neutral-700">
+                        <thead class="bg-gray-50 dark:bg-neutral-900">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topic</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Snippet</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Author</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Replies</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Topic</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Snippet</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Author</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Replies</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
+                        <tbody class="bg-white dark:bg-neutral-800 divide-y divide-gray-200 dark:divide-neutral-700">
                             {results?.length === 0 ? (
                                 <tr>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={5}>No discussions yet.</td>
@@ -212,24 +212,24 @@ app.get('/forum', async (c) => {
                             ) : (
                                 results.map((p: any) => (
                                     <tr
-                                        class={`search-item hover:bg-gray-50 transition-colors cursor-pointer ${p.is_deleted ? 'bg-red-50' : ''}`}
+                                        class={`search-item hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors cursor-pointer ${p.is_deleted ? 'bg-red-50 dark:bg-red-900/20' : ''}`}
                                         data-search-text={`${p.title} ${p.content} ${p.subject} ${p.first_name || ''} ${p.last_name || ''}`}
                                         onclick={`window.location.href='/forum/post/${p.id}'`}
                                     >
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 local-date" data-timestamp={p.created_at}>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-neutral-400 local-date" data-timestamp={p.created_at}>
                                             {formatDate(p.created_at)}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
                                             {p.title}
                                             {p.is_deleted && <span class="ml-2 text-xs text-red-600 uppercase">Deleted</span>}
                                         </td>
-                                        <td class="px-6 py-4 text-sm text-gray-500 truncate max-w-xs">
+                                        <td class="px-6 py-4 text-sm text-gray-500 dark:text-neutral-400 truncate max-w-xs">
                                             {p.content}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-neutral-400">
                                             {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-neutral-400">
                                             {p.comment_count} 💬
                                         </td>
                                     </tr>
@@ -253,18 +253,18 @@ app.get('/forum/create', async (c) => {
 
     return c.html(
         <Layout title="Ask a Question" user={user}>
-            <div class="max-w-2xl mx-auto bg-white p-6 rounded border border-gray-300 shadow-none">
-                <h1 class="text-2xl font-bold mb-6 text-gray-900">Ask a Question</h1>
+            <div class="max-w-2xl mx-auto bg-white dark:bg-neutral-800 p-6 rounded border border-gray-300 dark:border-neutral-700 shadow-none">
+                <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Ask a Question</h1>
 
                 <form action="/forum" method="post" class="space-y-6">
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">Title</label>
-                        <input type="text" name="title" required placeholder="What's your question?" class="w-full rounded-md border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500" />
+                        <label class="block text-sm font-bold text-gray-700 dark:text-neutral-300 mb-1">Title</label>
+                        <input type="text" name="title" required placeholder="What's your question?" class="w-full rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 dark:text-white shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500" />
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">Subject</label>
-                        <select name="subject" required class="w-full rounded-md border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white">
+                        <label class="block text-sm font-bold text-gray-700 dark:text-neutral-300 mb-1">Subject</label>
+                        <select name="subject" required class="w-full rounded-md border-gray-300 dark:border-neutral-600 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-neutral-700 dark:text-white">
                             <option value="" disabled selected={!preselectedSubject}>Select a Subject</option>
                             {ANNOUNCEMENT_SUBJECTS.map(s => (
                                 <option value={s} selected={s === preselectedSubject}>{s}</option>
@@ -273,8 +273,8 @@ app.get('/forum/create', async (c) => {
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">Details</label>
-                        <textarea name="content" required rows={6} placeholder="Provide more context..." class="w-full rounded-md border-gray-300 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        <label class="block text-sm font-bold text-gray-700 dark:text-neutral-300 mb-1">Details</label>
+                        <textarea name="content" required rows={6} placeholder="Provide more context..." class="w-full rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-700 dark:text-white shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500"></textarea>
                     </div>
 
                     <div class="flex items-center justify-end gap-4">
@@ -348,24 +348,24 @@ app.get('/forum/post/:id', async (c) => {
             <div class="mx-auto">
                 <div class="mb-4">
 
-                    <a href={`/forum?subject=${encodeURIComponent(post.subject)}`} class="text-blue-600 hover:underline text-sm">← Back to {post.subject}</a>
+                    <a href={`/forum?subject=${encodeURIComponent(post.subject)}`} class="text-blue-600 dark:text-blue-400 hover:underline text-sm">← Back to {post.subject}</a>
                 </div>
 
                 {/* Main Post */}
-                <div class={`bg-white rounded border border-gray-300 overflow-hidden mb-8 ${post.is_deleted ? 'border-red-500 bg-red-50' : ''}`}>
-                    <div class="p-6 border-b border-gray-100">
+                <div class={`bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 overflow-hidden mb-8 ${post.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}>
+                    <div class="p-6 border-b border-gray-100 dark:border-neutral-700">
                         {post.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">{post.type}</span>
+                            <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">{post.type}</span>
 
-                            <span class="text-gray-400 text-sm local-date" data-timestamp={post.created_at} data-format="datetime">| {formatDate(post.created_at)}</span>
+                            <span class="text-gray-400 dark:text-neutral-500 text-sm local-date" data-timestamp={post.created_at} data-format="datetime">| {formatDate(post.created_at)}</span>
                         </div>
-                        <h1 class="text-3xl font-bold text-gray-900 mb-4">{post.title}</h1>
-                        <p class="text-gray-800 whitespace-pre-wrap leading-relaxed text-lg">{post.content}</p>
+                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">{post.title}</h1>
+                        <p class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap leading-relaxed text-lg">{post.content}</p>
                     </div>
-                    <div class="bg-gray-50 px-6 py-3 flex items-center justify-between">
-                        <div class="text-sm text-gray-600 flex items-center">
-                            <span class="font-bold mr-1">Asked by:</span> {post.first_name ? `${post.first_name} ${post.last_name}` : 'Unknown'}
+                    <div class="bg-gray-50 dark:bg-neutral-900/50 px-6 py-3 flex items-center justify-between">
+                        <div class="text-sm text-gray-600 dark:text-neutral-400 flex items-center">
+                            <span class="font-bold mr-1 text-gray-700 dark:text-neutral-300">Asked by:</span> <span class="text-gray-900 dark:text-white font-medium">{post.first_name ? `${post.first_name} ${post.last_name}` : 'Unknown'}</span>
 
                             <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(post.tags) }}></span>
                         </div>
@@ -379,20 +379,20 @@ app.get('/forum/post/:id', async (c) => {
 
                 {/* Comments Section */}
                 <div class="mb-8">
-                    <h2 class="text-xl font-bold text-gray-900 mb-4">{comments?.length || 0} Answers / Comments</h2>
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">{comments?.length || 0} Answers / Comments</h2>
 
                     <div class="space-y-4">
                         {comments?.map((comment: any) => (
-                            <div class={`bg-white p-4 rounded border ${comment.is_deleted ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}>
+                            <div class={`bg-white dark:bg-neutral-800 p-4 rounded border ${comment.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-neutral-700 shadow-sm'}`}>
                                 {comment.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-1 block">Deleted</span>}
                                 <div class="flex justify-between items-start mb-2">
                                     <div class="flex items-center gap-2">
-                                        <span class="font-bold text-gray-800">{comment.first_name ? `${comment.first_name} ${comment.last_name}` : 'Unknown'}</span>
+                                        <span class="font-bold text-gray-800 dark:text-neutral-200">{comment.first_name ? `${comment.first_name} ${comment.last_name}` : 'Unknown'}</span>
                                         <span dangerouslySetInnerHTML={{ __html: renderTags(comment.tags) }}></span>
                                     </div>
-                                    <span class="text-xs text-gray-400 local-date" data-timestamp={comment.created_at} data-format="datetime">{formatDate(comment.created_at)}</span>
+                                    <span class="text-xs text-gray-400 dark:text-neutral-500 local-date" data-timestamp={comment.created_at} data-format="datetime">{formatDate(comment.created_at)}</span>
                                 </div>
-                                <p class="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                                <p class="text-gray-700 dark:text-neutral-300 whitespace-pre-wrap">{comment.content}</p>
                                 {!comment.is_deleted && user && (canCommentModeration(user) || user.id === comment.author_id) && (
                                     <form action={`/forum/comment/${comment.id}/delete`} method="post" class="text-right mt-2">
                                         <button class="text-red-400 text-xs hover:text-red-600" onclick="return confirm('Delete comment?')">Delete</button>
@@ -405,11 +405,11 @@ app.get('/forum/post/:id', async (c) => {
 
                 {/* Add Comment  */}
                 {user ? (
-                    <div class="bg-blue-50 p-6 rounded-lg border border-blue-100">
-                        <h3 class="text-lg font-bold text-blue-900 mb-4">Add Your Answer</h3>
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-100 dark:border-blue-900/40">
+                        <h3 class="text-lg font-bold text-blue-900 dark:text-blue-200 mb-4">Add Your Answer</h3>
                         <form action="/forum/comment" method="post">
                             <input type="hidden" name="post_id" value={postId} />
-                            <textarea name="content" required rows={4} class="w-full rounded-md border-blue-200 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 mb-4" placeholder="Type your answer here..."></textarea>
+                            <textarea name="content" required rows={4} class="w-full rounded-md border-blue-200 dark:border-blue-800 bg-white dark:bg-neutral-800 dark:text-white shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 mb-4" placeholder="Type your answer here..."></textarea>
                             <div class="text-right">
                                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition">
                                     Submit Answer
@@ -418,9 +418,9 @@ app.get('/forum/post/:id', async (c) => {
                         </form>
                     </div>
                 ) : (
-                    <div class="bg-gray-100 p-6 rounded-lg text-center">
-                        <p class="text-gray-600 mb-2">Want to add an answer?</p>
-                        <a href="/login" class="text-blue-600 font-bold hover:underline">Log in to participate</a>
+                    <div class="bg-gray-100 dark:bg-neutral-800 p-6 rounded-lg text-center border border-gray-200 dark:border-neutral-700">
+                        <p class="text-gray-600 dark:text-neutral-400 mb-2">Want to add an answer?</p>
+                        <a href="/login" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">Log in to participate</a>
                     </div>
                 )}
 

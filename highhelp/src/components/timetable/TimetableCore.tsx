@@ -102,50 +102,60 @@ export const TimetableCore = html`
         };
     }
 
-    async function fetchDayData(date) {
+    function getCachedDayData(date) {
+        const cachedRaw = localStorage.getItem('todayData_' + date);
+        if (cachedRaw) {
+            try {
+                const cachedObj = JSON.parse(cachedRaw);
+                return cachedObj.data || cachedObj;
+            } catch(e) {}
+        }
+        return null;
+    }
+
+    async function fetchDayData(date, forceFetch = false) {
         if (!studentData?.accessToken) return null;
-        if (pendingFetches[date]) return pendingFetches[date];
+        if (pendingFetches[date] && !forceFetch) return pendingFetches[date];
 
         const fetchPromise = (async () => {
-            // [Existing Cache Logic stays the same...]
             const cachedRaw = localStorage.getItem('todayData_' + date);
+            let cachedData = null;
             if (cachedRaw) {
                  try {
                     const cachedObj = JSON.parse(cachedRaw);
+                    cachedData = cachedObj.data || cachedObj;
                     const now = new Date().getTime();
                     // 5 minute cache validity
-                    if (cachedObj.timestamp && (now - cachedObj.timestamp < 300000)) { 
-                        if (cachedObj.data && (cachedObj.data.status === 'OK' || cachedObj.data.timetable)) {
-                            // ... populate bells ...
-                            return cachedObj.data;
+                    if (!forceFetch && cachedObj.timestamp && (now - cachedObj.timestamp < 300000)) { 
+                        if (cachedData && (cachedData.status === 'OK' || cachedData.timetable)) {
+                             if (cachedData.bells) {
+                                bellCache[date] = cachedData.bells.map(b => ({
+                                    period: b.period || b.bell,  
+                                    startTime: b.startTime || b.time,
+                                    endTime: b.endTime || '23:59',
+                                    label: b.bellDisplay || b.bell || b.period
+                                }));
+                            }
+                            return cachedData;
                         }
                     }
                 } catch(e) { }
             }
 
-            // [UPDATED FETCH LOGIC]
             let data = null;
             try {
-                let res = await fetch(\`/api/proxy/day-data?date=\${date}&_=\${new Date().getTime()}\`, {
-                    headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
+                let res = await fetch('/api/proxy/day-data?date=' + date + '&_=' + new Date().getTime(), {
+                    headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
                 });
                 
-                // If token expired (401), try to refresh silently
                 if (res.status === 401 || res.status === 403) {
-                    console.log("Token expired, attempting refresh...");
                     const refreshRes = await fetch('/api/auth/refresh');
                     const refreshData = await refreshRes.json();
-
                     if (refreshData.success && refreshData.accessToken) {
-                        console.log("Token refreshed successfully");
-                        // 1. Update memory
                         studentData.accessToken = refreshData.accessToken;
-                        // 2. Update LocalStorage
                         localStorage.setItem('studentData', JSON.stringify(studentData));
-                        
-                        // 3. Retry original request with new token
-                        res = await fetch(\`/api/proxy/day-data?date=\${date}&_=\${new Date().getTime()}\`, {
-                            headers: { 'Authorization': \`Bearer \${studentData.accessToken}\` }
+                        res = await fetch('/api/proxy/day-data?date=' + date + '&_=' + new Date().getTime(), {
+                            headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
                         });
                     }
                 }
@@ -153,10 +163,8 @@ export const TimetableCore = html`
                 if (res.ok) {
                     data = await res.json();
                     if (data && (data.status === 'OK' || data.timetable)) {
-                        // Cache the success
                         const cacheObj = { timestamp: new Date().getTime(), data: data };
                         localStorage.setItem('todayData_' + date, JSON.stringify(cacheObj));
-                        
                         if (data.bells && data.bells.length > 0) {
                             bellCache[date] = data.bells.map(b => ({
                                 period: b.period || b.bell,  
@@ -167,33 +175,42 @@ export const TimetableCore = html`
                         }
                     }
                     return data;
-                } else if (res.status === 401 || res.status === 403) {
-                    // Only show error if refresh failed AND original failed
-                    const loader = document.getElementById('loader');
-                    if(loader) loader.classList.add('hidden');
-                    const err = document.getElementById('error-msg');
-                    if(err) {
-                        err.classList.remove('hidden');
-                        err.innerHTML = 'Session expired. Please <a href="/api/auth/login" class="underline">Log in again</a>.';
-                    }
                 }
             } catch(e) { console.error(e); }
 
-            // [Existing Fallback to Cache logic...]
-            if (!data && cachedRaw) {
-                try { 
-                    const c = JSON.parse(cachedRaw);
-                    return c.data || c;
-                } catch(e) {}
-            }
-            return null;
+            return data || cachedData;
         })();
 
-        pendingFetches[date] = fetchPromise;
-        try { return await fetchPromise; } finally { delete pendingFetches[date]; }
+        if (!forceFetch) pendingFetches[date] = fetchPromise;
+        try { return await fetchPromise; } finally { if (!forceFetch) delete pendingFetches[date]; }
     }
 
-    async function fetchCalendarData(date) {
+    function getCachedCalendarData(date) {
+        const cachedRaw = localStorage.getItem('calendarData_' + date);
+        if (cachedRaw) {
+            try {
+                const cachedObj = JSON.parse(cachedRaw);
+                return cachedObj.events || [];
+            } catch(e) {}
+        }
+        return null;
+    }
+
+    async function fetchCalendarData(date, forceFetch = false) {
+        if (!forceFetch) {
+            const cachedRaw = localStorage.getItem('calendarData_' + date);
+            if (cachedRaw) {
+                try {
+                    const cachedObj = JSON.parse(cachedRaw);
+                    const now = new Date().getTime();
+                    // 5 minute cache validity
+                    if (cachedObj.timestamp && (now - cachedObj.timestamp < 300000)) {
+                        return cachedObj.events || [];
+                    }
+                } catch(e) {}
+            }
+        }
+
         let urls = [];
         const rawUrls = localStorage.getItem('calendarUrls');
         if (rawUrls) {
@@ -208,19 +225,28 @@ export const TimetableCore = html`
         }
         if (!urls || urls.length === 0) return [];
         
-        let allEvents = [];
-        for (const url of urls) {
-            try {
-                const res = await fetch(\`/api/clipboard/events?url=\${encodeURIComponent(url)}&date=\${date}\`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.events) allEvents = allEvents.concat(data.events);
-                }
-            } catch (e) {
-                console.error('Failed to fetch calendar data for url', url, e);
-            }
+        try {
+            const results = await Promise.all(urls.map(async (url) => {
+                try {
+                    const res = await fetch('/api/clipboard/events?url=' + encodeURIComponent(url) + '&date=' + date);
+                    if (res.ok) {
+                        const data = await res.json();
+                        return data.events || [];
+                    }
+                } catch (e) { console.error('Failed for url', url, e); }
+                return [];
+            }));
+
+            const allEvents = results.flat();
+            localStorage.setItem('calendarData_' + date, JSON.stringify({
+                timestamp: new Date().getTime(),
+                events: allEvents
+            }));
+            return allEvents;
+        } catch (e) {
+            console.error('All calendar fetches failed', e);
+            return getCachedCalendarData(date) || [];
         }
-        return allEvents;
     }
 
     function formatTime(t) {

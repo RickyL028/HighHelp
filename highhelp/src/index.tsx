@@ -47,7 +47,7 @@ app.use('*', async (c, next) => {
         return c.text('You have been banned from HighHelp.', 403);
     }
 
-    
+
     await next();
 });
 
@@ -58,6 +58,37 @@ app.get('/api/proxy/day-data', async (c) => {
     if (!authHeader || !date) return c.json({ error: 'Invalid request' }, 400)
     try {
         const response = await fetch(`https://student.sbhs.net.au/api/timetable/daytimetable.json?date=${date}`, {
+            headers: { 'Authorization': authHeader }
+        })
+        const data = await response.json()
+        return c.json(data, response.status as any)
+    } catch (e) {
+        return c.json({ error: 'Proxy error' }, 500)
+    }
+})
+
+app.get('/api/proxy/notices', async (c) => {
+    const date = c.req.query('date')
+    const authHeader = c.req.header('Authorization')
+    if (!authHeader || !date) return c.json({ error: 'Invalid request' }, 400)
+    try {
+        const response = await fetch(`https://student.sbhs.net.au/api/dailynews/list.json?date=${date}`, {
+            headers: { 'Authorization': authHeader }
+        })
+        const data = await response.json()
+        return c.json(data, response.status as any)
+    } catch (e) {
+        return c.json({ error: 'Proxy error' }, 500)
+    }
+})
+
+app.get('/api/proxy/events', async (c) => {
+    const date = c.req.query('date')
+    const toDate = c.req.query('to') || date
+    const authHeader = c.req.header('Authorization')
+    if (!authHeader || !date) return c.json({ error: 'Invalid request' }, 400)
+    try {
+        const response = await fetch(`https://student.sbhs.net.au/api/diarycalendar/events.json?from=${date}&to=${toDate}`, {
             headers: { 'Authorization': authHeader }
         })
         const data = await response.json()

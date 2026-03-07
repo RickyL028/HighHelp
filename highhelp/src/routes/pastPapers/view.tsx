@@ -80,25 +80,25 @@ app.get('/past-papers/paper/:id', async (c) => {
     return c.html(
         <Layout title={`${paper.school_name} ${paper.academic_year}`} user={user} latex={true}>
             <div class="mx-auto max-w-5xl">
-                <div class="mb-6 flex justify-between items-start">
+                <div class="mb-6 flex justify-between items-start text-gray-900 dark:text-white">
                     <div>
-                        <div class="flex items-center gap-2 text-sm text-gray-500 mb-1">
+                        <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-neutral-400 mb-1">
                             <a href="/past-papers" class="hover:underline">Papers</a>
-                            <span>/</span>
+                            <span class="text-gray-300 dark:text-neutral-600">/</span>
                             <a href={`/past-papers?subject=${encodeURIComponent(paper.subject)}`} class="hover:underline">{paper.subject}</a>
-                            <span>/</span>
+                            <span class="text-gray-300 dark:text-neutral-600">/</span>
                         </div>
                         <div class="flex items-center gap-3">
-                            <h1 class="text-3xl font-bold">{paper.school_name} {paper.academic_year}</h1>
+                            <h1 class="text-3xl font-bold dark:text-white">{paper.school_name} {paper.academic_year}</h1>
                             {paper.is_locked ? (
-                                <span class="bg-gray-100 text-gray-500 border border-gray-300 rounded px-2 py-0.5 text-xs font-bold uppercase flex items-center gap-1" title="Locked by Admin/Mod">
+                                <span class="bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border border-gray-300 dark:border-neutral-700 rounded px-2 py-0.5 text-xs font-bold uppercase flex items-center gap-1" title="Locked by Admin/Mod">
                                     Locked
                                 </span>
                             ) : null}
                         </div>
                         <div class="flex gap-4 mt-1 items-center">
-                            <span class="text-sm text-gray-600 bg-blue-50 px-2 py-0.5 rounded text-blue-800 font-medium">{paper.paper_type || 'Trial Paper'}</span>
-                            {paper.reference_link && <a href={paper.reference_link} target="_blank" class="text-blue-600 hover:underline text-sm">View Reference PDF ↗</a>}
+                            <span class="text-sm text-gray-600 dark:text-neutral-300 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded text-blue-800 dark:text-blue-400 font-medium">{paper.paper_type || 'Trial Paper'}</span>
+                            {paper.reference_link && <a href={paper.reference_link} target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium">View Reference PDF ↗</a>}
                         </div>
                     </div>
 
@@ -113,22 +113,22 @@ app.get('/past-papers/paper/:id', async (c) => {
 
 
                                 <dialog id="import-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
-                                    <div class="w-full max-w-lg bg-white p-6 rounded-xl">
-                                        <h3 class="text-xl font-bold text-gray-800 mb-2">Import Paper from Text</h3>
-                                        <p class="text-sm text-gray-500 mb-4">
+                                    <div class="w-full max-w-lg bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700">
+                                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Import Paper from Text</h3>
+                                        <p class="text-sm text-gray-500 dark:text-neutral-400 mb-4">
                                             Upload a .txt file formatted with tags (\s, \a, \q, \m, \e). This will append questions to the end of the paper.
                                         </p>
 
                                         <form action={`/past-papers/paper/${paper.id}/upload-text`} method="post" enctype="multipart/form-data">
-                                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition cursor-pointer relative">
+                                            <div class="border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded-lg p-6 text-center hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition cursor-pointer relative">
                                                 <input type="file" name="text_file" accept=".txt" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required />
-                                                <div class="text-gray-500">
+                                                <div class="text-gray-500 dark:text-neutral-400">
                                                     <span class="block text-2xl mb-1">📄</span>
                                                     <span class="font-bold text-sm">Click to select .txt file</span>
                                                 </div>
                                             </div>
 
-                                            <div class="mt-4 bg-gray-50 p-3 rounded text-xs text-gray-500 font-mono overflow-x-auto">
+                                            <div class="mt-4 bg-gray-50 dark:bg-neutral-900 p-3 rounded text-xs text-gray-500 dark:text-neutral-400 font-mono overflow-x-auto border border-gray-200 dark:border-neutral-800">
                                                 Key:<br />
                                                 \s New Section | \a New Segment<br />
                                                 \q Question | \m marks<br />
@@ -137,8 +137,8 @@ app.get('/past-papers/paper/:id', async (c) => {
                                             </div>
 
                                             <div class="flex justify-end gap-3 mt-6">
-                                                <button type="button" onclick="document.getElementById('import-modal').close()" class="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-lg">Cancel</button>
-                                                <button class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm">
+                                                <button type="button" onclick="document.getElementById('import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg">Cancel</button>
+                                                <button class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition-colors">
                                                     Process & Import
                                                 </button>
                                             </div>
@@ -151,7 +151,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                         {paper.is_locked ? (
                             canUnlock && (
                                 <form action={`/past-papers/paper/${paper.id}/toggle-lock`} method="post">
-                                    <button class="bg-gray-800 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-gray-900 flex items-center gap-2">
+                                    <button class="bg-gray-800 dark:bg-neutral-700 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-gray-900 dark:hover:bg-neutral-600 flex items-center gap-2 transition-colors">
                                         Uncheck
                                     </button>
                                 </form>
@@ -161,15 +161,15 @@ app.get('/past-papers/paper/:id', async (c) => {
                                 <>
                                     {incompleteQuestionsCount > 0 ? (
                                         <div class="group relative">
-                                            <button disabled class="bg-gray-100 text-gray-400 border border-gray-200 text-sm font-bold px-3 py-2 rounded cursor-not-allowed flex items-center gap-2">
+                                            <button disabled class="bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-600 border border-gray-200 dark:border-neutral-700 text-sm font-bold px-3 py-2 rounded cursor-not-allowed flex items-center gap-2">
                                                 Check
                                             </button>
-                                            <div class="absolute right-0 top-full mt-2 w-64 bg-gray-800 text-white text-xs p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
+                                            <div class="absolute right-0 top-full mt-2 w-64 bg-gray-800 dark:bg-neutral-700 text-white text-xs p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
                                                 Cannot lock: {incompleteQuestionsCount} questions have missing fields.
                                             </div>
                                         </div>
                                     ) : (
-                                        <button onclick="document.getElementById('lock-modal').showModal()" class="bg-gray-100 text-gray-600 border border-gray-300 text-sm font-bold px-3 py-2 rounded shadow-sm hover:bg-gray-200 flex items-center gap-2">
+                                        <button onclick="document.getElementById('lock-modal').showModal()" class="bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border border-gray-300 dark:border-neutral-700 text-sm font-bold px-3 py-2 rounded shadow-sm hover:bg-gray-200 dark:hover:bg-neutral-700 flex items-center gap-2 transition-colors">
                                             Check
                                         </button>
                                     )}
@@ -181,12 +181,12 @@ app.get('/past-papers/paper/:id', async (c) => {
 
 
                 <dialog id="lock-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
-                    <div class="w-full max-w-md bg-white p-6 rounded-xl">
-                        <h3 class="text-xl font-bold text-red-600 mb-4 flex items-center gap-2">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" ></path></svg>
+                    <div class="w-full max-w-md bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700">
+                        <h3 class="text-xl font-bold text-red-600 dark:text-red-400 mb-4 flex items-center gap-2">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                             Confirm check
                         </h3>
-                        <p class="text-gray-600 mb-6">
+                        <p class="text-gray-600 dark:text-neutral-400 mb-6">
                             By checking, you - yes, you - verify that:
                             <ul class="list-disc pl-5 mt-2 space-y-1 text-sm">
                                 <li>All questions have been uploaded correctly.</li>
@@ -194,11 +194,11 @@ app.get('/past-papers/paper/:id', async (c) => {
                                 <li>You accept responsibility for this paper's integrity.</li>
                             </ul>
                         </p>
-                        <p class="text-xs text-gray-400 mb-6">This action will be logged.</p>
+                        <p class="text-xs text-gray-400 dark:text-neutral-500 mb-6 font-mono">This action will be logged.</p>
                         <div class="flex justify-end gap-3">
-                            <button onclick="document.getElementById('lock-modal').close()" class="px-4 py-2 text-gray-600 font-bold hover:bg-gray-50 rounded-lg">Cancel</button>
+                            <button onclick="document.getElementById('lock-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-50 dark:hover:bg-neutral-700 rounded-lg transition-colors">Cancel</button>
                             <form action={`/past-papers/paper/${paper.id}/toggle-lock`} method="post">
-                                <button class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 shadow-sm">
+                                <button class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 shadow-sm transition-colors">
                                     I Understand, check
                                 </button>
                             </form>
@@ -208,24 +208,24 @@ app.get('/past-papers/paper/:id', async (c) => {
 
 
                 {canManageTopics && (
-                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                        <details>
-                            <summary class="font-bold text-gray-700 cursor-pointer">Topic Management - Do NOT touch unless necessary</summary>
+                    <div class="bg-gray-50 dark:bg-neutral-800 p-4 rounded-lg border border-gray-200 dark:border-neutral-700 mb-6">
+                        <details class="group">
+                            <summary class="font-bold text-gray-700 dark:text-neutral-300 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Topic Management - Do NOT touch unless necessary</summary>
                             <div class="mt-4">
                                 <form action="/past-papers/topics/create" method="post" class="flex gap-2 mb-4">
                                     <input type="hidden" name="subject" value={paper.subject} />
                                     <input type="hidden" name="redirect_paper_id" value={paper.id} />
-                                    <input type="text" name="name" placeholder="New Topic Name" class="rounded border p-1 text-sm bg-white" required />
-                                    <button class="bg-blue-600 text-white text-xs px-2 py-1 rounded">Create</button>
+                                    <input type="text" name="name" placeholder="New Topic Name" class="rounded border dark:border-neutral-700 p-1.5 text-sm bg-white dark:bg-neutral-900 dark:text-white" required />
+                                    <button class="bg-blue-600 text-white text-xs px-3 py-1 rounded font-bold hover:bg-blue-700 transition-colors">Create</button>
                                 </form>
                                 <div class="flex flex-wrap gap-2">
                                     {allTopics.results.map((t: any) => (
-                                        <div class="bg-white border rounded px-2 py-1 text-xs flex items-center gap-2">
+                                        <div class="bg-white dark:bg-neutral-900 border dark:border-neutral-700 rounded px-2 py-1 text-xs flex items-center gap-2 dark:text-neutral-300">
                                             {t.name}
                                             <form action="/past-papers/topics/delete" method="post" onsubmit="return confirm('Delete topic?');">
                                                 <input type="hidden" name="topic_id" value={t.id} />
                                                 <input type="hidden" name="redirect_paper_id" value={paper.id} />
-                                                <button class="text-red-500 font-bold hover:text-red-700">×</button>
+                                                <button class="text-red-500 font-bold hover:text-red-700 transition-colors">×</button>
                                             </form>
                                         </div>
                                     ))}
@@ -244,21 +244,21 @@ app.get('/past-papers/paper/:id', async (c) => {
                                 qWithNext[index + 1].segment_label !== q.segment_label;
 
                             return (
-                                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-4" id={`q-${q.id}`}>
+                                <div class="bg-white dark:bg-neutral-800 rounded-lg shadow-sm border border-gray-200 dark:border-neutral-700 overflow-hidden mb-4" id={`q-${q.id}`}>
 
-                                    <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition" onclick={`toggleEdit(${q.id})`}>
+                                    <div class="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-neutral-700 transition" onclick={`toggleEdit(${q.id})`}>
                                         <div class="flex items-center gap-4">
-                                            <span class="font-mono text-gray-500 font-bold w-16 text-right">{q.section_label} {q.question_number}</span>
+                                            <span class="font-mono text-gray-500 dark:text-neutral-400 font-bold w-16 text-right">{q.section_label} {q.question_number}</span>
 
                                             <div class="flex flex-col">
                                                 <div class="flex items-center gap-2">
-                                                    {q.question_type === 'multiple_choice' && <span class="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded font-bold">MCQ</span>}
-                                                    {q.marks && <span class="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded font-bold">{q.marks}m</span>}
+                                                    {q.question_type === 'multiple_choice' && <span class="bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs px-2 py-0.5 rounded font-bold">MCQ</span>}
+                                                    {q.marks && <span class="bg-gray-100 dark:bg-neutral-700 text-gray-600 dark:text-neutral-300 text-xs px-2 py-0.5 rounded font-bold">{q.marks}m</span>}
                                                 </div>
                                                 {q.topic_names ? (
-                                                    <span class="text-sm font-medium text-blue-800">{q.topic_names}</span>
+                                                    <span class="text-sm font-medium text-blue-800 dark:text-blue-400">{q.topic_names}</span>
                                                 ) : (
-                                                    <span class="text-sm text-gray-400 italic">No topics tagged</span>
+                                                    <span class="text-sm text-gray-400 dark:text-neutral-500 italic">No topics tagged</span>
                                                 )}
 
                                                 <span class="text-xs text-gray-400 mt-1">
@@ -269,18 +269,18 @@ app.get('/past-papers/paper/:id', async (c) => {
 
                                         <div class="flex items-center gap-4">
                                             {q.missing_fields.length === 0 ? (
-                                                <span class="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded border border-green-200">✓ Ready</span>
+                                                <span class="text-green-600 dark:text-green-400 text-xs font-bold bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded border border-green-200 dark:border-green-900/40">✓ Ready</span>
                                             ) : (
-                                                <span class="text-red-500 text-xs font-bold bg-red-50 px-2 py-1 rounded border border-red-200 cursor-help" title={`Missing: ${q.missing_fields.join(', ')}`}>
+                                                <span class="text-red-500 dark:text-red-400 text-xs font-bold bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded border border-red-200 dark:border-red-900/40 cursor-help" title={`Missing: ${q.missing_fields.join(', ')}`}>
                                                     ⚠ Missing: {q.missing_fields.join(', ')}
                                                 </span>
                                             )}
-                                            <span class="text-gray-400">▼</span>
+                                            <span class="text-gray-400 dark:text-neutral-600">▼</span>
                                         </div>
                                     </div>
 
 
-                                    <div id={`detail-${q.id}`} class={`${canEdit ? '' : 'hidden'} border-t border-gray-100 bg-gray-50 p-6`}>
+                                    <div id={`detail-${q.id}`} class={`${canEdit ? '' : 'hidden'} border-t border-gray-100 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-900 p-6`}>
                                         {canEdit ? (
                                             <div class="space-y-6">
 
@@ -288,34 +288,33 @@ app.get('/past-papers/paper/:id', async (c) => {
 
                                                     <div class="space-y-4">
                                                         <div>
-                                                            <label class="block text-xs font-bold text-gray-500 uppercase">Topics</label>
+                                                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">Topics</label>
 
-                                                            <select name={`q_${q.id}_topic_ids[]`} multiple size={4} class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                            <select name={`q_${q.id}_topic_ids[]`} multiple size={4} class="w-full mt-1 rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm dark:text-white">
                                                                 {allTopics.results.map((t: any) => (
                                                                     <option value={t.id} selected={q.topic_ids?.split(',').includes(String(t.id))}>{t.name}</option>
                                                                 ))}
                                                             </select>
-                                                            <p class="text-xs text-gray-400 mt-1">Cmd/Ctrl+Click to select multiple</p>
+                                                            <p class="text-xs text-gray-400 dark:text-neutral-500 mt-1">Cmd/Ctrl+Click to select multiple</p>
                                                         </div>
 
                                                         <div class="grid grid-cols-2 gap-4">
                                                             <div>
-                                                                <label class="block text-xs font-bold text-gray-500 uppercase">Type</label>
-                                                                <select name={`q_${q.id}_question_type`} class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                                <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">Type</label>
+                                                                <select name={`q_${q.id}_question_type`} class="w-full mt-1 rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm dark:text-white">
                                                                     <option value="short_answer" selected={q.question_type === 'short_answer'}>Short Answer</option>
                                                                     <option value="multiple_choice" selected={q.question_type === 'multiple_choice'}>Multiple Choice</option>
-
                                                                     <option value="extended_response" selected={q.question_type === 'extended_response'}>Extended Response</option>
                                                                 </select>
                                                             </div>
                                                             <div>
-                                                                <label class="block text-xs font-bold text-gray-500 uppercase">Marks</label>
-                                                                <input type="number" name={`q_${q.id}_marks`} value={q.marks} class="w-full mt-1 rounded border-gray-300 text-sm" />
+                                                                <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">Marks</label>
+                                                                <input type="number" name={`q_${q.id}_marks`} value={q.marks} class="w-full mt-1 rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm dark:text-white" />
                                                             </div>
                                                             {q.question_type === 'multiple_choice' && (
                                                                 <div>
-                                                                    <label class="block text-xs font-bold text-gray-500 uppercase">Correct Answer (MCQ only)</label>
-                                                                    <select name={`q_${q.id}_mc_answer`} class="w-full mt-1 rounded border-gray-300 text-sm">
+                                                                    <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">Correct Answer (MCQ only)</label>
+                                                                    <select name={`q_${q.id}_mc_answer`} class="w-full mt-1 rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm dark:text-white">
                                                                         {['A', 'B', 'C', 'D'].map(opt => (
                                                                             <option value={opt} selected={q.mc_answer === opt}>{opt}</option>
                                                                         ))}
@@ -334,12 +333,12 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                             const initialMode = hasText ? 'text' : 'image';
 
                                                             return (
-                                                                <div class="bg-white p-3 rounded border border-gray-200" id={`container-${type}-${q.id}`}>
+                                                                <div class="bg-white dark:bg-neutral-800 p-3 rounded border border-gray-200 dark:border-neutral-700" id={`container-${type}-${q.id}`}>
                                                                     <div class="flex justify-between items-center mb-2">
-                                                                        <label class="text-xs font-bold text-gray-500 uppercase">{type} Content</label>
+                                                                        <label class="text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">{type} Content</label>
                                                                         <div class="flex gap-2">
-                                                                            <button type="button" onclick={`switchMode('${type}', ${q.id}, 'text')`} class={`text-xs px-2 py-1 rounded font-bold transition var-mode-text ${initialMode === 'text' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>Text</button>
-                                                                            <button type="button" onclick={`switchMode('${type}', ${q.id}, 'image')`} class={`text-xs px-2 py-1 rounded font-bold transition var-mode-image ${initialMode === 'image' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>Image</button>
+                                                                            <button type="button" onclick={`switchMode('${type}', ${q.id}, 'text')`} class={`text-xs px-2 py-1 rounded font-bold transition var-mode-text ${initialMode === 'text' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-gray-100 dark:bg-neutral-700 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-600'}`}>Text</button>
+                                                                            <button type="button" onclick={`switchMode('${type}', ${q.id}, 'image')`} class={`text-xs px-2 py-1 rounded font-bold transition var-mode-image ${initialMode === 'image' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-gray-100 dark:bg-neutral-700 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-600'}`}>Image</button>
                                                                         </div>
                                                                     </div>
 
@@ -349,7 +348,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                                             name={`q_${q.id}_${type}_text`}
                                                                             rows={3}
                                                                             placeholder={`Enter ${type} text...`}
-                                                                            class="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                                            class="w-full text-sm rounded-md border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                                                             oninput={`// Clear image input if typing? logic handled on save`}
                                                                         >{q[`${type}_text`] || ''}</textarea>
                                                                     </div>
@@ -357,16 +356,16 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                                     {/* Image Mode */}
                                                                     <div id={`mode-${type}-${q.id}-image`} class={`${initialMode === 'image' ? '' : 'hidden'}`}>
                                                                         <div class="flex justify-between items-center mb-2">
-                                                                            <span class="text-xs text-gray-400">Upload or Paste Image</span>
-                                                                            <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-blue-600 font-bold">📋 Paste</button>
+                                                                            <span class="text-xs text-gray-400 dark:text-neutral-500">Upload or Paste Image</span>
+                                                                            <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs bg-gray-100 dark:bg-neutral-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-neutral-600 text-blue-600 dark:text-blue-400 font-bold transition-colors">📋 Paste</button>
                                                                         </div>
 
                                                                         {q[`${type}_image_key`] && (
-                                                                            <img src={`/download/${q[`${type}_image_key`]}`} class="max-h-32 object-contain mb-2 border rounded" />
+                                                                            <img src={`/download/${q[`${type}_image_key`]}`} class="max-h-32 object-contain mb-2 border rounded dark:border-neutral-700" />
                                                                         )}
 
-                                                                        <input type="file" name={`q_${q.id}_${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500" />
-                                                                        <img id={`${type}-preview-${q.id}`} class="max-h-32 object-contain mt-2 hidden border rounded bg-gray-50" />
+                                                                        <input type="file" name={`q_${q.id}_${type}_image`} id={`file-${type}-${q.id}`} accept="image/*" class="block w-full text-xs text-gray-500 dark:text-neutral-400" />
+                                                                        <img id={`${type}-preview-${q.id}`} class="max-h-32 object-contain mt-2 hidden border rounded bg-gray-50 dark:bg-neutral-900 dark:border-neutral-700" />
                                                                     </div>
                                                                 </div>
                                                             )
@@ -382,33 +381,33 @@ app.get('/past-papers/paper/:id', async (c) => {
 
 
                                                 <div>
-                                                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Question</span>
+                                                    <span class="text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider block mb-1">Question</span>
                                                     {q.question_text ? (
-                                                        <div class="p-4 bg-white border border-gray-200 rounded text-gray-800 whitespace-pre-wrap">{q.question_text}</div>
+                                                        <div class="p-4 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded text-gray-800 dark:text-neutral-200 whitespace-pre-wrap">{q.question_text}</div>
                                                     ) : (
-                                                        q.question_image_key && <img src={`/download/${q.question_image_key}`} class="max-w-md border rounded" />
+                                                        q.question_image_key && <img src={`/download/${q.question_image_key}`} class="max-w-md border rounded dark:border-neutral-700" />
                                                     )}
                                                 </div>
 
                                                 {/* Stimulus */}
                                                 {(q.stimulus_text || q.stimulus_image_key) && (
                                                     <div>
-                                                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Stimulus</span>
+                                                        <span class="text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider block mb-1">Stimulus</span>
                                                         {q.stimulus_text ? (
-                                                            <div class="p-4 bg-gray-50 border border-gray-200 rounded text-gray-700 italic border-l-4 border-l-blue-400 whitespace-pre-wrap">{q.stimulus_text}</div>
+                                                            <div class="p-4 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded text-gray-700 dark:text-neutral-300 italic border-l-4 border-l-blue-400 dark:border-l-blue-600 whitespace-pre-wrap">{q.stimulus_text}</div>
                                                         ) : (
-                                                            <img src={`/download/${q.stimulus_image_key}`} class="max-w-md border rounded" />
+                                                            <img src={`/download/${q.stimulus_image_key}`} class="max-w-md border rounded dark:border-neutral-700" />
                                                         )}
                                                     </div>
                                                 )}
 
                                                 {/* Answer */}
                                                 <div>
-                                                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Answer / Marking Criteria</span>
+                                                    <span class="text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider block mb-1">Answer / Marking Criteria</span>
                                                     {q.answer_text ? (
-                                                        <div class="p-4 bg-green-50 border border-green-200 rounded text-green-900 whitespace-pre-wrap">{q.answer_text}</div>
+                                                        <div class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-green-900 dark:text-green-300 whitespace-pre-wrap">{q.answer_text}</div>
                                                     ) : (
-                                                        q.answer_image_key && <img src={`/download/${q.answer_image_key}`} class="max-w-md border rounded border-green-200" />
+                                                        q.answer_image_key && <img src={`/download/${q.answer_image_key}`} class="max-w-md border rounded border-green-200 dark:border-green-800" />
                                                     )}
                                                 </div>
                                             </div>
@@ -418,14 +417,14 @@ app.get('/past-papers/paper/:id', async (c) => {
 
                                     {
                                         isLastInSegment && canEdit && !paper.is_locked && (
-                                            <div class="bg-blue-50/50 p-2 flex justify-center gap-2 border-t border-gray-100">
-                                                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest self-center mr-2">{q.section_label} {q.segment_label} Controls:</span>
+                                            <div class="bg-blue-50/50 dark:bg-blue-900/10 p-2 flex justify-center gap-2 border-t border-gray-100 dark:border-neutral-700">
+                                                <span class="text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest self-center mr-2">{q.section_label} {q.segment_label} Controls:</span>
 
                                                 <button
                                                     type="submit"
                                                     formaction={`/past-papers/paper/${paper.id}/adjust-segment`}
                                                     name="action" value="add"
-                                                    class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded font-bold"
+                                                    class="text-xs bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 px-3 py-1 rounded font-bold transition-colors"
                                                     onclick={`
                                                     
                                                     const form = this.closest('form');
@@ -455,7 +454,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                     type="submit"
                                                     formaction={`/past-papers/paper/${paper.id}/adjust-segment`}
                                                     name="action" value="remove"
-                                                    class="text-xs bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded font-bold"
+                                                    class="text-xs bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-800 text-red-700 dark:text-red-300 px-3 py-1 rounded font-bold transition-colors"
                                                     onclick={`
                                                      if (!confirm('Remove last question of ${q.section_label} ${q.segment_label || ''}?')) return false;
 
@@ -492,9 +491,9 @@ app.get('/past-papers/paper/:id', async (c) => {
 
 
                     {canEdit && (
-                        <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-50">
+                        <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-gray-200 dark:border-neutral-800 p-4 shadow-lg z-50">
                             <div class="max-w-5xl mx-auto flex justify-between items-center">
-                                <span class="text-gray-500 text-sm">Ensure all changes are saved.</span>
+                                <span class="text-gray-500 dark:text-neutral-400 text-sm">Ensure all changes are saved.</span>
                                 <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 shadow-md transition transform hover:-translate-y-0.5">
                                     Save All Changes
                                 </button>

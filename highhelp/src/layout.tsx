@@ -69,13 +69,24 @@ ${props.latex ? html`
   </script>
 ` : ''}
         <script>
+            // Theme initialization - run as early as possible to avoid flash
+            (function() {
+                const theme = localStorage.getItem('theme') || 'light';
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            })();
+
             tailwind.config = {
+                darkMode: 'class',
                 theme: {
                   extend: {
                     colors: {
                       primary: '#3E2723', // Deep Brown
-                      secondary: '#3E2723', // Blue
-                      background: '#F8F9FA', // Neutral Light // TODO: modify this during if light/dark mode
+                      secondary: '#3E2723', 
+                      background: '#F8F9FA',
                       'brown-800': '#3E2723',
                       'blue-600': '#1E88E5',
                     },
@@ -84,26 +95,31 @@ ${props.latex ? html`
               }
             </script>
           </head>
-      <body class="bg-background text-gray-800 font-sans min-h-screen flex flex-col">
-        <nav class="bg-primary text-white shadow-lg">
+      <body class="bg-background dark:bg-neutral-900 text-gray-800 dark:text-gray-200 font-sans min-h-screen flex flex-col transition-colors duration-300">
+        <nav class="bg-primary dark:bg-neutral-950 text-white shadow-lg">
           <div class="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-14">
               <div class="flex items-center">
                 <a href="/home" class="font-bold text-xl tracking-tight">HighHelp</a>
                 <div class="hidden md:block">
                   <div class="ml-10 flex items-baseline space-x-4">
-                    <a href="/timetable" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Timetable</a>
-                    <a href="/resources" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Resources</a>
-                    <a href="/announcements" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Announcements</a>
-                    <a href="/past-papers" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Past Papers</a>
-                    <a href="/forum" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Q&A</a>
-                    <a href="/essays" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">Essays</a>
-                    <a href="/about" class="hover:bg-[#633200] px-3 py-2 rounded-md text-sm font-medium transition-colors">About</a>
+                    <a href="/timetable" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Timetable</a>
+                    <a href="/resources" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Resources</a>
+                    <a href="/announcements" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Announcements</a>
+                    <a href="/past-papers" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Past Papers</a>
+                    <a href="/forum" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Q&A</a>
+                    <a href="/essays" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Essays</a>
+                    <a href="/about" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">About</a>
                   </div>
                 </div>
               </div>
               <div class="hidden md:block">
-                <div class="ml-4 flex items-center md:ml-6 text-sm font-medium">
+                <div class="ml-4 flex items-center md:ml-6 text-sm font-medium gap-4">
+                  <!-- Theme Toggle Button -->
+                  <button id="theme-toggle" class="p-2 rounded-full hover:bg-[#633200] dark:hover:bg-neutral-800 transition-colors focus:outline-none" aria-label="Toggle dark mode">
+                    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                  </button>
                   ${props.user ? html`
   <div class="flex items-center">
     <button id="install-button" class="hidden items-center space-x-1 bg-[#633200] border border-white/20 hover:bg-[#b05800] px-3 py-1.5 rounded-md text-white text-xs font-semibold transition-all mr-6 group">
@@ -120,11 +136,11 @@ ${props.latex ? html`
 
       <div class="absolute right-0 top-full pt-2 w-48 hidden group-hover:block z-50">
           
-          <div class="bg-white rounded-md shadow-lg py-1 border border-gray-200">
-              <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">My Profile</a>
-              <a href="/profile/contributions" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">My Contributions</a>
-              <div class="border-t border-gray-100 my-1"></div>
-              <a href="/logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</a>
+          <div class="bg-white dark:bg-neutral-800 rounded-md shadow-lg py-1 border border-gray-200 dark:border-neutral-700">
+              <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">My Profile</a>
+              <a href="/profile/contributions" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">My Contributions</a>
+              <div class="border-t border-gray-100 dark:border-neutral-700 my-1"></div>
+              <a href="/logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-neutral-700">Logout</a>
           </div>
 
       </div>
@@ -164,14 +180,18 @@ ${props.latex ? html`
 
 
           <div class="hidden md:hidden" id="mobile-menu">
-            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-[#4E342E]">
-              <a href="/timetable" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Timetable</a>
-              <a href="/resources" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Resources</a>
-              <a href="/announcements" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Announcements</a>
-              <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Past Papers</a>
-              <a href="/forum" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Q&A</a>
-              <a href="/essays" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">Essays</a>
-              <a href="/about" class="text-gray-100 hover:bg-[#633200] block px-3 py-2 rounded-md text-base font-medium">About</a>
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-[#4E342E] dark:bg-neutral-900">
+              <a href="/timetable" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Timetable</a>
+              <a href="/resources" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Resources</a>
+              <a href="/announcements" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Announcements</a>
+              <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Past Papers</a>
+              <a href="/forum" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Q&A</a>
+              <a href="/essays" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Essays</a>
+              <a href="/about" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">About</a>
+              <button id="mobile-theme-toggle" class="w-full text-left text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium flex items-center justify-between">
+                <span>Theme</span>
+                <span id="mobile-theme-text">Light</span>
+              </button>
             </div>
             <div class="pt-4 pb-4 border-t border-gray-700">
               <div class="px-5 mb-4">
@@ -232,6 +252,43 @@ ${props.latex ? html`
                         }
                     });
                 }
+
+                // Theme Toggle Logic
+                const themeToggleBtn = document.getElementById('theme-toggle');
+                const darkIcon = document.getElementById('theme-toggle-dark-icon');
+                const lightIcon = document.getElementById('theme-toggle-light-icon');
+                const mobileThemeToggle = document.getElementById('mobile-theme-toggle');
+                const mobileThemeText = document.getElementById('mobile-theme-text');
+
+                const updateIcons = (theme) => {
+                    if (theme === 'dark') {
+                        darkIcon?.classList.add('hidden');
+                        lightIcon?.classList.remove('hidden');
+                        if (mobileThemeText) mobileThemeText.textContent = 'Dark';
+                    } else {
+                        lightIcon?.classList.add('hidden');
+                        darkIcon?.classList.remove('hidden');
+                        if (mobileThemeText) mobileThemeText.textContent = 'Light';
+                    }
+                };
+
+                let currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                updateIcons(currentTheme);
+
+                const toggleTheme = () => {
+                    const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+                    if (newTheme === 'dark') {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('theme', 'dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('theme', 'light');
+                    }
+                    updateIcons(newTheme);
+                };
+
+                themeToggleBtn?.addEventListener('click', toggleTheme);
+                mobileThemeToggle?.addEventListener('click', toggleTheme);
             });
         </script>
 
@@ -240,8 +297,7 @@ ${props.latex ? html`
         </main>
 
         ${!props.hideFooter && html`
-        <footer class="bg-white-800/10 text-blue-800/10 py-6">
-
+        <footer class="bg-white/5 dark:bg-neutral-900/50 text-gray-400 dark:text-neutral-500 py-6 mt-auto">
           <div class="max-w-[95%] mx-auto px-4 text-center">
             <p>&copy; 2025 HighHelp</p>
           </div>

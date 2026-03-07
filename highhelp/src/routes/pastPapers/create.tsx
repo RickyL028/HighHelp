@@ -19,16 +19,16 @@ app.get('/past-papers/create', async (c) => {
         <Layout title={`Add Paper - ${subject}`} user={user}>
             <div class="max-w-2xl mx-auto">
                 <div class="mb-6">
-                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}`} class="text-sm text-gray-500 hover:underline">← Back to {subject}</a>
-                    <h1 class="text-2xl font-bold mt-2">Add New Past Paper</h1>
+                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}`} class="text-sm text-gray-500 dark:text-neutral-400 hover:underline">← Back to {subject}</a>
+                    <h1 class="text-2xl font-bold mt-2 dark:text-white">Add New Past Paper</h1>
                 </div>
 
-                <form action="/past-papers/create" method="post" class="bg-white p-6 rounded border border-gray-300 shadow-none space-y-6">
+                <form action="/past-papers/create" method="post" class="bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-300 dark:border-neutral-700 shadow-sm space-y-6">
                     <input type="hidden" name="subject" value={subject} />
 
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">School Name</label>
-                        <input type="text" name="school_name" list="nsw-schools" required placeholder="Select or type school..." class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                        <label class="block text-sm font-bold text-gray-700 dark:text-neutral-300 mb-1">School Name</label>
+                        <input type="text" name="school_name" list="nsw-schools" required placeholder="Select or type school..." class="w-full rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                         <datalist id="nsw-schools">
                             <option value="Sydney Boys High School" />
                             <option value="Sydney Girls High School" />
@@ -42,8 +42,8 @@ app.get('/past-papers/create', async (c) => {
                     </div>
 
                     <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">Paper Type</label>
-                        <select name="paper_type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <label class="block text-sm font-bold text-gray-700 dark:text-neutral-300 mb-1">Paper Type</label>
+                        <select name="paper_type" class="w-full rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="Trial Paper" selected>Trial Paper</option>
                             <option value="HSC Examination">HSC Examination</option>
                             <option value="Assessment Task">Assessment Task</option>
@@ -55,40 +55,40 @@ app.get('/past-papers/create', async (c) => {
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-1">Year</label>
-                            <select name="academic_year" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <label class="block text-sm font-bold text-gray-700 dark:text-neutral-300 mb-1">Year</label>
+                            <select name="academic_year" class="w-full rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 {years.map(y => <option value={y}>{y}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-1">Reference Link (Optional)</label>
-                            <input type="url" name="reference_link" placeholder="https://..." class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                            <label class="block text-sm font-bold text-gray-700 dark:text-neutral-300 mb-1">Reference Link (Optional)</label>
+                            <input type="url" name="reference_link" placeholder="https://..." class="w-full rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
                         </div>
                     </div>
 
-                    <div class="border-t border-gray-100 pt-6">
-                        <h3 class="text-lg font-bold mb-4">Structure</h3>
-                        <p class="text-sm text-gray-500 mb-4">Define the structure to auto-generate placeholder questions.</p>
+                    <div class="border-t border-gray-100 dark:border-neutral-700 pt-6">
+                        <h3 class="text-lg font-bold mb-4 dark:text-white">Structure</h3>
+                        <p class="text-sm text-gray-500 dark:text-neutral-400 mb-4">Define the structure to auto-generate placeholder questions.</p>
 
                         <div id="segments-container" class="space-y-4">
-                        
-                            <div class="grid grid-cols-12 gap-4 items-end bg-gray-50 p-4 rounded-lg">
+
+                            <div class="grid grid-cols-12 gap-4 items-end bg-gray-50 dark:bg-neutral-900/50 p-4 rounded-lg border dark:border-neutral-700">
                                 <div class="col-span-4">
-                                    <label class="block text-xs font-bold text-gray-500 uppercase">Section</label>
-                                    <input type="text" name="segments[0][section]" value="I" placeholder="I, II, III" class="w-full mt-1 rounded border-gray-300 text-sm" />
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">Section</label>
+                                    <input type="text" name="segments[0][section]" value="I" placeholder="I, II, III" class="w-full mt-1 rounded border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:ring-blue-500" />
                                 </div>
                                 <div class="col-span-4">
-                                    <label class="block text-xs font-bold text-gray-500 uppercase">Segment (Optional)</label>
-                                    <input type="text" name="segments[0][label]" value="A" placeholder="A, B, C" class="w-full mt-1 rounded border-gray-300 text-sm" />
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">Segment (Optional)</label>
+                                    <input type="text" name="segments[0][label]" value="A" placeholder="A, B, C" class="w-full mt-1 rounded border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:ring-blue-500" />
                                 </div>
                                 <div class="col-span-4">
-                                    <label class="block text-xs font-bold text-gray-500 uppercase"># Questions</label>
-                                    <input type="number" name="segments[0][count]" value="10" min="1" class="w-full mt-1 rounded border-gray-300 text-sm" />
+                                    <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase"># Questions</label>
+                                    <input type="number" name="segments[0][count]" value="10" min="1" class="w-full mt-1 rounded border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:ring-blue-500" />
                                 </div>
                             </div>
                         </div>
 
-                        <button type="button" id="add-segment-btn" class="mt-4 text-sm text-blue-600 font-bold hover:underline">+ Add Another Segment</button>
+                        <button type="button" id="add-segment-btn" class="mt-4 text-sm text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">+ Add Another Segment</button>
                     </div>
 
                     <div class="pt-4">
@@ -101,19 +101,19 @@ app.get('/past-papers/create', async (c) => {
                     let segmentCount = 1;
                     document.getElementById('add-segment-btn').addEventListener('click', () => {
                         const div = document.createElement('div');
-                        div.className = 'grid grid-cols-12 gap-4 items-end bg-gray-50 p-4 rounded-lg';
+                        div.className = 'grid grid-cols-12 gap-4 items-end bg-gray-50 dark:bg-neutral-900/50 p-4 rounded-lg border dark:border-neutral-700';
                         div.innerHTML = \`
                             <div class="col-span-4">
-                                <label class="block text-xs font-bold text-gray-500 uppercase">Section</label>
-                                <input type="text" name="segments[\${segmentCount}][section]" placeholder="I, II" class="w-full mt-1 rounded border-gray-300 text-sm" />
+                                <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">Section</label>
+                                <input type="text" name="segments[\${segmentCount}][section]" placeholder="I, II" class="w-full mt-1 rounded border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:ring-blue-500" />
                             </div>
                             <div class="col-span-4">
-                                <label class="block text-xs font-bold text-gray-500 uppercase">Segment</label>
-                                <input type="text" name="segments[\${segmentCount}][label]" placeholder="A, B" class="w-full mt-1 rounded border-gray-300 text-sm" />
+                                <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">Segment</label>
+                                <input type="text" name="segments[\${segmentCount}][label]" placeholder="A, B" class="w-full mt-1 rounded border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:ring-blue-500" />
                             </div>
                             <div class="col-span-4">
-                                <label class="block text-xs font-bold text-gray-500 uppercase"># Questions</label>
-                                <input type="number" name="segments[\${segmentCount}][count]" value="5" min="1" class="w-full mt-1 rounded border-gray-300 text-sm" />
+                                <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase"># Questions</label>
+                                <input type="number" name="segments[\${segmentCount}][count]" value="5" min="1" class="w-full mt-1 rounded border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm focus:ring-blue-500" />
                             </div>
                         \`;
                         document.getElementById('segments-container').appendChild(div);
@@ -149,7 +149,7 @@ app.post('/past-papers/create', async (c) => {
 
     const paperId = paperRes.id;
 
-    
+
     const statements = [];
     let globalOrderIndex = 1;
 

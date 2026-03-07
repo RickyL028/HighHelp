@@ -45,13 +45,13 @@ app.get('/about', async (c) => {
 
                 <main class="flex-1 max-w-3xl">
                     <h1 class="text-4xl font-extrabold mb-8">About HighHelp</h1>
-                    <p class="text-gray-700 leading-relaxed mb-12">
+                    <p class="text-gray-700 dark:text-neutral-300 leading-relaxed mb-12 dark:text-neutral-300">
                         On this page, you will find information and guidelines for each section of this website.
                     </p>
 
                     <section id="mission" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">What is HighHelp?</h2>
-                        <p class="text-gray-700 leading-relaxed">
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed dark:text-neutral-300">
                             HighHelp is a proposed website designed and programmed specifically for, and by, class of 2027. The goal of this project is to improve the academic performance of our grade as a whole.
                             <br></br>
                             <br></br>
@@ -64,16 +64,16 @@ app.get('/about', async (c) => {
                     <br></br>
                     <section id="resources" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Resources</h2>
-                        <p class="text-gray-700 leading-relaxed">
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
                             Students can access resources, such as notes, uploaded by their peers on this page. We encourage any materials beneficial in any way - personal notes, class worksheets, exemplar essays etc.
 
                             <h3 class="text-1xl font-bold mt-4 mb-1">Requirements</h3>
-                            <ul class="list-disc list-inside text-gray-700 leading-relaxed">
+                            <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
                                 <li>File size less than 25MB</li>
                                 <li>Uploader must have agreed to website guidelines</li>
                             </ul>
                             <h3 class="text-1xl font-bold mt-4 mb-1">Guidelines</h3>
-                            <ul class="list-disc list-inside text-gray-700 leading-relaxed">
+                            <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
                                 <li>No deliberate misinformation</li>
                                 <li>No plagiarism</li>
                                 <li>No copyright infringement (e.g. Textbook)</li>
@@ -86,7 +86,7 @@ app.get('/about', async (c) => {
                     </section>
                     <section id="announcements" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Announcements</h2>
-                        <p class="text-gray-700 leading-relaxed">
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
                             These are usually significant updates within a subject (e.g. release/change in notification) - or within our cohort (e.g. school events). Surprisingly this is the most wanted feature, according to the survey.
 
                             <h3 class="text-1xl font-bold mt-4 mb-1">Requirements</h3>
@@ -100,7 +100,7 @@ app.get('/about', async (c) => {
                     </section>
                     <section id="pp" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Past Papers</h2>
-                        <p class="text-gray-700 leading-relaxed">
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
                             <i>Erm, how is this different to THSC?</i>
                             <br></br>
                             We classified each question (of selected papers) into topics. As such, students can grind past papers specific to the exam notification. This further enables us to try questions from 'future' exams (yearlies, trials, or HSCs) without being hindered by content yet to be taught.
@@ -119,13 +119,13 @@ app.get('/about', async (c) => {
                     </section>
                     <section id="qa" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Q&A</h2>
-                        <p class="text-gray-700 leading-relaxed">
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
                             Literally Q&A.
 
                             <h3 class="text-1xl font-bold mt-4 mb-1">Requirements</h3>
                             Not banned.
                             <h3 class="text-1xl font-bold mt-4 mb-1">Guidelines</h3>
-                            <ul class="list-disc list-inside text-gray-700 leading-relaxed">
+                            <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
                                 <li>No trolling, for both the question and answer. We understand your urge to demonstrate your humour, but please keep it in check - you can laugh after HSC results.</li>
                                 <li>No swearing</li>
                                 <li>No personal attacks</li>
@@ -137,7 +137,7 @@ app.get('/about', async (c) => {
                     </section>
                     <section id="essays" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Essays</h2>
-                        <p class="text-gray-700 leading-relaxed">
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
                             Students can upload their essays for others to read and learn from / give feedback or comment.
 
                             <h3 class="text-1xl font-bold mt-4 mb-1">Requirements</h3>
@@ -146,7 +146,7 @@ app.get('/about', async (c) => {
                             <br></br>
                             Additionally, to reward students giving genuine feedback, and to avoid over-reliance, there is a hidden points system. Though, it is very unlikely that you will be restricted due to this feature.
                             <h3 class="text-1xl font-bold mt-4 mb-1">Guidelines</h3>
-                            <ul class="list-disc list-inside text-gray-700 leading-relaxed">
+                            <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
                                 <li>No trolling</li>
                                 <li>No swearing</li>
                                 <li>No personal attacks</li>
@@ -159,7 +159,7 @@ app.get('/about', async (c) => {
                         <h2 class="text-2xl font-bold mb-4">Application</h2>
                         {user && Number(user.permission_level) === PermissionLevel.DEFAULT ? (
                             <div class="bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
-                                <p class="text-gray-700 mb-6">
+                                <p class="text-gray-700 dark:text-neutral-300 mb-6">
                                     To access all features of HighHelp, including the ability to upload resources and participate in our community, please review and agree to our guidelines.
                                 </p>
                                 <form action="/about/verify" method="post" class="space-y-4">
@@ -176,7 +176,7 @@ app.get('/about', async (c) => {
                                                 <div class="mt-1">
                                                     <input type="checkbox" name={item.id} required class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 transition-all cursor-pointer" />
                                                 </div>
-                                                <span class="text-gray-700 group-hover:text-gray-900 transition-colors">{item.label}</span>
+                                                <span class="text-gray-700 dark:text-neutral-300 group-hover:text-gray-900 transition-colors">{item.label}</span>
                                             </label>
                                         ))}
                                     </div>
@@ -227,7 +227,7 @@ app.get('/about', async (c) => {
                     </section>
                     <section id="faq" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">FAQs</h2>
-                        <p class="text-gray-700 leading-relaxed">
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
                             <h3 class="text-1xl font-bold mt-4 mb-1">What if data is lost before important exams?</h3>
                             The database and storage provider of this website is Cloudflare - which features a built-in backup system that allows for data to be restored to any snapshots in the past 30 days. Additionally, we will manually backup all the data before e.g. Trials and HSC.
                             <br></br>
@@ -245,33 +245,89 @@ app.get('/about', async (c) => {
                     </section>
                     <section id="feedback" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Feedback</h2>
-                        <p class="text-gray-700 leading-relaxed">
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
                             Report bugs and provide feedback via <a href="https://forms.gle/7af9Dq8mZiQtjfbs9"><u>Google Form</u></a>.
                         </p>
                     </section>
-                    <section id="contact" class="mb-12 scroll-mt-20">
+                    <section id="contact" class="mb-6 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Contact</h2>
-                        <p class="text-gray-700 leading-relaxed">
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
 
-                            <ul class="list-disc list-inside text-gray-700 leading-relaxed">
+                            <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
                                 <li>Use the above feedback form. We read each feedback carefully and will respond within one day.</li>
                                 <li>Contact any SRCs for additional information.</li>
-                                <li>Contact 457297106@student.sbhs.nsw.edu.au (Ricky Luo) for any inquiries or technical issues.</li>
-                                <li>DM on Instagram: <a href="https://www.instagram.com/sydneyhighhsc/"><u>sydneyhighhsc</u></a></li>
+                                
                             </ul>
 
 
                             <br></br>
                         </p>
                     </section>
+                    <section id="Credit" class="mb-12 scroll-mt-20">
+                        <h2 class="text-2xl mb-4">Credit</h2>
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
 
+                            The HighHelp program can not be accomplished without the support of each individual within our cohort.
+                            <br></br>
+                            <br></br>
+                            Nevertheless, we wish to highlight the exceptional contributions of the following pupils:
+                            <br></br>
+                            
+
+                        </p>
+                        <ul class="list-none pl-8 text-gray-700 dark:text-neutral-300">
+                            <li>Lucas Chen,</li>
+                            <li>Dennis Chen,</li>
+                            <li>Charlie Chesh,</li>
+                            <li>Aryan Ghosh,</li>
+                            <li>Franklin Huang,</li>
+                            <li>Theodore Hui,</li>
+                            
+                            <li>Jasper Kim,</li>
+                            <li>Joshua Kuo,</li>
+                            
+                            <li>Caspar Lai,</li>
+                            <li>Kyle Lee,</li>
+                            <li>Nicklas Li,</li>
+                            
+
+                            <li>Tuyvan Mai,</li>
+                            
+
+                            <li>Aryaman Pachori,</li>
+                            
+
+                            <li>Jun Shim,</li>
+                            <li>Aiden Ton-That,</li>
+                            
+
+                            <li>Yuhai Wang,</li>
+
+                            <li>Terry Zhang,</li>
+                            <li>Henrik Zhang,</li>
+                        </ul>
+                    <br></br>
+                    And, importantly,
+                    <br></br>
+                        <ul class="list-none pl-8 text-gray-700 dark:text-neutral-300">
+                            <li>Mr. Wang and Ms. Millar, for your help and support,</li>
+                            
+                            <li>Mr. Comben, for your advice and guidance,</li>
+                            
+                        </ul>
+<br></br>
+                    Lastly, myself    
+                        <p class='pl-8'>Ricky Luo.</p>
+                    </section>
+                    
 
                 </main>
             </div>
         </Layout>
     )
 }
-
 )
+
+
 
 export default app
