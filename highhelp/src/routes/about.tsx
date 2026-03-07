@@ -249,29 +249,85 @@ app.get('/about', async (c) => {
                             Report bugs and provide feedback via <a href="https://forms.gle/7af9Dq8mZiQtjfbs9"><u>Google Form</u></a>.
                         </p>
                     </section>
-                    <section id="contact" class="mb-12 scroll-mt-20">
+                    <section id="contact" class="mb-6 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Contact</h2>
                         <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
 
                             <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
                                 <li>Use the above feedback form. We read each feedback carefully and will respond within one day.</li>
                                 <li>Contact any SRCs for additional information.</li>
-                                <li>Contact 457297106@student.sbhs.nsw.edu.au (Ricky Luo) for any inquiries or technical issues.</li>
-                                <li>DM on Instagram: <a href="https://www.instagram.com/sydneyhighhsc/"><u>sydneyhighhsc</u></a></li>
+                                
                             </ul>
 
 
                             <br></br>
                         </p>
                     </section>
+                    <section id="Credit" class="mb-12 scroll-mt-20">
+                        <h2 class="text-2xl mb-4">Credit</h2>
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
 
+                            The HighHelp program can not be accomplished without the support of each individual within our cohort.
+                            <br></br>
+                            <br></br>
+                            Nevertheless, we wish to highlight the exceptional contributions of the following pupils:
+                            <br></br>
+                            
+
+                        </p>
+                        <ul class="list-none pl-8 text-gray-700 dark:text-neutral-300">
+                            <li>Lucas Chen,</li>
+                            <li>Dennis Chen,</li>
+                            <li>Charlie Chesh,</li>
+                            <li>Aryan Ghosh,</li>
+                            <li>Franklin Huang,</li>
+                            <li>Theodore Hui,</li>
+                            
+                            <li>Jasper Kim,</li>
+                            <li>Joshua Kuo,</li>
+                            
+                            <li>Caspar Lai,</li>
+                            <li>Kyle Lee,</li>
+                            <li>Nicklas Li,</li>
+                            
+
+                            <li>Tuyvan Mai,</li>
+                            
+
+                            <li>Aryaman Pachori,</li>
+                            
+
+                            <li>Jun Shim,</li>
+                            <li>Aiden Ton-That,</li>
+                            
+
+                            <li>Yuhai Wang,</li>
+
+                            <li>Terry Zhang,</li>
+                            <li>Henrik Zhang,</li>
+                        </ul>
+                    <br></br>
+                    And, importantly,
+                    <br></br>
+                        <ul class="list-none pl-8 text-gray-700 dark:text-neutral-300">
+                            <li>Mr. Wang and Ms. Millar, for your help and support,</li>
+                            
+                            <li>Mr. Comben, for your advice and guidance,</li>
+                            
+                        </ul>
+<br></br>
+                    Lastly, myself    
+                        <p class='pl-8'>Ricky Luo.</p>
+                    </section>
+                    
 
                 </main>
             </div>
         </Layout>
     )
 }
-
 )
+
+
 
 export default app
