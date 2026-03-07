@@ -142,7 +142,7 @@ app.get('/resources', async (c) => {
                                         </div>
                                         <div class="shrink-0 flex items-center gap-4">
                                             
-                                            <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
+                                            <a href={`/resources/view/${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
                                                 View
                                             </a>
                                         </div>
@@ -467,7 +467,11 @@ app.post('/resources', async (c) => {
 
             const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             const fileKey = `resources/${Date.now()}-${safeName}`
-            await c.env.BUCKET.put(fileKey, file)
+            await c.env.BUCKET.put(fileKey, file, {
+                httpMetadata: {
+                    contentType: file.type || 'application/octet-stream'
+                }
+            })
             const res = await c.env.DB.prepare('INSERT INTO resources (title, description, file_key, subject, uploader_id, type) VALUES (?, ?, ?, ?, ?, ?)')
                 .bind(title, description, fileKey, subject, user.id, 'resource')
                 .run()
@@ -502,6 +506,22 @@ app.post('/resources/:id/delete', async (c) => {
     return c.redirect(`/resources?subject=${encodeURIComponent(resource.subject)}`);
 })
 
+// Helper to guess MIME type by extension
+const getMimeType = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const map: Record<string, string> = {
+        'pdf': 'application/pdf',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+        'txt': 'text/plain',
+        'mp4': 'video/mp4'
+    };
+    return map[ext || ''] || 'application/octet-stream';
+};
+
 app.get('/download/*', async (c) => {
     try {
         const user = await getUser(c)
@@ -509,11 +529,17 @@ app.get('/download/*', async (c) => {
 
         const path = c.req.path;
         const prefix = '/download/';
-        if (!path.startsWith(prefix)) return c.text('Invalid path', 400);
         const key = path.slice(prefix.length);
         const object = await c.env.BUCKET.get(key);
         if (!object) return c.text('File not found', 404);
 
+        // --- NEW LOGIC ---
+        // If the bucket metadata is missing or generic, use our helper
+        let contentType = object.httpMetadata?.contentType;
+        if (!contentType || contentType === 'application/octet-stream') {
+            contentType = getMimeType(key);
+        }
+        // -----------------
 
         const id = c.req.query('id');
         if (id) {
@@ -523,14 +549,15 @@ app.get('/download/*', async (c) => {
         return new Response(object.body, {
             headers: {
                 'etag': object.httpEtag,
-                'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
+                'Content-Type': contentType, // Use the detected type
+                // Ensure browser doesn't force download
+                'Content-Disposition': 'inline', 
             }
         })
     } catch (e: any) {
         return c.text(`Download Failed: ${e.message}`, 500);
     }
 })
-
 app.get('/resources/view/:id', async (c) => {
     const user = await getUser(c)
     const id = c.req.param('id')
@@ -549,12 +576,21 @@ app.get('/resources/view/:id', async (c) => {
         return c.notFound();
     }
 
+    // --- NEW PREVIEW LOGIC ---
+    const fileExt = resource.file_key.split('.').pop()?.toLowerCase() || '';
+    const isPDF = fileExt === 'pdf';
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt);
+    const isText = ['txt', 'csv', 'md'].includes(fileExt);
+    const hasPreview = isPDF || isImage || isText;
+    // -------------------------
+
     return c.html(
         <Layout title={`${resource.title} - ${resource.subject}`} user={user}>
             <div class="max-w-4xl mx-auto py-8 px-4">
                 <a href={`/resources?subject=${encodeURIComponent(resource.subject)}`} class="text-blue-600 hover:underline mb-6 inline-block">← Back to {resource.subject} Resources</a>
 
                 <div class="bg-white dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm p-8">
+                    {/* Header Section */}
                     <div class="flex items-start justify-between mb-6">
                         <div>
                             <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-3">{resource.title}</h1>
@@ -571,11 +607,42 @@ app.get('/resources/view/:id', async (c) => {
                         {resource.is_deleted && <span class="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 font-bold px-3 py-1 rounded-full text-sm uppercase">Deleted</span>}
                     </div>
 
+                    {/* Description Section */}
                     <div class="bg-gray-50 dark:bg-neutral-900/50 p-6 rounded-lg mb-8 border border-gray-100 dark:border-neutral-700">
                         <h3 class="text-sm font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider mb-2">Description</h3>
                         <p class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap leading-relaxed">{resource.description || <span class="italic text-gray-400 dark:text-neutral-500">No description provided.</span>}</p>
                     </div>
 
+                    {/* NEW PREVIEW SECTION */}
+                    {hasPreview && (
+                        <div class="mb-8 border border-gray-200 dark:border-neutral-700 rounded-lg overflow-hidden bg-gray-50 dark:bg-neutral-900 shadow-inner">
+                            <div class="bg-gray-100 dark:bg-neutral-800 px-4 py-3 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center">
+                                <span class="text-sm font-bold text-gray-700 dark:text-neutral-300 uppercase tracking-wider">File Preview</span>
+                                <a href={`/download/${resource.file_key}`} target="_blank" class="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                                    Open in new tab
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                </a>
+                            </div>
+                            <div class="w-full h-[600px] flex items-center justify-center overflow-auto">
+                                {(isPDF || isText) && (
+                                    <iframe 
+                                        src={`/download/${resource.file_key}`} 
+                                        class="w-full h-full border-0 bg-white dark:bg-white" 
+                                        title="File Preview">
+                                    </iframe>
+                                )}
+                                {isImage && (
+                                    <img 
+                                        src={`/download/${resource.file_key}`} 
+                                        alt={resource.title} 
+                                        class="max-w-full max-h-full object-contain p-4" 
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Download/Action Footer */}
                     <div class="flex items-center justify-between border-t border-gray-100 dark:border-neutral-700 pt-6">
                         <div class="text-gray-500 dark:text-neutral-400 text-sm">
                             <span class="font-medium text-gray-700 dark:text-neutral-200">{resource.download_count || 0}</span> downloads
