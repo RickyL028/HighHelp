@@ -65,59 +65,46 @@ app.get('/feedback', async (c) => {
 
     const renderCard = (f: any) => {
         const badge = STATUS_CLASSES[f.status] || STATUS_CLASSES.pending
-        const submitter = f.first_name ? `${f.first_name} ${(f.last_name || '').charAt(0)}.` : 'Anonymous'
         return (
-            <div class="bg-white dark:bg-neutral-800 rounded border border-gray-200 dark:border-neutral-700 p-4">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-2 flex-wrap">
-                            <span class={`inline-block px-2 py-0.5 rounded text-xs font-bold border ${badge}`}>
-                                {STATUS_LABELS[f.status] || f.status}
-                            </span>
-                            <span class="text-xs text-gray-400 dark:text-neutral-500 local-date" data-timestamp={f.created_at}>
-                                {formatDate(f.created_at)}
-                            </span>
-                        </div>
-                        <h3 class="font-bold text-gray-900 dark:text-white mb-1">{f.title}</h3>
-                        <p class="text-sm text-gray-600 dark:text-neutral-400 leading-relaxed">{f.description}</p>
+            <div class="flex items-center gap-3 py-2.5 px-3 border-b border-gray-100 dark:border-neutral-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors">
 
-                    </div>
+                <div class="flex-1 min-w-0">
+                    <span class="font-semibold text-sm text-gray-900 dark:text-white">{f.title}</span>
+                    <span class="text-gray-300 dark:text-neutral-600 text-xs mx-2">·</span>
+                    <span class="text-xs text-gray-500 dark:text-neutral-400">{f.description}</span>
+                </div>
 
-                    {isAdmin && (
-                        <div class="flex-shrink-0 flex flex-col items-end gap-1">
-                            <p class="text-xs text-gray-400 dark:text-neutral-500 mb-1 uppercase tracking-wide font-bold">Move to</p>
-                            <div class="flex flex-wrap gap-1 justify-end">
-                                {ALL_STATUSES.filter(s => s !== f.status).map(status => (
-                                    <form action={`/feedback/${f.id}/status`} method="post" class="inline">
-                                        <input type="hidden" name="status" value={status} />
-                                        <button type="submit" class={`px-2 py-0.5 rounded text-xs font-bold border transition-opacity hover:opacity-70 ${STATUS_CLASSES[status]}`}>
-                                            {STATUS_LABELS[status]}
-                                        </button>
-                                    </form>
-                                ))}
-                            </div>
-                            <form action={`/feedback/${f.id}/delete`} method="post" class="mt-1">
-                                <button type="submit" class="text-red-500 dark:text-red-400 text-xs font-bold hover:underline uppercase tracking-wide" onclick="return confirm('Delete this suggestion?')">
-                                    Delete
+                {isAdmin && (
+                    <div class="flex-shrink-0 flex items-center gap-1">
+                        {ALL_STATUSES.filter(s => s !== f.status).map(status => (
+                            <form action={`/feedback/${f.id}/status`} method="post" class="inline">
+                                <input type="hidden" name="status" value={status} />
+                                <button type="submit" class={`px-2 py-0.5 rounded text-xs font-bold border transition-opacity hover:opacity-70 ${STATUS_CLASSES[status]}`}>
+                                    {STATUS_LABELS[status]}
                                 </button>
                             </form>
-                        </div>
-                    )}
-                </div>
+                        ))}
+                        <form action={`/feedback/${f.id}/delete`} method="post" class="inline ml-1">
+                            <button type="submit" class="text-red-500 dark:text-red-400 text-xs font-bold hover:underline uppercase tracking-wide" onclick="return confirm('Delete this suggestion?')">
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+                )}
             </div>
         )
     }
 
     const renderSection = (title: string, items: any[], emptyMsg: string) => (
         <div class="border-t dark:border-neutral-800 pt-6 mb-6">
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center justify-between mb-3">
                 <h2 class="text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
                 <span class="text-sm text-gray-400 dark:text-neutral-500">{items.length}</span>
             </div>
             {items.length === 0 ? (
                 <p class="text-gray-400 dark:text-neutral-500 text-sm italic">{emptyMsg}</p>
             ) : (
-                <div class="space-y-3">
+                <div class="border border-gray-200 dark:border-neutral-700 rounded overflow-hidden bg-white dark:bg-neutral-800">
                     {items.map((f: any) => renderCard(f))}
                 </div>
             )}
@@ -128,17 +115,20 @@ app.get('/feedback', async (c) => {
         <Layout title="Feedback" user={user}>
             <div class="max-w-3xl mx-auto">
                 <div class="flex items-center justify-between mb-6">
-                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Suggestions</h1>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">What if...</h1>
                     {user && Number(user.permission_level) >= PermissionLevel.VERIFIED ? (
                         <a href="/feedback/submit" class="bg-[#633200] hover:bg-[#b05800] text-white px-4 py-2 rounded font-bold transition-colors text-sm">
                             + Submit
                         </a>
                     ) : null}
                 </div>
-
-                <p class="text-gray-500 dark:text-neutral-400 text-sm mb-8">
-                    Got an idea to improve HighHelp? Submit it below and the team will review it. Your pending suggestions are only visible to you until reviewed.
+                <p class="text-gray-400 dark:text-neutral-400 text-sm">
+                    We got too many suggestions from the google form (thank you everybody!!)
                 </p>
+                <p class="text-gray-400 dark:text-neutral-400 text-sm mb-8">
+                    To keep everyone updated, this temporary page will be used to display the progress of those, or any new, suggestions.
+                </p>
+
 
                 {/* Pending — only shown if there's something to show */}
                 {pendingFeedback.length > 0 && (
@@ -159,8 +149,11 @@ app.get('/feedback', async (c) => {
                 {renderSection('Adopted', adopted, 'Nothing adopted yet.')}
                 {renderSection('Developing', developing, 'Nothing in progress.')}
                 {renderSection('Discarded', discarded, 'Nothing discarded.')}
+
             </div>
+
         </Layout>
+
     )
 })
 
@@ -178,8 +171,8 @@ app.get('/feedback/submit', async (c) => {
                 <a href="/feedback" class="text-blue-600 dark:text-blue-400 hover:underline text-sm mb-6 inline-block">← Back</a>
 
                 <div class="bg-white dark:bg-neutral-800 rounded border border-gray-200 dark:border-neutral-700 p-6">
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Submit a Suggestion</h1>
-                    <p class="text-gray-500 dark:text-neutral-400 text-sm mb-6">Share your ideas — we read every submission.</p>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Submit a suggestion</h1>
+
 
                     <form action="/feedback/submit" method="post" class="space-y-5">
                         <div>
@@ -189,7 +182,7 @@ app.get('/feedback/submit', async (c) => {
                                 name="title"
                                 required
                                 maxlength={100}
-                                placeholder="e.g. Add a dark mode toggle for the forum"
+
                                 class="w-full px-4 py-2 rounded border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                             />
                         </div>
@@ -201,7 +194,7 @@ app.get('/feedback/submit', async (c) => {
                                 required
                                 rows={4}
                                 maxlength={1000}
-                                placeholder="What would you like improved, and why?"
+
                                 class="w-full px-4 py-2 rounded border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
                             ></textarea>
                         </div>
