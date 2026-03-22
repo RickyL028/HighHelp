@@ -37,7 +37,19 @@ export const TimetableDay = html`
             container.innerHTML = '';
             
             if (!apiData && (!dayInfo || !daysData[dayInfo.dayNumber])) {
-                container.innerHTML = '<div class="text-center py-12 text-gray-500 dark:text-neutral-500">No classes scheduled.</div>';
+                const hasAnyData = Object.keys(daysData).length > 0;
+                if (!hasAnyData) {
+                    container.innerHTML = \`
+                        <div class="text-center py-12">
+                            <p class="text-gray-500 dark:text-neutral-400 mb-4">Timetable data not found.</p>
+                            <a href="/api/auth/login" class="inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors">
+                                Log in again to sync
+                            </a>
+                        </div>
+                    \`;
+                } else {
+                    container.innerHTML = '<div class="text-center py-12 text-gray-500 dark:text-neutral-500">No classes scheduled.</div>';
+                }
                 return;
             }
 
@@ -315,6 +327,10 @@ export const TimetableDay = html`
             
         } catch (error) {
             console.error("Failed to fetch fresh data in the background:", error);
+            const container = document.getElementById('timetable-list');
+            if (container && currentDateStr === snapshotDate && currentView === snapshotView) {
+                container.innerHTML = '<div class="text-center py-12 text-red-500 dark:text-red-400 font-medium"><a href="/api/auth/login" class="underline">Log in again</a> to sync.</div>';
+            }
         }
     }
 </script>

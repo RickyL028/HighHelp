@@ -157,6 +157,8 @@ export const TimetableCore = html`
                         res = await fetch('/api/proxy/day-data?date=' + date + '&_=' + new Date().getTime(), {
                             headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
                         });
+                    } else {
+                        throw new Error('AUTH_EXPIRED');
                     }
                 }
 
@@ -176,7 +178,10 @@ export const TimetableCore = html`
                     }
                     return data;
                 }
-            } catch(e) { console.error(e); }
+            } catch(e) {
+                if (e.message === 'AUTH_EXPIRED') throw e;
+                console.error(e);
+            }
 
             return data || cachedData;
         })();
