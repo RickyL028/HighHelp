@@ -69,6 +69,30 @@ export const TimetableLayout = ({ children }: { children: Child }) => (
 
             <div id="timetable-list" class="space-y-4"></div>
 
+            {/* Quick Links Grid */}
+            <div id="quick-links-wrapper" class="relative mt-4 mb-2">
+                <div id="quick-links-panel">
+                    <div class="grid grid-cols-2 gap-2">
+                        <a id="ql-btn-0" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center gap-2 py-2.5 px-3 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-sm font-medium shadow-sm no-underline">
+                            <svg class="w-4 h-4 flex-shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                            <span class="ql-title truncate"></span>
+                        </a>
+                        <a id="ql-btn-1" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center gap-2 py-2.5 px-3 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-sm font-medium shadow-sm no-underline">
+                            <svg class="w-4 h-4 flex-shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                            <span class="ql-title truncate"></span>
+                        </a>
+                        <a id="ql-btn-2" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center gap-2 py-2.5 px-3 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-sm font-medium shadow-sm no-underline">
+                            <svg class="w-4 h-4 flex-shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                            <span class="ql-title truncate"></span>
+                        </a>
+                        <a id="ql-btn-3" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center gap-2 py-2.5 px-3 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-sm font-medium shadow-sm no-underline">
+                            <svg class="w-4 h-4 flex-shrink-0 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                            <span class="ql-title truncate"></span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <div class="flex items-center justify-center py-10 opacity-60">
                 <div class="h-px bg-gray-300 dark:bg-neutral-800 flex-grow"></div>
                 <span class="mx-4 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-neutral-600">

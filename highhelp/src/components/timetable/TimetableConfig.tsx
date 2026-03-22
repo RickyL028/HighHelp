@@ -41,6 +41,34 @@ export const TimetableConfig = html`
                 </div>
             </div>
         </div>
+
+        <h2 class="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-4 border-t border-gray-200 dark:border-neutral-700 pt-4">Quick Links</h2>
+        <div class="mb-4">
+            <p class="text-gray-600 dark:text-neutral-400 text-sm mb-3">Add up to 4 quick links accessible from the timetable view. Use them to quickly open Canvas, Clipboard, email, or any other frequently used page.</p>
+            <div id="quick-links-config" class="space-y-3">
+                ${[1, 2, 3, 4].map(i => html`
+                    <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-neutral-900/50 rounded-lg border border-gray-100 dark:border-neutral-700">
+                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 font-bold text-sm flex-shrink-0">${i}</div>
+                        <div class="flex flex-col gap-2 flex-grow">
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs text-gray-600 dark:text-neutral-400 w-10">Title:</label>
+                                <input type="text" class="quick-link-title shadow appearance-none border dark:border-neutral-600 rounded w-full py-1 px-2 text-gray-700 dark:text-white dark:bg-neutral-800 text-xs leading-tight focus:outline-none focus:shadow-outline focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                                    data-index="${i - 1}"
+                                    placeholder="e.g. Canvas, Clipboard..."
+                                    maxlength="20">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs text-gray-600 dark:text-neutral-400 w-10">URL:</label>
+                                <input type="text" class="quick-link-url shadow appearance-none border dark:border-neutral-600 rounded w-full py-1 px-2 text-gray-700 dark:text-white dark:bg-neutral-800 text-xs leading-tight focus:outline-none focus:shadow-outline focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                                    data-index="${i - 1}"
+                                    placeholder="https://...">
+                            </div>
+                        </div>
+                    </div>
+                `)}
+            </div>
+        </div>
+
         <button id="save-config" class="bg-blue-500 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200">
             Sync
         </button>
@@ -77,6 +105,18 @@ export const TimetableConfig = html`
 
                 localStorage.setItem('subjectConfig', JSON.stringify(newConfig));
                 window.dispatchEvent(new Event('subjectConfigUpdated'));
+
+                // Save quick links
+                const quickLinks = [];
+                document.querySelectorAll('.quick-link-title').forEach(input => {
+                    const idx = parseInt(input.getAttribute('data-index'));
+                    const title = input.value.trim();
+                    const urlInput = document.querySelector('.quick-link-url[data-index="' + idx + '"]');
+                    const url = urlInput ? urlInput.value.trim() : '';
+                    quickLinks[idx] = { title, url };
+                });
+                localStorage.setItem('quickLinks', JSON.stringify(quickLinks));
+                window.dispatchEvent(new Event('quickLinksUpdated'));
 
                 statusMsg.textContent = 'Configuration saved!';
                 statusMsg.classList.remove('hidden');
@@ -148,6 +188,35 @@ export const TimetableConfig = html`
             });
         }
 
+        function loadQuickLinks() {
+            const DEFAULT_LINKS = [
+                { title: 'Portal', url: 'https://student.sbhs.net.au' },
+                { title: 'Gmail', url: 'https://mail.google.com/' },
+                { title: 'Canvas', url: 'https://sydneyboyshigh.instructure.com' },
+                { title: 'Calendar', url: 'https://portal.clipboard.app/sbhs/calendar' }
+            ];
+
+            let quickLinks = [{}, {}, {}, {}];
+            try {
+                const raw = localStorage.getItem('quickLinks');
+                if (raw) {
+                    quickLinks = JSON.parse(raw);
+                } else {
+                    quickLinks = DEFAULT_LINKS;
+                }
+            } catch(e) {
+                quickLinks = DEFAULT_LINKS;
+            }
+            document.querySelectorAll('.quick-link-title').forEach(input => {
+                const idx = parseInt(input.getAttribute('data-index'));
+                if (quickLinks[idx] && quickLinks[idx].title) input.value = quickLinks[idx].title;
+            });
+            document.querySelectorAll('.quick-link-url').forEach(input => {
+                const idx = parseInt(input.getAttribute('data-index'));
+                if (quickLinks[idx] && quickLinks[idx].url) input.value = quickLinks[idx].url;
+            });
+        }
+
         if (urlInput && saveBtn && subjectConfigContainer) {
             try {
                 let savedUrls = [];
@@ -167,6 +236,7 @@ export const TimetableConfig = html`
             } catch (error) {}
 
             loadSubjectConfig();
+            loadQuickLinks();
             saveBtn.addEventListener('click', saveAll);
 
             urlInput.addEventListener('keydown', (e) => {
