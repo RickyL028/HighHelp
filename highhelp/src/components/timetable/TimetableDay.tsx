@@ -128,9 +128,14 @@ export const TimetableDay = html`
                     }
                 }
 
-                const hasContent = !!data && (!!data.title || !!data.subject);
+                
+                
+                const isRCPeriod = bell.period === 'RC' || 
+                   (typeof bell.label === 'string' && bell.label.startsWith('RC '));
+                const isBreakCode = bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD' || isRCPeriod;
+                const hasContent = !!data && (!!data.title || !!data.subject) && !isBreakCode && !isRCPeriod;
                 const stripColor = data?.color ? \`#\${data.color}\` : '#e5e7eb';
-                const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD';
+                const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD' || isRCPeriod;
                 const containerClass = isMinorPeriod ? 'min-h-[0.5rem]' : 'min-h-[2.8rem]';
                 const timeWidth = 'w-24'; 
                 const textSize = 'text-sm';

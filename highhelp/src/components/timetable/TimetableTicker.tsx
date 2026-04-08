@@ -50,7 +50,7 @@ export const TimetableTicker = html`
                 let pData = null;
                 let isBreak = false;
                 const breakCodes = ['R', 'L1', 'L2', 'MTL1', 'MTL2', 'WFL1', 'WFL2', 'Recess', 'Lunch'];
-                if (breakCodes.includes(bell.period) || bell.type === 'L' || bell.type === 'R') {
+                if (breakCodes.includes(bell.period) || bell.type === 'L' || bell.type === 'R' || (bell.period && bell.period.startsWith('RC '))) {
                     isBreak = true;
                     pData = { title: bell.label, isBreak: true };
                 } else {
