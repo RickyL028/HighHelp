@@ -64,4 +64,5 @@ export type Bindings = Env & {
     PORTAL_API_CLIENT_ID_full: string;
     PORTAL_API_CLIENT_SECRET_full: string;
     APP_REDIRECT_URI_full: string;
+    GEMINI_API_KEY: string;
 }

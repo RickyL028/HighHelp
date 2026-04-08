@@ -103,12 +103,16 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
 
                     <div class="flex items-center gap-3">
-
                         {canEdit && (
                             <>
                                 <button onclick="document.getElementById('import-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     Import Text
+                                </button>
+
+                                <button onclick="document.getElementById('ai-import-modal').showModal()" class="bg-purple-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-purple-700 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                    AI Import PDF
                                 </button>
 
 
@@ -140,6 +144,39 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                 <button type="button" onclick="document.getElementById('import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg">Cancel</button>
                                                 <button class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition-colors">
                                                     Process & Import
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </dialog>
+
+                                <dialog id="ai-import-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
+                                    <div class="w-full max-w-lg bg-white dark:bg-neutral-800 p-6 rounded-xl border border-purple-200 dark:border-purple-800/40">
+                                        <h3 class="text-xl font-bold text-purple-700 dark:text-purple-300 mb-2 flex items-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                            AI Import from PDF
+                                        </h3>
+                                        <p class="text-sm text-gray-500 dark:text-neutral-400 mb-4">
+                                            Upload a PDF past paper. AI will extract all questions, classify sections (MCQ, Short Answer, Extended Response) and marks automatically.
+                                        </p>
+                                        <p class="text-xs text-red-500 dark:text-red-400 mb-4 font-bold">
+                                            ⚠ Warning: This will replace ALL existing questions in this paper.
+                                        </p>
+
+                                        <form action={`/past-papers/paper/${paper.id}/ai-import`} method="post" enctype="multipart/form-data" id="ai-view-import-form">
+                                            <div class="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-lg p-6 text-center hover:bg-purple-50 dark:hover:bg-purple-900/20 transition cursor-pointer relative">
+                                                <input type="file" name="pdf_file" accept=".pdf,application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required id="ai-view-pdf-input" />
+                                                <div class="text-gray-500 dark:text-neutral-400" id="ai-view-pdf-label">
+                                                    <span class="block text-3xl mb-2">📄</span>
+                                                    <span class="font-bold text-sm">Click or drag to upload PDF</span>
+                                                    <span class="block text-xs mt-1 text-gray-400 dark:text-neutral-500">Supports HSC-format past papers</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex justify-end gap-3 mt-6">
+                                                <button type="button" onclick="document.getElementById('ai-import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg">Cancel</button>
+                                                <button id="ai-view-submit-btn" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-purple-700 shadow-sm transition-colors flex items-center gap-2">
+                                                    <span id="ai-view-submit-text">AI Import</span>
                                                 </button>
                                             </div>
                                         </form>
@@ -395,6 +432,10 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                         <span class="text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider block mb-1">Stimulus</span>
                                                         {q.stimulus_text ? (
                                                             <div class="p-4 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded text-gray-700 dark:text-neutral-300 italic border-l-4 border-l-blue-400 dark:border-l-blue-600 whitespace-pre-wrap">{q.stimulus_text}</div>
+                                                        ) : q.stimulus_image_key?.startsWith('pdf_crop:') ? (
+                                                            <div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-amber-800 dark:text-amber-300 text-xs">
+                                                                <span class="font-bold">📐 Image from PDF</span> — This stimulus requires manual image upload. AI detected an image at coordinates: <code class="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">{q.stimulus_image_key.replace('pdf_crop:', '')}</code>
+                                                            </div>
                                                         ) : (
                                                             <img src={`/download/${q.stimulus_image_key}`} class="max-w-md border rounded dark:border-neutral-700" />
                                                         )}
@@ -562,6 +603,28 @@ app.get('/past-papers/paper/:id', async (c) => {
                     } catch (e) {
                          alert("Paste failed: " + e.message);
                     }
+                }
+
+                // AI Import PDF feedback
+                const aiViewInput = document.getElementById('ai-view-pdf-input');
+                const aiViewLabel = document.getElementById('ai-view-pdf-label');
+                if (aiViewInput) {
+                    aiViewInput.addEventListener('change', (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                            aiViewLabel.innerHTML = '<span class="block text-3xl mb-2">✅</span><span class="font-bold text-sm text-green-700 dark:text-green-400">' + file.name + '</span><span class="block text-xs mt-1 text-gray-400 dark:text-neutral-500">' + (file.size / 1024 / 1024).toFixed(2) + ' MB</span>';
+                        }
+                    });
+                }
+                const aiViewForm = document.getElementById('ai-view-import-form');
+                if (aiViewForm) {
+                    aiViewForm.addEventListener('submit', () => {
+                        const btn = document.getElementById('ai-view-submit-btn');
+                        const text = document.getElementById('ai-view-submit-text');
+                        btn.disabled = true;
+                        btn.classList.add('opacity-60', 'cursor-not-allowed');
+                        text.textContent = 'Processing… 30-60s';
+                    });
                 }
             `}} />
         </Layout >

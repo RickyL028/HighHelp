@@ -6,6 +6,7 @@ import createApp from './create'
 import viewApp from './view'
 import attemptApp from './attempt'
 import mockApp from './mock'
+import aiImportApp from './aiImport'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -14,5 +15,6 @@ app.route('/', createApp)
 app.route('/', viewApp)
 app.route('/', attemptApp)
 app.route('/past-papers', mockApp)
+app.route('/', aiImportApp)
 
 export default app
