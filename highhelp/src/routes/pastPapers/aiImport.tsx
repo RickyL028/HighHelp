@@ -6,17 +6,14 @@ import { Bindings } from '../../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// =============================================
-// AI Configuration — change model/key here
-// =============================================
+
 const AI_CONFIG = {
     model: 'gemini-2.5-flash',
-    // The Cloudflare secret binding name for the API key
-    // Set via: wrangler secret put GEMINI_API_KEY
+
     apiKeyBinding: 'GEMINI_API_KEY' as const,
 };
 
-// The prompt sent to Gemini to extract questions from a PDF
+
 function buildPrompt(subject: string, existingTopics: string[]): string {
     const topicsList = existingTopics.length > 0
         ? `The following topics already exist for this subject in the database:\n${existingTopics.map(t => `- ${t}`).join('\n')}\n\nYou MUST choose from the topics above when categorising. If none fit, you may suggest a new topic name, but prefer existing ones.`
@@ -156,7 +153,7 @@ async function callGemini(apiKey: string, pdfBase64: string, subject: string, ex
     if (!response.ok) {
         const errorText = await response.text();
         console.error(`[AI Import] Gemini API error: ${response.status} - ${errorText}`);
-        // Extract the specific error message from Google's JSON response if possible
+
         try {
             const errJson = JSON.parse(errorText);
             throw new Error(`Gemini API error 403: ${errJson.error.message}`);
@@ -167,14 +164,14 @@ async function callGemini(apiKey: string, pdfBase64: string, subject: string, ex
 
     const data = await response.json() as any;
 
-    // Extract the text from Gemini's response
+
     const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!textContent) {
         console.error('[AI Import] No text in Gemini response:', JSON.stringify(data));
         throw new Error('No response from Gemini');
     }
 
-    // Parse the JSON response
+
     const parsed = JSON.parse(textContent) as GeminiResponse;
     if (!parsed.questions || !Array.isArray(parsed.questions)) {
         throw new Error('Invalid response format from Gemini');
@@ -191,18 +188,18 @@ async function insertQuestionsFromAI(
     questions: AIQuestion[],
     uploaderId: number
 ): Promise<number> {
-    // Delete existing questions and their topic mappings for a fresh import
+
     const existingQs = await db.prepare('SELECT id FROM exam_questions WHERE paper_id = ?').bind(paperId).all<{ id: number }>();
     if (existingQs.results.length > 0) {
         const ids = existingQs.results.map(q => q.id);
-        // Delete topic mappings for these questions
+
         for (const id of ids) {
             await db.prepare('DELETE FROM question_topics WHERE question_id = ?').bind(id).run();
         }
     }
     await db.prepare('DELETE FROM exam_questions WHERE paper_id = ?').bind(paperId).run();
 
-    // Build a cache of existing topics for this subject
+
     const topicRows = await db.prepare('SELECT id, name FROM topics WHERE subject = ?').bind(subject).all<{ id: number, name: string }>();
     const topicCache = new Map<string, number>();
     for (const t of topicRows.results) {
@@ -222,7 +219,7 @@ async function insertQuestionsFromAI(
     for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
 
-        // Handle stimulus coordinates — store as JSON metadata
+
         let stimulusKey: string | null = null;
         if (q.stimulus_coordinates) {
             stimulusKey = `pdf_crop:${JSON.stringify(q.stimulus_coordinates)}`;
@@ -255,7 +252,7 @@ async function insertQuestionsFromAI(
                 const key = topicName.toLowerCase().trim();
                 let topicId = topicCache.get(key);
 
-                // Create topic if it doesn't exist
+
                 if (!topicId) {
                     const newTopic = await db.prepare(
                         'INSERT INTO topics (subject, name) VALUES (?, ?) ON CONFLICT(subject, name) DO UPDATE SET name = name RETURNING id'
@@ -266,7 +263,7 @@ async function insertQuestionsFromAI(
                     }
                 }
 
-                // Insert question-topic mapping
+
                 if (topicId) {
                     await db.prepare(
                         'INSERT OR IGNORE INTO question_topics (question_id, topic_id) VALUES (?, ?)'
@@ -281,10 +278,7 @@ async function insertQuestionsFromAI(
     return insertedCount;
 }
 
-// =============================================
-// POST /past-papers/paper/:id/ai-import
-// AI import for an existing paper
-// =============================================
+
 app.post('/past-papers/paper/:id/ai-import', async (c) => {
     const user = await getUser(c);
     const paperId = c.req.param('id');
@@ -305,10 +299,10 @@ app.post('/past-papers/paper/:id/ai-import', async (c) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) return c.text('Please upload a PDF file', 400);
 
     try {
-        // Convert PDF to base64
+
         const arrayBuffer = await file.arrayBuffer();
 
-        // Save PDF to R2
+
         await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
             httpMetadata: { contentType: 'application/pdf' },
         });
@@ -320,8 +314,6 @@ app.post('/past-papers/paper/:id/ai-import', async (c) => {
         }
         const base64 = btoa(binary);
 
-        // Call Gemini
-        // Fetch existing topics for this subject to pass to the AI
         const topicRows = await c.env.DB.prepare('SELECT name FROM topics WHERE subject = ?').bind(paper.subject).all<{ name: string }>();
         const existingTopics = topicRows.results.map(t => t.name);
 
@@ -331,7 +323,7 @@ app.post('/past-papers/paper/:id/ai-import', async (c) => {
             return c.text('AI could not extract any questions from the PDF. Please check the PDF quality.', 400);
         }
 
-        // Insert questions with uploader_id = 2 as specified
+
         const count = await insertQuestionsFromAI(c.env.DB, c.env.BUCKET, parseInt(paperId), paper.subject, result.questions, 2);
 
         await logAction(c.env.DB, user.id, 'AI_IMPORT', `AI imported ${count} questions from PDF into paper ${paperId}`, parseInt(paperId), 'papers');
@@ -344,10 +336,6 @@ app.post('/past-papers/paper/:id/ai-import', async (c) => {
 });
 
 
-// =============================================
-// POST /past-papers/create-with-ai
-// Create paper + AI import in one step
-// =============================================
 app.post('/past-papers/create-with-ai', async (c) => {
     const user = await getUser(c);
     const body = await c.req.parseBody();
@@ -370,7 +358,7 @@ app.post('/past-papers/create-with-ai', async (c) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) return c.text('Please upload a PDF file', 400);
 
     try {
-        // Convert PDF to base64
+
         const arrayBuffer = await file.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
         let binary = '';
@@ -379,7 +367,7 @@ app.post('/past-papers/create-with-ai', async (c) => {
         }
         const base64 = btoa(binary);
 
-        // Create the paper record first
+
         const paperRes = await c.env.DB.prepare(
             'INSERT INTO papers (subject, school_name, academic_year, reference_link, paper_type) VALUES (?, ?, ?, ?, ?) RETURNING id'
         ).bind(subject, school, year, link, type).first<{ id: number }>();
@@ -390,25 +378,24 @@ app.post('/past-papers/create-with-ai', async (c) => {
 
         const paperId = paperRes.id;
 
-        // Save PDF to R2
+
         await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
             httpMetadata: { contentType: 'application/pdf' },
         });
 
-        // Call Gemini
-        // Fetch existing topics for this subject
+
         const topicRows = await c.env.DB.prepare('SELECT name FROM topics WHERE subject = ?').bind(subject).all<{ name: string }>();
         const existingTopics = topicRows.results.map(t => t.name);
 
         const result = await callGemini(apiKey, base64, subject, existingTopics);
 
         if (result.questions.length === 0) {
-            // Paper created but no questions extracted — still redirect so user can manually add
+
             await logAction(c.env.DB, user.id, 'CREATE_PAPER', `Created paper ${school} ${year} (AI: no questions found)`, paperId, 'papers');
             return c.redirect(`/past-papers/paper/${paperId}`);
         }
 
-        // Insert questions with uploader_id = 2 as specified
+
         const count = await insertQuestionsFromAI(c.env.DB, c.env.BUCKET, paperId, subject, result.questions, 2);
 
         await logAction(c.env.DB, user.id, 'CREATE_PAPER_AI', `Created paper ${school} ${year} with ${count} AI-extracted questions`, paperId, 'papers');
