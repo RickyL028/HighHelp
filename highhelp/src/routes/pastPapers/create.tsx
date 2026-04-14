@@ -98,21 +98,17 @@ app.get('/past-papers/create', async (c) => {
                 {/* AI Import Section */}
                 <div class="mt-8 border-t-2 border-dashed border-gray-200 dark:border-neutral-700 pt-8">
                     <div class="flex items-center gap-3 mb-4">
-                        <div class="bg-purple-100 dark:bg-purple-900/40 p-2 rounded-lg">
-                            <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                        </div>
+
                         <div>
-                            <h3 class="text-lg font-bold dark:text-white">Or: AI Import from PDF</h3>
-                            <p class="text-sm text-gray-500 dark:text-neutral-400">Upload a past paper PDF and let AI extract questions automatically.</p>
+                            <h3 class="text-lg font-bold dark:text-white">AI Import from PDF</h3>
+                            <p class="text-lg text-gray-500 dark:text-neutral-400">Solution must be present in the pdf.</p>
                         </div>
                     </div>
 
-                    <form action="/past-papers/create-with-ai" method="post" enctype="multipart/form-data" id="ai-import-form" class="bg-purple-50 dark:bg-purple-900/10 p-6 rounded-xl border border-purple-200 dark:border-purple-800/40 space-y-4">
+                    <form action="/past-papers/create-with-ai" method="post" enctype="multipart/form-data" id="ai-import-form" class="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-xl border border-purple-200 dark:border-purple-800/40 space-y-4">
                         <input type="hidden" name="subject" value={subject} />
 
-                        <p class="text-xs text-gray-500 dark:text-neutral-400 mb-2">
-                            Fill in the paper details above first (school name, year, etc.), then upload your PDF here. The AI will categorise all questions using HSC conventions (Section I = MCQ, Section II = Short Answer, Section III+ = Extended Response).
-                        </p>
+
 
                         {/* Duplicate hidden fields for paper metadata */}
                         <div class="grid grid-cols-2 gap-4">
@@ -120,6 +116,7 @@ app.get('/past-papers/create', async (c) => {
                                 <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">School Name</label>
                                 <input type="text" name="school_name" list="nsw-schools-ai" required placeholder="Select or type school..." class="w-full mt-1 rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm" />
                                 <datalist id="nsw-schools-ai">
+                                    <option value="HSC" />
                                     <option value="Sydney Boys High School" />
                                     <option value="Sydney Girls High School" />
                                     <option value="North Sydney Boys High School" />
@@ -154,7 +151,7 @@ app.get('/past-papers/create', async (c) => {
                             </div>
                         </div>
 
-                        <div class="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-lg p-6 text-center hover:bg-purple-100/50 dark:hover:bg-purple-900/20 transition cursor-pointer relative" id="pdf-drop-zone">
+                        <div class="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg p-6 text-center hover:bg-blue-100/50 dark:hover:bg-blue-900/20 transition cursor-pointer relative" id="pdf-drop-zone">
                             <input type="file" name="pdf_file" accept=".pdf,application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required id="pdf-file-input" />
                             <div class="text-gray-500 dark:text-neutral-400" id="pdf-drop-label">
                                 <span class="block text-3xl mb-2">📄</span>
@@ -163,7 +160,7 @@ app.get('/past-papers/create', async (c) => {
                             </div>
                         </div>
 
-                        <button type="submit" id="ai-submit-btn" class="w-full bg-purple-600 text-white font-bold py-3 rounded-lg hover:bg-purple-700 transition flex items-center justify-center gap-2">
+                        <button type="submit" id="ai-submit-btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                             <span id="ai-submit-text">Create Paper with AI</span>
                         </button>

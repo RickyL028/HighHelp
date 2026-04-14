@@ -110,7 +110,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                     Import Text
                                 </button>
 
-                                <button onclick="document.getElementById('ai-import-modal').showModal()" class="bg-purple-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-purple-700 flex items-center gap-2">
+                                <button onclick="document.getElementById('ai-import-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                                     AI Import PDF
                                 </button>
@@ -151,20 +151,20 @@ app.get('/past-papers/paper/:id', async (c) => {
                                 </dialog>
 
                                 <dialog id="ai-import-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
-                                    <div class="w-full max-w-lg bg-white dark:bg-neutral-800 p-6 rounded-xl border border-purple-200 dark:border-purple-800/40">
-                                        <h3 class="text-xl font-bold text-purple-700 dark:text-purple-300 mb-2 flex items-center gap-2">
+                                    <div class="w-full max-w-lg bg-white dark:bg-neutral-800 p-6 rounded-xl border border-blue-200 dark:border-blue-800/40">
+                                        <h3 class="text-xl font-bold text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-2">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                                             AI Import from PDF
                                         </h3>
                                         <p class="text-sm text-gray-500 dark:text-neutral-400 mb-4">
-                                            Upload a PDF past paper. AI will extract all questions, classify sections (MCQ, Short Answer, Extended Response) and marks automatically.
+                                            MUST include solution!
                                         </p>
                                         <p class="text-xs text-red-500 dark:text-red-400 mb-4 font-bold">
                                             ⚠ Warning: This will replace ALL existing questions in this paper.
                                         </p>
 
                                         <form action={`/past-papers/paper/${paper.id}/ai-import`} method="post" enctype="multipart/form-data" id="ai-view-import-form">
-                                            <div class="border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-lg p-6 text-center hover:bg-purple-50 dark:hover:bg-purple-900/20 transition cursor-pointer relative">
+                                            <div class="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg p-6 text-center hover:bg-blue-50 dark:hover:bg-blue-900/20 transition cursor-pointer relative">
                                                 <input type="file" name="pdf_file" accept=".pdf,application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required id="ai-view-pdf-input" />
                                                 <div class="text-gray-500 dark:text-neutral-400" id="ai-view-pdf-label">
                                                     <span class="block text-3xl mb-2">📄</span>
@@ -175,7 +175,7 @@ app.get('/past-papers/paper/:id', async (c) => {
 
                                             <div class="flex justify-end gap-3 mt-6">
                                                 <button type="button" onclick="document.getElementById('ai-import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg">Cancel</button>
-                                                <button id="ai-view-submit-btn" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-purple-700 shadow-sm transition-colors flex items-center gap-2">
+                                                <button id="ai-view-submit-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-2">
                                                     <span id="ai-view-submit-text">AI Import</span>
                                                 </button>
                                             </div>
@@ -289,7 +289,7 @@ app.get('/past-papers/paper/:id', async (c) => {
 
                                             <div class="flex flex-col">
                                                 <div class="flex items-center gap-2">
-                                                    {q.question_type === 'multiple_choice' && <span class="bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs px-2 py-0.5 rounded font-bold">MCQ</span>}
+                                                    {q.question_type === 'multiple_choice' && <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs px-2 py-0.5 rounded font-bold">MCQ</span>}
                                                     {q.marks && <span class="bg-gray-100 dark:bg-neutral-700 text-gray-600 dark:text-neutral-300 text-xs px-2 py-0.5 rounded font-bold">{q.marks}m</span>}
                                                 </div>
                                                 {q.topic_names ? (
