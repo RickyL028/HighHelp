@@ -30,7 +30,7 @@ Your task is to extract EVERY question from the paper and return them in a struc
 - **Section I**: Always Multiple Choice (MCQ). Each question is worth 1 mark. The correct answer is one of A, B, C, D.
   - question_type: "multiple_choice"
   - marks: 1
-  - mc_answer: the correct letter if you can determine it, otherwise null
+  - mc_answer: the correct letter (in the solution)
 - **Section II**: Short Answer questions. Marks vary per question.
   - question_type: "short_answer"
 - **Section III and beyond**: Extended Response questions (e.g. business reports, essays). Marks vary.
@@ -96,7 +96,7 @@ Return ONLY a valid JSON object with this structure:
   ]
 }
 
-Be thorough. Do not skip any questions. If you are uncertain about a mark value, estimate based on the question type and context.`;
+Be thorough. Do not skip any questions.`;
 }
 
 interface AIQuestion {
