@@ -47,11 +47,10 @@ ${topicsList}
 For each question, assign one or more topic names in the "topics" array. This helps users filter questions by topic.
 
 ## Text Formatting Rules:
-- For mathematical expressions, use LaTeX notation wrapped in double dollar signs: $$expression$$
-  - Example: $$\\frac{d}{dx}(x^2) = 2x$$
-  - Example: $$\\int_0^1 x^2 \\, dx$$
-  - Example: The value of $$x$$ when $$x^2 + 3x - 4 = 0$$
-- Use $$...$$ for both inline and display math.
+- For mathematical expressions, use LaTeX notation wrapped in single (in-line) or double (display) dollar signs: $expression$ or $$expression$$
+  - Example: $\\frac{d}{dx}(x^2) = 2x$
+  - Example: $\\int_0^1 x^2 \\, dx$
+  - Example: The value of $x$ when $x^2 + 3x - 4 = 0$
 - For plain text questions (e.g. Business Studies, English), do NOT use LaTeX.
 - Use \n for line breaks within question text.
 
@@ -64,8 +63,9 @@ For each question, assign one or more topic names in the "topics" array. This he
 6. **marks**: Integer mark value
 7. **question_text**: The full question text. For MCQs include options (A) through (D).
 8. **mc_answer**: For MCQs only — the correct answer letter (A/B/C/D) if determinable from an answer key, else null
-9. **topics**: Array of topic name strings this question covers (1-3 topics per question)
-10. **stimulus_coordinates**: If the question has an associated image/graph/diagram/table that is embedded in the PDF (not text), provide bounding box as:
+9. **answer_text**: The answer/solution if the PDF contains one (answer key, marking guidelines, solutions section, etc): - For MCQs: just the letter (e.g. "B"), or a brief explanation if one is provided (e.g. "B — because the equilibrium shifts left") - For short_answer / extended_response: the full sample answer, marking criteria, or solution text as written in the PDF  - Set to null if no answer is provided in the PDF for this question
+10. **topics**: Array of topic name strings this question covers (1-3 topics per question)
+11. **stimulus_coordinates**: If the question has an associated image/graph/diagram/table that is embedded in the PDF (not text), provide bounding box as:
    {"page": <1-indexed page number>, "x": <left % 0-100>, "y": <top % 0-100>, "w": <width % 0-100>, "h": <height % 0-100>}
    If no image stimulus, set to null.
 
@@ -87,6 +87,7 @@ Return ONLY a valid JSON object with this structure:
       "marks": 1,
       "question_text": "What is the primary function of management?\\n(A) To maximise profits\\n(B) To coordinate resources\\n(C) To reduce costs\\n(D) To increase market share",
       "mc_answer": null,
+      "answer_text": null,
       "topics": ["Marketing"],
       "stimulus_coordinates": null
     }
@@ -105,6 +106,7 @@ interface AIQuestion {
     marks: number;
     question_text: string;
     mc_answer: string | null;
+    answer_text: string | null;
     topics: string[];
     stimulus_coordinates: {
         page: number;
@@ -226,13 +228,13 @@ async function insertQuestionsFromAI(
         }
 
         const insertResult = await db.prepare(`
-            INSERT INTO exam_questions 
-            (paper_id, section_label, segment_label, question_number, question_full_label, 
-             question_type, marks, question_text, mc_answer, stimulus_image_key, 
-             uploader_id, ordering_index)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            RETURNING id
-        `).bind(
+         INSERT INTO exam_questions 
+         (paper_id, section_label, segment_label, question_number, question_full_label, 
+          question_type, marks, question_text, mc_answer, answer_text, stimulus_image_key, 
+          uploader_id, ordering_index)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         RETURNING id
+     `).bind(
             paperId,
             q.section_label,
             q.segment_label || null,
@@ -242,9 +244,10 @@ async function insertQuestionsFromAI(
             q.marks || null,
             q.question_text || null,
             q.mc_answer || null,
+            q.answer_text || null,
             stimulusKey,
             uploaderId,
-            i + 1 // ordering_index
+            i + 1
         ).first<{ id: number }>();
 
         if (insertResult && q.topics && q.topics.length > 0) {
