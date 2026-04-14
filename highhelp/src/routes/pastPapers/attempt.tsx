@@ -1,3 +1,4 @@
+
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
 import { getUser, formatDate } from '../../utils'
@@ -58,14 +59,13 @@ app.get('/past-papers/attempt/:id', async (c) => {
     const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
 
-    let nextId = null;
-    let prevId = null;
-
     const currentParams = `source=${source || ''}&mode=${mode || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+
+    let allQuestions: { id: number, question_number: string, is_completed: number }[] = [];
 
     if (source === 'practice') {
         let query = `
-            SELECT q.id
+            SELECT q.id, q.question_number, ua.is_completed
             FROM exam_questions q
             JOIN papers p ON q.paper_id = p.id
             LEFT JOIN question_topics qt ON q.id = qt.question_id
@@ -91,18 +91,13 @@ app.get('/past-papers/attempt/:id', async (c) => {
         else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`;
         else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`;
 
-        const allIdsResult = await c.env.DB.prepare(query).bind(...params).all<{ id: number }>();
-        const allIds = allIdsResult.results.map(r => r.id);
-        const currentIndex = allIds.indexOf(parseInt(qId));
-
-        if (currentIndex !== -1) {
-            if (currentIndex > 0) prevId = allIds[currentIndex - 1];
-            if (currentIndex < allIds.length - 1) nextId = allIds[currentIndex + 1];
-        }
+        const res = await c.env.DB.prepare(query).bind(...params).all<any>();
+        allQuestions = res.results;
 
     } else if (source === 'review') {
         const query = `
-            SELECT q.id
+            SELECT q.id, q.question_number, 
+                   (SELECT is_completed FROM user_review_attempts ura WHERE ura.question_id = q.id AND ura.user_id = ua.user_id ORDER BY created_at DESC LIMIT 1) as is_completed
             FROM exam_questions q
             JOIN papers p ON q.paper_id = p.id
             JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
@@ -112,30 +107,27 @@ app.get('/past-papers/attempt/:id', async (c) => {
             GROUP BY q.id
             ORDER BY ua.created_at DESC
         `;
-        const allIdsResult = await c.env.DB.prepare(query).bind(user?.id, q.subject).all<{ id: number }>();
-        const allIds = allIdsResult.results.map(r => r.id);
-        const currentIndex = allIds.indexOf(parseInt(qId));
-
-        if (currentIndex !== -1) {
-            if (currentIndex > 0) prevId = allIds[currentIndex - 1];
-            if (currentIndex < allIds.length - 1) nextId = allIds[currentIndex + 1];
-        }
+        const res = await c.env.DB.prepare(query).bind(user?.id, q.subject).all<any>();
+        allQuestions = res.results;
 
     } else {
-        const neighbors = await c.env.DB.prepare(`
-            SELECT id FROM exam_questions 
-            WHERE paper_id = ? AND ordering_index > ? AND is_deleted = 0
-            ORDER BY ordering_index ASC LIMIT 1
-        `).bind(q.paper_id, q.ordering_index).first<any>();
+        const res = await c.env.DB.prepare(`
+            SELECT q.id, q.question_number, ua.is_completed 
+            FROM exam_questions q 
+            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+            WHERE q.paper_id = ? AND q.is_deleted = 0
+            ORDER BY q.ordering_index ASC
+        `).bind(user?.id, q.paper_id).all<any>();
+        allQuestions = res.results;
+    }
 
-        const prevNeighbors = await c.env.DB.prepare(`
-            SELECT id FROM exam_questions 
-            WHERE paper_id = ? AND ordering_index < ? AND is_deleted = 0
-            ORDER BY ordering_index DESC LIMIT 1
-        `).bind(q.paper_id, q.ordering_index).first<any>();
+    let nextId = null;
+    let prevId = null;
+    const currentIndex = allQuestions.findIndex(x => x.id === parseInt(qId));
 
-        nextId = neighbors?.id;
-        prevId = prevNeighbors?.id;
+    if (currentIndex !== -1) {
+        if (currentIndex > 0) prevId = allQuestions[currentIndex - 1].id;
+        if (currentIndex < allQuestions.length - 1) nextId = allQuestions[currentIndex + 1].id;
     }
 
     const completedDate = attempt?.updated_at ? formatDate(attempt.updated_at) : '';
@@ -144,10 +136,10 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     return c.html(
         <Layout title={`Question - ${q.subject}`} user={user} latex={true}>
-            <div class="w-full h-[calc(100vh-3.5rem)] flex flex-col p-2 max-w-[120rem] mx-auto">
+            <div class="w-full h-[calc(100vh-3rem)] flex flex-col p-2 max-w-[120rem] mx-auto">
 
-                {/* Header: Removed border-b */}
-                <div class="flex items-center justify-between pb-2 mb-2 shrink-0">
+                {/* Header */}
+                <div class="flex items-center justify-between mb-2 shrink-0">
                     <div class="flex items-center gap-3 overflow-hidden">
                         <a href={
                             source === 'practice' ? `/past-papers?subject=${encodeURIComponent(q.subject)}&tab=practice&${currentParams}` :
@@ -178,14 +170,41 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     </div>
                 </div>
 
-                {/* Main Form: Removed border, dark:border-neutral-700, rounded, shadow-sm */}
-                <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" class="flex-1 min-h-0 flex flex-col lg:flex-row bg-white dark:bg-neutral-900 overflow-hidden">
+                {/* Question Navigation Bar */}
+                {allQuestions.length > 0 && (
+                    <div class="flex items-center gap-1.5 overflow-x-auto pb-3 mb-2 shrink-0 w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        {allQuestions.map((item, index) => {
+                            const isActive = item.id === parseInt(qId);
+                            const isDone = item.is_completed === 1;
+
+                            let baseClass = "flex-shrink-0 flex items-center justify-center min-w-[2.5rem] px-2.5 py-1.5 rounded-sm text-xs font-bold border transition-colors cursor-pointer ";
+
+                            if (isActive) {
+                                baseClass += "border-blue-500 bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 shadow-sm";
+                            } else if (isDone) {
+                                baseClass += "border-green-300 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/50";
+                            } else {
+                                baseClass += "border-gray-200 bg-white text-gray-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-700";
+                            }
+
+                            return (
+                                <a href={`/past-papers/attempt/${item.id}?${currentParams}`} class={baseClass} title={`Question ${item.question_number || index + 1}`}>
+                                    Q{item.question_number || index + 1}
+                                    {isDone && <span class="ml-1 text-[10px] opacity-80">✓</span>}
+                                </a>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Main Form */}
+                <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" class="flex-1 min-h-0 flex flex-col lg:flex-row bg-white dark:bg-neutral-900 overflow-hidden rounded-sm border dark:border-neutral-800">
                     <input type="hidden" name="next_id" value={nextId || ''} />
                     <input type="hidden" name="max_marks" value={q.marks} />
 
-                    {/* Left Pane: Removed border-b and lg:border-r */}
+                    {/* Left Pane */}
                     {hasStimulus && (
-                        <div class="w-full lg:w-1/2 flex flex-col bg-slate-50/50 dark:bg-slate-900/30 overflow-y-auto">
+                        <div class="w-full lg:w-1/2 flex flex-col bg-slate-50/50 dark:bg-slate-900/30 overflow-y-auto lg:border-r border-gray-200 dark:border-neutral-800 border-b lg:border-b-0">
                             <div class="p-4">
                                 {q.stimulus_text && (
                                     <div class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap font-serif italic mb-4 text-[15px] leading-relaxed">
@@ -206,9 +225,9 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     {/* Right Pane */}
                     <div class={`w-full ${hasStimulus ? 'lg:w-1/2' : ''} flex flex-col min-h-0 overflow-y-auto`}>
 
-                        {/* Review Mode Banner: Removed border-b */}
+                        {/* Review Mode Banner */}
                         {mode === 'review' && originalAttempt && (
-                            <div class="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 text-xs shrink-0">
+                            <div class="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 text-xs shrink-0 border-b border-amber-100 dark:border-amber-900/50">
                                 <span class="font-bold text-amber-800 dark:text-amber-500 uppercase tracking-wide">Prior Review</span>
                                 <span class="bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-300 px-1.5 py-0.5 rounded font-bold">
                                     {originalAttempt.marks_awarded || 0} / {q.marks}
@@ -216,8 +235,8 @@ app.get('/past-papers/attempt/:id', async (c) => {
                             </div>
                         )}
 
-                        {/* Question Content: Removed border-b */}
-                        <div class="p-4 bg-white dark:bg-neutral-900 shrink-0">
+                        {/* Question Content */}
+                        <div class="p-4 bg-white dark:bg-neutral-900 shrink-0 border-b dark:border-neutral-800">
                             {q.question_text ? (
                                 <div class="text-gray-900 dark:text-neutral-100 whitespace-pre-wrap font-serif text-lg leading-snug">
                                     {q.question_text}
@@ -227,8 +246,8 @@ app.get('/past-papers/attempt/:id', async (c) => {
                             ) : null}
                         </div>
 
-                        {/* Response Input: Removed border-b */}
-                        <div class="p-4 bg-gray-50/50 dark:bg-neutral-800/30 shrink-0">
+                        {/* Response Input */}
+                        <div class="p-4 bg-gray-50/50 dark:bg-neutral-800/30 shrink-0 border-b dark:border-neutral-800">
                             {q.question_type === 'multiple_choice' ? (
                                 <div class="flex gap-2">
                                     {['A', 'B', 'C', 'D'].map(opt => (
@@ -330,7 +349,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                             </div>
                         </div>
 
-                        {/* Sticky Action Footer - Fixed spacing and visibility */}
+                        {/* Sticky Action Footer */}
                         <div class="p-3 bg-gray-100 dark:bg-neutral-900/80 border-t dark:border-neutral-700 flex justify-end items-center gap-4 shrink-0">
                             <div class="text-xs text-gray-500 dark:text-neutral-400 font-medium">
                                 {attempt?.is_completed ? (
@@ -345,7 +364,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                     Save
                                 </button>
                                 <button type="submit" name="action" value="complete" class="px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded-sm hover:bg-blue-700">
-                                    Save & Next
+                                    Save + Continue
                                 </button>
                             </div>
                         </div>
