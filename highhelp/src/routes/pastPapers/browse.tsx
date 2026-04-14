@@ -4,7 +4,7 @@ import { getUser } from '../../utils'
 import { canUploadPastPaper } from '../../permissions'
 import { SubjectSelector } from '../../components/SubjectSelector'
 import { Bindings } from '../../types'
-
+import { PastPaperTabs } from './tabs'
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/past-papers', async (c) => {

@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { Layout } from '../../layout'
 import { getUser } from '../../utils'
 import { Bindings } from '../../types'
-
+import { PastPaperTabs } from './tabs'
 const app = new Hono<{ Bindings: Bindings }>()
 
 
@@ -11,6 +11,9 @@ app.get('/mock-exams', async (c) => {
     if (!user) return c.redirect('/login')
 
     const subject = c.req.query('subject')
+    if (!subject) {
+        return c.redirect('/past-papers')
+    }
 
 
     const exams = await c.env.DB.prepare(`
@@ -24,13 +27,15 @@ app.get('/mock-exams', async (c) => {
 
     return c.html(
         <Layout title={`Mock Exams - ${subject}`} user={user} latex={true}>
+            <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-neutral-400 mb-4">
+                <a href="/past-papers" class="hover:underline">Past Papers</a>
+                <span>/</span>
+                <span class="font-bold text-gray-700 dark:text-neutral-300">{subject}</span>
+            </div>
+            <PastPaperTabs subject={subject} activeTab="exam" />
             <div class="mx-auto space-y-8">
 
-                <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-neutral-400 mb-4">
-                    <a href="/past-papers" class="hover:underline">Past Papers</a>
-                    <span>/</span>
-                    <span class="font-bold text-gray-700 dark:text-neutral-300">{subject}</span>
-                </div>
+
 
                 <div class="flex justify-between items-center">
                     <h1 class="text-3xl font-bold dark:text-white">Mock Exams</h1>
