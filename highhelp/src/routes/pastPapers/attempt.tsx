@@ -1,4 +1,3 @@
-
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
 import { getUser, formatDate } from '../../utils'
@@ -11,41 +10,66 @@ app.get('/past-papers/attempt/:id', async (c) => {
     if (!user) return c.redirect('/login')
 
     const qId = c.req.param('id')
+    const mode = c.req.query('mode');
 
-    const q = await c.env.DB.prepare(`
+    // OPTIMIZATION 1: Fetch question and user attempts in a single DB round-trip
+    const qRow = await c.env.DB.prepare(`
         SELECT q.*, p.subject, p.school_name, p.academic_year, 
-               group_concat(t.name, ', ') as topic_names
+               group_concat(t.name, ', ') as topic_names,
+               ua.response_content as ua_response,
+               ua.selected_option as ua_selected,
+               ua.marks_awarded as ua_marks,
+               ua.is_completed as ua_completed,
+               ua.marker_notes as ua_notes,
+               ua.updated_at as ua_updated,
+               ura.response_content as ura_response,
+               ura.selected_option as ura_selected,
+               ura.marks_awarded as ura_marks,
+               ura.is_completed as ura_completed,
+               ura.created_at as ura_updated
         FROM exam_questions q
         JOIN papers p ON q.paper_id = p.id
         LEFT JOIN question_topics qt ON q.id = qt.question_id
         LEFT JOIN topics t ON qt.topic_id = t.id
+        LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+        LEFT JOIN (
+            SELECT * FROM user_review_attempts
+            WHERE user_id = ? AND question_id = ?
+            ORDER BY created_at DESC LIMIT 1
+        ) ura ON q.id = ura.question_id
         WHERE q.id = ?
         GROUP BY q.id
-    `).bind(qId).first<any>();
+    `).bind(user.id, user.id, qId, qId).first<any>();
 
-    if (!q) return c.notFound();
+    if (!qRow) return c.notFound();
 
+    // Reconstruct the individual objects from the joined result
+    const q = { ...qRow };
     let attempt = null;
     let originalAttempt = null;
-    const mode = c.req.query('mode');
 
-    if (user) {
-        if (mode === 'review') {
-            originalAttempt = await c.env.DB.prepare(`
-                SELECT * FROM user_question_attempts 
-                WHERE user_id = ? AND question_id = ?
-            `).bind(user.id, qId).first<any>();
-
-            attempt = await c.env.DB.prepare(`
-                SELECT * FROM user_review_attempts 
-                WHERE user_id = ? AND question_id = ?
-                ORDER BY created_at DESC LIMIT 1
-            `).bind(user.id, qId).first<any>();
-        } else {
-            attempt = await c.env.DB.prepare(`
-                SELECT * FROM user_question_attempts 
-                WHERE user_id = ? AND question_id = ?
-            `).bind(user.id, qId).first<any>();
+    if (mode === 'review') {
+        originalAttempt = { marks_awarded: qRow.ua_marks };
+        if (qRow.ura_updated) {
+            attempt = {
+                response_content: qRow.ura_response,
+                selected_option: qRow.ura_selected,
+                marks_awarded: qRow.ura_marks,
+                is_completed: qRow.ura_completed,
+                updated_at: qRow.ura_updated, // Map to updated_at for UI standardization
+                marker_notes: ''
+            };
+        }
+    } else {
+        if (qRow.ua_updated) {
+            attempt = {
+                response_content: qRow.ua_response,
+                selected_option: qRow.ua_selected,
+                marks_awarded: qRow.ua_marks,
+                is_completed: qRow.ua_completed,
+                updated_at: qRow.ua_updated,
+                marker_notes: qRow.ua_notes
+            };
         }
     }
 
@@ -64,19 +88,23 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     let allQuestions: { id: number, question_number: string, is_completed: number }[] = [];
 
+    // OPTIMIZATION 2: Avoid LEFT JOIN and GROUP BY entirely when mapping allQuestions
     if (source === 'practice') {
         let query = `
             SELECT q.id, q.question_number, ua.is_completed
             FROM exam_questions q
             JOIN papers p ON q.paper_id = p.id
-            LEFT JOIN question_topics qt ON q.id = qt.question_id
             LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             WHERE p.subject = ? AND q.is_deleted = 0
         `;
 
-        const params: any[] = [user?.id || null, q.subject];
+        const params: any[] = [user.id, q.subject];
 
-        if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
+        if (filterTopic) {
+            // Use EXISTS to filter without cloning rows or needing GROUP BY overhead
+            query += ` AND EXISTS (SELECT 1 FROM question_topics qt WHERE qt.question_id = q.id AND qt.topic_id = ?)`;
+            params.push(filterTopic);
+        }
         if (filterSchool) { query += ` AND p.school_name = ?`; params.push(filterSchool); }
         if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
         if (filterType) { query += ` AND q.question_type = ?`; params.push(filterType); }
@@ -87,8 +115,6 @@ app.get('/past-papers/attempt/:id', async (c) => {
         if (filterStatus === 'done') { query += ` AND ua.is_completed = 1`; }
         else if (filterStatus === 'undone') { query += ` AND (ua.is_completed IS NULL OR ua.is_completed = 0)`; }
 
-        query += ` GROUP BY q.id`;
-
         if (sort === 'year_desc') query += ` ORDER BY p.academic_year DESC, q.ordering_index ASC`;
         else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`;
         else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`;
@@ -97,19 +123,26 @@ app.get('/past-papers/attempt/:id', async (c) => {
         allQuestions = res.results;
 
     } else if (source === 'review') {
+        // OPTIMIZATION 3: Replace per-row Select Correlated Subquery with a proper Window-function join
         const query = `
-            SELECT q.id, q.question_number, 
-                   (SELECT is_completed FROM user_review_attempts ura WHERE ura.question_id = q.id AND ura.user_id = ua.user_id ORDER BY created_at DESC LIMIT 1) as is_completed
+            SELECT q.id, q.question_number, ura.is_completed
             FROM exam_questions q
             JOIN papers p ON q.paper_id = p.id
             JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+            LEFT JOIN (
+                SELECT question_id, is_completed
+                FROM (
+                    SELECT question_id, is_completed, ROW_NUMBER() OVER(PARTITION BY question_id ORDER BY created_at DESC) as rn
+                    FROM user_review_attempts
+                    WHERE user_id = ?
+                ) WHERE rn = 1
+            ) ura ON q.id = ura.question_id
             WHERE p.subject = ?
               AND q.is_deleted = 0
               AND (ua.marks_awarded < q.marks OR ua.marks_awarded IS NULL)
-            GROUP BY q.id
             ORDER BY ua.created_at DESC
         `;
-        const res = await c.env.DB.prepare(query).bind(user?.id, q.subject).all<any>();
+        const res = await c.env.DB.prepare(query).bind(user.id, user.id, q.subject).all<any>();
         allQuestions = res.results;
 
     } else {
@@ -119,7 +152,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
             LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             WHERE q.paper_id = ? AND q.is_deleted = 0
             ORDER BY q.ordering_index ASC
-        `).bind(user?.id, q.paper_id).all<any>();
+        `).bind(user.id, q.paper_id).all<any>();
         allQuestions = res.results;
     }
 
@@ -376,7 +409,6 @@ app.get('/past-papers/attempt/:id', async (c) => {
         </Layout>
     );
 })
-
 
 // Save Attempt
 app.post('/past-papers/attempt/:id/save', async (c) => {
