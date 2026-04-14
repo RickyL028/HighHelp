@@ -306,6 +306,98 @@ ${props.latex ? html`
         </footer>
         `}
         <script>
+            // PDF Crop Web Component
+            class PdfCrop extends HTMLElement {
+                constructor() {
+                    super();
+                    this.attachShadow({ mode: 'open' });
+                    this.canvas = document.createElement('canvas');
+                    this.canvas.style.maxWidth = '100%';
+                    this.canvas.style.height = 'auto';
+                    this.canvas.style.borderRadius = '0.5rem';
+                    this.canvas.style.border = '1px solid #e5e7eb';
+                    this.shadowRoot.appendChild(this.canvas);
+                }
+
+                async connectedCallback() {
+                    const url = this.getAttribute('pdf-url');
+                    const cropStr = this.getAttribute('crop-data');
+                    if (!url || !cropStr) return;
+
+                    let crop;
+                    try {
+                        crop = JSON.parse(cropStr);
+                    } catch (e) {
+                        console.error("Invalid crop data:", cropStr);
+                        return;
+                    }
+
+                    // Load pdf.js dynamically if not present
+                    if (!window.pdfjsLib) {
+                        await new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                            script.onload = () => {
+                                window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                                resolve();
+                            };
+                            script.onerror = reject;
+                            document.head.appendChild(script);
+                        });
+                    }
+
+                    // Cache pdf document fetching to avoid downloading the same PDF multiple times per page
+                    window._pdfCache = window._pdfCache || {};
+                    let pdfDoc;
+                    try {
+                        if (!window._pdfCache[url]) {
+                            window._pdfCache[url] = window.pdfjsLib.getDocument(url).promise;
+                        }
+                        pdfDoc = await window._pdfCache[url];
+                    } catch (error) {
+                        console.error("Failed to load PDF", error);
+                        const ctx = this.canvas.getContext('2d');
+                        ctx.fillText("Failed to load PDF", 10, 50);
+                        return;
+                    }
+
+                    try {
+                        const pageNum = crop.page || 1;
+                        const page = await pdfDoc.getPage(pageNum);
+
+                        // Use a scale that provides good resolution
+                        const scale = window.devicePixelRatio || 2.0; 
+                        const viewport = page.getViewport({ scale: scale });
+
+                        // Calculate crop bounding box in PDF points (relative to original page size)
+                        // crop.x, y, w, h are percentages (0-100)
+                        const cropX = (crop.x / 100) * viewport.width;
+                        const cropY = (crop.y / 100) * viewport.height;
+                        const cropW = (crop.w / 100) * viewport.width;
+                        const cropH = (crop.h / 100) * viewport.height;
+
+                        this.canvas.width = cropW;
+                        this.canvas.height = cropH;
+
+                        const ctx = this.canvas.getContext('2d');
+                        
+                        const renderContext = {
+                            canvasContext: ctx,
+                            viewport: viewport,
+                            transform: [1, 0, 0, 1, -cropX, -cropY]
+                        };
+
+                        await page.render(renderContext).promise;
+                    } catch (error) {
+                        console.error("Error rendering PDF page", error);
+                    }
+                }
+            }
+            if (!customElements.get('pdf-crop')) {
+                customElements.define('pdf-crop', PdfCrop);
+            }
+        </script>
+        <script>
             // date & localisation
             document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('.local-date').forEach(el => {

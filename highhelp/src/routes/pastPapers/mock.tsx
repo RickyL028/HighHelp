@@ -490,6 +490,8 @@ app.get('/mock-exams/:id', async (c) => {
                                     <div class="text-gray-700 dark:text-neutral-300 italic border-l-4 border-l-blue-400 dark:border-l-blue-600 pl-4 py-2 whitespace-pre-wrap">
                                         {q.stimulus_text}
                                     </div>
+                                ) : q.stimulus_image_key?.startsWith('pdf_crop:') ? (
+                                    <pdf-crop pdf-url={`/download/papers/${q.paper_id}.pdf`} crop-data={q.stimulus_image_key.replace('pdf_crop:', '')}></pdf-crop>
                                 ) : (
                                     <img src={`/download/${q.stimulus_image_key}`} class="max-w-full rounded" />
                                 )}

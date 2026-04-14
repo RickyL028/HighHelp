@@ -433,9 +433,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                         {q.stimulus_text ? (
                                                             <div class="p-4 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded text-gray-700 dark:text-neutral-300 italic border-l-4 border-l-blue-400 dark:border-l-blue-600 whitespace-pre-wrap">{q.stimulus_text}</div>
                                                         ) : q.stimulus_image_key?.startsWith('pdf_crop:') ? (
-                                                            <div class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-amber-800 dark:text-amber-300 text-xs">
-                                                                <span class="font-bold">📐 Image from PDF</span> — This stimulus requires manual image upload. AI detected an image at coordinates: <code class="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">{q.stimulus_image_key.replace('pdf_crop:', '')}</code>
-                                                            </div>
+                                                            <pdf-crop pdf-url={`/download/papers/${paper.id}.pdf`} crop-data={q.stimulus_image_key.replace('pdf_crop:', '')}></pdf-crop>
                                                         ) : (
                                                             <img src={`/download/${q.stimulus_image_key}`} class="max-w-md border rounded dark:border-neutral-700" />
                                                         )}

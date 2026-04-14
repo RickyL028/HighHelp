@@ -307,6 +307,12 @@ app.post('/past-papers/paper/:id/ai-import', async (c) => {
     try {
         // Convert PDF to base64
         const arrayBuffer = await file.arrayBuffer();
+
+        // Save PDF to R2
+        await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
+            httpMetadata: { contentType: 'application/pdf' },
+        });
+
         const bytes = new Uint8Array(arrayBuffer);
         let binary = '';
         for (let i = 0; i < bytes.byteLength; i += 8192) {
@@ -383,6 +389,11 @@ app.post('/past-papers/create-with-ai', async (c) => {
         }
 
         const paperId = paperRes.id;
+
+        // Save PDF to R2
+        await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
+            httpMetadata: { contentType: 'application/pdf' },
+        });
 
         // Call Gemini
         // Fetch existing topics for this subject
