@@ -51,6 +51,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     const source = c.req.query('source');
     const filterTopic = c.req.query('topic');
+    const filterSchool = c.req.query('school');
     const filterYear = c.req.query('year');
     const filterStatus = c.req.query('status');
     const filterType = c.req.query('type');
@@ -59,7 +60,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
     const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
 
-    const currentParams = `source=${source || ''}&mode=${mode || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+    const currentParams = `source=${source || ''}&mode=${mode || ''}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
     let allQuestions: { id: number, question_number: string, is_completed: number }[] = [];
 
@@ -76,6 +77,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
         const params: any[] = [user?.id || null, q.subject];
 
         if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
+        if (filterSchool) { query += ` AND p.school_name = ?`; params.push(filterSchool); }
         if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
         if (filterType) { query += ` AND q.question_type = ?`; params.push(filterType); }
         if (filterSection) { query += ` AND q.section_label = ?`; params.push(filterSection); }
@@ -417,6 +419,7 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
 
     const source = c.req.query('source');
     const filterTopic = c.req.query('topic');
+    const filterSchool = c.req.query('school');
     const filterYear = c.req.query('year');
     const filterStatus = c.req.query('status');
     const filterType = c.req.query('type');
@@ -425,7 +428,7 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
 
-    const params = `source=${source || ''}&mode=${mode || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+    const params = `source=${source || ''}&mode=${mode || ''}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
     if (action === 'complete' && nextId) {
         return c.redirect(`/past-papers/attempt/${nextId}?${params}`);

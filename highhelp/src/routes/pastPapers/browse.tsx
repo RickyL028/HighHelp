@@ -124,6 +124,7 @@ app.get('/past-papers', async (c) => {
 
 
         const filterTopic = c.req.query('topic');
+        const filterSchool = c.req.query('school');
         const filterYear = c.req.query('year');
         const filterStatus = c.req.query('status'); // done, undone
         const filterType = c.req.query('type');
@@ -137,6 +138,7 @@ app.get('/past-papers', async (c) => {
         let filterSql = '';
 
         if (filterTopic) { filterSql += ` AND qt.topic_id = ?`; params.push(filterTopic); }
+        if (filterSchool) { filterSql += ` AND p.school_name = ?`; params.push(filterSchool); }
         if (filterYear) { filterSql += ` AND p.academic_year = ?`; params.push(filterYear); }
         if (filterType) { filterSql += ` AND q.question_type = ?`; params.push(filterType); }
         if (filterSection) { filterSql += ` AND q.section_label = ?`; params.push(filterSection); }
@@ -180,11 +182,12 @@ app.get('/past-papers', async (c) => {
         const countParams = [...params];
         params.push(limit, offset);
 
-        const [questions, countResult, allTopics, sections] = await c.env.DB.batch([
+        const [questions, countResult, allTopics, sections, schoolsResult] = await c.env.DB.batch([
             c.env.DB.prepare(query).bind(...params),
             c.env.DB.prepare(countQuery).bind(...countParams),
             c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject),
-            c.env.DB.prepare('SELECT DISTINCT section_label FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE p.subject = ? ORDER BY section_label ASC').bind(subject)
+            c.env.DB.prepare('SELECT DISTINCT section_label FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE p.subject = ? ORDER BY section_label ASC').bind(subject),
+            c.env.DB.prepare('SELECT DISTINCT school_name FROM papers WHERE subject = ? ORDER BY school_name ASC').bind(subject)
         ]);
 
         const totalQuestions = (countResult.results[0]?.total as number) || 0;
@@ -201,6 +204,13 @@ app.get('/past-papers', async (c) => {
                     <input type="hidden" name="tab" value="practice" />
 
                     <div class="flex flex-wrap gap-4 items-end">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">School</label>
+                            <select name="school" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-48">
+                                <option value="">All Schools</option>
+                                {schoolsResult.results.map((s: any) => <option value={s.school_name} selected={filterSchool == s.school_name}>{s.school_name}</option>)}
+                            </select>
+                        </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Topic</label>
                             <select name="topic" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-48">
@@ -271,7 +281,7 @@ app.get('/past-papers', async (c) => {
                             <input type="hidden" name="subject" value={subject} />
                             <div class="space-y-4">
                                 {questions.results.map((q: any) => {
-                                    const params = `source=practice&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+                                    const params = `source=practice&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
                                     const isIncomplete = !q.marks || (!q.question_image_key && !q.question_text);
 
                                     const clickAction = mode === 'select'
@@ -341,8 +351,8 @@ app.get('/past-papers', async (c) => {
                         <span class="ml-2 hidden sm:inline">({totalQuestions} questions)</span>
                     </div>
                     <div class="flex gap-2">
-                        {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Previous</a>}
-                        {page < totalPages && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Next</a>}
+                        {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Previous</a>}
+                        {page < totalPages && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Next</a>}
                     </div>
                 </div>
             </div>
