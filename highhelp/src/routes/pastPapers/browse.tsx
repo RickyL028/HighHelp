@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
 import { getUser } from '../../utils'
-import { canUploadPastPaper } from '../../permissions'
+import { canUploadPastPaper, PermissionLevel } from '../../permissions'
 import { SubjectSelector } from '../../components/SubjectSelector'
 import { Bindings } from '../../types'
 import { PastPaperTabs } from './tabs'
@@ -86,7 +86,7 @@ app.get('/past-papers', async (c) => {
                         </div>
                     ) : (
                         papers.results.map((p: any) => (
-                            <a href={`/past-papers/paper/${p.id}`} class="search-item block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors group h-full flex flex-col justify-between" data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}>
+                            <div class="search-item block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors group h-full flex flex-col justify-between cursor-pointer" onclick={`window.location.href='/past-papers/paper/${p.id}'`} data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}>
                                 <div>
                                     <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 mb-1 leading-snug">{p.school_name}</h3>
 
@@ -99,18 +99,28 @@ app.get('/past-papers', async (c) => {
                                 </div>
 
                                 <div class="flex flex-col gap-1 mt-2">
-                                    <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-neutral-400 font-mono border-t border-gray-100 dark:border-neutral-700 pt-2">
-                                        <span class="flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                                            {p.question_count || 0} Qs
-                                        </span>
-                                        <span class="flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                            {p.total_marks || 0} Marks
-                                        </span>
+                                    <div class="flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-neutral-400 font-mono border-t border-gray-100 dark:border-neutral-700 pt-2">
+                                        <div class="flex gap-3">
+                                            <span class="flex items-center gap-1">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                                                {p.question_count || 0} Qs
+                                            </span>
+                                            <span class="flex items-center gap-1">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                {p.total_marks || 0} Marks
+                                            </span>
+                                        </div>
+                                        {user && user.permission_level >= PermissionLevel.ADMIN && (
+                                            <form action={`/past-papers/paper/${p.id}/delete`} method="post" onclick="event.stopPropagation(); return confirm('Are you sure you want to delete this paper and ALL its questions? This action is permanent and cannot be undone.');" class="z-10 relative">
+                                                <input type="hidden" name="subject" value={subject} />
+                                                <button type="submit" class="text-red-500 hover:text-white font-bold px-2 py-1 rounded hover:bg-red-500 dark:hover:bg-red-600 transition-colors border border-transparent hover:border-red-600">
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        )}
                                     </div>
                                 </div>
-                            </a>
+                            </div>
                         ))
                     )}
                 </div>
@@ -466,6 +476,35 @@ app.get('/past-papers', async (c) => {
         </Layout>
     )
 })
+
+app.post('/past-papers/paper/:id/delete', async (c) => {
+    const user = await getUser(c)
+    if (!user || user.permission_level < PermissionLevel.ADMIN) {
+        return c.text('Unauthorised', 403);
+    }
+
+    const paperId = c.req.param('id');
+    const body = await c.req.parseBody();
+    const subject = body['subject'] as string;
+
+    // Check if the paper exists
+    const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
+    if (!paper) return c.notFound();
+
+    // Delete all related records securely with batching
+    const subquery = 'SELECT id FROM exam_questions WHERE paper_id = ?';
+
+    await c.env.DB.batch([
+        c.env.DB.prepare(`DELETE FROM user_question_attempts WHERE question_id IN (${subquery})`).bind(paperId),
+        c.env.DB.prepare(`DELETE FROM user_review_attempts WHERE question_id IN (${subquery})`).bind(paperId),
+        c.env.DB.prepare(`DELETE FROM mock_exam_questions WHERE question_id IN (${subquery})`).bind(paperId),
+        c.env.DB.prepare(`DELETE FROM question_topics WHERE question_id IN (${subquery})`).bind(paperId),
+        c.env.DB.prepare('DELETE FROM exam_questions WHERE paper_id = ?').bind(paperId),
+        c.env.DB.prepare('DELETE FROM papers WHERE id = ?').bind(paperId)
+    ]);
+
+    return c.redirect(subject ? `/past-papers?subject=${encodeURIComponent(subject)}&tab=browse` : '/past-papers');
+});
 
 export default app
 

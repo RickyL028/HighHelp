@@ -11,6 +11,7 @@ const AI_CONFIG = {
     model: 'gemini-2.5-flash',
 
     apiKeyBinding: 'GEMINI_API_KEY' as const,
+    maxOutputTokens: 8192,
 };
 
 
