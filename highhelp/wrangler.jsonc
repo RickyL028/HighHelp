@@ -1,21 +1,25 @@
-/**
- * For more details on how to configure Wrangler, refer to:
- * https://developers.cloudflare.com/workers/wrangler/configuration/
- */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "highhelp",
 	"main": "src/index.tsx",
 	"compatibility_date": "2026-02-13",
 	"compatibility_flags": [
-		"global_fetch_strictly_public"
+		"global_fetch_strictly_public",
+		"nodejs_compat"
 	],
-	"observability": {
-		"enabled": true
-	},
-	"assets": {
-		"directory": "./public",
-		"binding": "ASSETS"
+	"queues": {
+		"producers": [
+			{
+				"binding": "AI_QUEUE",
+				"queue": "paper-ai-queue"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "paper-ai-queue",
+				"max_batch_size": 1
+			}
+		]
 	},
 	"d1_databases": [
 		{

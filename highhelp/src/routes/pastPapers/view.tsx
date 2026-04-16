@@ -242,6 +242,55 @@ app.get('/past-papers/paper/:id', async (c) => {
                         </div>
                     </div>
                 </dialog>
+                    {/* AI Status Banner */}
+{paper.ai_status === 'pending' || paper.ai_status === 'processing' ? (
+    <div class="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center gap-4">
+        <div class="flex-shrink-0">
+            <svg class="w-6 h-6 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+        </div>
+        <div class="flex-1">
+            <p class="font-bold text-blue-700 dark:text-blue-300 text-sm">
+                {paper.ai_status === 'pending' ? 'AI Import Queued' : 'AI Import In Progress'}
+            </p>
+            <p class="text-blue-600 dark:text-blue-400 text-xs mt-0.5">
+                {paper.ai_status === 'pending'
+                    ? 'Your PDF is waiting to be processed. This page will refresh automatically.'
+                    : 'Gemini is extracting questions from your PDF. This usually takes 30–90 seconds.'}
+            </p>
+        </div>
+        <meta http-equiv="refresh" content="6" />
+    </div>
+) : paper.ai_status === 'done' ? (
+    <div class="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center gap-4">
+        <span class="text-2xl">✅</span>
+        <div class="flex-1">
+            <p class="font-bold text-green-700 dark:text-green-300 text-sm">AI Import Complete</p>
+            <p class="text-green-600 dark:text-green-400 text-xs mt-0.5">
+                All questions have been extracted and imported successfully.
+            </p>
+        </div>
+        {/* Dismiss by clearing the status */}
+        <form action={`/past-papers/paper/${paper.id}/clear-ai-status`} method="post">
+            <button class="text-xs text-green-600 dark:text-green-400 hover:underline font-bold">Dismiss</button>
+        </form>
+    </div>
+) : paper.ai_status === 'error' ? (
+    <div class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center gap-4">
+        <span class="text-2xl">❌</span>
+        <div class="flex-1">
+            <p class="font-bold text-red-700 dark:text-red-300 text-sm">AI Import Failed</p>
+            <p class="text-red-600 dark:text-red-400 text-xs mt-0.5 font-mono">
+                {paper.ai_error || 'An unknown error occurred.'}
+            </p>
+        </div>
+        <form action={`/past-papers/paper/${paper.id}/clear-ai-status`} method="post">
+            <button class="text-xs text-red-600 dark:text-red-400 hover:underline font-bold">Dismiss</button>
+        </form>
+    </div>
+) : null}
 
 
                 {canManageTopics && (
@@ -627,6 +676,16 @@ app.get('/past-papers/paper/:id', async (c) => {
             `}} />
         </Layout >
     );
+})
+app.post('/past-papers/paper/:id/clear-ai-status', async (c) => {
+    const user = await getUser(c)
+    const paperId = c.req.param('id')
+    if (!user) return c.text('Unauthorised', 403)
+
+    await c.env.DB.prepare("UPDATE papers SET ai_status = NULL, ai_error = NULL WHERE id = ?")
+        .bind(paperId).run()
+
+    return c.redirect(`/past-papers/paper/${paperId}`)
 })
 
 app.post('/past-papers/question/:id/sub-question', async (c) => {

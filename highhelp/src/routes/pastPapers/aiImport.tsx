@@ -3,6 +3,7 @@ import { Layout } from '../../layout'
 import { getUser, logAction } from '../../utils'
 import { canUploadPastPaper } from '../../permissions'
 import { Bindings } from '../../types'
+import { processAIImportJob, AIImportJob } from './aiQueueWorker'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -122,7 +123,7 @@ interface GeminiResponse {
     questions: AIQuestion[];
 }
 
-async function callGemini(apiKey: string, pdfBase64: string, subject: string, existingTopics: string[]): Promise<GeminiResponse> {
+export async function callGemini(apiKey: string, pdfBase64: string, subject: string, existingTopics: string[]): Promise<GeminiResponse> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.model}:generateContent?key=${apiKey}`;
 
     const requestBody = {
@@ -183,7 +184,7 @@ async function callGemini(apiKey: string, pdfBase64: string, subject: string, ex
     return parsed;
 }
 
-async function insertQuestionsFromAI(
+export async function insertQuestionsFromAI(
     db: D1Database,
     bucket: R2Bucket,
     paperId: number,
@@ -284,131 +285,84 @@ async function insertQuestionsFromAI(
 
 
 app.post('/past-papers/paper/:id/ai-import', async (c) => {
-    const user = await getUser(c);
-    const paperId = c.req.param('id');
+  const user = await getUser(c);
+  const paperId = parseInt(c.req.param('id'));
 
-    const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
-    if (!paper) return c.notFound();
-    if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
-    if (paper.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
+  const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
+  if (!paper) return c.notFound();
+  if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
+  if (paper.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
+  if (!c.env.GEMINI_API_KEY) return c.text('AI service not configured', 500);
 
-    const apiKey = c.env[AI_CONFIG.apiKeyBinding];
-    if (!apiKey) {
-        return c.text('AI service not configured. Please set GEMINI_API_KEY.', 500);
-    }
+  const body = await c.req.parseBody();
+  const file = body['pdf_file'];
+  if (!(file instanceof File)) return c.text('Invalid file uploaded', 400);
+  if (!file.name.toLowerCase().endsWith('.pdf')) return c.text('Please upload a PDF file', 400);
 
-    const body = await c.req.parseBody();
-    const file = body['pdf_file'];
-    if (!(file instanceof File)) return c.text('Invalid file uploaded', 400);
-    if (!file.name.toLowerCase().endsWith('.pdf')) return c.text('Please upload a PDF file', 400);
+  // Save PDF to R2
+  const arrayBuffer = await file.arrayBuffer();
+  await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
+    httpMetadata: { contentType: 'application/pdf' },
+  });
 
-    try {
+  // Mark as pending and enqueue
+  await c.env.DB.prepare("UPDATE papers SET ai_status = 'pending' WHERE id = ?")
+    .bind(paperId).run();
 
-        const arrayBuffer = await file.arrayBuffer();
+  await c.env.AI_QUEUE.send({
+    paperId,
+    subject: paper.subject,
+    userId: user.id,
+    mode: 'import',
+  } satisfies AIImportJob);
 
-
-        await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
-            httpMetadata: { contentType: 'application/pdf' },
-        });
-
-        const bytes = new Uint8Array(arrayBuffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i += 8192) {
-            binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-        }
-        const base64 = btoa(binary);
-
-        const topicRows = await c.env.DB.prepare('SELECT name FROM topics WHERE subject = ?').bind(paper.subject).all<{ name: string }>();
-        const existingTopics = topicRows.results.map(t => t.name);
-
-        const result = await callGemini(apiKey, base64, paper.subject, existingTopics);
-
-        if (result.questions.length === 0) {
-            return c.text('AI could not extract any questions from the PDF. Please check the PDF quality.', 400);
-        }
-
-
-        const count = await insertQuestionsFromAI(c.env.DB, c.env.BUCKET, parseInt(paperId), paper.subject, result.questions, 2);
-
-        await logAction(c.env.DB, user.id, 'AI_IMPORT', `AI imported ${count} questions from PDF into paper ${paperId}`, parseInt(paperId), 'papers');
-
-        return c.redirect(`/past-papers/paper/${paperId}`);
-    } catch (error: any) {
-        console.error('[AI Import] Error:', error);
-        return c.text(`AI import failed: ${error.message}`, 500);
-    }
+  return c.redirect(`/past-papers/paper/${paperId}?ai=pending`);
 });
 
 
 app.post('/past-papers/create-with-ai', async (c) => {
-    const user = await getUser(c);
-    const body = await c.req.parseBody();
-    const subject = body['subject'] as string;
+  const user = await getUser(c);
+  const body = await c.req.parseBody();
+  const subject = body['subject'] as string;
 
-    if (!user || !canUploadPastPaper(user, subject)) return c.redirect('/past-papers');
+  if (!user || !canUploadPastPaper(user, subject)) return c.redirect('/past-papers');
+  if (!c.env.GEMINI_API_KEY) return c.text('AI service not configured', 500);
 
-    const apiKey = c.env[AI_CONFIG.apiKeyBinding];
-    if (!apiKey) {
-        return c.text('AI service not configured. Please set GEMINI_API_KEY.', 500);
-    }
+  const file = body['pdf_file'];
+  if (!(file instanceof File)) return c.text('Please upload a PDF file', 400);
+  if (!file.name.toLowerCase().endsWith('.pdf')) return c.text('Please upload a PDF file', 400);
 
-    const school = body['school_name'] as string;
-    const year = parseInt(body['academic_year'] as string);
-    const link = body['reference_link'] as string;
-    const type = body['paper_type'] as string || 'Trial Paper';
+  // Create the paper row first
+  const school = body['school_name'] as string;
+  const year = parseInt(body['academic_year'] as string);
+  const link = body['reference_link'] as string;
+  const type = body['paper_type'] as string || 'Trial Paper';
 
-    const file = body['pdf_file'];
-    if (!(file instanceof File)) return c.text('Please upload a PDF file', 400);
-    if (!file.name.toLowerCase().endsWith('.pdf')) return c.text('Please upload a PDF file', 400);
+  const paperRes = await c.env.DB.prepare(
+    `INSERT INTO papers (subject, school_name, academic_year, reference_link, paper_type, ai_status)
+     VALUES (?, ?, ?, ?, ?, 'pending') RETURNING id`
+  ).bind(subject, school, year, link, type).first<{ id: number }>();
 
-    try {
+  if (!paperRes) return c.text('Failed to create paper', 500);
+  const paperId = paperRes.id;
 
-        const arrayBuffer = await file.arrayBuffer();
-        const bytes = new Uint8Array(arrayBuffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i += 8192) {
-            binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-        }
-        const base64 = btoa(binary);
+  // Save PDF to R2
+  const arrayBuffer = await file.arrayBuffer();
+  await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
+    httpMetadata: { contentType: 'application/pdf' },
+  });
 
+  // Enqueue
+  await c.env.AI_QUEUE.send({
+    paperId,
+    subject,
+    userId: user.id,
+    mode: 'create',
+    schoolName: school,
+    year,
+  } satisfies AIImportJob);
 
-        const paperRes = await c.env.DB.prepare(
-            'INSERT INTO papers (subject, school_name, academic_year, reference_link, paper_type) VALUES (?, ?, ?, ?, ?) RETURNING id'
-        ).bind(subject, school, year, link, type).first<{ id: number }>();
-
-        if (!paperRes) {
-            return c.text('Failed to create paper', 500);
-        }
-
-        const paperId = paperRes.id;
-
-
-        await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
-            httpMetadata: { contentType: 'application/pdf' },
-        });
-
-
-        const topicRows = await c.env.DB.prepare('SELECT name FROM topics WHERE subject = ?').bind(subject).all<{ name: string }>();
-        const existingTopics = topicRows.results.map(t => t.name);
-
-        const result = await callGemini(apiKey, base64, subject, existingTopics);
-
-        if (result.questions.length === 0) {
-
-            await logAction(c.env.DB, user.id, 'CREATE_PAPER', `Created paper ${school} ${year} (AI: no questions found)`, paperId, 'papers');
-            return c.redirect(`/past-papers/paper/${paperId}`);
-        }
-
-
-        const count = await insertQuestionsFromAI(c.env.DB, c.env.BUCKET, paperId, subject, result.questions, 2);
-
-        await logAction(c.env.DB, user.id, 'CREATE_PAPER_AI', `Created paper ${school} ${year} with ${count} AI-extracted questions`, paperId, 'papers');
-
-        return c.redirect(`/past-papers/paper/${paperId}`);
-    } catch (error: any) {
-        console.error('[AI Import] Error:', error);
-        return c.text(`AI import failed: ${error.message}. The paper may have been created — check the paper list.`, 500);
-    }
+  return c.redirect(`/past-papers/paper/${paperId}?ai=pending`);
 });
 
 
