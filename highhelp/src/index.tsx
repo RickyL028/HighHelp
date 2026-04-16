@@ -121,7 +121,7 @@ export default {
         message.ack()
       } catch (err) {
         console.error('[Queue] Job failed:', err)
-        message.retry()
+        message.ack()
       }
     }
   }

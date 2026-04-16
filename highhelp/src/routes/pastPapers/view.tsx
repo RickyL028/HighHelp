@@ -258,7 +258,7 @@ app.get('/past-papers/paper/:id', async (c) => {
             <p class="text-blue-600 dark:text-blue-400 text-xs mt-0.5">
                 {paper.ai_status === 'pending'
                     ? 'Your PDF is waiting to be processed. This page will refresh automatically.'
-                    : 'Gemini is extracting questions from your PDF. This usually takes 30–90 seconds.'}
+                    : 'Gemini is extracting questions from your PDF. This usually takes 30–90 seconds. This page automatically reloads'}
             </p>
         </div>
         <meta http-equiv="refresh" content="6" />
