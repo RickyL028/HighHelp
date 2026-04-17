@@ -50,7 +50,7 @@ For each question, assign one or more topic names in the "topics" array. This he
 
 ## Text Formatting Rules:
 - For mathematical expressions, use LaTeX notation wrapped in single (in-line) or double (display) dollar signs: $expression$ or $$expression$$
-- CRITICAL JSON RULE: Because you are outputting JSON, you MUST double-escape EVERY backslash in your LaTeX commands.
+- CRITICAL JSON RULE: Because you are outputting JSON, you MUST double-escape EVERY backslash in your LaTeX commands (except one slash n for new line)
   - Do NOT output \\frac, you MUST output \\\\frac
   - Do NOT output \\cos, you MUST output \\\\cos
   - Example: $\\\\frac{d}{dx}(x^2) = 2x$
