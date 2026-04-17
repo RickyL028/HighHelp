@@ -53,7 +53,7 @@ export async function processAIImportJob(job: AIImportJob, env: Bindings) {
     await env.DB.prepare("UPDATE papers SET ai_status = 'done' WHERE id = ?")
       .bind(paperId).run();
 
-    await logAction(env.DB, userId, 'AI_IMPORT',
+    await logAction(env.DB, 2, 'AI_IMPORT',
       `AI imported ${count} questions into paper ${paperId}`, paperId, 'papers');
 
   } catch (err: any) {

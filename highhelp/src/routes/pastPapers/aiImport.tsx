@@ -300,7 +300,7 @@ export async function insertQuestionsFromAI(
             q.mc_answer || null,
             q.answer_text || null,
             stimulusKey,
-            uploaderId,
+            2,
             i + 1
         ).first<{ id: number }>();
 
