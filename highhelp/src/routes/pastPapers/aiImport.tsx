@@ -49,7 +49,6 @@ ${topicsList}
 For each question, assign one or more topic names in the "topics" array. This helps users filter questions by topic.
 
 ## Text Formatting Rules:
-## Text Formatting Rules:
 - For mathematical expressions, use LaTeX notation wrapped in single (in-line) or double (display) dollar signs: $expression$ or $$expression$$
 - CRITICAL JSON RULE: Because you are outputting JSON, you MUST double-escape EVERY backslash in your LaTeX commands.
   - Do NOT output \\frac, you MUST output \\\\frac
@@ -72,8 +71,8 @@ For each question, assign one or more topic names in the "topics" array. This he
 9. **answer_text**: The answer/solution if the PDF contains one (answer key, marking guidelines, solutions section, etc): - For MCQs: just the letter (e.g. "B"), or a brief explanation if one is provided (e.g. "B — because the equilibrium shifts left") - For short_answer / extended_response: the full sample answer, marking criteria, or solution text as written in the PDF  - Set to null if no answer is provided in the PDF for this question
 10. **topics**: Array of topic name strings this question covers (1-3 topics per question)
 11. **stimulus_coordinates**: If the question has an associated image/graph/diagram/table that is embedded in the PDF (not text), provide bounding box as:
-   {"page": <1-indexed page number>, "x": <left % 0-100>, "y": <top % 0-100>, "w": <width % 0-100>, "h": <height % 0-100>}
-   If no image stimulus, set to null.
+   {"page": <1-indexed page number>, "x": <left % 0-100>, "y": <top % 0-100>, "w": <width % 0-100>, "h": <height % 0-100>} with 100% x y w and h
+   Additionally include stimulus of the same question in sub questions. E.g. include 1a's stimulus in 1b, 1c
 
 ## Sub-questions:
 - If a question has parts like (a), (b), (c) that each have their own mark allocation, treat each part as a separate question.
@@ -208,6 +207,7 @@ export async function callGemini(
     // 5. Safely parse the final combined JSON output
     // Parse the JSON response
     // Parse the JSON response
+    // Replace the entire try block with this:
     let parsed: GeminiResponse;
     try {
         let cleaned = fullText.trim()
@@ -221,23 +221,8 @@ export async function callGemini(
             cleaned = cleaned.slice(firstBrace, lastBrace + 1);
         }
 
-        // --- BULLETPROOF LATEX JSON SANITIZER ---
-        // 1. Escapes single backslashes (like \cos, \frac, \theta, \le) so JSON.parse doesn't crash.
-        // 2. (?<!\\) ensures we IGNORE backslashes that are already double-escaped (like \\le).
-        // 3. (?!["\\/u]) ensures we don't break JSON quotes \", slashes \/, or unicode \uXXXX.
-        cleaned = cleaned.replace(/(?<!\\)\\(?!["\\/u])/g, '\\\\');
-
-        parsed = JSON.parse(cleaned, (key, value) => {
-            if (typeof value === 'string') {
-                // Restore actual newlines, tabs, and carriage returns that were sanitized above.
-                // This preserves text layout while keeping LaTeX like \nabla, \theta, and \rho perfectly intact.
-                return value
-                    .replace(/(?<!\\)\\n/g, '\n')
-                    .replace(/(?<!\\)\\t/g, '\t')
-                    .replace(/(?<!\\)\\r/g, '\r');
-            }
-            return value;
-        }) as GeminiResponse;
+        // Gemini guarantees valid JSON due to responseMimeType: 'application/json'
+        parsed = JSON.parse(cleaned) as GeminiResponse;
 
     } catch (err: any) {
         throw new Error(`Invalid JSON from Gemini: ${err.message} ${fullText}`);
