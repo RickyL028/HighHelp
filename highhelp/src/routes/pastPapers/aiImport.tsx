@@ -12,7 +12,7 @@ const AI_CONFIG = {
     model: 'gemini-2.5-flash',
 
     apiKeyBinding: 'GEMINI_API_KEY' as const,
-    maxOutputTokens: 32768,
+
 };
 
 
@@ -49,12 +49,16 @@ ${topicsList}
 For each question, assign one or more topic names in the "topics" array. This helps users filter questions by topic.
 
 ## Text Formatting Rules:
+## Text Formatting Rules:
 - For mathematical expressions, use LaTeX notation wrapped in single (in-line) or double (display) dollar signs: $expression$ or $$expression$$
-  - Example: $\\frac{d}{dx}(x^2) = 2x$
-  - Example: $\\int_0^1 x^2 \\, dx$
+- CRITICAL JSON RULE: Because you are outputting JSON, you MUST double-escape EVERY backslash in your LaTeX commands.
+  - Do NOT output \\frac, you MUST output \\\\frac
+  - Do NOT output \\cos, you MUST output \\\\cos
+  - Example: $\\\\frac{d}{dx}(x^2) = 2x$
+  - Example: $\\\\int_0^1 x^2 \\\\, dx$
   - Example: The value of $x$ when $x^2 + 3x - 4 = 0$
 - For plain text questions (e.g. Business Studies, English), do NOT use LaTeX.
-- Use \n for line breaks within question text.
+- Use \\n for line breaks within question text.
 
 ## For each question, extract:
 1. **section_label**: Roman numeral (I, II, III, IV, etc.)
@@ -129,29 +133,22 @@ export async function callGemini(
     subject: string,
     existingTopics: string[]
 ): Promise<GeminiResponse> {
-    // Use generateContent (not streaming) — simpler, works fine in Queue workers
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.model}:generateContent?key=${apiKey}`;
+    // 1. Swap to the streaming endpoint to keep the Cloudflare proxy connection alive
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.model}:streamGenerateContent?key=${apiKey}`;
 
     const requestBody = {
         contents: [
             {
                 parts: [
-                    {
-                        inline_data: {
-                            mime_type: 'application/pdf',
-                            data: pdfBase64,
-                        },
-                    },
-                    {
-                        text: buildPrompt(subject, existingTopics),
-                    },
+                    { inline_data: { mime_type: 'application/pdf', data: pdfBase64 } },
+                    { text: buildPrompt(subject, existingTopics) },
                 ],
             },
         ],
         generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: AI_CONFIG.maxOutputTokens,
-            responseMimeType: 'application/json', // Forces valid JSON output
+            responseMimeType: 'application/json',
+            maxOutputTokens: 65536,
         },
     };
 
@@ -163,56 +160,96 @@ export async function callGemini(
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[AI Import] Gemini API error: ${response.status} - ${errorText}`);
-        try {
-            const errJson = JSON.parse(errorText);
-            throw new Error(`Gemini API error ${response.status}: ${errJson.error?.message || 'Unknown error'}`);
-        } catch {
-            throw new Error(`Gemini API error ${response.status}: ${errorText}`);
+        throw new Error(`Gemini API error ${response.status}: ${errorText}`);
+    }
+
+    // 2. Await the full streamed response. 
+    // Cloudflare natively buffers the stream for us without timing out, 
+    // because data is constantly trickling in.
+    const responseText = await response.text();
+
+    let chunks: any[];
+    try {
+        // streamGenerateContent returns a JSON array of chunk objects
+        chunks = JSON.parse(responseText);
+    } catch (err: any) {
+        throw new Error(`Failed to parse streaming response from Gemini: ${err.message}`);
+    }
+
+    let fullText = '';
+    let finalFinishReason = null;
+
+    // 3. Reconstruct the full text from the chunks array
+    for (const chunk of chunks) {
+        const candidate = chunk?.candidates?.[0];
+        if (candidate?.content?.parts?.[0]?.text) {
+            fullText += candidate.content.parts[0].text;
+        }
+        if (candidate?.finishReason) {
+            finalFinishReason = candidate.finishReason;
         }
     }
 
-    const data = await response.json() as any;
-
-    // Check for finish reason — STOP means complete, MAX_TOKENS means truncated JSON
-    const finishReason = data?.candidates?.[0]?.finishReason;
-    if (finishReason === 'MAX_TOKENS') {
-        throw new Error(
-            `Gemini hit token limit (MAX_TOKENS) — response was truncated. ` +
-            `Try reducing the paper size or increasing maxOutputTokens.`
-        );
+    // 4. Validate the stop completion status
+    if (finalFinishReason && finalFinishReason !== 'STOP') {
+        if (finalFinishReason === 'MAX_TOKENS') {
+            throw new Error('Gemini hit token limit — response was truncated.');
+        } else if (finalFinishReason === 'SAFETY') {
+            throw new Error('Gemini stopped due to SAFETY filters.');
+        } else {
+            throw new Error(`Gemini stopped with reason: ${finalFinishReason}`);
+        }
     }
-
-    const fullText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     if (!fullText) {
-        console.error('[AI Import] No text in Gemini response:', JSON.stringify(data));
-        throw new Error(`No response from Gemini (finishReason: ${finishReason})`);
+        throw new Error('No response from Gemini');
     }
 
+    // 5. Safely parse the final combined JSON output
+    // Parse the JSON response
+    // Parse the JSON response
     let parsed: GeminiResponse;
     try {
-        // responseMimeType: 'application/json' should give clean JSON, but clean up just in case
         let cleaned = fullText.trim()
-            .replace(/^```json\s*/i, '')
-            .replace(/^```\s*/i, '')
-            .replace(/```\s*$/i, '')
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/\s*```$/i, '')
             .trim();
 
-        parsed = JSON.parse(cleaned) as GeminiResponse;
-    } catch (err) {
-        console.error('[AI Import] Failed to parse Gemini JSON. Length:', fullText.length);
-        console.error('[AI Import] First 500 chars:', fullText.slice(0, 500));
-        console.error('[AI Import] Last 500 chars:', fullText.slice(-500));
-        throw new Error('Gemini output was not valid JSON');
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
+            cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+        }
+
+        // --- BULLETPROOF LATEX JSON SANITIZER ---
+        // 1. Escapes single backslashes (like \cos, \frac, \theta, \le) so JSON.parse doesn't crash.
+        // 2. (?<!\\) ensures we IGNORE backslashes that are already double-escaped (like \\le).
+        // 3. (?!["\\/u]) ensures we don't break JSON quotes \", slashes \/, or unicode \uXXXX.
+        cleaned = cleaned.replace(/(?<!\\)\\(?!["\\/u])/g, '\\\\');
+
+        parsed = JSON.parse(cleaned, (key, value) => {
+            if (typeof value === 'string') {
+                // Restore actual newlines, tabs, and carriage returns that were sanitized above.
+                // This preserves text layout while keeping LaTeX like \nabla, \theta, and \rho perfectly intact.
+                return value
+                    .replace(/(?<!\\)\\n/g, '\n')
+                    .replace(/(?<!\\)\\t/g, '\t')
+                    .replace(/(?<!\\)\\r/g, '\r');
+            }
+            return value;
+        }) as GeminiResponse;
+
+    } catch (err: any) {
+        throw new Error(`Invalid JSON from Gemini: ${err.message} ${fullText}`);
     }
 
     if (!parsed.questions || !Array.isArray(parsed.questions)) {
-        throw new Error('Invalid response format from Gemini: missing questions array');
+        throw new Error('Invalid response format: missing questions array');
     }
 
     return parsed;
 }
+
 
 export async function insertQuestionsFromAI(
     db: D1Database,
@@ -315,84 +352,84 @@ export async function insertQuestionsFromAI(
 
 
 app.post('/past-papers/paper/:id/ai-import', async (c) => {
-  const user = await getUser(c);
-  const paperId = parseInt(c.req.param('id'));
+    const user = await getUser(c);
+    const paperId = parseInt(c.req.param('id'));
 
-  const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
-  if (!paper) return c.notFound();
-  if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
-  if (paper.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
-  if (!c.env.GEMINI_API_KEY) return c.text('AI service not configured', 500);
+    const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
+    if (!paper) return c.notFound();
+    if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
+    if (paper.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
+    if (!c.env.GEMINI_API_KEY) return c.text('AI service not configured', 500);
 
-  const body = await c.req.parseBody();
-  const file = body['pdf_file'];
-  if (!(file instanceof File)) return c.text('Invalid file uploaded', 400);
-  if (!file.name.toLowerCase().endsWith('.pdf')) return c.text('Please upload a PDF file', 400);
+    const body = await c.req.parseBody();
+    const file = body['pdf_file'];
+    if (!(file instanceof File)) return c.text('Invalid file uploaded', 400);
+    if (!file.name.toLowerCase().endsWith('.pdf')) return c.text('Please upload a PDF file', 400);
 
-  // Save PDF to R2
-  const arrayBuffer = await file.arrayBuffer();
-  await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
-    httpMetadata: { contentType: 'application/pdf' },
-  });
+    // Save PDF to R2
+    const arrayBuffer = await file.arrayBuffer();
+    await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
+        httpMetadata: { contentType: 'application/pdf' },
+    });
 
-  // Mark as pending and enqueue
-  await c.env.DB.prepare("UPDATE papers SET ai_status = 'pending' WHERE id = ?")
-    .bind(paperId).run();
+    // Mark as pending and enqueue
+    await c.env.DB.prepare("UPDATE papers SET ai_status = 'pending' WHERE id = ?")
+        .bind(paperId).run();
 
-  await c.env.AI_QUEUE.send({
-    paperId,
-    subject: paper.subject,
-    userId: user.id,
-    mode: 'import',
-  } satisfies AIImportJob);
+    await c.env.AI_QUEUE.send({
+        paperId,
+        subject: paper.subject,
+        userId: user.id,
+        mode: 'import',
+    } satisfies AIImportJob);
 
-  return c.redirect(`/past-papers/paper/${paperId}?ai=pending`);
+    return c.redirect(`/past-papers/paper/${paperId}?ai=pending`);
 });
 
 
 app.post('/past-papers/create-with-ai', async (c) => {
-  const user = await getUser(c);
-  const body = await c.req.parseBody();
-  const subject = body['subject'] as string;
+    const user = await getUser(c);
+    const body = await c.req.parseBody();
+    const subject = body['subject'] as string;
 
-  if (!user || !canUploadPastPaper(user, subject)) return c.redirect('/past-papers');
-  if (!c.env.GEMINI_API_KEY) return c.text('AI service not configured', 500);
+    if (!user || !canUploadPastPaper(user, subject)) return c.redirect('/past-papers');
+    if (!c.env.GEMINI_API_KEY) return c.text('AI service not configured', 500);
 
-  const file = body['pdf_file'];
-  if (!(file instanceof File)) return c.text('Please upload a PDF file', 400);
-  if (!file.name.toLowerCase().endsWith('.pdf')) return c.text('Please upload a PDF file', 400);
+    const file = body['pdf_file'];
+    if (!(file instanceof File)) return c.text('Please upload a PDF file', 400);
+    if (!file.name.toLowerCase().endsWith('.pdf')) return c.text('Please upload a PDF file', 400);
 
-  // Create the paper row first
-  const school = body['school_name'] as string;
-  const year = parseInt(body['academic_year'] as string);
-  const link = body['reference_link'] as string;
-  const type = body['paper_type'] as string || 'Trial Paper';
+    // Create the paper row first
+    const school = body['school_name'] as string;
+    const year = parseInt(body['academic_year'] as string);
+    const link = body['reference_link'] as string;
+    const type = body['paper_type'] as string || 'Trial Paper';
 
-  const paperRes = await c.env.DB.prepare(
-    `INSERT INTO papers (subject, school_name, academic_year, reference_link, paper_type, ai_status)
+    const paperRes = await c.env.DB.prepare(
+        `INSERT INTO papers (subject, school_name, academic_year, reference_link, paper_type, ai_status)
      VALUES (?, ?, ?, ?, ?, 'pending') RETURNING id`
-  ).bind(subject, school, year, link, type).first<{ id: number }>();
+    ).bind(subject, school, year, link, type).first<{ id: number }>();
 
-  if (!paperRes) return c.text('Failed to create paper', 500);
-  const paperId = paperRes.id;
+    if (!paperRes) return c.text('Failed to create paper', 500);
+    const paperId = paperRes.id;
 
-  // Save PDF to R2
-  const arrayBuffer = await file.arrayBuffer();
-  await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
-    httpMetadata: { contentType: 'application/pdf' },
-  });
+    // Save PDF to R2
+    const arrayBuffer = await file.arrayBuffer();
+    await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
+        httpMetadata: { contentType: 'application/pdf' },
+    });
 
-  // Enqueue
-  await c.env.AI_QUEUE.send({
-    paperId,
-    subject,
-    userId: user.id,
-    mode: 'create',
-    schoolName: school,
-    year,
-  } satisfies AIImportJob);
+    // Enqueue
+    await c.env.AI_QUEUE.send({
+        paperId,
+        subject,
+        userId: user.id,
+        mode: 'create',
+        schoolName: school,
+        year,
+    } satisfies AIImportJob);
 
-  return c.redirect(`/past-papers/paper/${paperId}?ai=pending`);
+    return c.redirect(`/past-papers/paper/${paperId}?ai=pending`);
 });
 
 
