@@ -12,7 +12,7 @@ const AI_CONFIG = {
     model: 'gemini-2.5-flash',
 
     apiKeyBinding: 'GEMINI_API_KEY' as const,
-    maxOutputTokens: 8192,
+    maxOutputTokens: 32768,
 };
 
 
@@ -23,7 +23,7 @@ function buildPrompt(subject: string, existingTopics: string[]): string {
 
     return `You are a specialist in analysing NSW HSC exam papers. You will be given a PDF of a past paper for the subject "${subject}".
 
-Your task is to extract EVERY question from the paper and return them in a structured JSON format.
+Your task is to extract EVERY question from the paper and return them in a structured, valid JSON format. No code fences, no explanation. Start your response with { and end with }.
 
 ## Section Classification Rules (STRICTLY follow these):
 - **Section I**: Always Multiple Choice (MCQ). Each question is worth 1 mark. The correct answer is one of A, B, C, D.
@@ -123,7 +123,13 @@ interface GeminiResponse {
     questions: AIQuestion[];
 }
 
-export async function callGemini(apiKey: string, pdfBase64: string, subject: string, existingTopics: string[]): Promise<GeminiResponse> {
+export async function callGemini(
+    apiKey: string,
+    pdfBase64: string,
+    subject: string,
+    existingTopics: string[]
+): Promise<GeminiResponse> {
+    // Use generateContent (not streaming) — simpler, works fine in Queue workers
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.model}:generateContent?key=${apiKey}`;
 
     const requestBody = {
@@ -143,8 +149,9 @@ export async function callGemini(apiKey: string, pdfBase64: string, subject: str
             },
         ],
         generationConfig: {
-            responseMimeType: 'application/json',
             temperature: 0.1,
+            maxOutputTokens: AI_CONFIG.maxOutputTokens,
+            responseMimeType: 'application/json', // Forces valid JSON output
         },
     };
 
@@ -157,28 +164,51 @@ export async function callGemini(apiKey: string, pdfBase64: string, subject: str
     if (!response.ok) {
         const errorText = await response.text();
         console.error(`[AI Import] Gemini API error: ${response.status} - ${errorText}`);
-
         try {
             const errJson = JSON.parse(errorText);
-            throw new Error(`Gemini API error 403: ${errJson.error.message}`);
+            throw new Error(`Gemini API error ${response.status}: ${errJson.error?.message || 'Unknown error'}`);
         } catch {
-            throw new Error(`Gemini API error 403: ${errorText}`);
+            throw new Error(`Gemini API error ${response.status}: ${errorText}`);
         }
     }
 
     const data = await response.json() as any;
 
-
-    const textContent = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!textContent) {
-        console.error('[AI Import] No text in Gemini response:', JSON.stringify(data));
-        throw new Error('No response from Gemini');
+    // Check for finish reason — STOP means complete, MAX_TOKENS means truncated JSON
+    const finishReason = data?.candidates?.[0]?.finishReason;
+    if (finishReason === 'MAX_TOKENS') {
+        throw new Error(
+            `Gemini hit token limit (MAX_TOKENS) — response was truncated. ` +
+            `Try reducing the paper size or increasing maxOutputTokens.`
+        );
     }
 
+    const fullText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    const parsed = JSON.parse(textContent) as GeminiResponse;
+    if (!fullText) {
+        console.error('[AI Import] No text in Gemini response:', JSON.stringify(data));
+        throw new Error(`No response from Gemini (finishReason: ${finishReason})`);
+    }
+
+    let parsed: GeminiResponse;
+    try {
+        // responseMimeType: 'application/json' should give clean JSON, but clean up just in case
+        let cleaned = fullText.trim()
+            .replace(/^```json\s*/i, '')
+            .replace(/^```\s*/i, '')
+            .replace(/```\s*$/i, '')
+            .trim();
+
+        parsed = JSON.parse(cleaned) as GeminiResponse;
+    } catch (err) {
+        console.error('[AI Import] Failed to parse Gemini JSON. Length:', fullText.length);
+        console.error('[AI Import] First 500 chars:', fullText.slice(0, 500));
+        console.error('[AI Import] Last 500 chars:', fullText.slice(-500));
+        throw new Error('Gemini output was not valid JSON');
+    }
+
     if (!parsed.questions || !Array.isArray(parsed.questions)) {
-        throw new Error('Invalid response format from Gemini');
+        throw new Error('Invalid response format from Gemini: missing questions array');
     }
 
     return parsed;

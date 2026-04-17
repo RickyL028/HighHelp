@@ -17,7 +17,12 @@
 		"consumers": [
 			{
 				"queue": "paper-ai-queue",
-				"max_batch_size": 1
+				"max_batch_size": 1,
+				
+				"max_batch_timeout": 0, 
+				"max_retries": 2,
+				"dead_letter_queue": "paper-ai-dlq",
+				
 			}
 		]
 	},
