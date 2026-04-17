@@ -28,7 +28,10 @@ export const SUBJECTS = [
     "Physics",
     "Software Engineering",
     "Visual Arts",
-    "Other"
+    "Physics (HSC)",
+    "Chemistry (HSC)",
+    "Biology (HSC)",
+    "Other",
 ] as const;
 
 export const ANNOUNCEMENT_SUBJECTS = ["All", ...SUBJECTS] as const;

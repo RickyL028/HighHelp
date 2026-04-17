@@ -43,10 +43,24 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     if (!qRow) return c.notFound();
 
-    // Reconstruct the individual objects from the joined result
+
     const q = { ...qRow };
     let attempt = null;
     let originalAttempt = null;
+    let stimCoords = null;
+
+
+    if (q.stimulus_image_key && q.stimulus_image_key.startsWith('pdf_crop:')) {
+        try {
+            const cropDataJson = q.stimulus_image_key.replace('pdf_crop:', '');
+            stimCoords = JSON.parse(cropDataJson);
+        } catch (e) {
+            console.error("Failed to parse stimulus crop metadata", e);
+        }
+    }
+
+
+    const pdfUrl = `/download/papers/${q.paper_id}.pdf${stimCoords?.page ? `#page=${stimCoords.page}` : ''}`;
 
     if (mode === 'review') {
         originalAttempt = { marks_awarded: qRow.ua_marks };
@@ -190,6 +204,10 @@ app.get('/past-papers/attempt/:id', async (c) => {
                         <span class="text-xs font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded shrink-0">
                             {q.marks} Marks
                         </span>
+                        <a href={pdfUrl} target="_blank" class="flex items-center gap-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-xs font-bold transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></svg>
+                            Original PDF {stimCoords?.page ? `(p.${stimCoords.page})` : ''}
+                        </a>
                     </div>
                     <div class="flex gap-1 shrink-0 ml-2">
                         {prevId ? (
