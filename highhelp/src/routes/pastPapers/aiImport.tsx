@@ -9,7 +9,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 
 const AI_CONFIG = {
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
 
     apiKeyBinding: 'GEMINI_API_KEY' as const,
 
