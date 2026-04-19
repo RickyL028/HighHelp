@@ -297,26 +297,62 @@ app.post('/mock-exams/create-auto', async (c) => {
 
         const candidates = await c.env.DB.prepare(query).bind(...params).all<any>()
 
-        let currentMarks = 0
-        let selectedForSection: any[] = []
+        
+        const groupedCandidates = new Map<string, any[]>();
+        
+        for (const q of candidates.results) {
+            
+            const match = q.question_number.match(/^(\d+)/);
+            const baseNum = match ? match[1] : q.question_number;
+            const groupKey = `${q.paper_id}_${baseNum}`;
 
-        const uncompleted = candidates.results.filter((q: any) => !q.is_completed)
-        const completed = candidates.results.filter((q: any) => q.is_completed)
+            if (!groupedCandidates.has(groupKey)) {
+                groupedCandidates.set(groupKey, []);
+            }
+            groupedCandidates.get(groupKey)!.push(q);
+        }
 
-        for (const q of uncompleted) {
-            if (currentMarks < desiredMarks) {
-                selectedForSection.push(q)
-                currentMarks += (q.marks || 0)
+        
+        const uncompletedGroups: any[][] = [];
+        const completedGroups: any[][] = [];
+
+        for (const group of groupedCandidates.values()) {
+            
+            group.sort((a, b) => a.question_number.localeCompare(b.question_number, undefined, { numeric: true }));
+
+            const isGroupCompleted = group.every(q => q.is_completed);
+            if (isGroupCompleted) {
+                completedGroups.push(group);
+            } else {
+                uncompletedGroups.push(group);
             }
         }
 
-        if (currentMarks < desiredMarks && allowCompleted) {
-            for (const q of completed) {
-                if (currentMarks < desiredMarks) {
-                    selectedForSection.push(q)
-                    currentMarks += (q.marks || 0)
+        let currentMarks = 0
+        let selectedForSection: any[] = []
+
+        
+        const processGroups = (groups: any[][]) => {
+            for (const group of groups) {
+                if (currentMarks >= desiredMarks) break; 
+
+                let groupMarks = 0;
+                for (const q of group) {
+                    selectedForSection.push(q);
+                    groupMarks += (q.marks || 0);
                 }
+                
+                
+                currentMarks += groupMarks;
             }
+        }
+
+        
+        processGroups(uncompletedGroups);
+
+        
+        if (currentMarks < desiredMarks && allowCompleted) {
+            processGroups(completedGroups);
         }
 
         finalQuestions = [...finalQuestions, ...selectedForSection]
@@ -460,7 +496,7 @@ app.get('/mock-exams/:id', async (c) => {
                             
                             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-5 gap-4">
                                 <div class="flex flex-wrap items-center gap-3">
-                                    <h1 class="text-sm font-bold text-gray-700 dark:text-neutral-300">
+                                    <h1 class="text-sm font-bold text-gray-700 dark:text-neutral-500">
                                         {q.school_name} {q.paper_type} {q.academic_year} — {q.section_label} Q{q.question_number}
                                     </h1>
                                     <span class="text-gray-300 dark:text-neutral-600 hidden sm:inline">|</span>
