@@ -201,7 +201,7 @@ app.get('/past-papers', async (c) => {
             c.env.DB.prepare('SELECT DISTINCT school_name FROM papers WHERE subject = ? ORDER BY school_name ASC').bind(subject)
         ]);
 
-        const totalQuestions = (countResult.results[0]?.total as number) || 0;
+        const totalQuestions = (countResult.results[0] as { total: number })?.total || 0;
         const totalPages = Math.ceil(totalQuestions / limit) || 1;
 
 
