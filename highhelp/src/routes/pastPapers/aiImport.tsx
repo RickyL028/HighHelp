@@ -21,7 +21,7 @@ function buildPrompt(subject: string, existingTopics: string[]): string {
         ? `The following topics already exist for this subject in the database:\n${existingTopics.map(t => `- ${t}`).join('\n')}\n\nYou MUST choose from the topics above when categorising. If none fit, you may suggest a new topic name, but prefer existing ones.`
         : `No topics exist yet for this subject. Create appropriate topic names based on the HSC syllabus for "${subject}".`;
 
-    return `You are a specialist in analysing NSW HSC exam papers. You will be given a PDF of a past paper for the subject "${subject}".
+    return `You are a specialist in analysing NSW HSC exam papers. You will be given a PDF of a past paper for the subject "${subject}". Your job is not to solve any questions, as solutions are provided at the end, but to categorise questions.
 
 Your task is to extract EVERY question from the paper and return them in a structured, valid JSON format. No code fences, no explanation. Start your response with { and end with }.
 
@@ -72,7 +72,7 @@ For each question, assign one or more topic names in the "topics" array. This he
 10. **topics**: Array of topic name strings this question covers (1-3 topics per question)
 11. **stimulus_coordinates**: If the question has an associated image/graph/diagram/table that is embedded in the PDF (not text), provide bounding box as:
    {"page": <1-indexed page number>, "x": <left % 0-100>, "y": <top % 0-100>, "w": <width % 0-100>, "h": <height % 0-100>} with 100% x y w and h
-   Additionally include stimulus of the same question in sub questions. E.g. include 1a's stimulus in 1b, 1c
+   Additionally include stimulus of the same question in sub questions. E.g. include 1a's stimulus in 1b, 1c.
 
 ## Sub-questions:
 - If a question has parts like (a), (b), (c) that each have their own mark allocation, treat each part as a separate question.
@@ -94,7 +94,7 @@ Return ONLY a valid JSON object with this structure:
       "mc_answer": null,
       "answer_text": null,
       "topics": ["Marketing"],
-      "stimulus_coordinates": null
+      "stimulus_coordinates": {"page":35,"x":27.8,"y":32.1,"w":43.8,"h":16.5}
     }
   ]
 }
