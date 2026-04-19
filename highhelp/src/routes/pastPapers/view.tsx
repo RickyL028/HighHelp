@@ -1,3 +1,4 @@
+
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
 import { getUser, logAction } from '../../utils'
@@ -103,43 +104,106 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
 
                     <div class="flex items-center gap-3">
-
                         {canEdit && (
                             <>
-                                <button onclick="document.getElementById('import-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                    Import Text
+                                <button onclick="document.getElementById('upload-pdf-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                    Upload PDF
                                 </button>
 
+                                <button onclick="document.getElementById('import-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    Import JSON
+                                </button>
+
+                                <button onclick="document.getElementById('ai-import-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                    AI Import PDF
+                                </button>
+
+                                <dialog id="upload-pdf-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
+                                    <div class="w-full max-w-lg bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700">
+                                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Upload Reference PDF</h3>
+                                        <p class="text-sm text-gray-500 dark:text-neutral-400 mb-4">
+                                            Upload a PDF document to attach to this paper. This enables PDF cropping for stimuli.
+                                        </p>
+
+                                        <form action={`/past-papers/paper/${paper.id}/upload-pdf`} method="post" enctype="multipart/form-data">
+                                            <div class="border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded-lg p-6 text-center hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition cursor-pointer relative">
+                                                <input type="file" name="pdf_file" accept=".pdf,application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required />
+                                                <div class="text-gray-500 dark:text-neutral-400">
+                                                    <span class="block text-2xl mb-1">📄</span>
+                                                    <span class="font-bold text-sm">Click to select .pdf file</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex justify-end gap-3 mt-6">
+                                                <button type="button" onclick="document.getElementById('upload-pdf-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg">Cancel</button>
+                                                <button class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition-colors">
+                                                    Upload
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </dialog>
 
                                 <dialog id="import-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
                                     <div class="w-full max-w-lg bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700">
-                                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Import Paper from Text</h3>
+                                        <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Import Paper from JSON</h3>
                                         <p class="text-sm text-gray-500 dark:text-neutral-400 mb-4">
-                                            Upload a .txt file formatted with tags (\s, \a, \q, \m, \e). This will append questions to the end of the paper.
+                                            Upload a .json or .txt file. This will replace ALL existing questions.
                                         </p>
 
                                         <form action={`/past-papers/paper/${paper.id}/upload-text`} method="post" enctype="multipart/form-data">
                                             <div class="border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded-lg p-6 text-center hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition cursor-pointer relative">
-                                                <input type="file" name="text_file" accept=".txt" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required />
+                                                <input type="file" name="text_file" accept=".txt,.json" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required />
                                                 <div class="text-gray-500 dark:text-neutral-400">
                                                     <span class="block text-2xl mb-1">📄</span>
-                                                    <span class="font-bold text-sm">Click to select .txt file</span>
+                                                    <span class="font-bold text-sm">Click to select .json or .txt file</span>
                                                 </div>
                                             </div>
 
                                             <div class="mt-4 bg-gray-50 dark:bg-neutral-900 p-3 rounded text-xs text-gray-500 dark:text-neutral-400 font-mono overflow-x-auto border border-gray-200 dark:border-neutral-800">
-                                                Key:<br />
-                                                \s New Section | \a New Segment<br />
-                                                \q Question | \m marks<br />
-                                                \e End questions (Start Answer Key)<br />
-                                                /s [A B C D] (MCQ Key)
+                                                Ensure the file contains a valid JSON object with a <code>questions</code> array matching the AI extraction format.
                                             </div>
 
                                             <div class="flex justify-end gap-3 mt-6">
                                                 <button type="button" onclick="document.getElementById('import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg">Cancel</button>
                                                 <button class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition-colors">
                                                     Process & Import
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </dialog>
+
+                                <dialog id="ai-import-modal" class="p-0 rounded-xl shadow-2xl backdrop:bg-gray-900/50 open:animate-fade-in backdrop:backdrop-blur-sm">
+                                    <div class="w-full max-w-lg bg-white dark:bg-neutral-800 p-6 rounded-xl border border-blue-200 dark:border-blue-800/40">
+                                        <h3 class="text-xl font-bold text-blue-700 dark:text-blue-300 mb-2 flex items-center gap-2">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                            AI Import from PDF
+                                        </h3>
+                                        <p class="text-sm text-gray-500 dark:text-neutral-400 mb-4">
+                                            MUST include solution!
+                                        </p>
+                                        <p class="text-xs text-red-500 dark:text-red-400 mb-4 font-bold">
+                                            ⚠ Warning: This will replace ALL existing questions in this paper.
+                                        </p>
+
+                                        <form action={`/past-papers/paper/${paper.id}/ai-import`} method="post" enctype="multipart/form-data" id="ai-view-import-form">
+                                            <div class="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg p-6 text-center hover:bg-blue-50 dark:hover:bg-blue-900/20 transition cursor-pointer relative">
+                                                <input type="file" name="pdf_file" accept=".pdf,application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required id="ai-view-pdf-input" />
+                                                <div class="text-gray-500 dark:text-neutral-400" id="ai-view-pdf-label">
+                                                    <span class="block text-3xl mb-2">📄</span>
+                                                    <span class="font-bold text-sm">Click or drag to upload PDF</span>
+                                                    <span class="block text-xs mt-1 text-gray-400 dark:text-neutral-500">Supports HSC-format past papers</span>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex justify-end gap-3 mt-6">
+                                                <button type="button" onclick="document.getElementById('ai-import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg">Cancel</button>
+                                                <button id="ai-view-submit-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-2">
+                                                    <span id="ai-view-submit-text">AI Import</span>
                                                 </button>
                                             </div>
                                         </form>
@@ -205,6 +269,55 @@ app.get('/past-papers/paper/:id', async (c) => {
                         </div>
                     </div>
                 </dialog>
+                    {/* AI Status Banner */}
+{paper.ai_status === 'pending' || paper.ai_status === 'processing' ? (
+    <div class="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex items-center gap-4">
+        <div class="flex-shrink-0">
+            <svg class="w-6 h-6 text-blue-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+        </div>
+        <div class="flex-1">
+            <p class="font-bold text-blue-700 dark:text-blue-300 text-sm">
+                {paper.ai_status === 'pending' ? 'AI Import Queued' : 'AI Import In Progress'}
+            </p>
+            <p class="text-blue-600 dark:text-blue-400 text-xs mt-0.5">
+                {paper.ai_status === 'pending'
+                    ? 'Your PDF is waiting to be processed. This page will refresh automatically.'
+                    : 'Gemini is extracting questions from your PDF. This usually takes 30–90 seconds. This page automatically reloads'}
+            </p>
+        </div>
+        <meta http-equiv="refresh" content="6" />
+    </div>
+) : paper.ai_status === 'done' ? (
+    <div class="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 flex items-center gap-4">
+        <span class="text-2xl">✅</span>
+        <div class="flex-1">
+            <p class="font-bold text-green-700 dark:text-green-300 text-sm">AI Import Complete</p>
+            <p class="text-green-600 dark:text-green-400 text-xs mt-0.5">
+                All questions have been extracted and imported successfully.
+            </p>
+        </div>
+        {/* Dismiss by clearing the status */}
+        <form action={`/past-papers/paper/${paper.id}/clear-ai-status`} method="post">
+            <button class="text-xs text-green-600 dark:text-green-400 hover:underline font-bold">Dismiss</button>
+        </form>
+    </div>
+) : paper.ai_status === 'error' ? (
+    <div class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center gap-4">
+        <span class="text-2xl">❌</span>
+        <div class="flex-1">
+            <p class="font-bold text-red-700 dark:text-red-300 text-sm">AI Import Failed</p>
+            <p class="text-red-600 dark:text-red-400 text-xs mt-0.5 font-mono">
+                {paper.ai_error || 'An unknown error occurred.'}
+            </p>
+        </div>
+        <form action={`/past-papers/paper/${paper.id}/clear-ai-status`} method="post">
+            <button class="text-xs text-red-600 dark:text-red-400 hover:underline font-bold">Dismiss</button>
+        </form>
+    </div>
+) : null}
 
 
                 {canManageTopics && (
@@ -252,7 +365,7 @@ app.get('/past-papers/paper/:id', async (c) => {
 
                                             <div class="flex flex-col">
                                                 <div class="flex items-center gap-2">
-                                                    {q.question_type === 'multiple_choice' && <span class="bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 text-xs px-2 py-0.5 rounded font-bold">MCQ</span>}
+                                                    {q.question_type === 'multiple_choice' && <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs px-2 py-0.5 rounded font-bold">MCQ</span>}
                                                     {q.marks && <span class="bg-gray-100 dark:bg-neutral-700 text-gray-600 dark:text-neutral-300 text-xs px-2 py-0.5 rounded font-bold">{q.marks}m</span>}
                                                 </div>
                                                 {q.topic_names ? (
@@ -395,6 +508,8 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                         <span class="text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider block mb-1">Stimulus</span>
                                                         {q.stimulus_text ? (
                                                             <div class="p-4 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded text-gray-700 dark:text-neutral-300 italic border-l-4 border-l-blue-400 dark:border-l-blue-600 whitespace-pre-wrap">{q.stimulus_text}</div>
+                                                        ) : q.stimulus_image_key?.startsWith('pdf_crop:') ? (
+                                                            <pdf-crop pdf-url={`/download/papers/${paper.id}.pdf`} crop-data={q.stimulus_image_key.replace('pdf_crop:', '')}></pdf-crop>
                                                         ) : (
                                                             <img src={`/download/${q.stimulus_image_key}`} class="max-w-md border rounded dark:border-neutral-700" />
                                                         )}
@@ -563,9 +678,41 @@ app.get('/past-papers/paper/:id', async (c) => {
                          alert("Paste failed: " + e.message);
                     }
                 }
+
+                // AI Import PDF feedback
+                const aiViewInput = document.getElementById('ai-view-pdf-input');
+                const aiViewLabel = document.getElementById('ai-view-pdf-label');
+                if (aiViewInput) {
+                    aiViewInput.addEventListener('change', (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                            aiViewLabel.innerHTML = '<span class="block text-3xl mb-2">✅</span><span class="font-bold text-sm text-green-700 dark:text-green-400">' + file.name + '</span><span class="block text-xs mt-1 text-gray-400 dark:text-neutral-500">' + (file.size / 1024 / 1024).toFixed(2) + ' MB</span>';
+                        }
+                    });
+                }
+                const aiViewForm = document.getElementById('ai-view-import-form');
+                if (aiViewForm) {
+                    aiViewForm.addEventListener('submit', () => {
+                        const btn = document.getElementById('ai-view-submit-btn');
+                        const text = document.getElementById('ai-view-submit-text');
+                        btn.disabled = true;
+                        btn.classList.add('opacity-60', 'cursor-not-allowed');
+                        text.textContent = 'Processing… 30-60s';
+                    });
+                }
             `}} />
         </Layout >
     );
+})
+app.post('/past-papers/paper/:id/clear-ai-status', async (c) => {
+    const user = await getUser(c)
+    const paperId = c.req.param('id')
+    if (!user) return c.text('Unauthorised', 403)
+
+    await c.env.DB.prepare("UPDATE papers SET ai_status = NULL, ai_error = NULL WHERE id = ?")
+        .bind(paperId).run()
+
+    return c.redirect(`/past-papers/paper/${paperId}`)
 })
 
 app.post('/past-papers/question/:id/sub-question', async (c) => {
@@ -1051,179 +1198,144 @@ app.post('/past-papers/paper/:id/adjust-segment', async (c) => {
 
     return c.redirect(`/past-papers/paper/${paperId}`);
 });
+
 app.post('/past-papers/paper/:id/upload-text', async (c) => {
-    console.log(`[Import] Attempting text import for paper ${c.req.param('id')}`);
+    console.log(`[Import] Attempting JSON import for paper ${c.req.param('id')}`);
     const user = await getUser(c);
     const paperId = c.req.param('id');
-
 
     const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
     if (!paper) return c.notFound();
     if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
     if (paper.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
 
-
     const body = await c.req.parseBody();
     const file = body['text_file'];
     if (!(file instanceof File)) return c.text("Invalid file uploaded", 400);
 
     const rawText = await file.text();
-    const text = rawText.replace(/\r\n/g, '\n');
-
-
-    const parts = text.split('\\e');
-    const questionPart = parts[0];
-    const answerKeyPart = parts.length > 1 ? parts.slice(1).join('') : '';
-
-    const tokens = questionPart.split(/(\\s|\\a|\\q|\\m)/);
-
-
-    const toRoman = (num: number) => ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][num] || String(num);
-    const toLetter = (num: number) => String.fromCharCode(65 + num); // 0->A, 1->B
-
-
-    let currentSectionIdx = 0;
-    let currentSegmentIdx = 0;
-    let currentQCount = 0;
-
-    let currentSectionLabel = "I";
-    let currentSegmentLabel = "A";
-
-    let currentQ: any = null;
-    let questionsToProcess: any[] = [];
-
-
-    let runningOrderIdx = 1;
-
-    const pushCurrentQ = () => {
-        if (currentQ) {
-
-            if (!currentQ.question_type) {
-                if (currentQ.question_text && currentQ.question_text.includes('(A)') && currentQ.question_text.includes('(B)')) {
-                    currentQ.question_type = 'multiple_choice';
-                    if (!currentQ.marks) currentQ.marks = 1;
-                } else {
-                    currentQ.question_type = (currentQ.marks && parseInt(currentQ.marks) >= 5) ? 'extended_response' : 'short_answer';
-                }
-            }
-            questionsToProcess.push(currentQ);
-            currentQ = null;
+    let parsed: any;
+    try {
+        let cleaned = rawText.trim()
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/\s*```$/i, '')
+            .trim();
+        const firstBrace = cleaned.indexOf('{');
+        const lastBrace = cleaned.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
+            cleaned = cleaned.slice(firstBrace, lastBrace + 1);
         }
-    };
-
-    for (let i = 0; i < tokens.length; i++) {
-        const token = tokens[i].trim();
-        const content = (tokens[i + 1] || "").trim();
-
-        if (token === '\\s') {
-            pushCurrentQ();
-            currentSectionIdx++;
-
-            currentQCount = 0;
-
-            currentSectionLabel = toRoman(currentSectionIdx);
-
-            i++;
-        }
-        else if (token === '\\a') {
-            pushCurrentQ();
-            currentSegmentIdx++;
-            currentQCount = 0;
-
-            currentSegmentLabel = toLetter(currentSegmentIdx);
-            i++;
-        }
-        else if (token === '\\q') {
-            pushCurrentQ();
-            currentQCount++;
-
-            let qText = content;
-
-
-            const boldMatch = content.match(/^\*\*([a-zA-Z0-9]+)\*\*\s*/);
-            const standardMatch = content.match(/^(\d+|[a-z])[\.\)]\s*/);
-
-            if (boldMatch) {
-                qText = content.substring(boldMatch[0].length);
-            } else if (standardMatch) {
-                qText = content.substring(standardMatch[0].length);
-            }
-
-            const generatedNumber = currentSegmentLabel
-                ? `${currentSegmentLabel}${currentQCount}`
-                : `${currentQCount}`;
-
-            currentQ = {
-                paper_id: paperId,
-                section_label: currentSectionLabel,
-                segment_label: currentSegmentLabel,
-                question_number: generatedNumber,
-                question_text: qText,
-                uploader_id: user.id,
-                ordering_index: runningOrderIdx++,
-                marks: null,
-                question_type: null,
-                mc_answer: null
-            };
-            i++;
-        }
-        else if (token === '\\m') {
-            if (currentQ) {
-                const cleanMarks = content.replace(/\*\*/g, '').match(/(\d+)/);
-                if (cleanMarks) currentQ.marks = cleanMarks[1];
-            }
-            i++;
-        }
-    }
-    pushCurrentQ();
-
-
-    if (answerKeyPart && answerKeyPart.trim().length > 0) {
-        const answers = answerKeyPart.match(/\b[A-D]\b/g);
-        if (answers) {
-            questionsToProcess.forEach((q, index) => {
-                if (answers[index]) {
-                    q.mc_answer = answers[index];
-                    q.question_type = 'multiple_choice';
-                    if (!q.marks) q.marks = 1;
-                }
-            });
-        }
+        parsed = JSON.parse(cleaned);
+    } catch (e) {
+        return c.text("Invalid JSON file uploaded", 400);
     }
 
+    if (!parsed.questions || !Array.isArray(parsed.questions)) {
+        return c.text("JSON must contain a 'questions' array", 400);
+    }
 
+    const questionsToProcess = parsed.questions;
+
+    const existingQs = await c.env.DB.prepare('SELECT id FROM exam_questions WHERE paper_id = ?').bind(paperId).all<{ id: number }>();
+    if (existingQs.results.length > 0) {
+        const ids = existingQs.results.map((q: any) => q.id);
+        for (const id of ids) {
+            await c.env.DB.prepare('DELETE FROM question_topics WHERE question_id = ?').bind(id).run();
+        }
+    }
     await c.env.DB.prepare('DELETE FROM exam_questions WHERE paper_id = ?').bind(paperId).run();
 
+    const topicRows = await c.env.DB.prepare('SELECT id, name FROM topics WHERE subject = ?').bind(paper.subject).all<{ id: number, name: string }>();
+    const topicCache = new Map<string, number>();
+    for (const t of topicRows.results) {
+        topicCache.set(t.name.toLowerCase().trim(), t.id);
+    }
+
     let insertedCount = 0;
-
-
     const stmt = c.env.DB.prepare(`
         INSERT INTO exam_questions 
-        (paper_id, section_label, segment_label, question_number, question_text, marks, question_type, mc_answer, uploader_id, ordering_index)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (paper_id, section_label, segment_label, question_number, question_full_label, question_type, marks, question_text, mc_answer, answer_text, stimulus_image_key, uploader_id, ordering_index)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        RETURNING id
     `);
 
-    for (const q of questionsToProcess) {
-        const segmentVal = q.segment_label || null;
+    for (let i = 0; i < questionsToProcess.length; i++) {
+        const q = questionsToProcess[i];
 
-        await stmt.bind(
-            q.paper_id,
-            q.section_label,
-            segmentVal,
-            q.question_number,
-            q.question_text || null,
+        let stimulusKey = null;
+        if (q.stimulus_coordinates) {
+            stimulusKey = `pdf_crop:${JSON.stringify(q.stimulus_coordinates)}`;
+        }
+
+        const insertResult = await stmt.bind(
+            paperId,
+            q.section_label || 'I',
+            q.segment_label || null,
+            q.question_number || String(i + 1),
+            q.question_full_label || `${q.section_label || 'I'} ${q.question_number || String(i + 1)}`,
+            q.question_type || 'short_answer',
             q.marks || null,
-            q.question_type || null,
+            q.question_text || null,
             q.mc_answer || null,
-            q.uploader_id,
-            q.ordering_index
-        ).run();
+            q.answer_text || null,
+            stimulusKey,
+            2,
+            i + 1
+        ).first<{ id: number }>();
 
+        if (insertResult && q.topics && q.topics.length > 0) {
+            for (const topicName of q.topics) {
+                const key = topicName.toLowerCase().trim();
+                let topicId = topicCache.get(key);
+
+                if (!topicId) {
+                    const newTopic = await c.env.DB.prepare(
+                        'INSERT INTO topics (subject, name) VALUES (?, ?) ON CONFLICT(subject, name) DO UPDATE SET name = name RETURNING id'
+                    ).bind(paper.subject, topicName.trim()).first<{ id: number }>();
+                    if (newTopic) {
+                        topicId = newTopic.id;
+                        topicCache.set(key, topicId);
+                    }
+                }
+
+                if (topicId) {
+                    await c.env.DB.prepare(
+                        'INSERT OR IGNORE INTO question_topics (question_id, topic_id) VALUES (?, ?)'
+                    ).bind(insertResult.id, topicId).run();
+                }
+            }
+        }
         insertedCount++;
     }
 
+    await logAction(c.env.DB, user.id, 'IMPORT_JSON', `Imported ${insertedCount} questions via JSON.`, parseInt(paperId), 'papers');
 
-    await logAction(c.env.DB, user.id, 'IMPORT_TEXT', `Fresh Import: Wiped previous questions. ${insertedCount} inserted.`, parseInt(paperId), 'papers');
+    return c.redirect(`/past-papers/paper/${paperId}`);
+});
+
+app.post('/past-papers/paper/:id/upload-pdf', async (c) => {
+    const user = await getUser(c);
+    const paperId = c.req.param('id');
+
+    const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
+    if (!paper) return c.notFound();
+    if (!user || !canUploadPastPaper(user, paper.subject)) return c.text('Unauthorised', 403);
+    if (paper.is_locked && user.permission_level < 5) return c.text('Paper is locked', 403);
+
+    const body = await c.req.parseBody();
+    const file = body['pdf_file'];
+    if (!(file instanceof File)) return c.text("Invalid file uploaded", 400);
+
+    const arrayBuffer = await file.arrayBuffer();
+    await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
+        httpMetadata: { contentType: 'application/pdf' },
+    });
+
+    await c.env.DB.prepare('UPDATE papers SET reference_link = ? WHERE id = ?')
+        .bind(`/download/papers/${paperId}.pdf`, paperId)
+        .run();
+
+    await logAction(c.env.DB, user.id, 'UPLOAD_PAPER_PDF', `Uploaded reference PDF for paper ${paperId}`, parseInt(paperId), 'papers');
 
     return c.redirect(`/past-papers/paper/${paperId}`);
 });

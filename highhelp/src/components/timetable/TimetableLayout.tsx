@@ -35,14 +35,14 @@ export const TimetableLayout = ({ children }: { children: Child }) => (
                 <div class="absolute top-0 right-0 w-32 h-30 bg-gray-100 dark:bg-neutral-700 opacity-50 dark:opacity-20 rounded-full -mr-10 -mt-10 blur-2xl"></div>
                 <div class="absolute bottom-0 left-0 w-24 h-20 bg-red-500 opacity-5 rounded-full -ml-10 -mb-10 blur-xl"></div>
 
-                <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div class="text-center md:text-left min-w-0">
+                <div class="relative z-10 flex flex-row items-center justify-between gap-3">
+                    <div class="text-left min-w-0 flex-1 overflow-hidden">
                         <h2 class="text-gray-400 dark:text-neutral-500 text-sm mb-1">Time till</h2>
-                        <div id="bt-subject" class="text-2xl font-bold">Checking...</div>
-                        <div id="bt-details" class="text-sm text-gray-400 dark:text-neutral-500 flex items-center gap-2 justify-center md:justify-start"></div>
+                        <div id="bt-subject" class="text-2xl font-bold truncate">Checking...</div>
+                        <div id="bt-details" class="text-sm text-gray-400 dark:text-neutral-500 flex items-center gap-2 truncate"></div>
                     </div>
 
-                    <div class="text-center whitespace-nowrap">
+                    <div class="text-center whitespace-nowrap flex-shrink-0">
                         <div id="bt-timer" class="text-4xl md:text-5xl font-bold tracking-wide leading-none">--:--:--</div>
                         <div id="bt-label" class="text-xs text-red-500 dark:text-red-400 mt-2 tracking-wide uppercase">Until Start</div>
                     </div>
@@ -54,7 +54,7 @@ export const TimetableLayout = ({ children }: { children: Child }) => (
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 </button>
 
-                <div class="flex-grow flex items-center justify-center border border-gray-200 dark:border-neutral-700 rounded-lg h-7 bg-white dark:bg-neutral-800 shadow-sm px-4">
+                <div class="flex-grow flex items-center justify-center border border-gray-200 dark:border-neutral-700 rounded-lg min-h-7 py-1 bg-white dark:bg-neutral-800 shadow-sm px-3">
                     <span id="date-display" class="font-bold text-gray-800 dark:text-neutral-200 text-sm"></span>
                 </div>
 
@@ -68,6 +68,36 @@ export const TimetableLayout = ({ children }: { children: Child }) => (
             </div>
 
             <div id="timetable-list" class="space-y-4"></div>
+
+            {/* Quick Links Grid */}
+            <div id="quick-links-wrapper" class="relative mt-8 pt-4 border-t border-gray-100 dark:border-neutral-800">
+                <div id="quick-links-panel">
+                    <div class="grid grid-cols-4 gap-2">
+                        <a id="ql-btn-0" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center justify-center py-2 px-1 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-xs font-medium shadow-sm no-underline">
+                            <span class="ql-title truncate"></span>
+                        </a>
+                        <a id="ql-btn-1" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center justify-center py-2 px-1 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-xs font-medium shadow-sm no-underline">
+                            <span class="ql-title truncate"></span>
+                        </a>
+                        <a id="ql-btn-2" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center justify-center py-2 px-1 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-xs font-medium shadow-sm no-underline">
+                            <span class="ql-title truncate"></span>
+                        </a>
+                        <a id="ql-btn-3" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center justify-center py-2 px-1 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-xs font-medium shadow-sm no-underline">
+                            <span class="ql-title truncate"></span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-center py-10 opacity-60">
+                <div class="h-px bg-gray-300 dark:bg-neutral-800 flex-grow"></div>
+                <span class="mx-4 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-neutral-600">
+
+                </span>
+                <div class="h-px bg-gray-300 dark:bg-neutral-800 flex-grow"></div>
+            </div>
+
+
         </div>
 
         <div id="error-msg" class="hidden text-center py-12 text-red-500"></div>

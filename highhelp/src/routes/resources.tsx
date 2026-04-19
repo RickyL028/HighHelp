@@ -8,6 +8,18 @@ import { Bindings } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// Helper to render uploader name based on display preference
+const renderUploaderName = (r: any) => {
+    const display = r.uploader_display || 'initials';
+    if (display === 'anonymous' || !r.first_name) return 'Anonymous';
+    if (display === 'initials') {
+        const fi = r.first_name?.charAt(0) || '';
+        const li = r.last_name?.charAt(0) || '';
+        return `${fi}${li}`.toUpperCase();
+    }
+    return `${r.first_name} ${r.last_name || ''}`.trim();
+};
+
 app.get('/resources', async (c) => {
     const user = await getUser(c)
 
@@ -34,7 +46,7 @@ app.get('/resources', async (c) => {
                 <div class="mx-auto space-y-6">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
                         <h1 class="text-3xl font-bold">Resources Feed</h1>
-                        <a href="#browse-subjects" class="text-blue-600 hover:underline">Browse all subjects ↓</a>
+                        <a href="#browse-subjects" class="text-blue-600 hover:underline">Upload Resources ↓</a>
                     </div>
 
                     {/* Top Controls Bar (Search, Filters, Sort, View) */}
@@ -102,11 +114,11 @@ app.get('/resources', async (c) => {
                                     </div>
                                     <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-100 dark:border-neutral-700 gap-2">
                                         <div class="text-xs text-gray-500 dark:text-neutral-400 flex items-center min-w-0">
-                                            <span class="truncate">{r.first_name ? `${r.first_name}` : 'Unknown'}</span>
-                                            <span class="ml-1 shrink-0" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
+                                            <span class="truncate">{renderUploaderName(r)}</span>
+                                            {r.uploader_display !== 'anonymous' && <span class="ml-1 shrink-0" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>}
                                         </div>
                                         <div class="flex items-center gap-3 shrink-0">
-                                            <span class="text-xs font-medium text-gray-400 dark:text-neutral-500">{r.download_count || 0} dl</span>
+
                                             <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300" title="Download">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                             </a>
@@ -135,14 +147,14 @@ app.get('/resources', async (c) => {
                                                 <span class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase">{r.subject}</span>
                                             </div>
                                             <div class="text-xs text-gray-500 dark:text-neutral-400 flex items-center gap-2">
-                                                <span class="truncate">By {r.first_name ? `${r.first_name}` : 'Unknown'}</span>
+                                                <span class="truncate">By {renderUploaderName(r)}</span>
                                                 <span class="text-gray-300 dark:text-neutral-600">•</span>
                                                 <span class="local-date whitespace-nowrap" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                             </div>
                                         </div>
                                         <div class="shrink-0 flex items-center gap-4">
-                                            <span class="text-xs font-medium text-gray-400 dark:text-neutral-500 hidden sm:inline w-12 text-right">{r.download_count || 0} dl</span>
-                                            <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
+
+                                            <a href={`/resources/view/${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
                                                 View
                                             </a>
                                         </div>
@@ -272,7 +284,7 @@ app.get('/resources', async (c) => {
                     <hr class="border-gray-200 dark:border-neutral-700 my-8" id="browse-subjects" />
 
                     <section class="bg-gray-50 dark:bg-neutral-800 p-6 rounded-lg border border-gray-100 dark:border-neutral-700">
-                        <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-white">Browse Specific Subject Directory</h2>
+                        <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-white">Upload To...</h2>
                         <SubjectSelector baseUrl="/resources" type="standard" />
                     </section>
                 </div>
@@ -313,6 +325,32 @@ app.get('/resources', async (c) => {
                             <textarea name="description" rows={4} class="mt-1 block w-full rounded-md border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white shadow-sm p-2 border"></textarea>
                         </div>
                         <a class="block text-sm font-medium text-gray-400 dark:text-neutral-500">Note: inappropiate content will be removed & you may be banned :/</a>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2">Display Name</label>
+                            <div class="flex flex-wrap gap-3">
+                                <label class="flex items-center gap-2 cursor-pointer bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-600 rounded-lg px-4 py-2.5 hover:border-blue-400 dark:hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
+                                    <input type="radio" name="uploader_display" value="anonymous" class="text-blue-600 focus:ring-blue-500" />
+                                    <div>
+                                        <span class="text-sm font-medium text-gray-700 dark:text-neutral-200">Anonymous</span>
+                                        <p class="text-xs text-gray-400 dark:text-neutral-500"></p>
+                                    </div>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-600 rounded-lg px-4 py-2.5 hover:border-blue-400 dark:hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
+                                    <input type="radio" name="uploader_display" value="initials" checked class="text-blue-600 focus:ring-blue-500" />
+                                    <div>
+                                        <span class="text-sm font-medium text-gray-700 dark:text-neutral-200">Initials</span>
+                                        <p class="text-xs text-gray-400 dark:text-neutral-500">ie "{user.first_name?.charAt(0)}{user.last_name?.charAt(0)}"</p>
+                                    </div>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-600 rounded-lg px-4 py-2.5 hover:border-blue-400 dark:hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
+                                    <input type="radio" name="uploader_display" value="full" class="text-blue-600 focus:ring-blue-500" />
+                                    <div>
+                                        <span class="text-sm font-medium text-gray-700 dark:text-neutral-200">Full Name</span>
+                                        <p class="text-xs text-gray-400 dark:text-neutral-500">ie "{user.first_name} {user.last_name}"</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-500">File</label>
                             <input
@@ -376,11 +414,11 @@ app.get('/resources', async (c) => {
 
                             <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-100 dark:border-neutral-700 gap-2">
                                 <div class="text-xs text-gray-500 dark:text-neutral-400 flex items-center min-w-0">
-                                    <span class="truncate">By {r.first_name ? `${r.first_name} ${r.last_name || ''}`.trim() : 'Unknown'}</span>
-                                    <span class="ml-1 shrink-0" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>
+                                    <span class="truncate">By {renderUploaderName(r)}</span>
+                                    {r.uploader_display !== 'anonymous' && <span class="ml-1 shrink-0" dangerouslySetInnerHTML={{ __html: renderTags(r.tags) }}></span>}
                                 </div>
                                 <div class="flex items-center gap-3 shrink-0">
-                                    <span class="text-xs font-medium text-gray-400 dark:text-neutral-500">{r.download_count || 0} dl</span>
+
                                     <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300" title="Download">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                     </a>
@@ -418,13 +456,13 @@ app.get('/resources', async (c) => {
                                         {r.is_deleted && <span class="text-[10px] font-bold text-red-600 uppercase">Deleted</span>}
                                     </div>
                                     <div class="text-xs text-gray-500 dark:text-neutral-400 flex items-center gap-2">
-                                        <span class="truncate">By {r.first_name ? `${r.first_name}` : 'Unknown'}</span>
+                                        <span class="truncate">By {renderUploaderName(r)}</span>
                                         <span class="text-gray-300 dark:text-neutral-600">•</span>
                                         <span class="local-date whitespace-nowrap" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                     </div>
                                 </div>
                                 <div class="shrink-0 flex items-center gap-4">
-                                    <span class="text-xs font-medium text-gray-400 dark:text-neutral-500 hidden sm:inline w-12 text-right">{r.download_count || 0} dl</span>
+
                                     <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
                                         Download
                                     </a>
@@ -455,6 +493,7 @@ app.post('/resources', async (c) => {
         const description = body['description'] as string
         const subject = body['subject'] as string
         const file = body['file'] as File
+        const uploaderDisplay = (body['uploader_display'] as string) || 'initials'
         const MAX_SIZE = 25 * 1024 * 1024
         if (file && file.size > MAX_SIZE) {
             return c.text("File too large. Maximum size is 25MB.", 400)
@@ -467,9 +506,13 @@ app.post('/resources', async (c) => {
 
             const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             const fileKey = `resources/${Date.now()}-${safeName}`
-            await c.env.BUCKET.put(fileKey, file)
-            const res = await c.env.DB.prepare('INSERT INTO resources (title, description, file_key, subject, uploader_id, type) VALUES (?, ?, ?, ?, ?, ?)')
-                .bind(title, description, fileKey, subject, user.id, 'resource')
+            await c.env.BUCKET.put(fileKey, file, {
+                httpMetadata: {
+                    contentType: file.type || 'application/octet-stream'
+                }
+            })
+            const res = await c.env.DB.prepare('INSERT INTO resources (title, description, file_key, subject, uploader_id, type, uploader_display) VALUES (?, ?, ?, ?, ?, ?, ?)')
+                .bind(title, description, fileKey, subject, user.id, 'resource', uploaderDisplay)
                 .run()
 
             await logAction(c.env.DB, user.id, 'CREATE_RESOURCE', `Uploaded resource '${title}' in ${subject}`, res.meta.last_row_id, 'resources');
@@ -502,6 +545,22 @@ app.post('/resources/:id/delete', async (c) => {
     return c.redirect(`/resources?subject=${encodeURIComponent(resource.subject)}`);
 })
 
+// Helper to guess MIME type by extension
+const getMimeType = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    const map: Record<string, string> = {
+        'pdf': 'application/pdf',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+        'txt': 'text/plain',
+        'mp4': 'video/mp4'
+    };
+    return map[ext || ''] || 'application/octet-stream';
+};
+
 app.get('/download/*', async (c) => {
     try {
         const user = await getUser(c)
@@ -509,11 +568,17 @@ app.get('/download/*', async (c) => {
 
         const path = c.req.path;
         const prefix = '/download/';
-        if (!path.startsWith(prefix)) return c.text('Invalid path', 400);
         const key = path.slice(prefix.length);
         const object = await c.env.BUCKET.get(key);
         if (!object) return c.text('File not found', 404);
 
+        // --- NEW LOGIC ---
+        // If the bucket metadata is missing or generic, use our helper
+        let contentType = object.httpMetadata?.contentType;
+        if (!contentType || contentType === 'application/octet-stream') {
+            contentType = getMimeType(key);
+        }
+        // -----------------
 
         const id = c.req.query('id');
         if (id) {
@@ -523,14 +588,15 @@ app.get('/download/*', async (c) => {
         return new Response(object.body, {
             headers: {
                 'etag': object.httpEtag,
-                'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
+                'Content-Type': contentType, // Use the detected type
+                // Ensure browser doesn't force download
+                'Content-Disposition': 'inline',
             }
         })
     } catch (e: any) {
         return c.text(`Download Failed: ${e.message}`, 500);
     }
 })
-
 app.get('/resources/view/:id', async (c) => {
     const user = await getUser(c)
     const id = c.req.param('id')
@@ -549,12 +615,21 @@ app.get('/resources/view/:id', async (c) => {
         return c.notFound();
     }
 
+    // --- NEW PREVIEW LOGIC ---
+    const fileExt = resource.file_key.split('.').pop()?.toLowerCase() || '';
+    const isPDF = fileExt === 'pdf';
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt);
+    const isText = ['txt', 'csv', 'md'].includes(fileExt);
+    const hasPreview = isPDF || isImage || isText;
+    // -------------------------
+
     return c.html(
         <Layout title={`${resource.title} - ${resource.subject}`} user={user}>
             <div class="max-w-4xl mx-auto py-8 px-4">
                 <a href={`/resources?subject=${encodeURIComponent(resource.subject)}`} class="text-blue-600 hover:underline mb-6 inline-block">← Back to {resource.subject} Resources</a>
 
                 <div class="bg-white dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm p-8">
+                    {/* Header Section */}
                     <div class="flex items-start justify-between mb-6">
                         <div>
                             <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-3">{resource.title}</h1>
@@ -563,19 +638,50 @@ app.get('/resources/view/:id', async (c) => {
                                 <span class="local-date" data-format="datetime" data-timestamp={resource.created_at}>{formatDate(resource.created_at)}</span>
                                 <span class="text-gray-300 dark:text-neutral-600">•</span>
                                 <span class="flex items-center">
-                                    Uploaded by: <b class="ml-1 text-gray-700 dark:text-neutral-200">{resource.first_name ? `${resource.first_name} ${resource.last_name}` : 'Unknown'}</b>
-                                    <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(resource.tags) }}></span>
+                                    Uploaded by: <b class="ml-1 text-gray-700 dark:text-neutral-200">{renderUploaderName(resource)}</b>
+                                    {resource.uploader_display !== 'anonymous' && <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(resource.tags) }}></span>}
                                 </span>
                             </div>
                         </div>
                         {resource.is_deleted && <span class="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 font-bold px-3 py-1 rounded-full text-sm uppercase">Deleted</span>}
                     </div>
 
+                    {/* Description Section */}
                     <div class="bg-gray-50 dark:bg-neutral-900/50 p-6 rounded-lg mb-8 border border-gray-100 dark:border-neutral-700">
                         <h3 class="text-sm font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider mb-2">Description</h3>
                         <p class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap leading-relaxed">{resource.description || <span class="italic text-gray-400 dark:text-neutral-500">No description provided.</span>}</p>
                     </div>
 
+                    {/* NEW PREVIEW SECTION */}
+                    {hasPreview && (
+                        <div class="mb-8 border border-gray-200 dark:border-neutral-700 rounded-lg overflow-hidden bg-gray-50 dark:bg-neutral-900 shadow-inner">
+                            <div class="bg-gray-100 dark:bg-neutral-800 px-4 py-3 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center">
+                                <span class="text-sm font-bold text-gray-700 dark:text-neutral-300 uppercase tracking-wider">File Preview</span>
+                                <a href={`/download/${resource.file_key}`} target="_blank" class="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                                    Open in new tab
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                </a>
+                            </div>
+                            <div class="w-full h-[600px] flex items-center justify-center overflow-auto">
+                                {(isPDF || isText) && (
+                                    <iframe
+                                        src={`/download/${resource.file_key}`}
+                                        class="w-full h-full border-0 bg-white dark:bg-white"
+                                        title="File Preview">
+                                    </iframe>
+                                )}
+                                {isImage && (
+                                    <img
+                                        src={`/download/${resource.file_key}`}
+                                        alt={resource.title}
+                                        class="max-w-full max-h-full object-contain p-4"
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Download/Action Footer */}
                     <div class="flex items-center justify-between border-t border-gray-100 dark:border-neutral-700 pt-6">
                         <div class="text-gray-500 dark:text-neutral-400 text-sm">
                             <span class="font-medium text-gray-700 dark:text-neutral-200">{resource.download_count || 0}</span> downloads

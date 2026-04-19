@@ -90,11 +90,82 @@ app.get('/past-papers/create', async (c) => {
 
                         <button type="button" id="add-segment-btn" class="mt-4 text-sm text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">+ Add Another Segment</button>
                     </div>
-
                     <div class="pt-4">
                         <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">Create Paper & Placeholders</button>
                     </div>
                 </form>
+
+                {/* AI Import Section */}
+                <div class="mt-8 border-t-2 border-dashed border-gray-200 dark:border-neutral-700 pt-8">
+                    <div class="flex items-center gap-3 mb-4">
+
+                        <div>
+                            <h3 class="text-lg font-bold dark:text-white">AI Import from PDF</h3>
+                            <p class="text-lg text-gray-500 dark:text-neutral-400">Solution must be present in the pdf.</p>
+                        </div>
+                    </div>
+
+                    <form action="/past-papers/create-with-ai" method="post" enctype="multipart/form-data" id="ai-import-form" class="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-xl border border-purple-200 dark:border-purple-800/40 space-y-4">
+                        <input type="hidden" name="subject" value={subject} />
+
+
+
+                        {/* Duplicate hidden fields for paper metadata */}
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">School Name</label>
+                                <input type="text" name="school_name" list="nsw-schools-ai" required placeholder="Select or type school..." class="w-full mt-1 rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm" />
+                                <datalist id="nsw-schools-ai">
+                                    <option value="HSC" />
+                                    <option value="Sydney Boys High School" />
+                                    <option value="Sydney Girls High School" />
+                                    <option value="North Sydney Boys High School" />
+                                    <option value="North Sydney Girls High School" />
+                                    <option value="Sydney Grammar School" />
+                                    <option value="James Ruse Agricultural High School" />
+                                    <option value="Baulkham Hills High School" />
+                                    <option value="Hornsby Girls High School" />
+                                </datalist>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">Year</label>
+                                <select name="academic_year" class="w-full mt-1 rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm">
+                                    {years.map(y => <option value={y}>{y}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">Paper Type</label>
+                                <select name="paper_type" class="w-full mt-1 rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm">
+                                    <option value="Trial Paper" selected>Trial Paper</option>
+                                    <option value="HSC Examination">HSC Examination</option>
+                                    <option value="Assessment Task">Assessment Task</option>
+                                    <option value="Yearly">Yearly</option>
+                                    <option value="Half Yearly">Half Yearly</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">Reference Link (Optional)</label>
+                                <input type="url" name="reference_link" placeholder="https://..." class="w-full mt-1 rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm" />
+                            </div>
+                        </div>
+
+                        <div class="border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-lg p-6 text-center hover:bg-blue-100/50 dark:hover:bg-blue-900/20 transition cursor-pointer relative" id="pdf-drop-zone">
+                            <input type="file" name="pdf_file" accept=".pdf,application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required id="pdf-file-input" />
+                            <div class="text-gray-500 dark:text-neutral-400" id="pdf-drop-label">
+                                <span class="block text-3xl mb-2">📄</span>
+                                <span class="font-bold text-sm">Click or drag to upload PDF</span>
+                                <span class="block text-xs mt-1 text-gray-400 dark:text-neutral-500">Supports HSC-format past papers</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="ai-submit-btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                            <span id="ai-submit-text">Create Paper with AI</span>
+                        </button>
+                    </form>
+                </div>
 
                 <script dangerouslySetInnerHTML={{
                     __html: `
@@ -119,6 +190,30 @@ app.get('/past-papers/create', async (c) => {
                         document.getElementById('segments-container').appendChild(div);
                         segmentCount++;
                     });
+
+                    // PDF upload feedback
+                    const pdfInput = document.getElementById('pdf-file-input');
+                    const pdfLabel = document.getElementById('pdf-drop-label');
+                    if (pdfInput) {
+                        pdfInput.addEventListener('change', (e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                                pdfLabel.innerHTML = '<span class="block text-3xl mb-2">✅</span><span class="font-bold text-sm text-green-700 dark:text-green-400">' + file.name + '</span><span class="block text-xs mt-1 text-gray-400 dark:text-neutral-500">' + (file.size / 1024 / 1024).toFixed(2) + ' MB</span>';
+                            }
+                        });
+                    }
+
+                    // AI form loading state
+                    const aiForm = document.getElementById('ai-import-form');
+                    if (aiForm) {
+                        aiForm.addEventListener('submit', () => {
+                            const btn = document.getElementById('ai-submit-btn');
+                            const text = document.getElementById('ai-submit-text');
+                            btn.disabled = true;
+                            btn.classList.add('opacity-60', 'cursor-not-allowed');
+                            text.textContent = 'Processing with AI… This may take 30-60 seconds';
+                        });
+                    }
                 `}} />
             </div>
         </Layout>

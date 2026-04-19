@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags, censorEmail, getFruitPermission, formatDate } from '../utils'
+import { getUser, renderTags, getFruitPermission, formatDate } from '../utils'
 import { Bindings, User } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -9,7 +9,6 @@ app.get('/profile', async (c) => {
     const user = await getUser(c) as User | null
     if (!user) return c.redirect('/login')
 
-    // Parse Tags
     let userTags: Record<string, number> = {};
     try {
         userTags = user.tags ? JSON.parse(user.tags) : {};
@@ -20,110 +19,80 @@ app.get('/profile', async (c) => {
     const tagKeys = Object.keys(userTags);
 
     return c.html(
-        <Layout title="My Profile" user={user}>
-            <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6">
-                <h1 class="text-3xl font-bold mb-8 text-primary dark:text-neutral-100 border-b dark:border-neutral-700 pb-4">My Profile</h1>
+        <Layout title="Profile" user={user}>
+            <div class="max-w-2xl mx-auto py-10 px-4">
+                <header class="mb-8">
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Profile Settings</h1>
+                    
+                </header>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* User Info Card */}
-                    <div class="bg-white dark:bg-neutral-800 p-5 rounded-xl border border-gray-300 dark:border-neutral-700 shadow-sm">
-                        <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-neutral-100">Account Details</h2>
-
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">Full Name</label>
-                                <p class="text-lg font-medium text-gray-900 dark:text-neutral-100">
+                <section class="space-y-6">
+                    {/* Basic Info - Simple List */}
+                    <div class="border-t border-gray-200 dark:border-neutral-800 pt-6">
+                        <dl class="divide-y divide-gray-100 dark:divide-neutral-800 text-sm">
+                            <div class="py-3 flex justify-between">
+                                <dt class="font-medium text-gray-500">Full Name</dt>
+                                <dd class="text-gray-900 dark:text-neutral-200">
                                     {user.first_name} {user.last_name}
-                                    {/* Show Preview of Own Tags */}
                                     <span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(user.tags || null) }}></span>
-                                </p>
+                                </dd>
                             </div>
-
-                            <div>
-                                <label class="block text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">Student ID</label>
-                                <p class="text-lg font-mono text-gray-900 dark:text-neutral-100">{user.student_id || 'N/A'}</p>
+                            <div class="py-3 flex justify-between">
+                                <dt class="font-medium text-gray-500">Student ID</dt>
+                                <dd class="font-mono text-gray-900 dark:text-neutral-200">{user.student_id || '—'}</dd>
                             </div>
-
-                            <div>
-                                <label class="block text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">Email</label>
-                                <p class="text-lg font-mono text-gray-900 dark:text-neutral-100">{censorEmail(user.email)}</p>
+                            <div class="py-3 flex justify-between">
+                                <dt class="font-medium text-gray-500">Role</dt>
+                                <dd class="text-gray-900 dark:text-neutral-200">{user.role}</dd>
                             </div>
-
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">Permission Level</label>
-                                    <span class="inline-block bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 text-sm px-2 py-1 rounded-full font-bold mt-1">
-                                        {getFruitPermission(user.permission_level)}
-                                    </span>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">Role</label>
-                                    <span class="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 text-sm px-2 py-1 rounded-full font-bold mt-1 capitalize">
-                                        {user.role}
-                                    </span>
-                                </div>
+                            <div class="py-3 flex justify-between">
+                                <dt class="font-medium text-gray-500">Since</dt>
+                                <dd class="text-gray-900 dark:text-neutral-200">{formatDate(user.created_at)}</dd>
                             </div>
-
-                            <div>
-                                <label class="block text-xs font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-widest">Joined</label>
-                                <p class="text-sm text-gray-600 dark:text-neutral-400">{formatDate(user.created_at)}</p>
-                            </div>
-                        </div>
+                        </dl>
                     </div>
 
-                    <div class="space-y-8">
-                        {/* Tags Section */}
-                        <div class="bg-white dark:bg-neutral-800 p-5 rounded-xl border border-gray-300 dark:border-neutral-700 shadow-sm">
-                            <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-neutral-100">Profile Tags</h2>
-                            <p class="text-sm text-gray-500 dark:text-neutral-400 mb-4">Toggle visibility of your awarded tags.</p>
-
-                            {tagKeys.length === 0 ? (
-                                <p class="text-gray-400 dark:text-neutral-500 italic">You don't have any tags yet.</p>
-                            ) : (
-                                <form action="/profile" method="post">
-                                    <input type="hidden" name="action" value="update_tags" />
-                                    <div class="flex flex-wrap gap-3 mb-6">
-                                        {tagKeys.map(tag => (
-                                            <label class="inline-flex items-center cursor-pointer">
-
-                                                <input
-                                                    type="checkbox"
-                                                    name={`tag_${encodeURIComponent(tag)}`}
-                                                    value="1"
-                                                    checked={!!userTags[tag]}
-                                                    class="form-checkbox h-5 w-5 text-blue-600 dark:text-blue-500 bg-white dark:bg-neutral-900 border-gray-300 dark:border-neutral-700 rounded focus:ring-blue-500"
-                                                />
-                                                <span class="ml-2 text-gray-700 dark:text-neutral-300 select-none text-sm">{tag}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                    <button type="submit" class="bg-gray-800 dark:bg-neutral-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-900 dark:hover:bg-neutral-600 transition shadow-sm">
-                                        Save Tags
-                                    </button>
-                                </form>
-                            )}
-                        </div>
-
-                        {/* Password Change Section */}
-                        {/* <div class="bg-white dark:bg-neutral-800 p-5 rounded-xl border border-gray-300 dark:border-neutral-700 shadow-sm">
-                            <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-neutral-100">Security</h2>
+                    {/* Tag Management */}
+                    <div class="bg-gray-50 dark:bg-neutral-900 p-6 rounded-lg">
+                        <h2 class="text-sm font-semibold mb-4 text-gray-900 dark:text-white">Visibility Tags</h2>
+                        {tagKeys.length === 0 ? (
+                            <p class="text-xs text-gray-500 italic">No tags available to manage.</p>
+                        ) : (
                             <form action="/profile" method="post" class="space-y-4">
-                                <input type="hidden" name="action" value="change_password" />
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-neutral-300">New Password</label>
-                                    <input type="password" name="new_password" required minLength="6" placeholder="Min 6 characters" class="mt-1 block w-full rounded-md border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm p-2 border focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" />
+                                <input type="hidden" name="action" value="update_tags" />
+                                <div class="flex flex-wrap gap-4">
+                                    {tagKeys.map(tag => (
+                                        <label class="flex items-center gap-2 cursor-pointer text-sm">
+                                            <input
+                                                type="checkbox"
+                                                name={`tag_${encodeURIComponent(tag)}`}
+                                                value="1"
+                                                checked={!!userTags[tag]}
+                                                class="rounded border-gray-300"
+                                            />
+                                            <span class="text-gray-700 dark:text-neutral-300">{tag}</span>
+                                        </label>
+                                    ))}
                                 </div>
-                                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition shadow-sm">
-                                    Update Password
+                                <button type="submit" class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition">
+                                    Update Tags
                                 </button>
                             </form>
-                        </div> */}
+                        )}
                     </div>
-                </div>
+
+                    {/* Navigation */}
+                    <div class="pt-4">
+                        <a href="/profile/contributions" class="text-sm text-blue-600 hover:underline">
+                            View my contributions &rarr;
+                        </a>
+                    </div>
+                </section>
             </div>
         </Layout>
     )
 })
+
 
 app.post('/profile', async (c) => {
     const user = await getUser(c) as User | null

@@ -17,9 +17,9 @@ export const TimetableDay = html`
         const dateFormatted = \`\${dayName}, \${day}/\${month}/\${year}\`;
         
         document.getElementById('date-display').innerHTML = \`
-            <div class="relative cursor-pointer group flex items-center gap-2">
-                <span class="z-10 bg-transparent text-gray-800 dark:text-neutral-200 font-bold">\${dateFormatted} \${dayInfo ? ' [' + dayInfo.dayName[dayInfo.dayName.length - 1] + ']' : ''}</span>
-                <svg class="w-4 h-4 text-gray-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            <div class="relative cursor-pointer group flex items-center gap-1.5 text-center leading-tight">
+                <span class="z-10 bg-transparent text-gray-800 dark:text-neutral-200 font-bold whitespace-nowrap">\${dateFormatted}\${dayInfo ? ' [' + dayInfo.dayName[dayInfo.dayName.length - 1] + ']' : ''}</span>
+                <svg class="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 <input type="date" id="date-picker-input" 
                        class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
                        value="\${currentDateStr}">
@@ -37,7 +37,19 @@ export const TimetableDay = html`
             container.innerHTML = '';
             
             if (!apiData && (!dayInfo || !daysData[dayInfo.dayNumber])) {
-                container.innerHTML = '<div class="text-center py-12 text-gray-500 dark:text-neutral-500">No classes scheduled.</div>';
+                const hasAnyData = Object.keys(daysData).length > 0;
+                if (!hasAnyData) {
+                    container.innerHTML = \`
+                        <div class="text-center py-12">
+                            <p class="text-gray-500 dark:text-neutral-400 mb-4">Timetable data not found.</p>
+                            <a href="/api/auth/login" class="inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition-colors">
+                                Log in again to sync
+                            </a>
+                        </div>
+                    \`;
+                } else {
+                    container.innerHTML = '<div class="text-center py-12 text-gray-500 dark:text-neutral-500">No classes scheduled.</div>';
+                }
                 return;
             }
 
@@ -116,9 +128,14 @@ export const TimetableDay = html`
                     }
                 }
 
-                const hasContent = !!data && (!!data.title || !!data.subject);
+                
+                
+                const isRCPeriod = bell.period === 'RC' || 
+                   (typeof bell.label === 'string' && bell.label.startsWith('RC '));
+                const isBreakCode = bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD' || isRCPeriod;
+                const hasContent = !!data && (!!data.title || !!data.subject) && !isBreakCode && !isRCPeriod;
                 const stripColor = data?.color ? \`#\${data.color}\` : '#e5e7eb';
-                const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD';
+                const isMinorPeriod = !hasContent || bell.period === 'R' || bell.period === 'L1' || bell.period === 'L2' || bell.period === 'EoD' || isRCPeriod;
                 const containerClass = isMinorPeriod ? 'min-h-[0.5rem]' : 'min-h-[2.8rem]';
                 const timeWidth = 'w-24'; 
                 const textSize = 'text-sm';
@@ -201,9 +218,12 @@ export const TimetableDay = html`
                         <div class="flex-grow">\${innerHtml}</div>
                     </div>
                 \`;
-                container.insertAdjacentHTML('beforeend', html);
-            });
 
+                
+                container.insertAdjacentHTML('beforeend', html);
+                
+            });
+            
             // Split clipboard events
             const morningEvents = clipboardEvents.filter(e => {
                 const d = new Date(e.start);
@@ -240,7 +260,7 @@ export const TimetableDay = html`
                                 data-title="\${event.summary}"
                                 data-start="\${timeStr}"
                                 data-end="\${endTimeStr}">
-                                <div class="pl-2 font-medium text-gray-900 dark:text-white text-sm flex items-center">
+                                <div class="pl-2 font-medium text-gray-900 dark:text-white flex items-center \${event.summary.length > 30 ? 'text-xs' : 'text-sm'}">
                                     \${event.summary}
                                     \${notesBadgeHtml}
                                 </div>
@@ -287,6 +307,10 @@ export const TimetableDay = html`
             buildUI(cachedApi, cachedCal || [], []);
         }
 
+        // Capture snapshot to prevent overwriting if user has navigated away or changed date
+        const snapshotDate = currentDateStr;
+        const snapshotView = currentView;
+
         // --- 4. BACKGROUND PASS (Asynchronous Fetch & Update) ---
         // Fetch fresh data in the background and re-render quietly when they arrive
         try {
@@ -296,6 +320,11 @@ export const TimetableDay = html`
                 fetch('/timetable/notes?date=' + currentDateStr).then(res => res.json()).catch(() => ({ notes: [] }))
             ]);
             
+            // If the user has changed view or date while we were fetching, Don't overwrite the DOM
+            if (currentDateStr !== snapshotDate || currentView !== snapshotView) {
+                return;
+            }
+
             const dayNotes = notesRes?.notes || [];
             
             // Final Render: Overwrite DOM structure seamlessly with real-time data
@@ -303,6 +332,10 @@ export const TimetableDay = html`
             
         } catch (error) {
             console.error("Failed to fetch fresh data in the background:", error);
+            const container = document.getElementById('timetable-list');
+            if (container && currentDateStr === snapshotDate && currentView === snapshotView) {
+                container.innerHTML = '<div class="text-center py-12 text-red-500 dark:text-red-400 font-medium"><a href="/api/auth/login" class="underline">Log in again</a> to sync.</div>';
+            }
         }
     }
 </script>

@@ -1,14 +1,15 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
 import { getUser } from '../../utils'
-import { canUploadPastPaper } from '../../permissions'
+import { canUploadPastPaper, PermissionLevel } from '../../permissions'
 import { SubjectSelector } from '../../components/SubjectSelector'
 import { Bindings } from '../../types'
-
+import { PastPaperTabs } from './tabs'
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/past-papers', async (c) => {
     const user = await getUser(c)
+    if (!user) return c.redirect('/login')
 
     const subject = c.req.query('subject')
     const tab = c.req.query('tab') || 'browse';
@@ -86,7 +87,7 @@ app.get('/past-papers', async (c) => {
                         </div>
                     ) : (
                         papers.results.map((p: any) => (
-                            <a href={`/past-papers/paper/${p.id}`} class="search-item block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors group h-full flex flex-col justify-between" data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}>
+                            <div class="search-item block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors group h-full flex flex-col justify-between cursor-pointer" onclick={`window.location.href='/past-papers/paper/${p.id}'`} data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}>
                                 <div>
                                     <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 mb-1 leading-snug">{p.school_name}</h3>
 
@@ -99,18 +100,28 @@ app.get('/past-papers', async (c) => {
                                 </div>
 
                                 <div class="flex flex-col gap-1 mt-2">
-                                    <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-neutral-400 font-mono border-t border-gray-100 dark:border-neutral-700 pt-2">
-                                        <span class="flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                                            {p.question_count || 0} Qs
-                                        </span>
-                                        <span class="flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                            {p.total_marks || 0} Marks
-                                        </span>
+                                    <div class="flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-neutral-400 font-mono border-t border-gray-100 dark:border-neutral-700 pt-2">
+                                        <div class="flex gap-3">
+                                            <span class="flex items-center gap-1">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                                                {p.question_count || 0} Qs
+                                            </span>
+                                            <span class="flex items-center gap-1">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                {p.total_marks || 0} Marks
+                                            </span>
+                                        </div>
+                                        {user && user.permission_level >= PermissionLevel.ADMIN && (
+                                            <form action={`/past-papers/paper/${p.id}/delete`} method="post" onclick="event.stopPropagation(); return confirm('Are you sure you want to delete this paper and ALL its questions? This action is permanent and cannot be undone.');" class="z-10 relative">
+                                                <input type="hidden" name="subject" value={subject} />
+                                                <button type="submit" class="text-red-500 hover:text-white font-bold px-2 py-1 rounded hover:bg-red-500 dark:hover:bg-red-600 transition-colors border border-transparent hover:border-red-600">
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        )}
                                     </div>
                                 </div>
-                            </a>
+                            </div>
                         ))
                     )}
                 </div>
@@ -119,11 +130,12 @@ app.get('/past-papers', async (c) => {
 
     } else if (tab === 'practice') {
         const page = parseInt(c.req.query('page') || '1');
-        const limit = 20;
+        const limit = 10;
         const offset = (page - 1) * limit;
 
 
         const filterTopic = c.req.query('topic');
+        const filterSchool = c.req.query('school');
         const filterYear = c.req.query('year');
         const filterStatus = c.req.query('status'); // done, undone
         const filterType = c.req.query('type');
@@ -133,46 +145,64 @@ app.get('/past-papers', async (c) => {
         const sort = c.req.query('sort') || 'school_asc';
         const mode = c.req.query('mode');
 
-        let query = `
-            SELECT q.*, p.school_name, p.academic_year, 
-                   group_concat(t.name, ', ') as topic_names,
-                   ua.is_completed, ua.marks_awarded
+        const params: any[] = [user?.id || null, subject];
+        let filterSql = '';
+
+        if (filterTopic) { filterSql += ` AND qt.topic_id = ?`; params.push(filterTopic); }
+        if (filterSchool) { filterSql += ` AND p.school_name = ?`; params.push(filterSchool); }
+        if (filterYear) { filterSql += ` AND p.academic_year = ?`; params.push(filterYear); }
+        if (filterType) { filterSql += ` AND q.question_type = ?`; params.push(filterType); }
+        if (filterSection) { filterSql += ` AND q.section_label = ?`; params.push(filterSection); }
+        if (filterMarksMin) { filterSql += ` AND q.marks >= ?`; params.push(filterMarksMin); }
+        if (filterMarksMax) { filterSql += ` AND q.marks <= ?`; params.push(filterMarksMax); }
+
+        if (filterStatus === 'done') {
+            filterSql += ` AND ua.is_completed = 1`;
+        } else if (filterStatus === 'undone') {
+            filterSql += ` AND (ua.is_completed IS NULL OR ua.is_completed = 0)`;
+        }
+
+        const baseJoin = `
             FROM exam_questions q
             JOIN papers p ON q.paper_id = p.id
             LEFT JOIN question_topics qt ON q.id = qt.question_id
             LEFT JOIN topics t ON qt.topic_id = t.id
             LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             WHERE p.subject = ? AND q.is_deleted = 0
+            ${filterSql}
         `;
 
-        const params: any[] = [user?.id || null, subject];
+        let query = `
+            SELECT q.*, p.school_name, p.academic_year, 
+                   group_concat(t.name, ', ') as topic_names,
+                   ua.is_completed, ua.marks_awarded
+            ${baseJoin}
+            GROUP BY q.id
+        `;
 
-        if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
-        if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
-        if (filterType) { query += ` AND q.question_type = ?`; params.push(filterType); }
-        if (filterSection) { query += ` AND q.section_label = ?`; params.push(filterSection); }
-        if (filterMarksMin) { query += ` AND q.marks >= ?`; params.push(filterMarksMin); }
-        if (filterMarksMax) { query += ` AND q.marks <= ?`; params.push(filterMarksMax); }
-
-        if (filterStatus === 'done') {
-            query += ` AND ua.is_completed = 1`;
-        } else if (filterStatus === 'undone') {
-            query += ` AND (ua.is_completed IS NULL OR ua.is_completed = 0)`;
-        }
-
-        query += ` GROUP BY q.id`;
-
+        let countQuery = `
+            SELECT COUNT(DISTINCT q.id) as total
+            ${baseJoin}
+        `;
 
         if (sort === 'year_desc') query += ` ORDER BY p.academic_year DESC, q.ordering_index ASC`;
         else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`;
         else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`;
 
         query += ` LIMIT ? OFFSET ?`;
+        const countParams = [...params];
         params.push(limit, offset);
 
-        const questions = await c.env.DB.prepare(query).bind(...params).all();
-        const allTopics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject).all();
-        const sections = await c.env.DB.prepare('SELECT DISTINCT section_label FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE p.subject = ? ORDER BY section_label ASC').bind(subject).all();
+        const [questions, countResult, allTopics, sections, schoolsResult] = await c.env.DB.batch([
+            c.env.DB.prepare(query).bind(...params),
+            c.env.DB.prepare(countQuery).bind(...countParams),
+            c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject),
+            c.env.DB.prepare('SELECT DISTINCT section_label FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE p.subject = ? ORDER BY section_label ASC').bind(subject),
+            c.env.DB.prepare('SELECT DISTINCT school_name FROM papers WHERE subject = ? ORDER BY school_name ASC').bind(subject)
+        ]);
+
+        const totalQuestions = (countResult.results[0]?.total as number) || 0;
+        const totalPages = Math.ceil(totalQuestions / limit) || 1;
 
 
         content = (
@@ -185,6 +215,13 @@ app.get('/past-papers', async (c) => {
                     <input type="hidden" name="tab" value="practice" />
 
                     <div class="flex flex-wrap gap-4 items-end">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">School</label>
+                            <select name="school" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-48">
+                                <option value="">All Schools</option>
+                                {schoolsResult.results.map((s: any) => <option value={s.school_name} selected={filterSchool == s.school_name}>{s.school_name}</option>)}
+                            </select>
+                        </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Topic</label>
                             <select name="topic" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-48">
@@ -255,7 +292,7 @@ app.get('/past-papers', async (c) => {
                             <input type="hidden" name="subject" value={subject} />
                             <div class="space-y-4">
                                 {questions.results.map((q: any) => {
-                                    const params = `source=practice&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+                                    const params = `source=practice&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
                                     const isIncomplete = !q.marks || (!q.question_image_key && !q.question_text);
 
                                     const clickAction = mode === 'select'
@@ -319,9 +356,15 @@ app.get('/past-papers', async (c) => {
                     }
                 </div>
 
-                <div class="mt-8 flex justify-center gap-2">
-                    {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors">Previous</a>}
-                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors">Next</a>
+                <div class="mt-8 flex justify-between items-center gap-2">
+                    <div class="text-sm text-gray-500 dark:text-neutral-400">
+                        Page <span class="font-bold text-gray-900 dark:text-white">{page}</span> of <span class="font-bold text-gray-900 dark:text-white">{totalPages}</span>
+                        <span class="ml-2 hidden sm:inline">({totalQuestions} questions)</span>
+                    </div>
+                    <div class="flex gap-2">
+                        {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Previous</a>}
+                        {page < totalPages && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Next</a>}
+                    </div>
                 </div>
             </div>
         )
@@ -434,6 +477,35 @@ app.get('/past-papers', async (c) => {
         </Layout>
     )
 })
+
+app.post('/past-papers/paper/:id/delete', async (c) => {
+    const user = await getUser(c)
+    if (!user || user.permission_level < PermissionLevel.ADMIN) {
+        return c.text('Unauthorised', 403);
+    }
+
+    const paperId = c.req.param('id');
+    const body = await c.req.parseBody();
+    const subject = body['subject'] as string;
+
+    // Check if the paper exists
+    const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
+    if (!paper) return c.notFound();
+
+    // Delete all related records securely with batching
+    const subquery = 'SELECT id FROM exam_questions WHERE paper_id = ?';
+
+    await c.env.DB.batch([
+        c.env.DB.prepare(`DELETE FROM user_question_attempts WHERE question_id IN (${subquery})`).bind(paperId),
+        c.env.DB.prepare(`DELETE FROM user_review_attempts WHERE question_id IN (${subquery})`).bind(paperId),
+        c.env.DB.prepare(`DELETE FROM mock_exam_questions WHERE question_id IN (${subquery})`).bind(paperId),
+        c.env.DB.prepare(`DELETE FROM question_topics WHERE question_id IN (${subquery})`).bind(paperId),
+        c.env.DB.prepare('DELETE FROM exam_questions WHERE paper_id = ?').bind(paperId),
+        c.env.DB.prepare('DELETE FROM papers WHERE id = ?').bind(paperId)
+    ]);
+
+    return c.redirect(subject ? `/past-papers?subject=${encodeURIComponent(subject)}&tab=browse` : '/past-papers');
+});
 
 export default app
 

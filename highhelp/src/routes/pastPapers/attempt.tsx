@@ -5,86 +5,121 @@ import { Bindings } from '../../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-
 app.get('/past-papers/attempt/:id', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
 
     const qId = c.req.param('id')
+    const mode = c.req.query('mode');
 
-
-    const q = await c.env.DB.prepare(`
+    // OPTIMIZATION 1: Fetch question and user attempts in a single DB round-trip
+    const qRow = await c.env.DB.prepare(`
         SELECT q.*, p.subject, p.school_name, p.academic_year, 
-               group_concat(t.name, ', ') as topic_names
+               group_concat(t.name, ', ') as topic_names,
+               ua.response_content as ua_response,
+               ua.selected_option as ua_selected,
+               ua.marks_awarded as ua_marks,
+               ua.is_completed as ua_completed,
+               ua.marker_notes as ua_notes,
+               ua.updated_at as ua_updated,
+               ura.response_content as ura_response,
+               ura.selected_option as ura_selected,
+               ura.marks_awarded as ura_marks,
+               ura.is_completed as ura_completed,
+               ura.created_at as ura_updated
         FROM exam_questions q
         JOIN papers p ON q.paper_id = p.id
         LEFT JOIN question_topics qt ON q.id = qt.question_id
         LEFT JOIN topics t ON qt.topic_id = t.id
+        LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+        LEFT JOIN (
+            SELECT * FROM user_review_attempts
+            WHERE user_id = ? AND question_id = ?
+            ORDER BY created_at DESC LIMIT 1
+        ) ura ON q.id = ura.question_id
         WHERE q.id = ?
         GROUP BY q.id
-    `).bind(qId).first<any>();
+    `).bind(user.id, user.id, qId, qId).first<any>();
 
-    if (!q) return c.notFound();
+    if (!qRow) return c.notFound();
 
-    // Fetch existing attempt ONLY if logged in
+
+    const q = { ...qRow };
     let attempt = null;
     let originalAttempt = null;
-    const mode = c.req.query('mode');
-
-    if (user) {
-        if (mode === 'review') {
-
-            originalAttempt = await c.env.DB.prepare(`
-                SELECT * FROM user_question_attempts 
-                WHERE user_id = ? AND question_id = ?
-            `).bind(user.id, qId).first<any>();
+    let stimCoords = null;
 
 
-            attempt = await c.env.DB.prepare(`
-                SELECT * FROM user_review_attempts 
-                WHERE user_id = ? AND question_id = ?
-                ORDER BY created_at DESC LIMIT 1
-            `).bind(user.id, qId).first<any>();
-
-        } else {
-
-            attempt = await c.env.DB.prepare(`
-                SELECT * FROM user_question_attempts 
-                WHERE user_id = ? AND question_id = ?
-            `).bind(user.id, qId).first<any>();
+    if (q.stimulus_image_key && q.stimulus_image_key.startsWith('pdf_crop:')) {
+        try {
+            const cropDataJson = q.stimulus_image_key.replace('pdf_crop:', '');
+            stimCoords = JSON.parse(cropDataJson);
+        } catch (e) {
+            console.error("Failed to parse stimulus crop metadata", e);
         }
     }
 
 
+    const pdfUrl = `/download/papers/${q.paper_id}.pdf${stimCoords?.page ? `#page=${stimCoords.page}` : ''}`;
+
+    if (mode === 'review') {
+        originalAttempt = { marks_awarded: qRow.ua_marks };
+        if (qRow.ura_updated) {
+            attempt = {
+                response_content: qRow.ura_response,
+                selected_option: qRow.ura_selected,
+                marks_awarded: qRow.ura_marks,
+                is_completed: qRow.ura_completed,
+                updated_at: qRow.ura_updated, // Map to updated_at for UI standardization
+                marker_notes: ''
+            };
+        }
+    } else {
+        if (qRow.ua_updated) {
+            attempt = {
+                response_content: qRow.ua_response,
+                selected_option: qRow.ua_selected,
+                marks_awarded: qRow.ua_marks,
+                is_completed: qRow.ua_completed,
+                updated_at: qRow.ua_updated,
+                marker_notes: qRow.ua_notes
+            };
+        }
+    }
+
     const source = c.req.query('source');
     const filterTopic = c.req.query('topic');
+    const filterSchool = c.req.query('school');
     const filterYear = c.req.query('year');
-    const filterStatus = c.req.query('status'); // done, undone
+    const filterStatus = c.req.query('status');
     const filterType = c.req.query('type');
     const filterSection = c.req.query('section');
     const filterMarksMin = c.req.query('marks_min');
     const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
 
-    let nextId = null;
-    let prevId = null;
+    const currentParams = `source=${source || ''}&mode=${mode || ''}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
-    const currentParams = `source=${source || ''}&mode=${mode || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+    let allQuestions: { id: number, question_number: string, is_completed: number }[] = [];
 
+    // OPTIMIZATION 2: Avoid LEFT JOIN and GROUP BY entirely when mapping allQuestions
     if (source === 'practice') {
-
         let query = `
-            SELECT q.id
+            SELECT q.id, q.question_number, ua.is_completed
             FROM exam_questions q
             JOIN papers p ON q.paper_id = p.id
-            LEFT JOIN question_topics qt ON q.id = qt.question_id
             LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             WHERE p.subject = ? AND q.is_deleted = 0
         `;
 
-        const params: any[] = [user?.id || null, q.subject];
+        const params: any[] = [user.id, q.subject];
 
-        if (filterTopic) { query += ` AND qt.topic_id = ?`; params.push(filterTopic); }
+        if (filterTopic) {
+            // Use EXISTS to filter without cloning rows or needing GROUP BY overhead
+            query += ` AND EXISTS (SELECT 1 FROM question_topics qt WHERE qt.question_id = q.id AND qt.topic_id = ?)`;
+            params.push(filterTopic);
+        }
+        if (filterSchool) { query += ` AND p.school_name = ?`; params.push(filterSchool); }
         if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
         if (filterType) { query += ` AND q.question_type = ?`; params.push(filterType); }
         if (filterSection) { query += ` AND q.section_label = ?`; params.push(filterSection); }
@@ -94,266 +129,302 @@ app.get('/past-papers/attempt/:id', async (c) => {
         if (filterStatus === 'done') { query += ` AND ua.is_completed = 1`; }
         else if (filterStatus === 'undone') { query += ` AND (ua.is_completed IS NULL OR ua.is_completed = 0)`; }
 
-        query += ` GROUP BY q.id`;
-
         if (sort === 'year_desc') query += ` ORDER BY p.academic_year DESC, q.ordering_index ASC`;
         else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`;
         else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`;
 
-        const allIdsResult = await c.env.DB.prepare(query).bind(...params).all<{ id: number }>();
-        const allIds = allIdsResult.results.map(r => r.id);
-        const currentIndex = allIds.indexOf(parseInt(qId));
-
-        if (currentIndex !== -1) {
-            if (currentIndex > 0) prevId = allIds[currentIndex - 1];
-            if (currentIndex < allIds.length - 1) nextId = allIds[currentIndex + 1];
-        }
+        const res = await c.env.DB.prepare(query).bind(...params).all<any>();
+        allQuestions = res.results;
 
     } else if (source === 'review') {
-
+        // OPTIMIZATION 3: Replace per-row Select Correlated Subquery with a proper Window-function join
         const query = `
-            SELECT q.id
+            SELECT q.id, q.question_number, ura.is_completed
             FROM exam_questions q
             JOIN papers p ON q.paper_id = p.id
             JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+            LEFT JOIN (
+                SELECT question_id, is_completed
+                FROM (
+                    SELECT question_id, is_completed, ROW_NUMBER() OVER(PARTITION BY question_id ORDER BY created_at DESC) as rn
+                    FROM user_review_attempts
+                    WHERE user_id = ?
+                ) WHERE rn = 1
+            ) ura ON q.id = ura.question_id
             WHERE p.subject = ?
               AND q.is_deleted = 0
               AND (ua.marks_awarded < q.marks OR ua.marks_awarded IS NULL)
-            GROUP BY q.id
             ORDER BY ua.created_at DESC
         `;
-        const allIdsResult = await c.env.DB.prepare(query).bind(user?.id, q.subject).all<{ id: number }>();
-        const allIds = allIdsResult.results.map(r => r.id);
-        const currentIndex = allIds.indexOf(parseInt(qId));
-
-        if (currentIndex !== -1) {
-            if (currentIndex > 0) prevId = allIds[currentIndex - 1];
-            if (currentIndex < allIds.length - 1) nextId = allIds[currentIndex + 1];
-        }
+        const res = await c.env.DB.prepare(query).bind(user.id, user.id, q.subject).all<any>();
+        allQuestions = res.results;
 
     } else {
-
-        const neighbors = await c.env.DB.prepare(`
-            SELECT id FROM exam_questions 
-            WHERE paper_id = ? AND ordering_index > ? AND is_deleted = 0
-            ORDER BY ordering_index ASC LIMIT 1
-        `).bind(q.paper_id, q.ordering_index).first<any>();
-
-        const prevNeighbors = await c.env.DB.prepare(`
-            SELECT id FROM exam_questions 
-            WHERE paper_id = ? AND ordering_index < ? AND is_deleted = 0
-            ORDER BY ordering_index DESC LIMIT 1
-        `).bind(q.paper_id, q.ordering_index).first<any>();
-
-        nextId = neighbors?.id;
-        prevId = prevNeighbors?.id;
+        const res = await c.env.DB.prepare(`
+            SELECT q.id, q.question_number, ua.is_completed 
+            FROM exam_questions q 
+            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+            WHERE q.paper_id = ? AND q.is_deleted = 0
+            ORDER BY q.ordering_index ASC
+        `).bind(user.id, q.paper_id).all<any>();
+        allQuestions = res.results;
     }
 
+    let nextId = null;
+    let prevId = null;
+    const currentIndex = allQuestions.findIndex(x => x.id === parseInt(qId));
+
+    if (currentIndex !== -1) {
+        if (currentIndex > 0) prevId = allQuestions[currentIndex - 1].id;
+        if (currentIndex < allQuestions.length - 1) nextId = allQuestions[currentIndex + 1].id;
+    }
 
     const completedDate = attempt?.updated_at ? formatDate(attempt.updated_at) : '';
+    const answerRevealed = !!attempt?.is_completed;
+    const hasStimulus = !!(q.stimulus_text || q.stimulus_image_key);
 
     return c.html(
         <Layout title={`Question - ${q.subject}`} user={user} latex={true}>
-            <div class="max-w-6xl mx-auto h-[calc(100vh-140px)] flex flex-col">
+            <div class="w-full h-[calc(100vh-3rem)] flex flex-col p-2 max-w-[120rem] mx-auto">
+
                 {/* Header */}
-                <div class="flex items-center justify-between mb-4 shrink-0">
-                    <div>
+                <div class="flex items-center justify-between mb-2 shrink-0">
+                    <div class="flex items-center gap-3 overflow-hidden">
                         <a href={
                             source === 'practice' ? `/past-papers?subject=${encodeURIComponent(q.subject)}&tab=practice&${currentParams}` :
                                 source === 'review' ? `/past-papers?subject=${encodeURIComponent(q.subject)}&tab=review` :
                                     `/past-papers/paper/${q.paper_id}`
-                        } class="text-sm text-gray-500 dark:text-neutral-400 hover:underline">
-                            ← Back to {source === 'practice' ? 'Practice' : source === 'review' ? 'Review Queue' : 'Paper'}
+                        } class="text-sm font-semibold text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white shrink-0">
+                            ← Back
                         </a>
-                        <h1 class="text-xl font-bold flex items-center gap-2 dark:text-white">
-                            {q.school_name} {q.academic_year}
-                            <span class="text-gray-400 dark:text-neutral-600">|</span>
-                            {q.section_label} {q.question_number}
-                            <span class="text-sm font-normal text-gray-500 dark:text-neutral-400 bg-gray-100 dark:bg-neutral-800 px-2 py-0.5 rounded ml-2 border dark:border-neutral-700">{q.marks} Marks</span>
+                        <span class="text-gray-300 dark:text-neutral-700">|</span>
+                        <h1 class="text-sm font-bold text-gray-900 dark:text-neutral-100 truncate">
+                            {q.school_name} {q.academic_year} — {q.section_label} Q{q.question_number}
                         </h1>
-                        <p class="text-sm text-gray-500 dark:text-neutral-400">{q.topic_names}</p>
+                        <span class="text-xs font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded shrink-0">
+                            {q.marks} Marks
+                        </span>
+                        <a href={pdfUrl} target="_blank" class="flex items-center gap-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-xs font-bold transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></svg>
+                            Original PDF {stimCoords?.page ? `(p.${stimCoords.page})` : ''}
+                        </a>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex gap-1 shrink-0 ml-2">
                         {prevId ? (
-                            <a href={`/past-papers/attempt/${prevId}?${currentParams}`} class="px-3 py-1 bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded hover:bg-gray-50 dark:hover:bg-neutral-700 dark:text-white transition-colors">Previous</a>
+                            <a href={`/past-papers/attempt/${prevId}?${currentParams}`} class="px-2 py-1 bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded hover:bg-gray-50 dark:hover:bg-neutral-700 text-sm font-medium">Prev</a>
                         ) : (
-                            <button disabled class="px-3 py-1 bg-gray-50 dark:bg-neutral-900 border dark:border-neutral-800 rounded text-gray-300 dark:text-neutral-600">Previous</button>
+                            <button disabled class="px-2 py-1 bg-gray-50 dark:bg-neutral-900 border dark:border-neutral-800 rounded text-gray-400 text-sm opacity-50 cursor-not-allowed">Prev</button>
                         )}
                         {nextId ? (
-                            <a href={`/past-papers/attempt/${nextId}?${currentParams}`} class="px-3 py-1 bg-blue-600 text-white border border-blue-600 rounded hover:bg-blue-700 transition-colors">Next</a>
+                            <a href={`/past-papers/attempt/${nextId}?${currentParams}`} class="px-2 py-1 bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded hover:bg-gray-50 dark:hover:bg-neutral-700 text-sm font-medium">Next</a>
                         ) : (
-                            <button disabled class="px-3 py-1 bg-gray-50 dark:bg-neutral-900 border dark:border-neutral-800 rounded text-gray-300 dark:text-neutral-600">Next</button>
+                            <button disabled class="px-2 py-1 bg-gray-50 dark:bg-neutral-900 border dark:border-neutral-800 rounded text-gray-400 text-sm opacity-50 cursor-not-allowed">Next</button>
                         )}
                     </div>
                 </div>
 
-                {/* Content Split */}
-                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
+                {/* Question Navigation Bar */}
+                {allQuestions.length > 0 && (
+                    <div class="flex items-center gap-1.5 overflow-x-auto pb-3 mb-2 shrink-0 w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        {allQuestions.map((item, index) => {
+                            const isActive = item.id === parseInt(qId);
+                            const isDone = item.is_completed === 1;
 
-                    {/* Left: Question Content */}
-                    <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 overflow-y-auto p-6 scrollbar-thin">
-                        <h3 class="font-bold text-gray-700 dark:text-neutral-300 mb-4 uppercase text-sm tracking-wide">Question</h3>
-                        {q.question_text ? (
-                            <div class="mb-6 bg-white dark:bg-neutral-800 rounded text-gray-800 dark:text-neutral-200 whitespace-pre-wrap font-serif text-lg leading-relaxed">
-                                {q.question_text}
-                            </div>
-                        ) : (
-                            q.question_image_key ? (
-                                <img src={`/download/${q.question_image_key}`} class="w-full h-auto object-contain border dark:border-neutral-700 rounded-lg" />
-                            ) : (
-                                <div class="text-gray-400 dark:text-neutral-500 italic text-center py-12">No question image available</div>
-                            )
-                        )}
+                            let baseClass = "flex-shrink-0 flex items-center justify-center min-w-[2.5rem] px-2.5 py-1.5 rounded-sm text-xs font-bold border transition-colors cursor-pointer ";
 
-                        {(q.stimulus_text || q.stimulus_image_key) && (
-                            <div class="mt-6 border-t dark:border-neutral-700 pt-6">
-                                <h4 class="font-bold text-gray-500 dark:text-neutral-400 mb-2 text-xs uppercase">Stimulus</h4>
-                                {q.stimulus_text ? (
-                                    <div class="text-gray-700 dark:text-neutral-300 italic border-l-4 border-l-blue-400 dark:border-l-blue-600 pl-4 py-2 whitespace-pre-wrap bg-blue-50/30 dark:bg-blue-900/10 rounded-r">
+                            if (isActive) {
+                                baseClass += "border-blue-500 bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 shadow-sm";
+                            } else if (isDone) {
+                                baseClass += "border-green-300 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/50";
+                            } else {
+                                baseClass += "border-gray-200 bg-white text-gray-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-700";
+                            }
+
+                            return (
+                                <a href={`/past-papers/attempt/${item.id}?${currentParams}`} class={baseClass} title={`Question ${item.question_number || index + 1}`}>
+                                    Q{item.question_number || index + 1}
+                                    {isDone && <span class="ml-1 text-[10px] opacity-80">✓</span>}
+                                </a>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Main Form */}
+                <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" class="flex-1 min-h-0 flex flex-col lg:flex-row bg-white dark:bg-neutral-900 overflow-hidden rounded-sm border dark:border-neutral-800">
+                    <input type="hidden" name="next_id" value={nextId || ''} />
+                    <input type="hidden" name="max_marks" value={q.marks} />
+
+                    {/* Left Pane */}
+                    {hasStimulus && (
+                        <div class="w-full lg:w-1/2 flex flex-col bg-slate-50/50 dark:bg-slate-900/30 overflow-y-auto lg:border-r border-gray-200 dark:border-neutral-800 border-b lg:border-b-0">
+                            <div class="p-4">
+                                {q.stimulus_text && (
+                                    <div class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap font-serif italic mb-4 text-[15px] leading-relaxed">
                                         {q.stimulus_text}
                                     </div>
-                                ) : (
-                                    <img src={`/download/${q.stimulus_image_key}`} class="w-full h-auto object-contain border dark:border-neutral-700 rounded-lg" />
                                 )}
+                                {q.stimulus_image_key && (
+                                    q.stimulus_image_key.startsWith('pdf_crop:') ? (
+                                        <pdf-crop pdf-url={`/download/papers/${q.paper_id}.pdf`} crop-data={q.stimulus_image_key.replace('pdf_crop:', '')}></pdf-crop>
+                                    ) : (
+                                        <img src={`/download/${q.stimulus_image_key}`} class="w-full h-auto object-contain border dark:border-neutral-700 bg-white dark:bg-neutral-900 rounded-sm" />
+                                    )
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Right Pane */}
+                    <div class={`w-full ${hasStimulus ? 'lg:w-1/2' : ''} flex flex-col min-h-0 overflow-y-auto`}>
+
+                        {/* Review Mode Banner */}
+                        {mode === 'review' && originalAttempt && (
+                            <div class="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 px-4 py-2 text-xs shrink-0 border-b border-amber-100 dark:border-amber-900/50">
+                                <span class="font-bold text-amber-800 dark:text-amber-500 uppercase tracking-wide">Prior Review</span>
+                                <span class="bg-amber-100 dark:bg-amber-900/50 text-amber-900 dark:text-amber-300 px-1.5 py-0.5 rounded font-bold">
+                                    {originalAttempt.marks_awarded || 0} / {q.marks}
+                                </span>
                             </div>
                         )}
-                    </div>
 
-                    {/* Right: Interaction */}
-                    <div class="bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700 overflow-y-auto p-6 flex flex-col scrollbar-thin">
-                        <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" class="flex-1 flex flex-col">
-
-                            {mode === 'review' && originalAttempt && (
-                                <div class="mb-6 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-800">
-                                    <h3 class="font-bold text-amber-800 dark:text-amber-400 text-sm mb-2 uppercase tracking-wide flex items-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                        Previous Attempt Context
-                                    </h3>
-                                    <div class="space-y-3">
-                                        <div>
-                                            <div class="text-xs text-amber-600 dark:text-amber-500 font-bold mb-1">Previous Score</div>
-                                            <span class="bg-white dark:bg-neutral-900 px-2 py-1 rounded border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 font-bold text-sm">
-                                                {originalAttempt.marks_awarded || 0} / {q.marks} Marks
-                                            </span>
-                                        </div>
-                                        {originalAttempt.marker_notes && (
-                                            <div>
-                                                <div class="text-xs text-amber-600 dark:text-amber-500 font-bold mb-1">Your previous notes</div>
-                                                <div class="bg-white dark:bg-neutral-900 p-2 rounded border border-amber-200 dark:border-amber-800 text-sm text-gray-600 dark:text-neutral-400 italic">
-                                                    "{originalAttempt.marker_notes}"
-                                                </div>
-                                            </div>
-                                        )}
-
-                                    </div>
+                        {/* Question Content */}
+                        <div class="p-4 bg-white dark:bg-neutral-900 shrink-0 border-b dark:border-neutral-800">
+                            {q.question_text ? (
+                                <div class="text-gray-900 dark:text-neutral-100 whitespace-pre-wrap font-serif text-lg leading-snug">
+                                    {q.question_text}
                                 </div>
-                            )}
+                            ) : q.question_image_key ? (
+                                <img src={`/download/${q.question_image_key}`} class="w-full h-auto object-contain" />
+                            ) : null}
+                        </div>
 
-                            <input type="hidden" name="next_id" value={nextId || ''} />
-
-
-                            <div class="flex-1">
-                                <h3 class="font-bold text-gray-700 dark:text-neutral-300 mb-4 uppercase text-sm tracking-wide">Your Response</h3>
-
-                                {q.question_type === 'multiple_choice' ? (
-                                    <div class="grid grid-cols-2 gap-4 mb-6">
-                                        {['A', 'B', 'C', 'D'].map(opt => (
-                                            <label class="cursor-pointer">
-                                                <input type="radio" name="selected_option" value={opt} class="peer sr-only" checked={attempt?.selected_option === opt} />
-                                                <div class="text-center p-4 rounded-lg border-2 border-gray-200 dark:border-neutral-700 hover:border-blue-400 dark:hover:border-blue-500 peer-checked:border-blue-600 dark:peer-checked:border-blue-400 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 transition-all">
-                                                    <span class="text-xl font-bold text-gray-700 dark:text-neutral-300 peer-checked:text-blue-700 dark:peer-checked:text-blue-300">{opt}</span>
-                                                </div>
-                                            </label>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <textarea name="response_content" class="w-full h-64 p-4 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none font-mono text-sm" placeholder="Type your answer here...">{attempt?.response_content || ''}</textarea>
-                                )}
-
-                                {/* Marking Section */}
-                                <div id="marking-section" class="mt-8 border-t border-gray-100 pt-6">
-                                    <details open={!!attempt?.is_completed}>
-                                        <summary class="font-bold text-blue-600 cursor-pointer mb-4 select-none group">
-                                            <span class="group-open:hidden">Check Answer & Mark</span>
-                                            <span class="hidden group-open:inline">Hide Answer</span>
-                                        </summary>
-
-                                        <div class="space-y-6 animate-fade-in">
-                                            {/* Correct Answer */}
-                                            <div class="bg-green-50 dark:bg-green-900/10 rounded-lg p-4 border border-green-100 dark:border-green-900/40">
-                                                <h4 class="font-bold text-green-800 dark:text-green-400 text-sm mb-2">Correct Answer / Guidelines</h4>
-                                                {q.mc_answer && <div class="text-xl font-bold text-green-700 dark:text-green-300 mb-2">{q.mc_answer}</div>}
-                                                {q.answer_text ? (
-                                                    <div class="p-4 bg-white dark:bg-neutral-900 border border-green-200 dark:border-green-800 rounded text-green-900 dark:text-green-300 whitespace-pre-wrap text-sm">
-                                                        {q.answer_text}
-                                                    </div>
-                                                ) : (
-                                                    q.answer_image_key ? (
-                                                        <img src={`/download/${q.answer_image_key}`} class="w-full object-contain bg-white dark:bg-neutral-900 rounded border border-green-200 dark:border-green-800" />
-                                                    ) : <span class="text-gray-500 dark:text-neutral-500 italic text-sm">No answer image provided.</span>
-                                                )}
+                        {/* Response Input */}
+                        <div class="p-4 bg-gray-50/50 dark:bg-neutral-800/30 shrink-0 border-b dark:border-neutral-800">
+                            {q.question_type === 'multiple_choice' ? (
+                                <div class="flex gap-2">
+                                    {['A', 'B', 'C', 'D'].map(opt => (
+                                        <label class="cursor-pointer flex-1">
+                                            <input type="radio" name="selected_option" value={opt} class="peer sr-only" checked={attempt?.selected_option === opt} />
+                                            <div class="text-center py-2 border dark:border-neutral-600 rounded-sm bg-white dark:bg-neutral-800 peer-checked:bg-blue-600 peer-checked:border-blue-600 peer-checked:text-white text-gray-700 dark:text-neutral-300 font-bold transition-none">
+                                                {opt}
                                             </div>
-
-                                            {/* Self Marking UI */}
-                                            <div class="bg-gray-50 dark:bg-neutral-900/50 rounded-lg p-4 border border-gray-200 dark:border-neutral-700">
-                                                <div class="flex items-center justify-between mb-4">
-                                                    <label class="font-bold text-gray-700 dark:text-neutral-300 text-sm">Marks Awarded</label>
-                                                    <div class="flex items-center gap-2">
-                                                        <button type="button" onclick={`document.getElementById('marks_awarded_input').value = ${q.marks}; const btns = this.closest('.bg-gray-50, .dark\\:bg-neutral-900\\/50').querySelectorAll('.mark-btn'); btns.forEach(b => b.classList.remove('bg-blue-600', 'text-white')); const maxBtn = Array.from(btns).find(b => b.textContent.trim() == '${q.marks}'); if(maxBtn) maxBtn.classList.add('bg-blue-600', 'text-white');`} class="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-1 rounded font-bold hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">Give Max ({q.marks})</button>
-                                                    </div>
-                                                </div>
-                                                <div class="flex items-center gap-2">
-                                                    <input type="hidden" name="marks_awarded" id="marks_awarded_input" value={attempt?.marks_awarded || 0} />
-                                                    <input type="hidden" name="max_marks" value={q.marks} />
-                                                    <div class="flex flex-wrap gap-2">
-                                                        {Array.from({ length: (q.marks || 0) + 1 }, (_, m) => (
-                                                            <button type="button"
-                                                                onclick={`document.getElementById('marks_awarded_input').value = ${m}; this.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('bg-blue-600', 'text-white')); this.classList.add('bg-blue-600', 'text-white');`}
-                                                                class={`mark-btn w-8 h-8 rounded border border-blue-300 dark:border-blue-800 font-bold flex items-center justify-center hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors ${(attempt?.marks_awarded || 0) == m ? 'bg-blue-600 text-white' : 'bg-white dark:bg-neutral-800 text-blue-700 dark:text-blue-400'}`}>
-                                                                {m}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                <label class="block font-bold text-gray-700 dark:text-neutral-300 text-sm mt-4 mb-2">My Marker Notes</label>
-                                                <textarea name="marker_notes" class="w-full h-24 p-2 rounded border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white text-sm" placeholder="Notes for future review...">{attempt?.marker_notes || ''}</textarea>
-                                            </div>
-                                        </div>
-                                    </details>
-                                </div>
-                            </div>
-
-                            {/* Actions */}
-                            {user ? (
-                                <div class="mt-6 flex justify-between items-center pt-4 border-t dark:border-neutral-700 sticky bottom-0 bg-white dark:bg-neutral-800 transition-colors">
-                                    <span class="text-xs text-gray-400 dark:text-neutral-500">
-                                        {attempt?.is_completed ? (
-                                            <div class="flex items-center gap-2">
-                                                <span>Completed on {completedDate}</span>
-                                                <button type="submit" name="action" value="undone" class="text-red-500 dark:text-red-400 hover:underline">Mark Undone</button>
-                                            </div>
-                                        ) : 'Not completed yet'}
-                                    </span>
-                                    <div class="flex gap-2">
-                                        <button type="submit" name="action" value="save" class="bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 font-bold py-2 px-6 rounded-lg hover:bg-gray-200 dark:hover:bg-neutral-600 transition">
-                                            Save
-                                        </button>
-                                        <button type="submit" name="action" value="complete" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 shadow-sm transition">
-                                            Save & Mark Complete
-                                        </button>
-                                    </div>
+                                        </label>
+                                    ))}
                                 </div>
                             ) : (
-                                <div class="mt-6 pt-4 border-t dark:border-neutral-700 text-center text-sm text-gray-500 dark:text-neutral-400">
-                                    <a href="/login" class="text-blue-600 dark:text-blue-400 hover:underline font-bold">Log in</a> to save your progress.
-                                </div>
+                                <textarea
+                                    name="response_content"
+                                    class="w-full min-h-[12rem] p-3 border dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 text-sm focus:ring-1 focus:ring-blue-500 outline-none resize-y rounded-sm"
+                                    placeholder="Type your answer here..."
+                                >{attempt?.response_content || ''}</textarea>
                             )}
-                        </form>
+
+                            {!answerRevealed && (
+                                <button
+                                    id="reveal-btn-wrap"
+                                    type="button"
+                                    onclick="
+                                    document.getElementById('reveal-btn-wrap').style.display = 'none';
+                                    document.getElementById('answer-section').style.display = 'block';
+                                "
+                                    class="mt-3 w-full py-2 border border-gray-300 dark:border-neutral-600 text-gray-600 dark:text-neutral-300 bg-white dark:bg-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-700 text-sm font-semibold rounded-sm transition-none"
+                                >
+                                    Check Answer
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Answer Section */}
+                        <div id="answer-section" style={answerRevealed ? '' : 'display:none'} class="p-4 bg-green-50/30 dark:bg-green-900/10 flex-1 flex flex-col gap-4">
+                            <div>
+                                {q.mc_answer && (
+                                    <div class="text-xl font-black text-green-700 dark:text-green-400 mb-2">{q.mc_answer}</div>
+                                )}
+                                {q.answer_text ? (
+                                    <div class="text-green-900 dark:text-green-300 whitespace-pre-wrap text-[15px] font-medium leading-relaxed">
+                                        {q.answer_text}
+                                    </div>
+                                ) : q.answer_image_key ? (
+                                    <img src={`/download/${q.answer_image_key}`} class="w-full object-contain bg-white dark:bg-neutral-900 rounded-sm border border-green-200 dark:border-green-800/50" />
+                                ) : (
+                                    <span class="text-green-600/60 dark:text-green-500/50 italic text-sm">No marking guideline provided.</span>
+                                )}
+                            </div>
+
+
+                            {/* Self-Marking Control Group */}
+                            <div class="mt-auto pt-4 border-t border-green-200/60 dark:border-green-800/50">
+                                <div class="flex items-center flex-wrap gap-2 mb-3">
+                                    <span class="text-sm font-bold text-gray-700 dark:text-neutral-300 mr-2">Award Marks:</span>
+                                    <input type="hidden" name="marks_awarded" id="marks_awarded_input" value={attempt?.marks_awarded ?? 0} />
+
+                                    <div class="flex flex-wrap gap-1">
+                                        {Array.from({ length: (Number(q.marks) || 0) + 1 }, (_, m) => {
+                                            const isActive = Number(attempt?.marks_awarded ?? 0) === m;
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    data-mark={m}
+                                                    data-active={isActive ? "true" : "false"}
+                                                    onclick={`
+                document.getElementById('marks_awarded_input').value = ${m};
+                document.querySelectorAll('.mark-btn').forEach(b => b.setAttribute('data-active', 'false'));
+                this.setAttribute('data-active', 'true');
+            `}
+                                                    class="mark-btn min-w-[2.25rem] px-2 py-1 text-sm font-bold border rounded-sm transition-none
+                data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:border-blue-600
+                data-[active=false]:bg-gray-50 data-[active=false]:dark:bg-neutral-800
+                data-[active=false]:border-gray-400 data-[active=false]:dark:border-neutral-500
+                data-[active=false]:text-black data-[active=false]:dark:text-white
+                data-[active=false]:hover:bg-gray-200 data-[active=false]:dark:hover:bg-neutral-700"
+                                                >
+                                                    {m}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onclick={`const val = ${q.marks}; document.getElementById('marks_awarded_input').value = val; document.querySelectorAll('.mark-btn').forEach(b => b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600')); const maxBtn = Array.from(document.querySelectorAll('.mark-btn')).find(b => b.getAttribute('data-mark') == val); if(maxBtn) maxBtn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');`}
+                                        class="ml-auto px-2.5 py-1 text-xs font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-sm hover:bg-blue-200 dark:hover:bg-blue-900/60"
+                                    >
+                                        MAX ({q.marks})
+                                    </button>
+                                </div>
+
+                                <textarea
+                                    name="marker_notes"
+                                    class="w-full h-12 p-2 border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-neutral-100 outline-none focus:ring-1 focus:ring-blue-500 resize-none rounded-sm"
+                                    placeholder="Marker notes (optional)..."
+                                >{attempt?.marker_notes || ''}</textarea>
+                            </div>
+                        </div>
+
+                        {/* Sticky Action Footer */}
+                        <div class="p-3 bg-gray-100 dark:bg-neutral-900/80 border-t dark:border-neutral-700 flex justify-end items-center gap-4 shrink-0">
+                            <div class="text-xs text-gray-500 dark:text-neutral-400 font-medium">
+                                {attempt?.is_completed ? (
+                                    <span class="flex items-center gap-2">
+                                        ✓ Done {completedDate}
+                                        <button type="submit" name="action" value="undone" class="text-red-600 dark:text-red-400 hover:underline ml-1">Revert</button>
+                                    </span>
+                                ) : 'Pending'}
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="submit" name="action" value="save" class="px-4 py-1.5 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-200 text-sm font-bold rounded-sm hover:bg-gray-50 dark:hover:bg-neutral-700">
+                                    Save
+                                </button>
+                                <button type="submit" name="action" value="complete" class="px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded-sm hover:bg-blue-700">
+                                    Save + Continue
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </form>
             </div>
-        </Layout >
+        </Layout>
     );
 })
 
@@ -372,23 +443,17 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     const action = body['action'];
     const nextId = body['next_id'];
 
-
     let completedValue = 1;
     if (action === 'undone') completedValue = 0;
 
     const mode = c.req.query('mode');
 
     if (mode === 'review') {
-
-
         await c.env.DB.prepare(`
             INSERT INTO user_review_attempts (user_id, question_id, response_content, selected_option, marks_awarded, is_completed, created_at)
             VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `).bind(user.id, qId, response, selected, marks, (marks === parseInt(body['max_marks'] as string || '100') || action === 'complete') ? 1 : 0).run();
-
-
     } else {
-
         await c.env.DB.prepare(`
             INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -402,9 +467,9 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
         `).bind(user.id, qId, response, selected, marks, notes, completedValue, completedValue).run();
     }
 
-    // Preserve Navigation Context
     const source = c.req.query('source');
     const filterTopic = c.req.query('topic');
+    const filterSchool = c.req.query('school');
     const filterYear = c.req.query('year');
     const filterStatus = c.req.query('status');
     const filterType = c.req.query('type');
@@ -413,10 +478,7 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
 
-
-
-    const params = `source=${source || ''}&mode=${mode || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
-
+    const params = `source=${source || ''}&mode=${mode || ''}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
     if (action === 'complete' && nextId) {
         return c.redirect(`/past-papers/attempt/${nextId}?${params}`);

@@ -8,7 +8,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 
 app.get('/api/auth/login', (c) => {
-    
+
     let clientId = c.env.PORTAL_API_CLIENT_ID;
     let redirectUri = c.env.APP_REDIRECT_URI;
 
@@ -61,7 +61,7 @@ app.get('/api/auth/callback', async (c) => {
     let clientId = c.env.PORTAL_API_CLIENT_ID;
     let clientSecret = c.env.PORTAL_API_CLIENT_SECRET;
     let redirectUri = c.env.APP_REDIRECT_URI;
-    
+
 
     const host = c.req.header('host');
 
@@ -91,7 +91,7 @@ app.get('/api/auth/callback', async (c) => {
         const tokenData: any = await tokenResponse.json();
 
 
-        
+
         if (!tokenData.access_token) {
             return c.text('Failed to retrieve access token: ' + JSON.stringify(tokenData), 400);
         }
@@ -147,7 +147,7 @@ app.get('/api/auth/callback', async (c) => {
         });
         const timetableData = await timetableResponse.json();
 
-        
+
         const currentYear = new Date().getFullYear();
         const calendarResponse = await fetch(`https://student.sbhs.net.au/api/calendar/days.json?from=${currentYear}-01-01&to=${currentYear}-12-31`, {
             headers: { 'Authorization': `Bearer ${accessToken}` }
@@ -222,10 +222,9 @@ app.get('/login', (c) => {
                     <a href="/api/auth/login" class="w-3/4 bg-blue-600 text-white font-bold py-3 mb-6 rounded text-center hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2">
                         <span>Log In with Student Portal</span>
                     </a>
-                    <a href='https://highhelp.sbhs27.workers.dev/' class="text-gray-400 mb-6 text-center">Note: highhelp.org (the new domain name) login is currently not supported. Click here to direct</a>
                     <p class="text-gray-600 mb-6 text-center"></p>
                 </div>
-{/* 
+                {/* 
 
                 <div class="w-full md:w-1/2 p-8 flex flex-col justify-center">
                     <h2 class="text-2xl font-bold mb-6 text-blue-900">[DEPRECIATED] Manual Login</h2>
@@ -294,7 +293,7 @@ app.get('/api/auth/refresh', async (c) => {
     const host = c.req.header('host');
     let clientId = c.env.PORTAL_API_CLIENT_ID;
     let clientSecret = c.env.PORTAL_API_CLIENT_SECRET;
-    
+
     if (host && host.includes('highhelp.org')) {
         clientId = c.env.PORTAL_API_CLIENT_ID_full;
         clientSecret = c.env.PORTAL_API_CLIENT_SECRET_full;

@@ -11,7 +11,9 @@ export const TimetableEvents = html`
         container.className = 'space-y-4';
         container.innerHTML = '<div class="text-center py-12 text-gray-500 dark:text-neutral-500">Loading events...</div>';
 
-        document.getElementById('date-display').innerHTML = \`<span class="font-bold text-gray-800 dark:text-neutral-200">\${currentDateStr}</span>\`;
+        document.getElementById('date-display').innerHTML = \`<span class="font-bold text-gray-800 dark:text-neutral-200" > \${ currentDateStr }</span > \`;
+        const snapshotDate = currentDateStr;
+        const snapshotView = currentView;
 
         try {
             const nextWeek = new Date(currentDateStr);
@@ -24,6 +26,12 @@ export const TimetableEvents = html`
             if (!res.ok) throw new Error('Failed to fetch events');
             
             const data = await res.json();
+
+            // If the user has changed view or date while we were fetching, Don't overwrite the DOM
+            if (currentDateStr !== snapshotDate || currentView !== snapshotView) {
+                return;
+            }
+
             container.innerHTML = '';
 
             if (!data || data.length === 0) {

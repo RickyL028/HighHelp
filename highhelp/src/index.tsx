@@ -9,9 +9,10 @@ import announcementsRoutes from './routes/announcements'
 import forumRoutes from './routes/forum'
 import essaysRoutes from './routes/essays'
 import aboutRoutes from './routes/about'
+import feedbackRoutes from './routes/feedback'
 import classesRoutes from './routes/timetable'
 import clipboardRoutes from './components/timetable/TimetableClipboard'
-
+import { processAIImportJob, AIImportJob } from './routes/pastPapers/aiQueueWorker'
 import { getUser } from './utils'
 import { PermissionLevel } from './permissions'
 
@@ -107,7 +108,21 @@ app.route('/', announcementsRoutes)
 app.route('/', forumRoutes)
 app.route('/', essaysRoutes)
 app.route('/timetable', classesRoutes)
+app.route('/', feedbackRoutes)
 app.route('/', aboutRoutes)
 app.route('/api/clipboard', clipboardRoutes)
 
-export default app
+export default {
+  fetch: app.fetch,
+  async queue(batch: MessageBatch<AIImportJob>, env: Bindings) {
+    for (const message of batch.messages) {
+      try {
+        await processAIImportJob(message.body, env)
+        message.ack()
+      } catch (err) {
+        console.error('[Queue] Job failed:', err)
+        message.ack()
+      }
+    }
+  }
+}
