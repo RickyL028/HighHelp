@@ -26,13 +26,18 @@ app.get('/mock-exams', async (c) => {
     }
 
     const exams = await c.env.DB.prepare(`
-        SELECT m.*, count(mq.question_id) as question_count 
-        FROM mock_exams m
-        LEFT JOIN mock_exam_questions mq ON m.id = mq.mock_exam_id
-        WHERE m.user_id = ? AND m.subject = ?
-        GROUP BY m.id
-        ORDER BY m.created_at DESC
-    `).bind(user.id, subject).all()
+    SELECT m.*,
+           count(mq.question_id) as question_count,
+           sum(q.marks) as total_marks,
+           sum(ua.marks_awarded) as marks_received
+    FROM mock_exams m
+    LEFT JOIN mock_exam_questions mq ON m.id = mq.mock_exam_id
+    LEFT JOIN exam_questions q ON mq.question_id = q.id
+    LEFT JOIN user_question_attempts ua ON mq.question_id = ua.question_id AND ua.user_id = m.user_id
+    WHERE m.user_id = ? AND m.subject = ?
+    GROUP BY m.id
+    ORDER BY m.created_at DESC
+`).bind(user.id, subject).all()
 
     return c.html(
         <Layout title={`Mock Exams - ${subject}`} user={user} latex={true}>
@@ -65,6 +70,14 @@ app.get('/mock-exams', async (c) => {
                                         <span class="capitalize">{exam.created_method} Generated</span>
                                         <span>•</span>
                                         <span>{exam.question_count} Questions</span>
+                                        {exam.status === 'completed' && exam.total_marks != null && (
+    <>
+        <span>•</span>
+        <span class="font-semibold">
+            {exam.marks_received ?? 0}/{exam.total_marks} Marks
+        </span>
+    </>
+)}
                                         {exam.is_timed ? (
                                             <>
                                                 <span>•</span>
