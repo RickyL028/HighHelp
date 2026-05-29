@@ -109,7 +109,9 @@ ${props.latex ? html`
                     <a href="/past-papers" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Past Papers</a>
                     <a href="/forum" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Q&A</a>
                     <a href="/essays" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Essays</a>
+                    <a href="/leaderboard" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Leaderboard</a>
                     <a href="/feedback" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Hmmm..!</a>
+                    
                     <a href="/about" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">About</a>
                   </div>
                 </div>
@@ -188,6 +190,7 @@ ${props.latex ? html`
               <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Past Papers</a>
               <a href="/forum" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Q&A</a>
               <a href="/essays" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Essays</a>
+              <a href="/leaderboard" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Leaderboard</a>
               <a href="/feedback" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Hmmm..!</a>
               <a href="/about" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">About</a>
               <button id="mobile-theme-toggle" class="w-full text-left text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium flex items-center justify-between">
