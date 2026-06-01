@@ -33,12 +33,12 @@ const LEADERBOARD_DATA = [
     {
         subject: "Mathematics",
         displayLimit: 3,
-        showPercentage: false,
+        showPercentage: true,
         entries: [
-            { name: "?", rank: 2, percentage: 98 },
-            { name: "?", rank: 3, percentage: 98 },
-            { name: "?", rank: 4, percentage: 98 },
-            { name: "?", rank: 1, percentage: 100 },
+            { name: "Daniel Zmak", rank: 1, percentage: 93 },
+            { name: "Munjin CHOWDHURY", rank: 2, percentage: 92 },
+            { name: "Lin Le", rank: 3, percentage: 90 },
+            
             { name: "?", rank: 5, percentage: 98 },
         ]
     },
@@ -50,17 +50,17 @@ const LEADERBOARD_DATA = [
             { name: "Lin Le", rank: 1, percentage: 82 },
             { name: "jiekai miao", rank: 2, percentage: 80 },
             { name: "tom ye", rank: 3, percentage: 78 },
-            { name: "Average", rank: 4, percentage: 54 },
+            
 
         ]
     },
     {
         subject: "Chemistry",
-        displayLimit: 3,
-        showPercentage: false,
+        displayLimit: 2,
+        showPercentage: true,
         entries: [
-            { name: "?", rank: 1, percentage: 100 },
-            { name: "?", rank: 2, percentage: 98 },
+            { name: "Joshua Kuo", rank: 1, percentage: 98 },
+            { name: "Jiekai Miao", rank: 1, percentage: 98 },
             { name: "?", rank: 3, percentage: 98 },
             { name: "?", rank: 4, percentage: 98 },
             { name: "?", rank: 5, percentage: 98 },
@@ -71,10 +71,11 @@ const LEADERBOARD_DATA = [
         displayLimit: 4,
         showPercentage: true,
         entries: [
-            { name: "jiekai miao", rank: 1, percentage: 94 },
             { name: "nicklas li", rank: 1, percentage: 94 },
-            { name: "lin le", rank: 2, percentage: '92*' },
+            { name: "jiekai miao", rank: 1, percentage: 94 },
             { name: "aryan ghosh", rank: 2, percentage: '92*' },
+            { name: "lin le", rank: 2, percentage: '92*' },
+            
 
             { name: "?", rank: 5, percentage: 98 },
         ]
