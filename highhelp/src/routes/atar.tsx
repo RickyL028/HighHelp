@@ -53,8 +53,17 @@ app.get('/atar', async (c) => {
           {/* Right Column: Results */}
           <div class="space-y-6">
             <div class="border border-gray-300 dark:border-neutral-700 p-6 flex flex-col items-center justify-center">
-              <h2 class="font-bold text-sm uppercase mb-6 bg-black text-white dark:bg-white dark:text-black px-2 py-1 self-start w-full text-center">Projected ATAR</h2>
+              <h2 class="font-bold text-sm uppercase mb-4 bg-black text-white dark:bg-white dark:text-black px-2 py-1 self-start w-full text-center">Projected ATAR</h2>
               
+              {/* Unit Selection Dropdown */}
+              <div class="mb-6 w-full">
+                <label for="target-units-select" class="block text-xs uppercase font-bold text-gray-500 dark:text-gray-400 mb-1">Best of</label>
+                <select id="target-units-select" class="w-full border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none">
+                  <option value="10">10 Units</option>
+                  <option value="12">12 Units (moderated, y11)</option>
+                </select>
+              </div>
+
               <div class="text-center mb-8 w-full">
                 <div class="text-5xl font-bold tracking-tighter mb-2" id="final-atar">
                   --.--
@@ -128,17 +137,21 @@ app.get('/atar', async (c) => {
         ];
 
         let selectedSubjects = [];
+        let targetUnits = 10;
 
         function saveToStorage() {
           try {
             localStorage.setItem('atar_selected_subjects', JSON.stringify(selectedSubjects));
+            localStorage.setItem('atar_target_units', targetUnits.toString());
           } catch (e) {
-            console.error('Failed to save selected subjects to storage:', e);
+            console.error('Failed to save configuration to storage:', e);
           }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
           const dropdown = document.getElementById('subject-dropdown');
+          const targetUnitsSelect = document.getElementById('target-units-select');
+
           Object.keys(subjectsData).sort().forEach(sub => {
             const opt = document.createElement('option');
             opt.value = sub;
@@ -152,9 +165,26 @@ app.get('/atar', async (c) => {
             if (saved) {
               selectedSubjects = JSON.parse(saved);
             }
+            
+            const savedUnits = localStorage.getItem('atar_target_units');
+            if (savedUnits) {
+              const parsedUnits = parseInt(savedUnits, 10);
+              if (parsedUnits === 10 || parsedUnits === 12) {
+                targetUnits = parsedUnits;
+              }
+            }
           } catch (e) {
-            console.error('Failed to load selected subjects from storage:', e);
+            console.error('Failed to load selected configuration from storage:', e);
           }
+
+          targetUnitsSelect.value = targetUnits.toString();
+
+          // Listen for target units change
+          targetUnitsSelect.addEventListener('change', (e) => {
+            targetUnits = parseInt(e.target.value, 10);
+            saveToStorage();
+            renderSubjects();
+          });
 
           renderSubjects();
 
@@ -232,8 +262,8 @@ app.get('/atar', async (c) => {
 
           results.forEach(res => {
             res.countedUnits = 0;
-            if (res.units > 0 && unitsCounted < 10) {
-              const unitsAvailable = 10 - unitsCounted;
+            if (res.units > 0 && unitsCounted < targetUnits) {
+              const unitsAvailable = targetUnits - unitsCounted;
               if (res.units <= unitsAvailable) {
                 res.countedUnits = res.units;
               } else {
@@ -247,20 +277,25 @@ app.get('/atar', async (c) => {
           });
 
           document.getElementById('total-aggregate').textContent = totalAggregate.toFixed(1);
-          document.getElementById('units-counted').textContent = \`\${unitsCounted} / 10\`;
+          document.getElementById('units-counted').textContent = \`\${unitsCounted} / \${targetUnits}\`;
 
-          if (unitsCounted < 10) {
+          if (unitsCounted < targetUnits) {
             document.getElementById('final-atar').textContent = '--.--';
             return results;
           }
 
+          
+          const scalingFactor = targetUnits === 12? 1.15:1;
+
           let finalAtar = '< 50.00';
-          if (totalAggregate >= atarMapping[0].agg) {
+          if (totalAggregate >= atarMapping[0].agg * scalingFactor) {
             finalAtar = '99.95';
           } else {
             for (let i = 0; i < atarMapping.length - 1; i++) {
-              if (totalAggregate <= atarMapping[i].agg && totalAggregate > atarMapping[i+1].agg) {
-                const ratio = (totalAggregate - atarMapping[i+1].agg) / (atarMapping[i].agg - atarMapping[i+1].agg);
+              const currentAgg = atarMapping[i].agg * scalingFactor;
+              const nextAgg = atarMapping[i+1].agg * scalingFactor;
+              if (totalAggregate <= currentAgg && totalAggregate > nextAgg) {
+                const ratio = (totalAggregate - nextAgg) / (currentAgg - nextAgg);
                 const atar = atarMapping[i+1].atar + ratio * (atarMapping[i].atar - atarMapping[i+1].atar);
                 finalAtar = atar.toFixed(2);
                 break;
