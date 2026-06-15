@@ -56,12 +56,12 @@ const LEADERBOARD_DATA = [
     },
     {
         subject: "Chemistry",
-        displayLimit: 2,
+        displayLimit: 3,
         showPercentage: true,
         entries: [
             { name: "Joshua Kuo", rank: 1, percentage: 98 },
             { name: "Jiekai Miao", rank: 1, percentage: 98 },
-            { name: "?", rank: 3, percentage: 98 },
+            { name: "Tom Ye", rank: 3, percentage: 96 },
             { name: "?", rank: 4, percentage: 98 },
             { name: "?", rank: 5, percentage: 98 },
         ]
@@ -73,8 +73,8 @@ const LEADERBOARD_DATA = [
         entries: [
             { name: "nicklas li", rank: 1, percentage: 94 },
             { name: "jiekai miao", rank: 1, percentage: 94 },
-            { name: "aryan ghosh", rank: 2, percentage: '92*' },
-            { name: "lin le", rank: 2, percentage: '92*' },
+            { name: "aryan ghosh", rank: 3, percentage: 92 },
+            { name: "lin le", rank: 3, percentage: 92 },
             
 
             { name: "?", rank: 5, percentage: 98 },
@@ -83,9 +83,9 @@ const LEADERBOARD_DATA = [
     {
         subject: "English Extension",
         displayLimit: 1,
-        showPercentage: false,
+        showPercentage: true,
         entries: [
-            { name: "?", rank: 1, percentage: 100 },
+            { name: "Akshobhya KUMAR", rank: 1, percentage: 100 },
             { name: "?", rank: 2, percentage: 98 },
             { name: "?", rank: 3, percentage: 98 },
             { name: "?", rank: 4, percentage: 98 },
@@ -95,9 +95,9 @@ const LEADERBOARD_DATA = [
     {
         subject: "SOR",
         displayLimit: 1,
-        showPercentage: false,
+        showPercentage: true,
         entries: [
-            { name: "?", rank: 1, percentage: 100 },
+            { name: "Aryan Ghosh", rank: 1, percentage: 95 },
             { name: "?", rank: 2, percentage: 98 },
             { name: "?", rank: 3, percentage: 98 },
             { name: "?", rank: 4, percentage: 98 },
@@ -167,9 +167,9 @@ const LEADERBOARD_DATA = [
             {
         subject: "Engineering Studies",
         displayLimit: 1,
-        showPercentage: false,
+        showPercentage: true,
         entries: [
-            { name: "?", rank: 1, percentage: 670 },
+            { name: "Joshua Kuo", rank: 1, percentage: 94 },
             { name: "?", rank: 2, percentage: 98 },
             { name: "?", rank: 3, percentage: 98 },
             { name: "?", rank: 4, percentage: 98 },
@@ -206,6 +206,18 @@ const LEADERBOARD_DATA = [
         showPercentage: false,
         entries: [
             { name: "?", rank: 1, percentage: 670 },
+            { name: "?", rank: 2, percentage: 98 },
+            { name: "?", rank: 3, percentage: 98 },
+            { name: "?", rank: 4, percentage: 98 },
+            { name: "?", rank: 5, percentage: 98 },
+        ]
+    },  
+    {
+        subject: "Software Engineering",
+        displayLimit: 1,
+        showPercentage: true,
+        entries: [
+            { name: "Ricky Luo", rank: 1, percentage: 96 },
             { name: "?", rank: 2, percentage: 98 },
             { name: "?", rank: 3, percentage: 98 },
             { name: "?", rank: 4, percentage: 98 },

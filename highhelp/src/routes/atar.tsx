@@ -10,7 +10,7 @@ app.get('/atar', async (c) => {
   const user = await getUser(c)
 
   return c.html(
-    <Layout title="ATAR Calculator" user={user}>
+    <Layout title="ATAR (Beta)" user={user}>
       <div class="max-w-7xl mx-auto px-4 py-8 font-mono">
         <header class="mb-12">
             <h1 class="text-3xl font-bold uppercase tracking-tighter mb-2">ATAR Calculator</h1>
@@ -60,7 +60,9 @@ app.get('/atar', async (c) => {
                 <label for="target-units-select" class="block text-xs uppercase font-bold text-gray-500 dark:text-gray-400 mb-1">Best of</label>
                 <select id="target-units-select" class="w-full border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none">
                   <option value="10">10 Units</option>
-                  <option value="12">12 Units (moderated, y11)</option>
+                  <option value="12" selected>12 Units (moderated, y11)</option>
+                  
+                  
                 </select>
               </div>
 
@@ -78,12 +80,29 @@ app.get('/atar', async (c) => {
                   </tr>
                   <tr>
                     <td class="py-2">Units Counted</td>
-                    <td class="py-2 text-right font-bold" id="units-counted">0 / 10</td>
+                    <td class="py-2 text-right font-bold" id="units-counted">0 / 12</td>
                   </tr>
                 </tbody>
               </table>
             </div>
             
+            {/* NEW: Historical Rank Section */}
+            <div class="border border-gray-300 dark:border-neutral-700 p-6 flex flex-col items-center justify-center">
+              <h2 class="font-bold text-sm uppercase mb-4 bg-black text-white dark:bg-white dark:text-black px-2 py-1 self-start w-full text-center">A not accurate at all number</h2>
+              
+              <div class="text-center mb-4 w-full">
+                <div class="text-5xl font-bold tracking-tighter mb-4" id="estimated-rank">
+                  --
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">
+                  Range: <span id="estimated-rank-range" class="font-bold">--</span> / ~200
+                </div>
+              </div>
+              <div class="text-xs text-gray-500 mt-2 text-center leading-relaxed">
+                I made this up. Not accurate until real ATAR is mapped with report ATAR
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -137,7 +156,7 @@ app.get('/atar', async (c) => {
         ];
 
         let selectedSubjects = [];
-        let targetUnits = 10;
+        let targetUnits = 12;
 
         function saveToStorage() {
           try {
@@ -281,11 +300,13 @@ app.get('/atar', async (c) => {
 
           if (unitsCounted < targetUnits) {
             document.getElementById('final-atar').textContent = '--.--';
+            document.getElementById('estimated-rank').textContent = '--';
+            document.getElementById('estimated-rank-range').textContent = '--';
             return results;
           }
 
           
-          const scalingFactor = targetUnits === 12? 1.15:1;
+          const scalingFactor = targetUnits === 12 ? 1.13 : 1;
 
           let finalAtar = '< 50.00';
           if (totalAggregate >= atarMapping[0].agg * scalingFactor) {
@@ -304,6 +325,54 @@ app.get('/atar', async (c) => {
           }
 
           document.getElementById('final-atar').textContent = finalAtar;
+          
+          // Rank interpolation logic based on provided historical bounds
+          let numericAtar = parseFloat(finalAtar);
+          if (!isNaN(numericAtar)) {
+            let estRank = '--';
+            let estRange = '--';
+            
+            if (numericAtar >= 99.0) {
+              const ratio = (numericAtar - 99.0) / (99.7 - 99.0);
+              estRank = Math.max(Math.round(39 - ratio * 38), 1);
+              estRange = "±5";
+            } else if (numericAtar >= 95.0) {
+              const ratio = (numericAtar - 95.0) / (98.95 - 95.0);
+              estRank = Math.round(112 - ratio * (112 - 40));
+              estRange = "±10";
+            } else if (numericAtar >= 90.0) {
+              const ratio = (numericAtar - 90.0) / (94.95 - 90.0);
+              estRank = Math.round(154 - ratio * (154 - 113));
+              estRange = "±20";
+            } else if (numericAtar >= 85.0) {
+              const ratio = (numericAtar - 85.0) / (89.95 - 85.0);
+              estRank = Math.round(173 - ratio * (173 - 155));
+              estRange = "±25";
+            } else if (numericAtar >= 80.0) {
+              const ratio = (numericAtar - 80.0) / (84.95 - 80.0);
+              estRank = Math.round(184 - ratio * (184 - 174));
+              estRange = "±30";
+            } else if (numericAtar >= 75.0) {
+              const ratio = (numericAtar - 75.0) / (79.95 - 75.0);
+              estRank = Math.round(191 - ratio * (191 - 185));
+              estRange = "±30";
+            } else if (numericAtar >= 70.0) {
+              const ratio = (numericAtar - 70.0) / (74.95 - 70.0);
+              estRank = Math.round(195 - ratio * (195 - 192));
+              estRange = "±30";
+            } else {
+              estRank = "> 195";
+              estRange = "±30";
+            }
+            
+            estRank = Math.round(estRank/2);
+            document.getElementById('estimated-rank').textContent = estRank.toString();
+            document.getElementById('estimated-rank-range').textContent = estRange;
+          } else if (finalAtar === '< 50.00') {
+            document.getElementById('estimated-rank').textContent = "> 195";
+            document.getElementById('estimated-rank-range').textContent = "196 - 202";
+          }
+
           return results;
         }
 
@@ -319,7 +388,7 @@ app.get('/atar', async (c) => {
                 const num = parseFloat(parts[0]);
                 const den = parseFloat(parts[1]);
                 if (!isNaN(num) && !isNaN(den) && den !== 0) {
-                  parsed = (num / den) * 100;
+                  parsed = (1-num / den) * 100;
                 }
               }
             }
@@ -403,8 +472,8 @@ app.get('/atar', async (c) => {
       }} />
       
       <div class="text-xs text-gray-500 space-y-2">
-              <p class="pt-2"><a href="/atar/how-it-works" class="text-blue-600 hover:underline">How does this work?</a></p>
-            </div>
+        <p class="pt-2"><a href="/atar/how-it-works" class="text-blue-600 hover:underline">How does this work?</a></p>
+      </div>
     </Layout>
   )
 })
