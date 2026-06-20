@@ -541,24 +541,23 @@ app.get('/atar', async (c) => {
 })
 
 // Leaderboard route page presenting all ranks 1 to 216
+// ... (keep previous imports and app setup)
+
 app.get('/atar/leaderboard', async (c) => {
   const user = await getUser(c)
 
-  // Query submissions for the logged-in user
   const userSubmissionsRes = await c.env.DB.prepare(
       'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'
   ).bind(user?.id || 0).all();
   const userSubmissions = userSubmissionsRes.results || [];
   
   const hasSubmitted = userSubmissions.length > 0;
-  // Check if user has permission level of 2 or higher
-  
   const isAuthorized = hasSubmitted || (user);
 
-let ranksList: { rank: number; entries: { aggregate: number; is_deleted: boolean }[] }[] = [];
+  let ranksList: { rank: number; entries: { aggregate: number; is_deleted: boolean }[] }[] = [];
+  let graphData: { x: number, y: number, rank: number }[] = [];
   
   if (isAuthorized) {
-      // Query both active and deleted submissions
       const { results } = await c.env.DB.prepare(
           'SELECT rank, aggregate, is_deleted FROM atar_submissions ORDER BY rank ASC'
       ).all();
@@ -575,19 +574,36 @@ let ranksList: { rank: number; entries: { aggregate: number; is_deleted: boolean
           });
       });
 
-      // Construct ranks 1 to 216, sorting multiple entries descending by aggregate
-      for (let r = 1; r <= 216; r++) {
+      const TOTAL_STUDENTS = 216;
+
+      for (let r = 1; r <= TOTAL_STUDENTS; r++) {
           const entries = submissionsMap.get(r) || [];
           entries.sort((a, b) => b.aggregate - a.aggregate);
-          ranksList.push({
-              rank: r,
-              entries: entries
-          });
+          ranksList.push({ rank: r, entries: entries });
+
+          // Logic for Graph: Ignore deleted, take lowest if duplicate
+          const validAggregates = entries
+            .filter(e => !e.is_deleted)
+            .map(e => e.aggregate);
+
+          if (validAggregates.length > 0) {
+            const lowestAgg = Math.min(...validAggregates);
+            // Percentile calculation: Rank 1 = 100%
+            const percentile = ((TOTAL_STUDENTS - (r - 1)) / TOTAL_STUDENTS) * 100;
+            graphData.push({ 
+                x: Math.round(percentile * 100) / 100, 
+                y: lowestAgg,
+                rank: r 
+            });
+          }
       }
   }
 
   return c.html(
     <Layout title="Rank to aggregate mapping" user={user}>
+      {/* Load Chart.js from CDN */}
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
       <div class="max-w-7xl mx-auto px-4 py-8 font-mono">
         <header class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -605,16 +621,86 @@ let ranksList: { rank: number; entries: { aggregate: number; is_deleted: boolean
             </div>
         ) : (
             <div class="space-y-8">
+                
+                {/* INTERACTIVE GRAPH SECTION */}
+                <div class="border border-gray-300 dark:border-neutral-700 p-4 bg-white dark:bg-neutral-900">
+                    <h3 class="text-xs font-bold uppercase mb-4 text-gray-500">Aggregate vs Percentile (Rank 1 = 100th)</h3>
+                    <div class="h-64 w-full">
+                        <canvas id="atarChart"></canvas>
+                    </div>
+                </div>
+
+                <script dangerouslySetInnerHTML={{
+                    __html: `
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const ctx = document.getElementById('atarChart').getContext('2d');
+                        const rawData = ${JSON.stringify(graphData)};
+                        
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                datasets: [{
+                                    label: 'Aggregate',
+                                    data: rawData,
+                                    borderColor: '#3b82f6',
+                                    backgroundColor: '#3b82f6',
+                                    borderWidth: 2,
+                                    pointRadius: 4,
+                                    pointHoverRadius: 6,
+                                    tension: 0.1,
+                                    showLine: true
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    x: {
+                                        type: 'linear',
+                                        title: { display: true, text: 'Percentile', font: { family: 'monospace' } },
+                                        min: 0,
+                                        max: 100,
+                                        grid: { color: 'rgba(150, 150, 150, 0.1)' }
+                                    },
+                                    y: {
+                                        title: { display: true, text: 'Aggregate', font: { family: 'monospace' } },
+                                        grid: { color: 'rgba(150, 150, 150, 0.1)' }
+                                    }
+                                },
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                const p = context.raw;
+                                                return [
+                                                    'Rank: ' + p.rank,
+                                                    'Percentile: ' + p.x + '%',
+                                                    'Aggregate: ' + p.y.toFixed(2)
+                                                ];
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    });
+                    `
+                }} />
+
+                {/* Rest of the leaderboard UI (Admin view and Table) */}
                 {user && userSubmissions.length > 0 && (
                     <div class="border border-gray-300 dark:border-neutral-700 p-6 bg-gray-50 dark:bg-neutral-900">
-                        <h3 class="font-bold mb-4 uppercase">Submissions (Admin)</h3>
+                        <h3 class="font-bold mb-4 uppercase text-sm">Your Submissions</h3>
                         <ul class="space-y-2">
                             {userSubmissions.map((sub: any) => (
-                                <li class="flex items-center gap-4 text-sm border border-gray-300 dark:border-neutral-700 p-3 bg-white dark:bg-neutral-850">
-                                    <span>Rank: {sub.rank}</span>
-                                    <span>Aggregate: {sub.aggregate}</span>
+                                <li class="flex items-center justify-between text-sm border border-gray-300 dark:border-neutral-700 p-3 bg-white dark:bg-neutral-850">
+                                    <div class="flex gap-4">
+                                        <span>Rank: <strong>{sub.rank}</strong></span>
+                                        <span>Aggregate: <strong>{sub.aggregate}</strong></span>
+                                    </div>
                                     <form action={`/atar/${sub.id}/delete`} method="post" class="m-0">
-                                        <button type="submit" class="text-red-600 hover:underline">Delete</button>
+                                        <button type="submit" class="text-red-600 hover:underline uppercase text-xs font-bold">Delete</button>
                                     </form>
                                 </li>
                             ))}
@@ -627,35 +713,42 @@ let ranksList: { rank: number; entries: { aggregate: number; is_deleted: boolean
                         <thead>
                             <tr class="bg-gray-100 dark:bg-neutral-800 border-b border-gray-300 dark:border-neutral-700">
                                 <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 w-24 text-center">RANK</th>
+                                <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 w-32 text-center">PERCENTILE</th>
                                 <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700">AGGREGATE</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {ranksList.map((entry) => (
-                                <tr class="border-b border-gray-200 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-900 last:border-0">
-                                    <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 text-center font-bold text-amber-600">
-                                        {entry.rank.toString().padStart(3, '0')}
-                                    </td>
-                                    <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 font-bold">
-                                        {entry.entries.length > 0 ? (
-                                            entry.entries.map((subEntry, idx) => {
-                                                const isLast = idx === entry.entries.length - 1;
-                                                return (
-                                                    <span class={subEntry.is_deleted ? 'text-gray-400 dark:text-neutral-600 font-normal italic' : 'text-gray-900 dark:text-white'}>
-                                                        {subEntry.aggregate.toFixed(2)}
-                                                        {subEntry.is_deleted && (
-                                                            <span class="text-xs text-gray-400 dark:text-neutral-600 ml-1 font-normal">(Deleted)</span>
-                                                        )}
-                                                        {!isLast && <span class="text-gray-900 dark:text-white font-normal mr-2">,</span>}
-                                                    </span>
-                                                );
-                                            })
-                                        ) : (
-                                            <span class="text-gray-400 dark:text-neutral-600 font-normal italic">--</span>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                            {ranksList.map((entry) => {
+                                const percentile = ((217 - entry.rank) / 216) * 100;
+                                return (
+                                    <tr class="border-b border-gray-200 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-900 last:border-0">
+                                        <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 text-center font-bold text-amber-600">
+                                            {entry.rank.toString().padStart(3, '0')}
+                                        </td>
+                                        <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 text-center text-gray-500 text-xs">
+                                            {percentile.toFixed(1)}%
+                                        </td>
+                                        <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 font-bold">
+                                            {entry.entries.length > 0 ? (
+                                                entry.entries.map((subEntry, idx) => {
+                                                    const isLast = idx === entry.entries.length - 1;
+                                                    return (
+                                                        <span class={subEntry.is_deleted ? 'text-gray-400 dark:text-neutral-600 font-normal italic' : 'text-gray-900 dark:text-white'}>
+                                                            {subEntry.aggregate.toFixed(2)}
+                                                            {subEntry.is_deleted && (
+                                                                <span class="text-xs text-gray-400 dark:text-neutral-600 ml-1 font-normal">(Deleted)</span>
+                                                            )}
+                                                            {!isLast && <span class="text-gray-900 dark:text-white font-normal mr-2">,</span>}
+                                                        </span>
+                                                    );
+                                                })
+                                            ) : (
+                                                <span class="text-gray-400 dark:text-neutral-600 font-normal italic">--</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
