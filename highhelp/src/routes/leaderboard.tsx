@@ -11,11 +11,11 @@ const LEADERBOARD_DATA = [
         displayLimit: 5,
         showPercentage: false,
         entries: [
-            { name: "?", rank: 1, percentage: '%%' },
-            { name: "?", rank: 2, percentage: '%%' },
-            { name: "?", rank: 3, percentage: '%%' },
-            { name: "?", rank: 4, percentage: '%%' },
-            { name: "?", rank: 5, percentage: '%%' },
+            { name: "Jiekai Miao", rank: 1, percentage: '%%' },
+            { name: "Aarav Mishra", rank: 2, percentage: '%%' },
+            { name: "Sharvil Pande", rank: 3, percentage: '%%' },
+            { name: "Pradyum Nuggehalli", rank: 4, percentage: '%%' },
+            { name: "Hayden Nguyen", rank: 5, percentage: '%%' },
         ]
     },
     {
@@ -121,7 +121,7 @@ const LEADERBOARD_DATA = [
         displayLimit: 1,
         showPercentage: false,
         entries: [
-            { name: "?", rank: 1, percentage: 670 },
+            { name: "(Year 10)", rank: 1, percentage: 670 },
             { name: "?", rank: 2, percentage: 98 },
             { name: "?", rank: 3, percentage: 98 },
             { name: "?", rank: 4, percentage: 98 },
@@ -143,9 +143,9 @@ const LEADERBOARD_DATA = [
     {
         subject: "Legal Studies",
         displayLimit: 1,
-        showPercentage: false,
+        showPercentage: true,
         entries: [
-            { name: "?", rank: 1, percentage: 670 },
+            { name: "Tuyvan Mai", rank: 1, percentage: 88},
             { name: "?", rank: 2, percentage: 98 },
             { name: "?", rank: 3, percentage: 98 },
             { name: "?", rank: 4, percentage: 98 },
@@ -205,7 +205,7 @@ const LEADERBOARD_DATA = [
         displayLimit: 1,
         showPercentage: false,
         entries: [
-            { name: "?", rank: 1, percentage: 670 },
+            { name: "Thomas Zheng", rank: 1, percentage: 670 },
             { name: "?", rank: 2, percentage: 98 },
             { name: "?", rank: 3, percentage: 98 },
             { name: "?", rank: 4, percentage: 98 },
@@ -265,6 +265,21 @@ const LEADERBOARD_DATA = [
 
 app.get('/leaderboard', async (c) => {
     const user = await getUser(c)
+
+    const userSubmissionsRes = await c.env.DB.prepare(
+        'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'
+    ).bind(user?.id || 0).all();
+    const userSubmissions = userSubmissionsRes.results || [];
+    
+    const hasSubmitted = userSubmissions.length > 0;
+    
+    let allSubmissions: { rank: number; aggregate: number }[] = [];
+    if (hasSubmitted || (user && user.permission_level > 1)) {
+        const { results } = await c.env.DB.prepare(
+            'SELECT rank, aggregate FROM atar_submissions WHERE is_deleted = 0 ORDER BY rank ASC'
+        ).all();
+        allSubmissions = (results || []) as { rank: number; aggregate: number }[];
+    }
 
     return c.html(
         <Layout title="Hall of Fame (Y11 Semester 1)" user={user}>
@@ -331,12 +346,8 @@ app.get('/leaderboard', async (c) => {
                         )
                     })}
                 
-                
                 </div>
-
-                
             </div>
-            
                 
         </Layout>
     )

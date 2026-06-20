@@ -9,6 +9,14 @@ const app = new Hono<{ Bindings: Bindings }>()
 app.get('/atar', async (c) => {
   const user = await getUser(c)
 
+  // Query submissions for the logged-in user
+  const userSubmissionsRes = await c.env.DB.prepare(
+      'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'
+  ).bind(user?.id || 0).all();
+  const userSubmissions = userSubmissionsRes.results || [];
+  
+  const hasSubmitted = userSubmissions.length > 0;
+
   return c.html(
     <Layout title="ATAR (Beta)" user={user}>
       <div class="max-w-7xl mx-auto px-4 py-8 font-mono">
@@ -18,7 +26,7 @@ app.get('/atar', async (c) => {
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Left Column: Subject Selection and Inputs */}
+          {/* Left Column: Subject Selection, Inputs, and Submission Form */}
           <div class="lg:col-span-2 space-y-6">
             <div class="flex flex-col sm:flex-row gap-3">
               <select id="subject-dropdown" class="flex-grow border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none">
@@ -48,6 +56,47 @@ app.get('/atar', async (c) => {
                 </tbody>
               </table>
             </div>
+
+            {/* Submission Form Section - Moved below the first table */}
+            {user && (
+                <div class="p-6 border border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-900 mt-6">
+                    <h3 class="font-bold mb-4 uppercase text-sm">Submit</h3>
+                    {hasSubmitted  && (
+                        <p class="text-xs text-red-600 mb-4">Submitting again will overwrite your previous entry.</p>
+                    )}
+                    <form action="/atar/submit" method="post" id="atar-submit-form" class="flex flex-col sm:flex-row gap-4 items-end">
+                        <div class="w-full sm:w-64">
+                            <label class="block text-xs uppercase font-bold text-gray-500 mb-1">Your Rank</label>
+                            <input type="number" name="rank" required min="1" max="216" class="w-full border border-gray-300 dark:border-neutral-700 bg-white dark:bg-black px-3 py-2 text-sm outline-none" placeholder="?/216 e.g. 42" />
+                        </div>
+                        <input type="hidden" name="aggregate" id="hidden-aggregate" />
+                        <input type="hidden" name="calculators_data" id="hidden-calculators-data" />
+                        <button type="submit" class="bg-black text-white dark:bg-white dark:text-black font-bold uppercase px-6 py-2 text-sm">
+                            Submit
+                        </button>
+                    </form>
+                    <div id="submit-error" class="hidden mt-2 text-sm text-red-600"></div>
+                    
+                    <script dangerouslySetInnerHTML={{__html: `
+                        const submitForm = document.getElementById('atar-submit-form');
+                        if (submitForm) {
+                            submitForm.addEventListener('submit', function(e) {
+                                const agg = localStorage.getItem('atar_last_aggregate');
+                                const data = localStorage.getItem('atar_last_results');
+                                if (!agg || !data || agg === '--.--') {
+                                    e.preventDefault();
+                                    const err = document.getElementById('submit-error');
+                                    err.textContent = 'You must calculate your ATAR on the ATAR Calculator page first before submitting.';
+                                    err.classList.remove('hidden');
+                                    return;
+                                }
+                                document.getElementById('hidden-aggregate').value = agg;
+                                document.getElementById('hidden-calculators-data').value = data;
+                            });
+                        }
+                    `}} />
+                </div>
+            )}
           </div>
 
           {/* Right Column: Results */}
@@ -61,8 +110,6 @@ app.get('/atar', async (c) => {
                 <select id="target-units-select" class="w-full border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none">
                   <option value="10">10 Units</option>
                   <option value="12" selected>12 Units (moderated, y11)</option>
-                  
-                  
                 </select>
               </div>
 
@@ -86,7 +133,7 @@ app.get('/atar', async (c) => {
               </table>
             </div>
             
-            {/* NEW: Historical Rank Section */}
+            {/* Historical Rank Section */}
             <div class="border border-gray-300 dark:border-neutral-700 p-6 flex flex-col items-center justify-center">
               <h2 class="font-bold text-sm uppercase mb-4 bg-black text-white dark:bg-white dark:text-black px-2 py-1 self-start w-full text-center">A not accurate at all number</h2>
               
@@ -104,6 +151,21 @@ app.get('/atar', async (c) => {
             </div>
 
           </div>
+        </div>
+
+        {/* ATAR Leaderboard Page Access */}
+        <div class="mt-16 border-t border-gray-300 dark:border-neutral-700 pt-12">
+            <h2 class="text-2xl font-mono font-bold uppercase tracking-tighter mb-4">ATAR Aggregate Leaderboard</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 font-mono leading-relaxed">
+                View the compiled list of aggregate ranks. Note: You must submit your ATAR aggregate to view this list.
+            </p>
+            <a href="/atar/leaderboard" class="inline-block bg-black text-white dark:bg-white dark:text-black font-bold uppercase px-6 py-3 text-sm tracking-wider hover:opacity-80 transition duration-150">
+                View Rank Sheet →
+            </a>
+        </div>
+
+        <div class="text-xs text-gray-500 space-y-2 mt-8">
+          <p class="pt-2"><a href="/atar/how-it-works" class="text-blue-600 hover:underline">How does this work?</a></p>
         </div>
       </div>
 
@@ -302,6 +364,8 @@ app.get('/atar', async (c) => {
             document.getElementById('final-atar').textContent = '--.--';
             document.getElementById('estimated-rank').textContent = '--';
             document.getElementById('estimated-rank-range').textContent = '--';
+            localStorage.setItem('atar_last_aggregate', totalAggregate.toString());
+            localStorage.setItem('atar_last_results', JSON.stringify(results));
             return results;
           }
 
@@ -373,6 +437,8 @@ app.get('/atar', async (c) => {
             document.getElementById('estimated-rank-range').textContent = "196 - 202";
           }
 
+          localStorage.setItem('atar_last_aggregate', totalAggregate.toString());
+          localStorage.setItem('atar_last_results', JSON.stringify(results));
           return results;
         }
 
@@ -470,12 +536,166 @@ app.get('/atar', async (c) => {
         }
         `
       }} />
+    </Layout>
+  )
+})
+
+// Leaderboard route page presenting all ranks 1 to 216
+app.get('/atar/leaderboard', async (c) => {
+  const user = await getUser(c)
+
+  // Query submissions for the logged-in user
+  const userSubmissionsRes = await c.env.DB.prepare(
+      'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'
+  ).bind(user?.id || 0).all();
+  const userSubmissions = userSubmissionsRes.results || [];
+  
+  const hasSubmitted = userSubmissions.length > 0;
+  const isAuthorized = hasSubmitted || (user);
+
+  let ranksList: { rank: number; aggregate: number | null }[] = [];
+  
+  if (isAuthorized) {
+      const { results } = await c.env.DB.prepare(
+          'SELECT rank, aggregate FROM atar_submissions WHERE is_deleted = 0 ORDER BY rank ASC'
+      ).all();
       
-      <div class="text-xs text-gray-500 space-y-2">
-        <p class="pt-2"><a href="/atar/how-it-works" class="text-blue-600 hover:underline">How does this work?</a></p>
+      const submissionsMap = new Map<number, number>();
+      (results || []).forEach((row: any) => {
+          submissionsMap.set(row.rank, row.aggregate);
+      });
+
+      // Construct ranks 1 to 216 even if they are empty
+      for (let r = 1; r <= 216; r++) {
+          ranksList.push({
+              rank: r,
+              aggregate: submissionsMap.has(r) ? submissionsMap.get(r)! : null
+          });
+      }
+  }
+
+  return c.html(
+    <Layout title="ATAR Leaderboard" user={user}>
+      <div class="max-w-7xl mx-auto px-4 py-8 font-mono">
+        <header class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold uppercase tracking-tighter mb-2">ATAR Aggregate Leaderboard</h1>
+                <p class="text-xs text-gray-500 uppercase"><a href="/atar" class="text-blue-600 hover:underline">← Back to Calculator</a></p>
+            </div>
+        </header>
+
+        {!isAuthorized ? (
+            <div class="text-center py-12 border border-dashed border-gray-300 dark:border-neutral-700">
+                <p class="text-gray-500 italic mb-4">You must submit your ATAR aggregate to view the list.</p>
+                <a href="/atar" class="inline-block bg-black text-white dark:bg-white dark:text-black font-bold uppercase px-6 py-2 text-sm">
+                    Go to Calculator & Submit
+                </a>
+            </div>
+        ) : (
+            <div class="space-y-8">
+                {user && userSubmissions.length > 0 && (
+                    <div class="border border-gray-300 dark:border-neutral-700 p-6 bg-gray-50 dark:bg-neutral-900">
+                        <h3 class="font-bold mb-4 uppercase">Submissions (Admin)</h3>
+                        <ul class="space-y-2">
+                            {userSubmissions.map((sub: any) => (
+                                <li class="flex items-center gap-4 text-sm border border-gray-300 dark:border-neutral-700 p-3 bg-white dark:bg-neutral-850">
+                                    <span>Rank: {sub.rank}</span>
+                                    <span>Aggregate: {sub.aggregate}</span>
+                                    <form action={`/atar/${sub.id}/delete`} method="post" class="m-0">
+                                        <button type="submit" class="text-red-600 hover:underline">Delete</button>
+                                    </form>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                <div class="overflow-x-auto border border-gray-300 dark:border-neutral-700">
+                    <table class="w-full text-left border-collapse font-mono text-sm">
+                        <thead>
+                            <tr class="bg-gray-100 dark:bg-neutral-800 border-b border-gray-300 dark:border-neutral-700">
+                                <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 w-24 text-center">RANK</th>
+                                <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700">AGGREGATE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {ranksList.map((entry) => (
+                                <tr class="border-b border-gray-200 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-900 last:border-0">
+                                    <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 text-center font-bold text-amber-600">
+                                        {entry.rank.toString().padStart(3, '0')}
+                                    </td>
+                                    <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 font-bold">
+                                        {entry.aggregate !== null ? (
+                                            entry.aggregate.toFixed(2)
+                                        ) : (
+                                            <span class="text-gray-400 dark:text-neutral-600 font-normal italic">--</span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        )}
       </div>
     </Layout>
   )
 })
+
+app.post('/atar/submit', async (c) => {
+    const user = await getUser(c);
+    
+
+    const body = await c.req.parseBody();
+    const rank = parseInt(body.rank as string, 10);
+    const aggregate = parseFloat(body.aggregate as string);
+    const calculators_data = body.calculators_data as string;
+
+    if (isNaN(rank) || isNaN(aggregate) || !calculators_data) {
+        return c.text('Invalid data', 400);
+    }
+
+    const { results: existing } = await c.env.DB.prepare(
+        'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0'
+    ).bind(user.id).all();
+
+    if (user && existing && existing.length > 0) {
+        const oldId = existing[0].id;
+        await c.env.DB.prepare('UPDATE atar_submissions SET is_deleted = 1 WHERE id = ?').bind(oldId).run();
+        
+        const newIdRes = await c.env.DB.prepare(
+            'INSERT INTO atar_submissions (user_id, rank, aggregate, calculators_data) VALUES (?, ?, ?, ?) RETURNING id'
+        ).bind(user.id, rank, aggregate, calculators_data).first('id');
+        
+        await c.env.DB.prepare(
+            'INSERT INTO atar_submission_logs (user_id, submission_id, action, details) VALUES (?, ?, ?, ?)'
+        ).bind(user.id, newIdRes, 'OVERRIDE', JSON.stringify({ oldId })).run();
+    } else {
+        const newIdRes = await c.env.DB.prepare(
+            'INSERT INTO atar_submissions (user_id, rank, aggregate, calculators_data) VALUES (?, ?, ?, ?) RETURNING id'
+        ).bind(user.id, rank, aggregate, calculators_data).first('id');
+        
+        await c.env.DB.prepare(
+            'INSERT INTO atar_submission_logs (user_id, submission_id, action, details) VALUES (?, ?, ?, ?)'
+        ).bind(user.id, newIdRes, 'CREATE', '{}').run();
+    }
+
+    return c.redirect('/atar/leaderboard');
+});
+
+app.post('/atar/:id/delete', async (c) => {
+    const user = await getUser(c);
+    
+
+    const id = c.req.param('id');
+    await c.env.DB.prepare('UPDATE atar_submissions SET is_deleted = 1 WHERE id = ?').bind(id).run();
+    
+    await c.env.DB.prepare(
+        'INSERT INTO atar_submission_logs (user_id, submission_id, action, details) VALUES (?, ?, ?, ?)'
+    ).bind(user.id, id, 'DELETE', '{}').run();
+
+    return c.redirect('/atar/leaderboard');
+});
 
 export default app
