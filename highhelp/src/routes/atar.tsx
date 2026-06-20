@@ -14,7 +14,7 @@ app.get('/atar', async (c) => {
       'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'
   ).bind(user?.id || 0).all();
   const userSubmissions = userSubmissionsRes.results || [];
-  
+  const canSubmitMultiple = (user?.permission_level ?? 0) >= 2;
   const hasSubmitted = userSubmissions.length > 0;
 
   return c.html(
@@ -61,7 +61,7 @@ app.get('/atar', async (c) => {
             {user && (
                 <div class="p-6 border border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-900 mt-6">
                     <h3 class="font-bold mb-4 uppercase text-sm">Submit</h3>
-                    {hasSubmitted  && (
+                    {hasSubmitted && !canSubmitMultiple && (
                         <p class="text-xs text-red-600 mb-4">Submitting again will overwrite your previous entry.</p>
                     )}
                     <form action="/atar/submit" method="post" id="atar-submit-form" class="flex flex-col sm:flex-row gap-4 items-end">
@@ -211,7 +211,7 @@ app.get('/atar', async (c) => {
           { atar: 80.00, agg: 312.76 },
           { atar: 75.00, agg: 286.86 },
           { atar: 70.00, agg: 261.54 },
-          { atar: 65.00, agg: 236.72 },
+          { atar: 65.00, font: 236.72 },
           { atar: 60.00, agg: 212.62 },
           { atar: 55.00, agg: 189.06 },
           { atar: 50.00, agg: 165.24 },
@@ -551,35 +551,47 @@ app.get('/atar/leaderboard', async (c) => {
   const userSubmissions = userSubmissionsRes.results || [];
   
   const hasSubmitted = userSubmissions.length > 0;
+  // Check if user has permission level of 2 or higher
+  
   const isAuthorized = hasSubmitted || (user);
 
-  let ranksList: { rank: number; aggregate: number | null }[] = [];
+let ranksList: { rank: number; entries: { aggregate: number; is_deleted: boolean }[] }[] = [];
   
   if (isAuthorized) {
+      // Query both active and deleted submissions
       const { results } = await c.env.DB.prepare(
-          'SELECT rank, aggregate FROM atar_submissions WHERE is_deleted = 0 ORDER BY rank ASC'
+          'SELECT rank, aggregate, is_deleted FROM atar_submissions ORDER BY rank ASC'
       ).all();
       
-      const submissionsMap = new Map<number, number>();
+      const submissionsMap = new Map<number, { aggregate: number; is_deleted: boolean }[]>();
       (results || []).forEach((row: any) => {
-          submissionsMap.set(row.rank, row.aggregate);
+          const r = row.rank;
+          if (!submissionsMap.has(r)) {
+              submissionsMap.set(r, []);
+          }
+          submissionsMap.get(r)!.push({
+              aggregate: row.aggregate,
+              is_deleted: row.is_deleted === 1 || row.is_deleted === true
+          });
       });
 
-      // Construct ranks 1 to 216 even if they are empty
+      // Construct ranks 1 to 216, sorting multiple entries descending by aggregate
       for (let r = 1; r <= 216; r++) {
+          const entries = submissionsMap.get(r) || [];
+          entries.sort((a, b) => b.aggregate - a.aggregate);
           ranksList.push({
               rank: r,
-              aggregate: submissionsMap.has(r) ? submissionsMap.get(r)! : null
+              entries: entries
           });
       }
   }
 
   return c.html(
-    <Layout title="ATAR Leaderboard" user={user}>
+    <Layout title="Rank to aggregate mapping" user={user}>
       <div class="max-w-7xl mx-auto px-4 py-8 font-mono">
         <header class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-                <h1 class="text-3xl font-bold uppercase tracking-tighter mb-2">ATAR Aggregate Leaderboard</h1>
+                <h1 class="text-3xl font-bold uppercase tracking-tighter mb-2">ATAR Aggregate Mapping</h1>
                 <p class="text-xs text-gray-500 uppercase"><a href="/atar" class="text-blue-600 hover:underline">← Back to Calculator</a></p>
             </div>
         </header>
@@ -625,8 +637,19 @@ app.get('/atar/leaderboard', async (c) => {
                                         {entry.rank.toString().padStart(3, '0')}
                                     </td>
                                     <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 font-bold">
-                                        {entry.aggregate !== null ? (
-                                            entry.aggregate.toFixed(2)
+                                        {entry.entries.length > 0 ? (
+                                            entry.entries.map((subEntry, idx) => {
+                                                const isLast = idx === entry.entries.length - 1;
+                                                return (
+                                                    <span class={subEntry.is_deleted ? 'text-gray-400 dark:text-neutral-600 font-normal italic' : 'text-gray-900 dark:text-white'}>
+                                                        {subEntry.aggregate.toFixed(2)}
+                                                        {subEntry.is_deleted && (
+                                                            <span class="text-xs text-gray-400 dark:text-neutral-600 ml-1 font-normal">(Deleted)</span>
+                                                        )}
+                                                        {!isLast && <span class="text-gray-900 dark:text-white font-normal mr-2">,</span>}
+                                                    </span>
+                                                );
+                                            })
                                         ) : (
                                             <span class="text-gray-400 dark:text-neutral-600 font-normal italic">--</span>
                                         )}
@@ -646,7 +669,6 @@ app.get('/atar/leaderboard', async (c) => {
 app.post('/atar/submit', async (c) => {
     const user = await getUser(c);
     
-
     const body = await c.req.parseBody();
     const rank = parseInt(body.rank as string, 10);
     const aggregate = parseFloat(body.aggregate as string);
@@ -656,29 +678,36 @@ app.post('/atar/submit', async (c) => {
         return c.text('Invalid data', 400);
     }
 
+    // Safely bind user.id to handle edge cases if user is not fully populated
+    const userId = user?.id || 0;
+
     const { results: existing } = await c.env.DB.prepare(
         'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0'
-    ).bind(user.id).all();
+    ).bind(userId).all();
 
-    if (user && existing && existing.length > 0) {
+    // Determine if user can submit multiple entries
+    const canSubmitMultiple = (user?.permission_level ?? 0) >= 2;
+
+    // Only overwrite if the user already has submissions AND they do not have the permission to submit multiple
+    if (user && existing && existing.length > 0 && !canSubmitMultiple) {
         const oldId = existing[0].id;
         await c.env.DB.prepare('UPDATE atar_submissions SET is_deleted = 1 WHERE id = ?').bind(oldId).run();
         
         const newIdRes = await c.env.DB.prepare(
             'INSERT INTO atar_submissions (user_id, rank, aggregate, calculators_data) VALUES (?, ?, ?, ?) RETURNING id'
-        ).bind(user.id, rank, aggregate, calculators_data).first('id');
+        ).bind(userId, rank, aggregate, calculators_data).first('id');
         
         await c.env.DB.prepare(
             'INSERT INTO atar_submission_logs (user_id, submission_id, action, details) VALUES (?, ?, ?, ?)'
-        ).bind(user.id, newIdRes, 'OVERRIDE', JSON.stringify({ oldId })).run();
+        ).bind(userId, newIdRes, 'OVERRIDE', JSON.stringify({ oldId })).run();
     } else {
         const newIdRes = await c.env.DB.prepare(
             'INSERT INTO atar_submissions (user_id, rank, aggregate, calculators_data) VALUES (?, ?, ?, ?) RETURNING id'
-        ).bind(user.id, rank, aggregate, calculators_data).first('id');
+        ).bind(userId, rank, aggregate, calculators_data).first('id');
         
         await c.env.DB.prepare(
             'INSERT INTO atar_submission_logs (user_id, submission_id, action, details) VALUES (?, ?, ?, ?)'
-        ).bind(user.id, newIdRes, 'CREATE', '{}').run();
+        ).bind(userId, newIdRes, 'CREATE', '{}').run();
     }
 
     return c.redirect('/atar/leaderboard');
