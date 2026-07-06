@@ -59,7 +59,7 @@ app.get('/', async (c) => {
         `).all()
     ]);
 
-    const HALF_YEARLY_DATE = "2026-06-23T09:00:00";
+    const HALF_YEARLY_DATE = "2026-08-11T08:00:00";
 
     return c.html(
         <Layout title="Home" user={user}>
@@ -76,7 +76,7 @@ app.get('/', async (c) => {
                             --:--:--:--
                         </div>
                         <h2 class="text-xl md:text-1xl font-bold text-secondary tracking-widest flex items-center justify-center dark:text-white gap-2">
-                            Until English Task 2
+                            Until Physics Depth Study
                         </h2>
                     </div>
 
@@ -277,7 +277,7 @@ app.get('/', async (c) => {
                             // Half Yearly Logic
                             const distanceHY = halfYearlyTarget - now;
                             if (distanceHY < 0) {
-                                document.getElementById("half-yearly-countdown").innerText = "EXPIRED";
+                                document.getElementById("half-yearly-countdown").innerText = "/";
                             } else {
                                 const days = Math.floor(distanceHY / (1000 * 60 * 60 * 24));
                                 const hours = Math.floor((distanceHY % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));

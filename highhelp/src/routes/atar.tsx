@@ -9,6 +9,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 app.get('/atar', async (c) => {
   const user = await getUser(c)
 
+  if (!user) return c.redirect('/login')
   // Query submissions for the logged-in user
   const userSubmissionsRes = await c.env.DB.prepare(
       'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'
@@ -28,6 +29,7 @@ app.get('/atar', async (c) => {
           
           {/* Left Column: Subject Selection, Inputs, and Submission Form */}
           <div class="lg:col-span-2 space-y-6">
+          
             <div class="flex flex-col sm:flex-row gap-3">
               <select id="subject-dropdown" class="flex-grow border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none">
                 <option value="" disabled selected>CHOOSE A SUBJECT...</option>
@@ -36,7 +38,7 @@ app.get('/atar', async (c) => {
                 ADD SUBJECT
               </button>
             </div>
-
+            
             <div class="overflow-x-auto border border-gray-300 dark:border-neutral-700 mt-6">
               <table class="w-full text-left border-collapse text-sm">
                 <thead>
@@ -56,7 +58,7 @@ app.get('/atar', async (c) => {
                 </tbody>
               </table>
             </div>
-
+            <p>Note: <u>Pecentile</u> refers to Your <u>Rank</u> in that subject. <br></br> Enter it as a fraction, e.g. 30/168 for Mathematics Advanced and Mathematics Extension. Select 12 Units.</p>
             {/* Submission Form Section - Moved below the first table */}
             {user && (
                 <div class="p-6 border border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-900 mt-6">
@@ -542,9 +544,9 @@ app.get('/atar', async (c) => {
 
 // Leaderboard route page presenting all ranks 1 to 216
 // ... (keep previous imports and app setup)
-
 app.get('/atar/leaderboard', async (c) => {
   const user = await getUser(c)
+  if (!user) return c.redirect('/login')
 
   const userSubmissionsRes = await c.env.DB.prepare(
       'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'
@@ -552,10 +554,10 @@ app.get('/atar/leaderboard', async (c) => {
   const userSubmissions = userSubmissionsRes.results || [];
   
   const hasSubmitted = userSubmissions.length > 0;
-  const isAuthorized = hasSubmitted || (user);
+  const isAuthorized = hasSubmitted && (user);
 
   let ranksList: { rank: number; entries: { aggregate: number; is_deleted: boolean }[] }[] = [];
-  let graphData: { x: number, y: number, rank: number }[] = [];
+  let graphPoints: { x: number, y: number, rank: number }[] = [];
   
   if (isAuthorized) {
       const { results } = await c.env.DB.prepare(
@@ -581,16 +583,14 @@ app.get('/atar/leaderboard', async (c) => {
           entries.sort((a, b) => b.aggregate - a.aggregate);
           ranksList.push({ rank: r, entries: entries });
 
-          // Logic for Graph: Ignore deleted, take lowest if duplicate
           const validAggregates = entries
             .filter(e => !e.is_deleted)
             .map(e => e.aggregate);
 
           if (validAggregates.length > 0) {
             const lowestAgg = Math.min(...validAggregates);
-            // Percentile calculation: Rank 1 = 100%
             const percentile = ((TOTAL_STUDENTS - (r - 1)) / TOTAL_STUDENTS) * 100;
-            graphData.push({ 
+            graphPoints.push({ 
                 x: Math.round(percentile * 100) / 100, 
                 y: lowestAgg,
                 rank: r 
@@ -601,14 +601,13 @@ app.get('/atar/leaderboard', async (c) => {
 
   return c.html(
     <Layout title="Rank to aggregate mapping" user={user}>
-      {/* Load Chart.js from CDN */}
       <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
       <div class="max-w-7xl mx-auto px-4 py-8 font-mono">
         <header class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
                 <h1 class="text-3xl font-bold uppercase tracking-tighter mb-2">ATAR Aggregate Mapping</h1>
-                <p class="text-xs text-gray-500 uppercase"><a href="/atar" class="text-blue-600 hover:underline">← Back to Calculator</a></p>
+                
             </div>
         </header>
 
@@ -622,34 +621,157 @@ app.get('/atar/leaderboard', async (c) => {
         ) : (
             <div class="space-y-8">
                 
-                {/* INTERACTIVE GRAPH SECTION */}
-                <div class="border border-gray-300 dark:border-neutral-700 p-4 bg-white dark:bg-neutral-900">
-                    <h3 class="text-xs font-bold uppercase mb-4 text-gray-500">Aggregate vs Percentile (Rank 1 = 100th)</h3>
-                    <div class="h-64 w-full">
+                {/* GRAPH SECTION */}
+                <div class="border border-gray-300 dark:border-neutral-700 p-6 bg-white dark:bg-neutral-900">
+                    <h3 class="text-xs font-bold uppercase mb-4 text-gray-500 tracking-widest">Aggregate Trend (Rank 1 @ 100%)</h3>
+                    <div class="h-80 w-full">
                         <canvas id="atarChart"></canvas>
                     </div>
+                    
                 </div>
 
                 <script dangerouslySetInnerHTML={{
                     __html: `
                     document.addEventListener('DOMContentLoaded', function() {
                         const ctx = document.getElementById('atarChart').getContext('2d');
-                        const rawData = ${JSON.stringify(graphData)};
+                        const dataPoints = ${JSON.stringify(graphPoints)};
                         
+                        // Linear Regression (y = mx + c) fallback
+                        function solveLinear(points) {
+                            const n = points.length;
+                            if (n < 2) return null;
+                            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+                            for (let p of points) {
+                                sumX += p.x;
+                                sumY += p.y;
+                                sumXY += p.x * p.y;
+                                sumX2 += p.x * p.x;
+                            }
+                            const denom = n * sumX2 - sumX * sumX;
+                            if (Math.abs(denom) < 1e-8) return null;
+                            const m = (n * sumXY - sumX * sumY) / denom;
+                            const c = (sumY - m * sumX) / n;
+                            return { m, c };
+                        }
+
+                        // Quadratic Regression (y = ax^2 + bx + c) using Gaussian elimination
+                        function solveQuadratic(points) {
+                            let sumX = 0, sumX2 = 0, sumX3 = 0, sumX4 = 0;
+                            let sumY = 0, sumXY = 0, sumX2Y = 0;
+                            const n = points.length;
+
+                            for (let p of points) {
+                                const x = p.x;
+                                const y = p.y;
+                                sumX += x;
+                                sumX2 += x * x;
+                                sumX3 += x * x * x;
+                                sumX4 += x * x * x * x;
+                                sumY += y;
+                                sumXY += x * y;
+                                sumX2Y += x * x * y;
+                            }
+
+                            const A = [
+                                [sumX4, sumX3, sumX2, sumX2Y],
+                                [sumX3, sumX2, sumX,  sumXY],
+                                [sumX2, sumX,  n,     sumY]
+                            ];
+
+                            // Gaussian elimination on the 3x4 system matrix
+                            for (let i = 0; i < 3; i++) {
+                                let maxRow = i;
+                                for (let k = i + 1; k < 3; k++) {
+                                    if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) {
+                                        maxRow = k;
+                                    }
+                                }
+                                const temp = A[i];
+                                A[i] = A[maxRow];
+                                A[maxRow] = temp;
+
+                                if (Math.abs(A[i][i]) < 1e-8) return null;
+
+                                for (let k = i + 1; k < 3; k++) {
+                                    const factor = A[k][i] / A[i][i];
+                                    for (let j = i; j < 4; j++) {
+                                        A[k][j] -= factor * A[i][j];
+                                    }
+                                }
+                            }
+
+                            const c = A[2][3] / A[2][2];
+                            const b = (A[1][3] - A[1][2] * c) / A[1][1];
+                            const a = (A[0][3] - A[0][2] * c - A[0][1] * b) / A[0][0];
+
+                            return { a, b, c };
+                        }
+
+                        // Generates evenly-spaced points along the calculated regression line
+                        function getBestFitPoints(points) {
+                            if (points.length === 0) return [];
+                            
+                            const xs = points.map(p => p.x);
+                            const minX = Math.min(...xs);
+                            const maxX = Math.max(...xs);
+                            
+                            let coefs = null;
+                            if (points.length >= 3) {
+                                coefs = solveQuadratic(points);
+                            }
+                            
+                            const fitPoints = [];
+                            const steps = 100; // Resolution of the curve line
+                            
+                            if (coefs) {
+                                for (let i = 0; i <= steps; i++) {
+                                    const x = minX + (maxX - minX) * (i / steps);
+                                    const y = coefs.a * x * x + coefs.b * x + coefs.c;
+                                    fitPoints.push({ x, y });
+                                }
+                            } else {
+                                // Fallback to a linear fit if not enough points for quadratic
+                                const linCoefs = solveLinear(points);
+                                if (linCoefs) {
+                                    for (let i = 0; i <= steps; i++) {
+                                        const x = minX + (maxX - minX) * (i / steps);
+                                        const y = linCoefs.m * x + linCoefs.c;
+                                        fitPoints.push({ x, y });
+                                    }
+                                } else {
+                                    // Fallback to original points if it is too small to fit
+                                    return points.slice().sort((a,b) => a.x - b.x);
+                                }
+                            }
+                            return fitPoints;
+                        }
+
+                        const sortedPoints = dataPoints.sort((a,b) => a.x - b.x);
+                        const bestFitPoints = getBestFitPoints(sortedPoints);
+
                         new Chart(ctx, {
-                            type: 'line',
                             data: {
-                                datasets: [{
-                                    label: 'Aggregate',
-                                    data: rawData,
-                                    borderColor: '#3b82f6',
-                                    backgroundColor: '#3b82f6',
-                                    borderWidth: 2,
-                                    pointRadius: 4,
-                                    pointHoverRadius: 6,
-                                    tension: 0.1,
-                                    showLine: true
-                                }]
+                                datasets: [
+                                    {
+                                        type: 'line',
+                                        label: 'Curve of Best Fit',
+                                        data: bestFitPoints, // Use the smooth mathematically generated trendline
+                                        borderColor: '#3b82f6',
+                                        borderWidth: 3,
+                                        pointRadius: 0,
+                                        tension: 0.1, // Set to low tension as the points are already perfectly spaced
+                                        fill: false,
+                                        order: 1
+                                    },
+                                    {
+                                        type: 'scatter',
+                                        label: 'Raw Submissions',
+                                        data: sortedPoints,
+                                        backgroundColor: '#ef4444',
+                                        pointRadius: 4,
+                                        order: 2
+                                    }
+                                ]
                             },
                             options: {
                                 responsive: true,
@@ -657,26 +779,34 @@ app.get('/atar/leaderboard', async (c) => {
                                 scales: {
                                     x: {
                                         type: 'linear',
-                                        title: { display: true, text: 'Percentile', font: { family: 'monospace' } },
+                                        title: { display: true, text: 'Percentile (100 = Rank 1)', font: { family: 'monospace', size: 10 } },
                                         min: 0,
                                         max: 100,
-                                        grid: { color: 'rgba(150, 150, 150, 0.1)' }
+                                        grid: { color: 'rgba(150, 150, 150, 0.05)' }
                                     },
                                     y: {
-                                        title: { display: true, text: 'Aggregate', font: { family: 'monospace' } },
-                                        grid: { color: 'rgba(150, 150, 150, 0.1)' }
+                                        min: 250,
+                                        max: 600,
+                                        title: { display: true, text: 'Aggregate', font: { family: 'monospace', size: 10 } },
+                                        grid: { color: 'rgba(150, 150, 150, 0.05)' }
                                     }
                                 },
                                 plugins: {
                                     legend: { display: false },
                                     tooltip: {
+                                        mode: 'nearest',
+                                        intersect: false,
+                                        filter: function(tooltipItem) {
+                                            // Only show tooltips for the "Raw Submissions" scatter dataset (index 1)
+                                            return tooltipItem.datasetIndex === 1;
+                                        },
                                         callbacks: {
                                             label: function(context) {
                                                 const p = context.raw;
                                                 return [
-                                                    'Rank: ' + p.rank,
-                                                    'Percentile: ' + p.x + '%',
-                                                    'Aggregate: ' + p.y.toFixed(2)
+                                                    ' Rank: ' + p.rank,
+                                                    ' Percentile: ' + p.x + '%',
+                                                    ' Aggregate: ' + p.y.toFixed(2)
                                                 ];
                                             }
                                         }
@@ -688,33 +818,14 @@ app.get('/atar/leaderboard', async (c) => {
                     `
                 }} />
 
-                {/* Rest of the leaderboard UI (Admin view and Table) */}
-                {user && userSubmissions.length > 0 && (
-                    <div class="border border-gray-300 dark:border-neutral-700 p-6 bg-gray-50 dark:bg-neutral-900">
-                        <h3 class="font-bold mb-4 uppercase text-sm">Your Submissions</h3>
-                        <ul class="space-y-2">
-                            {userSubmissions.map((sub: any) => (
-                                <li class="flex items-center justify-between text-sm border border-gray-300 dark:border-neutral-700 p-3 bg-white dark:bg-neutral-850">
-                                    <div class="flex gap-4">
-                                        <span>Rank: <strong>{sub.rank}</strong></span>
-                                        <span>Aggregate: <strong>{sub.aggregate}</strong></span>
-                                    </div>
-                                    <form action={`/atar/${sub.id}/delete`} method="post" class="m-0">
-                                        <button type="submit" class="text-red-600 hover:underline uppercase text-xs font-bold">Delete</button>
-                                    </form>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-
+                {/* Leaderboard Table */}
                 <div class="overflow-x-auto border border-gray-300 dark:border-neutral-700">
                     <table class="w-full text-left border-collapse font-mono text-sm">
                         <thead>
                             <tr class="bg-gray-100 dark:bg-neutral-800 border-b border-gray-300 dark:border-neutral-700">
                                 <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 w-24 text-center">RANK</th>
                                 <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 w-32 text-center">PERCENTILE</th>
-                                <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700">AGGREGATE</th>
+                                <th class="px-3 py-2">AGGREGATE</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -728,22 +839,20 @@ app.get('/atar/leaderboard', async (c) => {
                                         <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 text-center text-gray-500 text-xs">
                                             {percentile.toFixed(1)}%
                                         </td>
-                                        <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 font-bold">
+                                        <td class="px-3 py-2 font-bold">
                                             {entry.entries.length > 0 ? (
                                                 entry.entries.map((subEntry, idx) => {
                                                     const isLast = idx === entry.entries.length - 1;
                                                     return (
                                                         <span class={subEntry.is_deleted ? 'text-gray-400 dark:text-neutral-600 font-normal italic' : 'text-gray-900 dark:text-white'}>
                                                             {subEntry.aggregate.toFixed(2)}
-                                                            {subEntry.is_deleted && (
-                                                                <span class="text-xs text-gray-400 dark:text-neutral-600 ml-1 font-normal">(Deleted)</span>
-                                                            )}
-                                                            {!isLast && <span class="text-gray-900 dark:text-white font-normal mr-2">,</span>}
+                                                            {subEntry.is_deleted && <span class="text-[10px] ml-1">(Del)</span>}
+                                                            {!isLast && <span class="mx-2 font-normal">,</span>}
                                                         </span>
                                                     );
                                                 })
                                             ) : (
-                                                <span class="text-gray-400 dark:text-neutral-600 font-normal italic">--</span>
+                                                <span class="text-gray-300 dark:text-neutral-700">--</span>
                                             )}
                                         </td>
                                     </tr>
@@ -758,7 +867,6 @@ app.get('/atar/leaderboard', async (c) => {
     </Layout>
   )
 })
-
 app.post('/atar/submit', async (c) => {
     const user = await getUser(c);
     
