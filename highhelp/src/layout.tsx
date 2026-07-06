@@ -470,6 +470,7 @@ ${props.latex ? html`
 
                 // timetable sync *important
                 (function() {
+                    if (!window.location.pathname.startsWith('/timetable')) return;
                     const raw = localStorage.getItem('studentData');
                     if (!raw) return;
                     try {

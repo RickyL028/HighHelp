@@ -3,6 +3,9 @@ import { Child } from 'hono/jsx'
 export const TimetableLayout = ({ children }: { children: Child }) => (
     <div class="max-w-4xl mx-auto pt-0 pb-6 px-4" id="app-container">
         <div id="daily-progress-bar" class="fixed left-0 top-0 h-full w-1.5 bg-gray-200 dark:bg-neutral-800 z-50 hidden transition-all duration-500 ease-in-out origin-top"></div>
+        <div id="loading-bar" class="fixed top-0 left-0 w-full h-[3px] z-[60] hidden overflow-hidden opacity-0 transition-opacity duration-200 ease-in-out">
+            <div id="loading-bar-inner" class="h-full w-2/5 bg-red-500 rounded-full animate-loading-bar"></div>
+        </div>
         <div id="loader" class="text-center py-12">
             <p class="text-gray-500 dark:text-neutral-400">Loading timetable...</p>
         </div>

@@ -18,7 +18,7 @@ export const TimetableDay = html`
         
         document.getElementById('date-display').innerHTML = \`
             <div class="relative cursor-pointer group flex items-center gap-1.5 text-center leading-tight">
-                <span class="z-10 bg-transparent text-gray-800 dark:text-neutral-200 font-bold whitespace-nowrap">\${dateFormatted}\${dayInfo ? ' [' + dayInfo.dayName[dayInfo.dayName.length - 1] + ']' : ''}</span>
+                <span class="z-10 bg-transparent text-gray-800 dark:text-neutral-200 font-bold whitespace-nowrap">\${dateFormatted}\${dayInfo ? ' [' + dayInfo.dayName[dayInfo.dayName.length - 1] + ']' : ''}\${getTermLabel(currentDateStr)}</span>
                 <svg class="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 <input type="date" id="date-picker-input" 
                        class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
@@ -311,12 +311,16 @@ export const TimetableDay = html`
         const snapshotDate = currentDateStr;
         const snapshotView = currentView;
 
+        // Only force-fetch for today/future dates (past dates are static)
+        const todayStr = new Date().toISOString().split('T')[0];
+        const shouldForceFetch = currentDateStr >= todayStr;
+
         // --- 4. BACKGROUND PASS (Asynchronous Fetch & Update) ---
         // Fetch fresh data in the background and re-render quietly when they arrive
         try {
             const [apiData, clipboardEvents, notesRes] = await Promise.all([
-                fetchDayData(currentDateStr, true),
-                fetchCalendarData(currentDateStr, true),
+                fetchDayData(currentDateStr, shouldForceFetch),
+                fetchCalendarData(currentDateStr, shouldForceFetch),
                 fetch('/timetable/notes?date=' + currentDateStr).then(res => res.json()).catch(() => ({ notes: [] }))
             ]);
             
@@ -329,6 +333,27 @@ export const TimetableDay = html`
             
             // Final Render: Overwrite DOM structure seamlessly with real-time data
             buildUI(apiData, clipboardEvents || [], dayNotes);
+
+            // Pre-fetch next weekday in the background (no force — let cache work)
+            if (shouldForceFetch) {
+                const [y, m, d] = currentDateStr.split('-').map(Number);
+                const nextDay = new Date(y, m - 1, d);
+                let tries = 0;
+                while (tries < 7) {
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    const dw = nextDay.getDay();
+                    if (dw !== 0 && dw !== 6) break;
+                    tries++;
+                }
+                if (tries < 7) {
+                    const ny = nextDay.getFullYear();
+                    const nm = String(nextDay.getMonth() + 1).padStart(2, '0');
+                    const nd = String(nextDay.getDate()).padStart(2, '0');
+                    const nextStr = \`\${ny}-\${nm}-\${nd}\`;
+                    fetchDayData(nextStr, false);
+                    fetchCalendarData(nextStr, false);
+                }
+            }
             
         } catch (error) {
             console.error("Failed to fetch fresh data in the background:", error);

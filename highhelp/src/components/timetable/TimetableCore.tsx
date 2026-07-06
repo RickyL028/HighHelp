@@ -36,6 +36,8 @@ export const TimetableCore = html`
     const daysData = studentData?.timetable?.days || {};
     const subjectsData = studentData?.timetable?.subjects || [];
 
+    const CACHE_TTL = 300000; // 5 minutes (adjustable)
+
     let currentDateStr = new URLSearchParams(window.location.search).get('date') || getInitialDate();
     let currentView = 'day'; 
     let tickerInterval = null;
@@ -44,6 +46,38 @@ export const TimetableCore = html`
     let bellCache = {};
     let pendingFetches = {};
     let isTickerUpdating = false;
+    let loadingCounter = 0;
+    let bellsFetchRequested = {}; // track which dates ticker has already tried to fetch
+
+    // Build O(1) subject lookup map
+    const subjectMap = {};
+    subjectsData.forEach(s => {
+        const key = s.shortTitle || s.title || s.subject || '';
+        if (key) subjectMap[key] = s;
+    });
+
+    function showLoadingBar() {
+        loadingCounter++;
+        const bar = document.getElementById('loading-bar');
+        if (bar) {
+            bar.classList.remove('hidden');
+            requestAnimationFrame(() => bar.classList.remove('opacity-0'));
+        }
+    }
+
+    function hideLoadingBar() {
+        loadingCounter--;
+        if (loadingCounter <= 0) {
+            loadingCounter = 0;
+            const bar = document.getElementById('loading-bar');
+            if (bar) {
+                bar.classList.add('opacity-0');
+                setTimeout(() => {
+                    if (loadingCounter === 0) bar.classList.add('hidden');
+                }, 200);
+            }
+        }
+    }
 
     let subjectConfig = {};
     try {
@@ -78,11 +112,7 @@ export const TimetableCore = html`
 
     function enrichPeriod(periodObj) {
         if (!periodObj) return null;
-        const subj = subjectsData.find(s => 
-            (s.shortTitle && s.shortTitle === periodObj.title) || 
-            (s.title && s.title === periodObj.title) ||
-            (s.subject && s.subject === periodObj.title) 
-        );
+        const subj = subjectMap[periodObj.title] || null;
 
         let color = subj ? subj.colour : periodObj.colour || periodObj.color || 'e5e7eb';
         let link = null;
@@ -125,8 +155,7 @@ export const TimetableCore = html`
                     const cachedObj = JSON.parse(cachedRaw);
                     cachedData = cachedObj.data || cachedObj;
                     const now = new Date().getTime();
-                    // 5 minute cache validity
-                    if (!forceFetch && cachedObj.timestamp && (now - cachedObj.timestamp < 300000)) { 
+                    if (!forceFetch && cachedObj.timestamp && (now - cachedObj.timestamp < CACHE_TTL)) { 
                         if (cachedData && (cachedData.status === 'OK' || cachedData.timetable)) {
                              if (cachedData.bells) {
                                 bellCache[date] = cachedData.bells.map(b => ({
@@ -144,6 +173,7 @@ export const TimetableCore = html`
 
             let data = null;
             try {
+                showLoadingBar();
                 let res = await fetch('/api/proxy/day-data?date=' + date + '&_=' + new Date().getTime(), {
                     headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
                 });
@@ -181,6 +211,8 @@ export const TimetableCore = html`
             } catch(e) {
                 if (e.message === 'AUTH_EXPIRED') throw e;
                 console.error(e);
+            } finally {
+                hideLoadingBar();
             }
 
             return data || cachedData;
@@ -188,6 +220,32 @@ export const TimetableCore = html`
 
         if (!forceFetch) pendingFetches[date] = fetchPromise;
         try { return await fetchPromise; } finally { if (!forceFetch) delete pendingFetches[date]; }
+    }
+
+    function getCachedCalendarRange(date) {
+        const prefix = 'calendarRange_';
+        const now = new Date().getTime();
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(prefix)) {
+                try {
+                    const cached = JSON.parse(localStorage.getItem(key));
+                    if (cached && cached.from && cached.to && cached.timestamp && (now - cached.timestamp < CACHE_TTL)) {
+                        if (date >= cached.from && date <= cached.to) {
+                            return cached.events.filter(e => {
+                                const d = new Date(e.start);
+                                const ed = d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
+                                return ed === date;
+                            });
+                        }
+                    } else if (cached && cached.timestamp && (now - cached.timestamp >= CACHE_TTL)) {
+                        // Expired — clean up
+                        localStorage.removeItem(key);
+                    }
+                } catch(e) {}
+            }
+        }
+        return null;
     }
 
     function getCachedCalendarData(date) {
@@ -198,7 +256,7 @@ export const TimetableCore = html`
                 return cachedObj.events || [];
             } catch(e) {}
         }
-        return null;
+        return getCachedCalendarRange(date);
     }
 
     async function fetchCalendarData(date, forceFetch = false) {
@@ -208,12 +266,14 @@ export const TimetableCore = html`
                 try {
                     const cachedObj = JSON.parse(cachedRaw);
                     const now = new Date().getTime();
-                    // 5 minute cache validity
-                    if (cachedObj.timestamp && (now - cachedObj.timestamp < 300000)) {
+                    if (cachedObj.timestamp && (now - cachedObj.timestamp < CACHE_TTL)) {
                         return cachedObj.events || [];
                     }
                 } catch(e) {}
             }
+            // Check range cache
+            const rangeEvents = getCachedCalendarRange(date);
+            if (rangeEvents) return rangeEvents;
         }
 
         let urls = [];
@@ -229,11 +289,21 @@ export const TimetableCore = html`
             }
         }
         if (!urls || urls.length === 0) return [];
+
+        // Compute a range: 7 days before to 14 days after the requested date
+        const d = new Date(date + 'T12:00:00');
+        const fromDate = new Date(d);
+        fromDate.setDate(fromDate.getDate() - 7);
+        const toDate = new Date(d);
+        toDate.setDate(toDate.getDate() + 14);
+        const fromStr = fromDate.toISOString().split('T')[0];
+        const toStr = toDate.toISOString().split('T')[0];
         
         try {
+            showLoadingBar();
             const results = await Promise.all(urls.map(async (url) => {
                 try {
-                    const res = await fetch('/api/clipboard/events?url=' + encodeURIComponent(url) + '&date=' + date);
+                    const res = await fetch('/api/clipboard/events?url=' + encodeURIComponent(url) + '&from=' + fromStr + '&to=' + toStr + '&date=' + date);
                     if (res.ok) {
                         const data = await res.json();
                         return data.events || [];
@@ -243,14 +313,34 @@ export const TimetableCore = html`
             }));
 
             const allEvents = results.flat();
+            // Cache per-day (backward compat)
             localStorage.setItem('calendarData_' + date, JSON.stringify({
                 timestamp: new Date().getTime(),
+                events: allEvents.filter(e => {
+                    const d = new Date(e.start);
+                    const ed = d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
+                    return ed === date;
+                })
+            }));
+            // Cache the full range for adjacent day lookups
+            const rangeKey = 'calendarRange_' + fromStr + '_' + toStr;
+            localStorage.setItem(rangeKey, JSON.stringify({
+                timestamp: new Date().getTime(),
+                from: fromStr,
+                to: toStr,
                 events: allEvents
             }));
-            return allEvents;
+            // Filter to just the requested date for return
+            return allEvents.filter(e => {
+                const d = new Date(e.start);
+                const ed = d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
+                return ed === date;
+            });
         } catch (e) {
             console.error('All calendar fetches failed', e);
             return getCachedCalendarData(date) || [];
+        } finally {
+            hideLoadingBar();
         }
     }
 
@@ -462,5 +552,36 @@ export const TimetableCore = html`
             }
         }
     });
+
+    function getTermInfo(dateStr) {
+        const d = new Date(dateStr + 'T12:00:00');
+        const dTime = d.getTime();
+        const termStarts = [
+            { term: 1, start: new Date('2026-02-02T12:00:00').getTime() },
+            { term: 2, start: new Date('2026-04-20T12:00:00').getTime() },
+            { term: 3, start: new Date('2026-07-19T12:00:00').getTime() },
+            { term: 4, start: new Date('2026-10-12T12:00:00').getTime() }
+        ];
+
+        for (let i = termStarts.length - 1; i >= 0; i--) {
+            if (dTime >= termStarts[i].start) {
+                const weekDiff = Math.floor((dTime - termStarts[i].start) / (7 * 24 * 60 * 60 * 1000));
+                return { term: termStarts[i].term, week: weekDiff + 1 };
+            }
+        }
+        return null;
+    }
+
+    function getTermLabel(dateStr) {
+        const info = getTermInfo(dateStr);
+        if (!info) return '';
+        return ' [Term ' + info.term + ' Week ' + info.week + ']';
+    }
+
+    (function() {
+        const style = document.createElement('style');
+        style.textContent = '@keyframes loading-bar-indeterminate{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}.animate-loading-bar{animation:loading-bar-indeterminate 1.2s ease-in-out infinite}';
+        document.head.appendChild(style);
+    })();
 
 </script>`

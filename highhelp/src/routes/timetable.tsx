@@ -113,12 +113,16 @@ app.get('/', async (c) => {
                         function changeDate(delta) {
                             const [y, m, day] = currentDateStr.split('-').map(Number);
                             let d = new Date(y, m - 1, day);
-                            let count = 0;
-                            while(count < 7) {
-                                d.setDate(d.getDate() + delta);
-                                const dw = d.getDay();
-                                if (dw !== 0 && dw !== 6) break;
-                                count++;
+                            if (currentView === 'events') {
+                                d.setDate(d.getDate() + (delta * 7));
+                            } else {
+                                let count = 0;
+                                while(count < 7) {
+                                    d.setDate(d.getDate() + delta);
+                                    const dw = d.getDay();
+                                    if (dw !== 0 && dw !== 6) break;
+                                    count++;
+                                }
                             }
                             const year = d.getFullYear();
                             const month = String(d.getMonth() + 1).padStart(2, '0');
