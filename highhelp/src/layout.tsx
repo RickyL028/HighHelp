@@ -94,6 +94,7 @@ ${props.latex ? html`
                 },
               }
             </script>
+            <style>.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}.scrollbar-hide::-webkit-scrollbar{display:none}</style>
           </head>
       <body class="bg-background dark:bg-neutral-900 text-gray-800 dark:text-gray-200 font-sans min-h-screen flex flex-col transition-colors duration-300">
         <nav class="bg-primary dark:bg-neutral-950 text-white shadow-lg">
@@ -191,7 +192,7 @@ ${props.latex ? html`
               <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Past Papers</a>
               <a href="/forum" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Q&A</a>
               <a href="/essays" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Essays</a>
-              <a href="/leaderboard" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Leaderboard</a>
+              <a href="/leaderboard" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Leaderboard</a>
               <a href="/atar" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">ATAR</a>
               <a href="/feedback" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Hmmm..!</a>
               <a href="/about" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">About</a>

@@ -124,7 +124,7 @@ export const TimetableDay = html`
                     }
                     if (data) {
                         data.room = roomVar.roomTo;
-                        variationTags.push('Room Change');
+                        //variationTags.push('Room Change');
                     }
                 }
 
