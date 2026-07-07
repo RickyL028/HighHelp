@@ -485,6 +485,6 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     }
 
     return c.redirect(`/past-papers/attempt/${qId}?${params}`);
-});
+})
 
 export default app
