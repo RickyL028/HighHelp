@@ -33,6 +33,9 @@ app.get('/', async (c) => {
                 {/* Ticker Logic */}
                 {TimetableTicker}
 
+                {/* Hide nav on timetable unless hovered */}
+                <style dangerouslySetInnerHTML={{ __html: '.nav-hidden{transform:translateY(-100%);transition:transform .2s ease}.nav-hidden.visible{transform:translateY(0)}.nav-zone-active{pointer-events:none}' }} />
+
                 {/* Initialization Script */}
                 <script dangerouslySetInnerHTML={{
                     __html: `
@@ -205,6 +208,25 @@ app.get('/', async (c) => {
                         // Load quick links on init and listen for updates
                         loadQuickLinksUI();
                         window.addEventListener('quickLinksUpdated', loadQuickLinksUI);
+
+                        // Hide nav unless hovered
+                        const nav = document.querySelector('nav');
+                        if (nav) {
+                            const zone = document.createElement('div');
+                            zone.style.cssText = 'position:fixed;top:0;left:0;right:0;height:30px;z-index:51';
+                            document.body.prepend(zone);
+                            nav.classList.add('nav-hidden');
+                            nav.style.position = 'fixed';
+                            nav.style.top = '0';
+                            nav.style.left = '0';
+                            nav.style.right = '0';
+                            nav.style.zIndex = '50';
+                            const show = function() { nav.classList.add('visible'); zone.classList.add('nav-zone-active'); };
+                            const hide = function() { nav.classList.remove('visible'); zone.classList.remove('nav-zone-active'); };
+                            zone.addEventListener('mouseenter', show);
+                            nav.addEventListener('mouseenter', show);
+                            nav.addEventListener('mouseleave', hide);
+                        }
 
                         // Make render globally available for sub-components
                         window.render = render;

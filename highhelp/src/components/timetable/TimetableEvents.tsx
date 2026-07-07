@@ -103,11 +103,6 @@ export const TimetableEvents = html`
                     const type = item.type || 'school';
                     const tc = typeColors[type] || typeColors.school;
 
-                    let location = '';
-                    if (item.data) {
-                        location = item.data.displayVenue || item.data.venue || item.data.room || '';
-                    }
-
                     rows.push({
                         isoDate,
                         dayLabel,
@@ -119,7 +114,6 @@ export const TimetableEvents = html`
                         title: item.title || item.subject || 'Event',
                         type,
                         tc,
-                        location,
                         description: item.description || ''
                     });
                 });
@@ -142,9 +136,7 @@ export const TimetableEvents = html`
             html += '<thead><tr class="border-b border-gray-200 dark:border-neutral-800">';
             html += '<th class="text-left py-2.5 pr-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500 w-20">Day</th>';
             html += '<th class="text-left py-2.5 pr-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500 w-16">Time</th>';
-            html += '<th class="text-left py-2.5 pr-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500">Event</th>';
-            html += '<th class="text-left py-2.5 pr-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500 w-20">Type</th>';
-            html += '<th class="text-left py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500 w-24">Location</th>';
+            html += '<th class="text-left py-2.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500">Event</th>';
             html += '</tr></thead><tbody>';
 
             rows.forEach((r, idx) => {
@@ -170,7 +162,7 @@ export const TimetableEvents = html`
                 html += \`<td class="py-2.5 pr-3 align-top"><span class="text-xs font-medium text-gray-700 dark:text-neutral-300 whitespace-nowrap">\${r.timeLabel || '—'}</span></td>\`;
 
                 // Event column
-                html += \`<td class="py-2.5 pr-3 align-top">
+                html += \`<td class="py-2.5 align-top">
                     <div class="group relative">
                         <div class="flex items-center gap-1.5">
                             <span class="w-1.5 h-1.5 rounded-full \${r.tc.dot} flex-shrink-0"></span>
@@ -184,12 +176,6 @@ export const TimetableEvents = html`
                         \` : ''}
                     </div>
                 </td>\`;
-
-                // Type column
-                html += \`<td class="py-2.5 pr-3 align-top"><span class="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded \${r.tc.badge}">\${r.type}</span></td>\`;
-
-                // Location column
-                html += \`<td class="py-2.5 align-top"><span class="text-xs text-gray-500 dark:text-neutral-400">\${r.location || '—'}</span></td>\`;
 
                 html += '</tr>';
             });
