@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { Layout } from '../../layout'
 import { getUser } from '../../utils'
 import { Bindings } from '../../types'
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -141,7 +142,14 @@ app.get('/past-papers/batch/view', async (c) => {
                             {headerTitle}
                         </h1>
                     </div>
-                    <span class="text-xs text-gray-500 dark:text-neutral-400">{totalCount} questions</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 dark:text-neutral-400">{totalCount} questions</span>
+                        {totalCount > 0 && (
+                            <button type="button" onclick="downloadPdfBatch()" class="text-xs bg-emerald-600 text-white px-3 py-1 rounded font-bold hover:bg-emerald-700">
+                                ↓ PDF
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div class="mb-4 bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded p-3">
@@ -296,6 +304,15 @@ app.get('/past-papers/batch/view', async (c) => {
             </div>
 
             <script dangerouslySetInnerHTML={{ __html: `
+                function downloadPdfBatch() {
+                    const ids = Array.from(document.querySelectorAll('[id^="q-"]')).map(el => el.id.replace('q-', '')).filter(id => id && !isNaN(+id));
+                    if (!ids.length) return;
+                    const f = document.createElement('form');
+                    f.method = 'POST'; f.action = '/past-papers/batch/export-pdf';
+                    ids.forEach(id => { const i = document.createElement('input'); i.type = 'hidden'; i.name = 'question_ids'; i.value = id; f.appendChild(i); });
+                    document.body.appendChild(f); f.submit();
+                }
+
                 let batchCompleted = ${completedCount};
                 const batchTotal = ${totalCount};
 
@@ -398,6 +415,187 @@ app.post('/past-papers/batch/save', async (c) => {
     }
 
     return c.json({ success: true, id: qId, is_completed: isComplete })
+})
+
+async function generateExamPdf(questions: any[], bucket: any): Promise<Uint8Array> {
+    const doc = await PDFDocument.create()
+    const tr = await doc.embedFont(StandardFonts.TimesRoman)
+    const trIt = await doc.embedFont(StandardFonts.TimesRomanItalic)
+    const trBd = await doc.embedFont(StandardFonts.TimesRomanBold)
+    const h = await doc.embedFont(StandardFonts.Helvetica)
+    const hBd = await doc.embedFont(StandardFonts.HelveticaBold)
+
+    const PW = 595.28
+    const PH = 841.89
+    const M = 50
+    const CW = PW - 2 * M
+
+    let page = doc.addPage([PW, PH])
+    let y = PH - M
+
+    function np() { page = doc.addPage([PW, PH]); y = PH - M }
+    function cs(need: number) { if (y - need < M) np() }
+
+    async function ei(key: string) {
+        if (!key || key.startsWith('pdf_crop:')) return null
+        try {
+            const obj = await bucket.get(key)
+            if (!obj) return null
+            const bytes = await obj.arrayBuffer()
+            const arr = new Uint8Array(bytes.slice(0, 4))
+            const isPng = arr[0] === 0x89 && arr[1] === 0x50 && arr[2] === 0x4E && arr[3] === 0x47
+            const isJpeg = arr[0] === 0xFF && arr[1] === 0xD8
+            if (isPng) return await doc.embedPng(bytes)
+            if (isJpeg) return await doc.embedJpg(bytes)
+            const ct = obj.httpMetadata?.contentType || ''
+            if (ct.includes('png') || key.endsWith('.png')) return await doc.embedPng(bytes)
+            return await doc.embedJpg(bytes)
+        } catch { return null }
+    }
+
+    function stripLatex(text: string): string {
+        return text
+            .replace(/\$\$(.+?)\$\$/gs, '$1')
+            .replace(/\\\[(.+?)\\\]/gs, '$1')
+            .replace(/\\\((.+?)\\\)/gs, '$1')
+            .replace(/\$(.+?)\$/g, '$1')
+    }
+
+    function sanitizeText(text: string): string {
+        if (!text) return text
+        return text
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .split('')
+            .map(ch => {
+                const cp = ch.codePointAt(0)!
+                if (cp === 0x0A || cp === 0x0D) return ch
+                if (cp >= 0x20 && cp <= 0x7E) return ch
+                if (cp >= 0xA0 && cp <= 0xFF) return ch
+                return ' '
+            })
+            .join('')
+    }
+
+    function dw(text: string, size: number, f: any) {
+        if (!text) return
+        const clean = sanitizeText(stripLatex(text))
+        const paras = clean.split('\n')
+        for (const p of paras) {
+            const words = p.split(' ')
+            let line = ''
+            for (const w of words) {
+                const t = line ? line + ' ' + w : w
+                if (f.widthOfTextAtSize(t, size) > CW && line) {
+                    cs(size * 1.4)
+                    page.drawText(line, { x: M, y, font: f, size })
+                    y -= size * 1.4
+                    line = w
+                } else {
+                    line = t
+                }
+            }
+            if (line) {
+                cs(size * 1.4)
+                page.drawText(line, { x: M, y, font: f, size })
+                y -= size * 1.4
+            }
+            y -= size * 0.5
+        }
+    }
+
+    async function di(key: string) {
+        const img = await ei(key)
+        if (!img) return
+        const sc = Math.min(1, CW / img.width)
+        const iw = img.width * sc
+        const ih = img.height * sc
+        cs(ih + 12)
+        y -= ih + 12
+        page.drawImage(img, { x: M, y, width: iw, height: ih })
+    }
+
+    page.drawText(`${questions[0]?.subject || 'Practice'} - Practice Exam`, { x: M, y, font: hBd, size: 16 })
+    y -= 28
+
+    for (const q of questions) {
+        cs(50)
+        page.drawText(`${q.section_label} Q${q.question_number}  (${q.marks} marks)`, { x: M, y, font: hBd, size: 12 })
+        y -= 22
+        page.drawText(`Source: ${q.school_name} ${q.academic_year} — ${q.section_label}`, { x: M, y, font: h, size: 8, color: rgb(0.5, 0.5, 0.5) })
+        y -= 14
+
+        if (q.stimulus_text) { cs(30); dw(q.stimulus_text, 10, trIt) }
+        if (q.stimulus_image_key) { cs(30); await di(q.stimulus_image_key) }
+        y -= 4
+
+        if (q.question_text) { cs(30); dw(q.question_text, 11, tr) }
+        if (q.question_image_key) { cs(30); await di(q.question_image_key) }
+
+        y -= 12
+        const nl = (q.marks || 1) * 2
+        for (let i = 0; i < nl; i++) {
+            cs(18); y -= 18
+            page.drawLine({ start: { x: M, y }, end: { x: M + CW, y }, thickness: 0.5, color: rgb(0.75, 0.75, 0.75), dashArray: [3, 4] })
+        }
+        y -= 14
+    }
+
+    np()
+    page.drawText('SOLUTIONS', { x: M, y, font: hBd, size: 18 })
+    y -= 32
+
+    for (const q of questions) {
+        cs(40)
+        page.drawText(`${q.section_label} Q${q.question_number}`, { x: M, y, font: hBd, size: 12 })
+        y -= 22
+        if (q.mc_answer) {
+            page.drawText(`Answer: ${q.mc_answer}`, { x: M, y, font: trBd, size: 11 })
+            y -= 18
+        }
+        if (q.answer_text) dw(q.answer_text, 10, tr)
+        if (q.answer_image_key) { cs(30); await di(q.answer_image_key) }
+        y -= 8
+    }
+
+    return await doc.save()
+}
+
+app.post('/past-papers/batch/export-pdf', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+
+    const body = await c.req.parseBody({ all: true })
+    let questionIdsRaw = body['question_ids']
+    if (!questionIdsRaw) return c.text('No questions selected', 400)
+
+    let questionIds: string[] = []
+    if (Array.isArray(questionIdsRaw)) {
+        questionIds = (questionIdsRaw as string[]).map(String)
+    } else {
+        questionIds = [String(questionIdsRaw)]
+    }
+    questionIds = [...new Set(questionIds)]
+
+    const placeholders = questionIds.map(() => '?').join(',')
+    const questions = await c.env.DB.prepare(`
+        SELECT q.*, p.subject, p.school_name, p.academic_year
+        FROM exam_questions q
+        JOIN papers p ON q.paper_id = p.id
+        WHERE q.id IN (${placeholders}) AND q.is_deleted = 0
+        ORDER BY q.ordering_index ASC
+    `).bind(...questionIds).all()
+
+    if (questions.results.length === 0) return c.text('No questions found', 404)
+
+    const pdfBytes = await generateExamPdf(questions.results, c.env.BUCKET)
+
+    return new Response(pdfBytes, {
+        headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': 'attachment; filename="practice-exam.pdf"'
+        }
+    })
 })
 
 export default app

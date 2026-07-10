@@ -346,9 +346,14 @@ app.get('/past-papers', async (c) => {
                                                 <input type="number" name="timer_minutes" placeholder="Timer (mins)" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm w-24" />
                                             </div>
                                         </div>
-                                        <button class="bg-blue-600 text-white px-8 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md">
-                                            Create Exam
-                                        </button>
+                                        <div class="flex gap-2">
+                                            <button type="submit" formaction="/past-papers/batch/export-pdf" class="bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-emerald-700 shadow-md">
+                                                Download PDF
+                                            </button>
+                                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md">
+                                                Create Exam
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
