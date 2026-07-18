@@ -73,15 +73,17 @@ ${props.latex ? html`
             (function() {
                 const timetableTheme = localStorage.getItem('timetableTheme');
                 if (timetableTheme === 'night') {
-                    document.documentElement.classList.add('night');
+                    document.documentElement.classList.add('night', 'dark');
                 } else if (timetableTheme === 'paper') {
                     document.documentElement.classList.add('paper');
-                }
-                const theme = localStorage.getItem('theme') || 'light';
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                } else {
                     document.documentElement.classList.remove('dark');
+                } else {
+                    const theme = localStorage.getItem('theme') || 'light';
+                    if (theme === 'dark') {
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                    }
                 }
             })();
 
@@ -426,6 +428,8 @@ ${props.latex ? html`
                         document.documentElement.classList.remove('dark');
                         localStorage.setItem('theme', 'light');
                     }
+                    document.documentElement.classList.remove('night', 'paper');
+                    localStorage.removeItem('timetableTheme');
                     updateIcons(newTheme);
                 };
 

@@ -55,9 +55,32 @@ app.get('/', async (c) => {
                         function applyTimetableTheme(theme) {
                             document.documentElement.classList.remove('night', 'paper');
                             if (theme === 'night') {
-                                document.documentElement.classList.add('night');
+                                document.documentElement.classList.add('night', 'dark');
+                                localStorage.setItem('theme', 'dark');
                             } else if (theme === 'paper') {
                                 document.documentElement.classList.add('paper');
+                                document.documentElement.classList.remove('dark');
+                                localStorage.setItem('theme', 'light');
+                            } else {
+                                const saved = localStorage.getItem('theme') || 'light';
+                                if (saved === 'dark') {
+                                    document.documentElement.classList.add('dark');
+                                } else {
+                                    document.documentElement.classList.remove('dark');
+                                }
+                            }
+                            const themeToggleDark = document.getElementById('theme-toggle-dark-icon');
+                            const themeToggleLight = document.getElementById('theme-toggle-light-icon');
+                            const mobileThemeText = document.getElementById('mobile-theme-text');
+                            const isDark = document.documentElement.classList.contains('dark');
+                            if (isDark) {
+                                themeToggleDark?.classList.add('hidden');
+                                themeToggleLight?.classList.remove('hidden');
+                                if (mobileThemeText) mobileThemeText.textContent = 'Dark';
+                            } else {
+                                themeToggleLight?.classList.add('hidden');
+                                themeToggleDark?.classList.remove('hidden');
+                                if (mobileThemeText) mobileThemeText.textContent = 'Light';
                             }
                             if (window.render) window.render();
                         }
