@@ -94,7 +94,7 @@ ${props.latex ? html`
                 },
               }
             </script>
-            <style>.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}.scrollbar-hide::-webkit-scrollbar{display:none}</style>
+            <style>.scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}.scrollbar-hide::-webkit-scrollbar{display:none}html{background-color:#3E2723}</style>
           </head>
       <body class="bg-background dark:bg-neutral-900 text-gray-800 dark:text-gray-200 font-sans min-h-screen flex flex-col transition-colors duration-300">
         <nav class="bg-primary dark:bg-neutral-950 text-white shadow-lg">
