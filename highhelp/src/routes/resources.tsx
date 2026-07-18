@@ -114,6 +114,11 @@ app.get('/resources', async (c) => {
                                         <p class="text-gray-600 dark:text-neutral-300 mb-4 text-sm line-clamp-2 leading-relaxed">{r.description || <span class="italic text-gray-400 dark:text-neutral-500">No description...</span>}</p>
                                     </div>
                                     <div class="flex justify-end items-center mt-auto pt-3 border-t border-gray-100 dark:border-neutral-700 gap-2">
+                                        {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
+                                            <a href={`/resources/${r.id}/edit`} class="text-gray-400 hover:text-blue-600" title="Edit">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                            </a>
+                                        )}
                                         <a href={`/download/${r.file_key}?id=${r.id}`} target="_blank" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300" title="Download">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                         </a>
@@ -141,6 +146,11 @@ app.get('/resources', async (c) => {
                                             {r.description && <p class="text-xs text-gray-500 dark:text-neutral-400 truncate mt-0.5">{r.description}</p>}
                                         </div>
                                         <div class="shrink-0 flex items-center gap-4">
+                                            {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
+                                                <a href={`/resources/${r.id}/edit`} class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
+                                                    Edit
+                                                </a>
+                                            )}
                                             <a href={`/resources/view/${r.id}`} target="_blank" class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
                                                 View
                                             </a>
@@ -346,9 +356,9 @@ app.get('/resources', async (c) => {
                                 required
                                 class="mt-1 block w-full text-sm text-gray-500"
                                 accept="*"
-                                onchange="if(this.files[0].size > 26214400){ alert('File is too big! Max size is 25MB.'); this.value = ''; }"
+                                onchange="if(this.files[0].size > 26214400*2){ alert('File is too big! Max size is 25MB.'); this.value = ''; }"
                             />
-                            <p class="text-xs text-gray-500 mt-1">Maximum file size: 25 MB</p>
+                            <p class="text-xs text-gray-500 mt-1">Maximum file size: 50 MB</p>
                         </div>
                         <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700">Upload Resource</button>
                     </form>
@@ -410,11 +420,16 @@ app.get('/resources', async (c) => {
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                     </a>
                                     {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
-                                        <form action={`/resources/${r.id}/delete`} method="post" class="inline">
-                                            <button class="text-red-400 hover:text-red-600" title="Delete">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                            </button>
-                                        </form>
+                                        <>
+                                            <a href={`/resources/${r.id}/edit`} class="text-gray-400 hover:text-blue-600" title="Edit">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                            </a>
+                                            <form action={`/resources/${r.id}/delete`} method="post" class="inline">
+                                                <button class="text-red-400 hover:text-red-600" title="Delete">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                </button>
+                                            </form>
+                                        </>
                                     )}
                                 </div>
                             </div>
@@ -454,11 +469,16 @@ app.get('/resources', async (c) => {
                                         Download
                                     </a>
                                     {!r.is_deleted && user && (canModerateSubject(user, r.subject) || user.id === r.uploader_id) && (
-                                        <form action={`/resources/${r.id}/delete`} method="post" class="inline">
-                                            <button class="text-red-400 hover:text-red-700 px-2" title="Delete">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                            </button>
-                                        </form>
+                                        <>
+                                            <a href={`/resources/${r.id}/edit`} class="px-3 py-1.5 bg-gray-100 dark:bg-neutral-700 hover:bg-gray-200 dark:hover:bg-neutral-600 text-gray-700 dark:text-neutral-200 text-xs font-medium rounded transition-colors whitespace-nowrap border border-gray-200 dark:border-neutral-600">
+                                                Edit
+                                            </a>
+                                            <form action={`/resources/${r.id}/delete`} method="post" class="inline">
+                                                <button class="text-red-400 hover:text-red-700 px-2" title="Delete">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                </button>
+                                            </form>
+                                        </>
                                     )}
                                 </div>
                             </div>
@@ -481,7 +501,7 @@ app.post('/resources', async (c) => {
         const subject = body['subject'] as string
         const file = body['file'] as File
         const uploaderDisplay = (body['uploader_display'] as string) || 'initials'
-        const MAX_SIZE = 25 * 1024 * 1024
+        const MAX_SIZE = 25 * 1024 * 1024 * 2
         if (file && file.size > MAX_SIZE) {
             return c.text("File too large. Maximum size is 25MB.", 400)
         }
@@ -530,6 +550,105 @@ app.post('/resources/:id/delete', async (c) => {
     await logAction(c.env.DB, user.id, 'DELETE_RESOURCE', `Deleted resource ${id}`, Number(id), 'resources');
 
     return c.redirect(`/resources?subject=${encodeURIComponent(resource.subject)}`);
+})
+
+app.get('/resources/:id/edit', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.redirect('/login')
+    const id = c.req.param('id')
+
+    const resource = await c.env.DB.prepare('SELECT * FROM resources WHERE id = ?').bind(id).first() as any;
+    if (!resource) return c.notFound();
+    if (resource.is_deleted) return c.notFound();
+
+    if (resource.uploader_id !== user.id && !canModerateSubject(user, resource.subject)) {
+        return c.text('Unauthorised', 403);
+    }
+
+    return c.html(
+        <Layout title={`Edit Resource`} user={user}>
+            <div class="max-w-2xl mx-auto py-8 px-4">
+                <a href={`/resources/view/${resource.id}`} class="text-blue-600 hover:underline mb-6 inline-block">← Back to Resource</a>
+
+                <div class="bg-white dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm p-8">
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Edit Resource</h1>
+
+                    <form action={`/resources/${resource.id}/edit`} method="post" class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-neutral-300">Title</label>
+                            <input type="text" name="title" value={resource.title} required class="mt-1 block w-full rounded-md border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white shadow-sm p-2 border" />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-neutral-300">Description</label>
+                            <textarea name="description" rows={4} class="mt-1 block w-full rounded-md border-gray-300 dark:border-neutral-600 dark:bg-neutral-700 dark:text-white shadow-sm p-2 border">{resource.description || ''}</textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-neutral-300 mb-2">Display Name</label>
+                            <div class="flex flex-wrap gap-3">
+                                <label class="flex items-center gap-2 cursor-pointer bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-600 rounded-lg px-4 py-2.5 hover:border-blue-400 dark:hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
+                                    <input type="radio" name="uploader_display" value="anonymous" checked={resource.uploader_display === 'anonymous'} class="text-blue-600 focus:ring-blue-500" />
+                                    <div>
+                                        <span class="text-sm font-medium text-gray-700 dark:text-neutral-200">Anonymous</span>
+                                    </div>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-600 rounded-lg px-4 py-2.5 hover:border-blue-400 dark:hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
+                                    <input type="radio" name="uploader_display" value="initials" checked={resource.uploader_display === 'initials' || !resource.uploader_display} class="text-blue-600 focus:ring-blue-500" />
+                                    <div>
+                                        <span class="text-sm font-medium text-gray-700 dark:text-neutral-200">Initials</span>
+                                    </div>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-600 rounded-lg px-4 py-2.5 hover:border-blue-400 dark:hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/30">
+                                    <input type="radio" name="uploader_display" value="full" checked={resource.uploader_display === 'full'} class="text-blue-600 focus:ring-blue-500" />
+                                    <div>
+                                        <span class="text-sm font-medium text-gray-700 dark:text-neutral-200">Full Name</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-4 pt-2">
+                            <a href={`/resources/view/${resource.id}`} class="px-4 py-2 border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 rounded hover:bg-gray-50 dark:hover:bg-neutral-700 font-medium transition-colors">Cancel</a>
+                            <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700 font-medium transition-colors">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Layout>
+    )
+})
+
+app.post('/resources/:id/edit', async (c) => {
+    try {
+        const user = await getUser(c)
+        if (!user) return c.redirect('/login')
+        const id = c.req.param('id')
+
+        const resource = await c.env.DB.prepare('SELECT * FROM resources WHERE id = ?').bind(id).first() as any;
+        if (!resource) return c.notFound();
+
+        if (resource.uploader_id !== user.id && !canModerateSubject(user, resource.subject)) {
+            return c.text('Unauthorised', 403);
+        }
+
+        const body = await c.req.parseBody()
+        const title = body['title'] as string
+        const description = body['description'] as string
+        const uploaderDisplay = (body['uploader_display'] as string) || 'initials'
+
+        if (!title) return c.text('Title is required', 400)
+
+        await c.env.DB.prepare('UPDATE resources SET title = ?, description = ?, uploader_display = ? WHERE id = ?')
+            .bind(title, description || '', uploaderDisplay, id)
+            .run()
+
+        await logAction(c.env.DB, user.id, 'EDIT_RESOURCE', `Edited resource '${title}' (${id})`, Number(id), 'resources');
+
+        return c.redirect(`/resources/view/${id}`)
+    } catch (e: any) {
+        return c.text(`Edit Failed: ${e.message}`, 500)
+    }
 })
 
 // Helper to guess MIME type by extension
@@ -675,9 +794,12 @@ app.get('/resources/view/:id', async (c) => {
                         </div>
                         <div class="flex gap-4">
                             {!resource.is_deleted && user && (canModerateSubject(user, resource.subject) || user.id === resource.uploader_id) && (
-                                <form action={`/resources/${resource.id}/delete`} method="post">
-                                    <button class="px-4 py-2 border border-red-200 text-red-600 rounded hover:bg-red-50 font-medium transition-colors">Delete Resource</button>
-                                </form>
+                                <>
+                                    <a href={`/resources/${resource.id}/edit`} class="px-4 py-2 border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 rounded hover:bg-gray-50 dark:hover:bg-neutral-700 font-medium transition-colors">Edit Resource</a>
+                                    <form action={`/resources/${resource.id}/delete`} method="post">
+                                        <button class="px-4 py-2 border border-red-200 text-red-600 rounded hover:bg-red-50 font-medium transition-colors">Delete Resource</button>
+                                    </form>
+                                </>
                             )}
                             <a href={`/download/${resource.file_key}?id=${resource.id}`} target="_blank" class="px-6 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>

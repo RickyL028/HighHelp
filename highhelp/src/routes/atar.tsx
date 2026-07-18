@@ -104,7 +104,7 @@ app.get('/atar', async (c) => {
           {/* Right Column: Results */}
           <div class="space-y-6">
             <div class="border border-gray-300 dark:border-neutral-700 p-6 flex flex-col items-center justify-center">
-              <h2 class="font-bold text-sm uppercase mb-4 bg-black text-white dark:bg-white dark:text-black px-2 py-1 self-start w-full text-center">Projected ATAR</h2>
+              <h2 class="font-bold text-sm uppercase mb-4 bg-black text-white dark:bg-white dark:text-black px-2 py-1 self-start w-full text-center">Total Aggregate</h2>
               
               {/* Unit Selection Dropdown */}
               <div class="mb-6 w-full">
@@ -116,16 +116,16 @@ app.get('/atar', async (c) => {
               </div>
 
               <div class="text-center mb-8 w-full">
-                <div class="text-5xl font-bold tracking-tighter mb-2" id="final-atar">
-                  --.--
+                <div class="text-5xl font-bold tracking-tighter mb-2" id="total-aggregate">
+                  --
                 </div>
               </div>
 
               <table class="w-full text-sm text-left border-collapse border-t border-gray-300 dark:border-neutral-700">
                 <tbody>
                   <tr class="border-b border-gray-200 dark:border-neutral-800">
-                    <td class="py-2">Total Aggregate</td>
-                    <td class="py-2 text-right font-bold" id="total-aggregate">--</td>
+                    <td class="py-2">Projected ATAR</td>
+                    <td class="py-2 text-right font-bold" id="final-atar">--.--</td>
                   </tr>
                   <tr>
                     <td class="py-2">Units Counted</td>
@@ -138,6 +138,12 @@ app.get('/atar', async (c) => {
             {/* Historical Rank Section */}
             <div class="border border-gray-300 dark:border-neutral-700 p-6 flex flex-col items-center justify-center">
               <h2 class="font-bold text-sm uppercase mb-4 bg-black text-white dark:bg-white dark:text-black px-2 py-1 self-start w-full text-center">A not accurate at all number</h2>
+
+              {/* Mode Selector */}
+              <div class="mb-4 w-full flex gap-2">
+                <button id="mode-pre-s1" onclick="setRankMode('pre-s1')" class="flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-black text-white dark:bg-white dark:text-black transition-colors">Pre-S1</button>
+                <button id="mode-y11s1" onclick="setRankMode('y11s1')" class="flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-white text-gray-500 dark:bg-neutral-900 dark:text-gray-400 transition-colors">Y11S1</button>
+              </div>
               
               <div class="text-center mb-4 w-full">
                 <div class="text-5xl font-bold tracking-tighter mb-4" id="estimated-rank">
@@ -221,6 +227,7 @@ app.get('/atar', async (c) => {
 
         let selectedSubjects = [];
         let targetUnits = 12;
+        let rankMode = 'y11s1';
 
         function saveToStorage() {
           try {
@@ -256,11 +263,19 @@ app.get('/atar', async (c) => {
                 targetUnits = parsedUnits;
               }
             }
+
+            const savedMode = localStorage.getItem('atar_rank_mode');
+            if (savedMode === 'pre-s1' || savedMode === 'y11s1') {
+              rankMode = savedMode;
+            }
           } catch (e) {
             console.error('Failed to load selected configuration from storage:', e);
           }
 
           targetUnitsSelect.value = targetUnits.toString();
+
+          // Apply saved rank mode UI
+          updateRankModeButtons();
 
           // Listen for target units change
           targetUnitsSelect.addEventListener('change', (e) => {
@@ -284,6 +299,25 @@ app.get('/atar', async (c) => {
             renderSubjects();
           });
         });
+
+        function updateRankModeButtons() {
+          const preBtn = document.getElementById('mode-pre-s1');
+          const y11Btn = document.getElementById('mode-y11s1');
+          if (rankMode === 'y11s1') {
+            y11Btn.className = 'flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-black text-white dark:bg-white dark:text-black transition-colors';
+            preBtn.className = 'flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-white text-gray-500 dark:bg-neutral-900 dark:text-gray-400 transition-colors';
+          } else {
+            preBtn.className = 'flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-black text-white dark:bg-white dark:text-black transition-colors';
+            y11Btn.className = 'flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-white text-gray-500 dark:bg-neutral-900 dark:text-gray-400 transition-colors';
+          }
+        }
+
+        window.setRankMode = (mode) => {
+          rankMode = mode;
+          try { localStorage.setItem('atar_rank_mode', mode); } catch(e) {}
+          updateRankModeButtons();
+          renderSubjects();
+        };
 
         function interpolate(x, points) {
           const fullPoints = [
@@ -392,51 +426,67 @@ app.get('/atar', async (c) => {
 
           document.getElementById('final-atar').textContent = finalAtar;
           
-          // Rank interpolation logic based on provided historical bounds
+          // Rank estimation logic
           let numericAtar = parseFloat(finalAtar);
           if (!isNaN(numericAtar)) {
             let estRank = '--';
             let estRange = '--';
-            
-            if (numericAtar >= 99.0) {
-              const ratio = (numericAtar - 99.0) / (99.7 - 99.0);
-              estRank = Math.max(Math.round(39 - ratio * 38), 1);
-              estRange = "±5";
-            } else if (numericAtar >= 95.0) {
-              const ratio = (numericAtar - 95.0) / (98.95 - 95.0);
-              estRank = Math.round(112 - ratio * (112 - 40));
-              estRange = "±10";
-            } else if (numericAtar >= 90.0) {
-              const ratio = (numericAtar - 90.0) / (94.95 - 90.0);
-              estRank = Math.round(154 - ratio * (154 - 113));
-              estRange = "±20";
-            } else if (numericAtar >= 85.0) {
-              const ratio = (numericAtar - 85.0) / (89.95 - 85.0);
-              estRank = Math.round(173 - ratio * (173 - 155));
-              estRange = "±25";
-            } else if (numericAtar >= 80.0) {
-              const ratio = (numericAtar - 80.0) / (84.95 - 80.0);
-              estRank = Math.round(184 - ratio * (184 - 174));
-              estRange = "±30";
-            } else if (numericAtar >= 75.0) {
-              const ratio = (numericAtar - 75.0) / (79.95 - 75.0);
-              estRank = Math.round(191 - ratio * (191 - 185));
-              estRange = "±30";
-            } else if (numericAtar >= 70.0) {
-              const ratio = (numericAtar - 70.0) / (74.95 - 70.0);
-              estRank = Math.round(195 - ratio * (195 - 192));
-              estRange = "±30";
+
+            if (rankMode === 'y11s1') {
+              // Y11S1 mode: f(x) = 70.1853 * ln(197.3383 / (x - 329.6269))
+              const aggScaled = totalAggregate;
+              const denominator = aggScaled - 329.6269;
+              if (denominator > 0) {
+                const rawRank = 70.1853 * Math.log(197.3383 / denominator);
+                estRank = Math.max(1, Math.round(rawRank));
+                estRange = "±10";
+              } else {
+                estRank = "> 200";
+                estRange = "±20";
+              }
             } else {
-              estRank = "> 195";
-              estRange = "±30";
+              // Pre-S1 mode: original interpolation logic
+              if (numericAtar >= 99.0) {
+                const ratio = (numericAtar - 99.0) / (99.7 - 99.0);
+                estRank = Math.max(Math.round(39 - ratio * 38), 1);
+                estRange = "±5";
+              } else if (numericAtar >= 95.0) {
+                const ratio = (numericAtar - 95.0) / (98.95 - 95.0);
+                estRank = Math.round(112 - ratio * (112 - 40));
+                estRange = "±10";
+              } else if (numericAtar >= 90.0) {
+                const ratio = (numericAtar - 90.0) / (94.95 - 90.0);
+                estRank = Math.round(154 - ratio * (154 - 113));
+                estRange = "±20";
+              } else if (numericAtar >= 85.0) {
+                const ratio = (numericAtar - 85.0) / (89.95 - 85.0);
+                estRank = Math.round(173 - ratio * (173 - 155));
+                estRange = "±25";
+              } else if (numericAtar >= 80.0) {
+                const ratio = (numericAtar - 80.0) / (84.95 - 80.0);
+                estRank = Math.round(184 - ratio * (184 - 174));
+                estRange = "±30";
+              } else if (numericAtar >= 75.0) {
+                const ratio = (numericAtar - 75.0) / (79.95 - 75.0);
+                estRank = Math.round(191 - ratio * (191 - 185));
+                estRange = "±30";
+              } else if (numericAtar >= 70.0) {
+                const ratio = (numericAtar - 70.0) / (74.95 - 70.0);
+                estRank = Math.round(195 - ratio * (195 - 192));
+                estRange = "±30";
+              } else {
+                estRank = "> 195";
+                estRange = "±30";
+              }
+              
+              estRank = Math.round(estRank / 2);
             }
             
-            estRank = Math.round(estRank/2);
             document.getElementById('estimated-rank').textContent = estRank.toString();
             document.getElementById('estimated-rank-range').textContent = estRange;
           } else if (finalAtar === '< 50.00') {
-            document.getElementById('estimated-rank').textContent = "> 195";
-            document.getElementById('estimated-rank-range').textContent = "196 - 202";
+            document.getElementById('estimated-rank').textContent = "> 200";
+            document.getElementById('estimated-rank-range').textContent = "200+";
           }
 
           localStorage.setItem('atar_last_aggregate', totalAggregate.toString());

@@ -213,6 +213,7 @@ app.get('/past-papers', async (c) => {
                 <form action="/past-papers" method="get" class="bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-neutral-700 mb-6 space-y-4">
                     <input type="hidden" name="subject" value={subject} />
                     <input type="hidden" name="tab" value="practice" />
+                    {mode && <input type="hidden" name="mode" value={mode} />}
 
                     <div class="flex flex-wrap gap-4 items-end">
                         <div>
@@ -277,7 +278,7 @@ app.get('/past-papers', async (c) => {
                         </div>
                         <div class="flex gap-2">
                             <button class="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-blue-700">Filter</button>
-                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice`} class="px-4 py-2 border dark:border-neutral-700 rounded text-gray-600 dark:text-neutral-400 text-sm hover:bg-gray-50 dark:hover:bg-neutral-700">Reset</a>
+                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice${mode ? '&mode=' + mode : ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded text-gray-600 dark:text-neutral-400 text-sm hover:bg-gray-50 dark:hover:bg-neutral-700">Reset</a>
                             <a href={`/past-papers/batch/view?source=practice&subject=${encodeURIComponent(subject)}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm hover:bg-emerald-700">Batch Mode</a>
                         </div>
                     </div>
