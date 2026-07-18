@@ -3,6 +3,7 @@ import { Layout } from '../layout'
 import { getUser, updatePoints, renderTags, logAction, formatDate } from '../utils'
 import { canPostGeneral, canViewDeleted, canCommentModeration } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
+import { SubjectBadge, SubjectIcon } from '../components/SubjectBadge'
 import { Bindings, User } from '../types'
 import { SUBJECTS } from '../constants'
 
@@ -47,33 +48,38 @@ app.get('/essays', async (c) => {
                                 <p class="text-gray-500 italic">No essays submitted yet.</p>
                             ) : (
                                 recentEssays?.map((e: any) => (
-                                    <div class={`bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-4 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors group block ${e.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}>
-                                        <div class="flex justify-between items-start">
-                                            <div class="flex-grow">
-                                                <a href={`/essays/view/${e.id}`} class="block">
-                                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors mb-1 leading-snug">{e.title}</h3>
-                                                </a>
+                                    <a href={`/essays/view/${e.id}`} class={`block bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-5 hover:shadow-md hover:border-gray-400 dark:hover:border-neutral-500 transition-all group ${e.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}>
+                                        <div class="flex items-start gap-4">
+                                            <SubjectIcon subject={e.subject} tab="essay" />
+                                            <div class="flex-grow min-w-0">
+                                                <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors mb-1 leading-snug">{e.title}</h3>
 
                                                 <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
-                                                    <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{e.subject}</span>
-                                                    <span class="text-gray-300 dark:text-neutral-600">•</span>
+                                                    <SubjectBadge subject={e.subject} tab="essay" />
+                                                    <span class="text-gray-300 dark:text-neutral-600">&middot;</span>
                                                     <span class="local-date" data-timestamp={e.created_at}>{formatDate(e.created_at)}</span>
-                                                    {e.is_deleted ? <span class="font-bold text-red-600 uppercase ml-2">Deleted</span> : null}
+                                                    {e.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                                 </div>
 
-                                                <div class="mt-2 text-xs text-gray-500 dark:text-neutral-400 font-medium">
-                                                    <span class="flex items-center gap-4">
-                                                        <span class="flex items-center gap-1">
-                                                            📝 {e.feedback_count} Feedback
-                                                        </span>
-                                                        {e.full_marks ? (
-                                                            <span class="bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-neutral-400">Max: {e.full_marks}</span>
-                                                        ) : null}
+                                                {e.question && (
+                                                    <p class="text-sm text-gray-600 dark:text-neutral-400 italic mb-3 line-clamp-2 leading-relaxed border-l-2 border-amber-300 dark:border-amber-600 pl-3">"{e.question}"</p>
+                                                )}
+
+                                                <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-neutral-400">
+                                                    <span class="flex items-center gap-1.5 bg-gray-100 dark:bg-neutral-900 px-2 py-1 rounded">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                                                        {e.feedback_count} {e.feedback_count === 1 ? 'feedback' : 'feedbacks'}
                                                     </span>
+                                                    {e.full_marks && (
+                                                        <span class="flex items-center gap-1.5 bg-gray-100 dark:bg-neutral-900 px-2 py-1 rounded">
+                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+                                                            /{e.full_marks} marks
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </a>
                                 ))
                             )}
                         </div>
@@ -145,34 +151,42 @@ app.get('/essays', async (c) => {
                         </div>
                     ) : (
                         results.map((e: any) => (
-                            <div
-                                class={`search-item bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-4 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors group h-full flex flex-col justify-between ${e.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}
+                            <a
+                                href={`/essays/view/${e.id}`}
+                                class={`search-item block bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-5 hover:shadow-md hover:border-gray-400 dark:hover:border-neutral-500 transition-all group h-full ${e.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}
                                 data-search-text={`${e.title} ${e.subject} ${e.question || ''}`}
                             >
-                                <div class="flex justify-between items-start">
-                                    <div class="flex-grow">
-                                        <a href={`/essays/view/${e.id}`} class="block">
-                                            <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors mb-1 leading-snug">{e.title}</h3>
-                                        </a>
+                                <div class="flex items-start gap-4">
+                                    <SubjectIcon subject={e.subject} tab="essay" />
+                                    <div class="flex-grow min-w-0">
+                                        <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors mb-1 leading-snug">{e.title}</h3>
 
                                         <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
-                                            <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{e.subject}</span>
-                                            <span class="text-gray-300 dark:text-neutral-600">•</span>
+                                            <SubjectBadge subject={e.subject} tab="essay" />
+                                            <span class="text-gray-300 dark:text-neutral-600">&middot;</span>
                                             <span class="local-date" data-timestamp={e.created_at}>{formatDate(e.created_at)}</span>
-                                            {e.is_deleted ? <span class="font-bold text-red-600 uppercase ml-2">Deleted</span> : null}
+                                            {e.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
                                         </div>
 
-                                        <div class="mt-2 text-xs text-gray-500 dark:text-neutral-400 font-medium flex items-center gap-3">
-                                            <span class="flex items-center gap-1">
-                                                📝 {e.feedback_count}
+                                        {e.question && (
+                                            <p class="text-sm text-gray-600 dark:text-neutral-400 italic mb-3 line-clamp-2 leading-relaxed border-l-2 border-amber-300 dark:border-amber-600 pl-3">"{e.question}"</p>
+                                        )}
+
+                                        <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-neutral-400">
+                                            <span class="flex items-center gap-1.5 bg-gray-100 dark:bg-neutral-900 px-2 py-1 rounded">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                                                {e.feedback_count} {e.feedback_count === 1 ? 'feedback' : 'feedbacks'}
                                             </span>
-                                            {e.full_marks ? (
-                                                <span class="bg-gray-100 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-neutral-400">Max: {e.full_marks}</span>
-                                            ) : null}
+                                            {e.full_marks && (
+                                                <span class="flex items-center gap-1.5 bg-gray-100 dark:bg-neutral-900 px-2 py-1 rounded">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+                                                    /{e.full_marks} marks
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </a>
                         ))
                     )}
                 </div>
@@ -184,6 +198,7 @@ app.get('/essays', async (c) => {
                             <tr>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Date</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Title</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Subject</th>
                                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Question</th>
                                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Marks</th>
                                 <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Feedback</th>
@@ -192,7 +207,7 @@ app.get('/essays', async (c) => {
                         <tbody class="bg-white dark:bg-neutral-800 divide-y divide-gray-200 dark:divide-neutral-700">
                             {results?.length === 0 ? (
                                 <tr>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={5}>No essays yet.</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center" colspan={6}>No essays yet.</td>
                                 </tr>
                             ) : (
                                 results.map((e: any) => (
@@ -206,16 +221,19 @@ app.get('/essays', async (c) => {
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
                                             {e.title}
-                                            {e.is_deleted ? <span class="ml-2 text-xs text-red-600 uppercase">Deleted</span> : null}
+                                            {e.is_deleted && <span class="ml-2 text-xs text-red-600 uppercase">Deleted</span>}
                                         </td>
-                                        <td class="px-6 py-4 text-sm text-gray-500 dark:text-neutral-400 truncate max-w-xs">
+                                        <td class="px-6 py-4 text-sm truncate max-w-xs">
+                                            <SubjectBadge subject={e.subject} tab="essay" />
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-500 dark:text-neutral-400 truncate max-w-xs italic">
                                             {e.question || '-'}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-neutral-400">
                                             {e.full_marks ? `/${e.full_marks}` : '-'}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-neutral-400">
-                                            {e.feedback_count} 📝
+                                            {e.feedback_count}
                                         </td>
                                     </tr>
                                 ))
@@ -405,22 +423,26 @@ app.get('/essays/view/:id', async (c) => {
                 {/* Essay */}
                 <div class={`bg-white dark:bg-neutral-800 rounded-lg shadow-sm border overflow-hidden mb-8 ${essay.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-neutral-700'}`}>
                     <div class="p-6 border-b border-gray-100 dark:border-neutral-700">
-                        {essay.is_deleted ? <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span> : null}
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Essay</span>
+                        {essay.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
+                        <div class="flex items-center gap-3 mb-3">
+                            <SubjectBadge subject={essay.subject} tab="essay" />
                             <span class="text-gray-400 dark:text-neutral-500 text-sm local-date" data-timestamp={essay.created_at} data-format="datetime">| {formatDate(essay.created_at)}</span>
-                            {essay.full_marks ? (
-                                <span class="text-gray-500 dark:text-neutral-400 text-sm font-medium ml-auto">Full Marks: {essay.full_marks}</span>
-                            ) : null}
+                            {essay.full_marks && (
+                                <span class="ml-auto flex items-center gap-1.5 bg-gray-100 dark:bg-neutral-900 px-2.5 py-1 rounded text-sm text-gray-600 dark:text-neutral-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+                                    Full Marks: {essay.full_marks}
+                                </span>
+                            )}
                         </div>
 
-                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">{essay.title}</h1>
+                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-3">{essay.title}</h1>
 
-                        {essay.question ? (
-                            <div class="bg-brown-300 dark:bg-amber-900/20 border border-brown-100 dark:border-amber-900/40 p-3 rounded mb-6 text-gray-700 dark:text-neutral-300 italic text-sm">
-                                <span class="font-bold text-brown-600 dark:text-amber-500 not-italic">Question:</span> {essay.question}
+                        {essay.question && (
+                            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40 p-4 rounded-lg mb-6">
+                                <span class="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block mb-1">Question</span>
+                                <p class="text-gray-700 dark:text-neutral-300 italic text-sm leading-relaxed">{essay.question}</p>
                             </div>
-                        ) : null}
+                        )}
 
 
                         {essay.file_key ? (
@@ -439,10 +461,7 @@ app.get('/essays/view/:id', async (c) => {
                         ) : null}
                     </div>
 
-                    <div class="bg-gray-50 dark:bg-neutral-900/50 px-6 py-3 flex items-center justify-between">
-                        <div class="text-sm text-gray-600 dark:text-neutral-400 flex items-center">
-                            <span class="font-bold mr-1 text-gray-700 dark:text-neutral-300">Posted by:</span> <span class="ml-1 text-gray-900 dark:text-white font-medium">-</span>
-                        </div>
+                    <div class="bg-gray-50 dark:bg-neutral-900/50 px-6 py-3 flex items-center justify-end">
                         {(!essay.is_deleted && user && (canCommentModeration(user) || user.id === essay.author_id)) ? (
                             <form action={`/essays/view/${essayId}/delete`} method="post">
                                 <button class="text-red-500 text-sm font-bold hover:underline" onclick="return confirm('Delete essay?')">Delete Essay</button>

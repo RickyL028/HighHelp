@@ -3,6 +3,7 @@ import { Layout } from '../layout'
 import { getSortedSubjects, getUser, renderTags, updatePoints, logAction, formatDate } from '../utils'
 import { canUploadResource, canViewDeleted, canModerateSubject } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
+import { SubjectBadge, SubjectIcon } from '../components/SubjectBadge'
 
 import { Bindings } from '../types'
 
@@ -19,52 +20,6 @@ const renderUploaderName = (r: any) => {
     }
     return `${r.first_name} ${r.last_name || ''}`.trim();
 };
-
-// Subject icon/color config
-interface SubjectStyle { color: string; bg: string; icon: any }
-
-function getSubjectStyle(subject: string): SubjectStyle {
-    const s = subject.toLowerCase();
-    const ico = (d: string, extra?: string) => <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={d}></path>{extra && <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={extra}></path>}</svg>;
-    const icoL = (d: string) => <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={d}></path></svg>;
-
-    const badge = (color: string, bg: string, d: string, extra?: string): SubjectStyle => ({ color, bg, icon: ico(d, extra) });
-    const badgeL = (color: string, bg: string, d: string): SubjectStyle => ({ color, bg, icon: icoL(d) });
-
-    if (/bio/.test(s))   return badge('text-green-700 dark:text-green-400', 'bg-green-50 dark:bg-green-900/30', 'M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25');
-    if (/chem/.test(s))  return badge('text-purple-700 dark:text-purple-400', 'bg-purple-50 dark:bg-purple-900/30', 'M9 3v6m6-6v6m-3 3v6m0-14a3 3 0 013 3v3a3 3 0 01-6 0V9a3 3 0 013-3z');
-    if (/phys/.test(s))  return badge('text-indigo-700 dark:text-indigo-400', 'bg-indigo-50 dark:bg-indigo-900/30', 'M13 10V3L4 14h7v7l9-11h-7z');
-    if (/math/.test(s))  return badge('text-orange-700 dark:text-orange-400', 'bg-orange-50 dark:bg-orange-900/30', 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z');
-    if (/eng/.test(s))   return badge('text-cyan-700 dark:text-cyan-400', 'bg-cyan-50 dark:bg-cyan-900/30', 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4');
-    if (/english|writing/.test(s)) return badge('text-blue-700 dark:text-blue-400', 'bg-blue-50 dark:bg-blue-900/30', 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253');
-    if (/econom|business|legal/.test(s)) return badge('text-amber-700 dark:text-amber-400', 'bg-amber-50 dark:bg-amber-900/30', 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z');
-    if (/history|geograph/.test(s)) return badge('text-teal-700 dark:text-teal-400', 'bg-teal-50 dark:bg-teal-900/30', 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z');
-    if (/drama|music/.test(s)) return badge('text-pink-700 dark:text-pink-400', 'bg-pink-50 dark:bg-pink-900/30', 'M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3');
-    if (/visual art|art/.test(s)) return badge('text-fuchsia-700 dark:text-fuchsia-400', 'bg-fuchsia-50 dark:bg-fuchsia-900/30', 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01');
-    if (/chinese|german|latin|greek|language/.test(s)) return badge('text-rose-700 dark:text-rose-400', 'bg-rose-50 dark:bg-rose-900/30', 'M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129');
-    if (/software|cs|computing/.test(s)) return badge('text-lime-700 dark:text-lime-400', 'bg-lime-50 dark:bg-lime-900/30', 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4');
-    if (/health|sport|movement/.test(s)) return badge('text-red-700 dark:text-red-400', 'bg-red-50 dark:bg-red-900/30', 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z');
-    return badge('text-gray-700 dark:text-gray-400', 'bg-gray-50 dark:bg-gray-900/30', 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10');
-}
-
-function SubjectBadge({ subject }: { subject: string }) {
-    const s = getSubjectStyle(subject);
-    return (
-        <span class={`inline-flex items-center gap-1 ${s.color} text-xs whitespace-nowrap`}>
-            {s.icon}
-            {subject}
-        </span>
-    );
-}
-
-function SubjectIcon({ subject }: { subject: string }) {
-    const s = getSubjectStyle(subject);
-    return (
-        <div class={`shrink-0 w-10 h-10 ${s.bg} ${s.color} rounded-lg items-center justify-center hidden sm:flex`}>
-            {s.icon}
-        </div>
-    );
-}
 
 app.get('/resources', async (c) => {
     const user = await getUser(c)
@@ -152,7 +107,7 @@ app.get('/resources', async (c) => {
                                     <div>
                                         <a href={`/resources/view/${r.id}`} class="text-lg font-bold text-gray-900 dark:text-white mb-1 leading-snug hover:text-blue-600 dark:hover:text-blue-400 line-clamp-2">{r.title}</a>
                                         <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-3">
-                                            <SubjectBadge subject={r.subject} />
+                                            <SubjectBadge subject={r.subject} tab="resource" />
                                             <span class="text-gray-300 dark:text-neutral-600">•</span>
                                             <span class="local-date" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                         </div>
@@ -177,11 +132,11 @@ app.get('/resources', async (c) => {
                                         data-subject={r.subject}
                                         data-date={r.created_at}
                                         data-downloads={r.download_count || 0}>
-                                        <SubjectIcon subject={r.subject} />
+                                        <SubjectIcon subject={r.subject} tab="resource" />
                                         <div class="flex-grow min-w-0">
                                             <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 mb-1">
                                                 <a href={`/resources/view/${r.id}`} class="text-sm font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 truncate">{r.title}</a>
-                                                <SubjectBadge subject={r.subject} />
+                                                <SubjectBadge subject={r.subject} tab="resource" />
                                             </div>
                                             {r.description && <p class="text-xs text-gray-500 dark:text-neutral-400 truncate mt-0.5">{r.description}</p>}
                                         </div>
@@ -435,7 +390,7 @@ app.get('/resources', async (c) => {
                                 <a href={`/resources/view/${r.id}`} class="text-lg font-bold text-gray-900 dark:text-white mb-1 leading-snug hover:text-blue-600 dark:hover:text-blue-400 line-clamp-2">{r.title}</a>
 
                                 <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
-                                    <SubjectBadge subject={r.subject} />
+                                    <SubjectBadge subject={r.subject} tab="resource" />
                                     <span class="text-gray-300 dark:text-neutral-600">•</span>
                                     <span class="local-date" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
                                     {r.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
@@ -479,11 +434,11 @@ app.get('/resources', async (c) => {
                                 class={`search-item list-style p-4 hover:bg-gray-50 dark:hover:bg-neutral-700 flex items-center gap-4 transition-colors ${r.is_deleted ? 'bg-red-50 dark:bg-red-900/20' : ''}`}
                                 data-search-text={`${r.title} ${r.description} ${r.subject} ${r.first_name || ''} ${r.last_name || ''}`}
                             >
-                                <SubjectIcon subject={r.subject} />
+                                <SubjectIcon subject={r.subject} tab="resource" />
                                 <div class="flex-grow min-w-0">
                                     <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 mb-1">
                                         <a href={`/resources/view/${r.id}`} class="text-sm font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 truncate">{r.title}</a>
-                                        <SubjectBadge subject={r.subject} />
+                                        <SubjectBadge subject={r.subject} tab="resource" />
                                         {r.is_deleted && <span class="text-[10px] font-bold text-red-600 uppercase">Deleted</span>}
                                     </div>
                                     {r.description && <p class="text-xs text-gray-500 dark:text-neutral-400 truncate mt-0.5">{r.description}</p>}
@@ -666,7 +621,7 @@ app.get('/resources/view/:id', async (c) => {
                         <div>
                             <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-3">{resource.title}</h1>
                             <div class="flex flex-wrap items-center gap-x-3 text-sm text-gray-500 dark:text-neutral-400">
-                                <SubjectBadge subject={resource.subject} />
+                                <SubjectBadge subject={resource.subject} tab="resource" />
                                 <span class="local-date" data-format="datetime" data-timestamp={resource.created_at}>{formatDate(resource.created_at)}</span>
                                 <span class="text-gray-300 dark:text-neutral-600">•</span>
                                 <span class="flex items-center">
