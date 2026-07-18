@@ -11,6 +11,7 @@ import { TimetableConfig } from '../components/timetable/TimetableConfig'
 import { TimetableModal } from '../components/timetable/TimetableModal'
 import { TimetableNotices } from '../components/timetable/TimetableNotices'
 import { TimetableEvents } from '../components/timetable/TimetableEvents'
+import { TimetableCalendar } from '../components/timetable/TimetableCalendar'
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/', async (c) => {
@@ -30,6 +31,7 @@ app.get('/', async (c) => {
                 {TimetableModal}
                 {TimetableNotices}
                 {TimetableEvents}
+                {TimetableCalendar}
                 {/* Ticker Logic */}
                 {TimetableTicker}
 
@@ -51,6 +53,7 @@ app.get('/', async (c) => {
                             const tabCycle = document.getElementById('tab-cycle');
                             const tabNotices = document.getElementById('tab-notices');
                             const tabEvents = document.getElementById('tab-events');
+                            const tabCalendar = document.getElementById('tab-calendar');
                             const tabConfig = document.getElementById('tab-config');
                             const headerControls = document.querySelector('#content > .flex.items-center.gap-2.mb-6') || document.querySelector('#content > .flex.items-center.gap-2.mb-3');
                             const configContainer = document.getElementById('config-container');
@@ -59,7 +62,7 @@ app.get('/', async (c) => {
                             const quickLinksWrapper = document.getElementById('quick-links-wrapper');
                             
                             // Reset tabs
-                            [tabDay, tabCycle, tabNotices, tabEvents, tabConfig].forEach(t => {
+                            [tabDay, tabCycle, tabNotices, tabEvents, tabCalendar, tabConfig].forEach(t => {
                                 if(t) {
                                     t.classList.remove('border-red-500', 'text-red-500');
                                     t.classList.add('border-transparent', 'text-gray-500');
@@ -67,7 +70,7 @@ app.get('/', async (c) => {
                             });
 
                             // Show quick links only in day/notices/events views
-                            const showQuickLinks = ['day', 'notices', 'events'].includes(currentView);
+                            const showQuickLinks = ['day', 'notices', 'events', 'calendar'].includes(currentView);
                             if (quickLinksWrapper) {
                                 quickLinksWrapper.style.display = showQuickLinks ? '' : 'none';
                             }
@@ -104,6 +107,15 @@ app.get('/', async (c) => {
                                 if (configContainer) configContainer.classList.add('hidden');
                                 if (timetableList) timetableList.classList.remove('hidden');
                                 if (window.renderEvents) window.renderEvents();
+                            } else if (currentView === 'calendar') {
+                                if (tabCalendar) {
+                                    tabCalendar.classList.add('border-red-500', 'text-red-500');
+                                    tabCalendar.classList.remove('border-transparent', 'text-gray-500');
+                                }
+                                if (headerControls) headerControls.classList.remove('hidden');
+                                if (configContainer) configContainer.classList.add('hidden');
+                                if (timetableList) timetableList.classList.remove('hidden');
+                                if (window.renderCalendar) window.renderCalendar();
                             } else if (currentView === 'config') {
                                 tabConfig.classList.add('border-red-500', 'text-red-500');
                                 tabConfig.classList.remove('border-transparent', 'text-gray-500');
@@ -118,6 +130,9 @@ app.get('/', async (c) => {
                             let d = new Date(y, m - 1, day);
                             if (currentView === 'events') {
                                 d.setDate(d.getDate() + (delta * 7));
+                            } else if (currentView === 'calendar') {
+                                if (window.calendarPrevMonth && delta < 0) { window.calendarPrevMonth(); return; }
+                                if (window.calendarNextMonth && delta > 0) { window.calendarNextMonth(); return; }
                             } else {
                                 let count = 0;
                                 while(count < 7) {
@@ -140,13 +155,19 @@ app.get('/', async (c) => {
 
                         document.getElementById('btn-prev').onclick = () => changeDate(-1);
                         document.getElementById('btn-next').onclick = () => changeDate(1);
-                        document.getElementById('btn-reset').onclick = () => { currentDateStr = getInitialDate(); render(); };
+                        document.getElementById('btn-reset').onclick = () => {
+                            currentDateStr = getInitialDate();
+                            if (currentView === 'calendar' && window.resetCalendarMonth) window.resetCalendarMonth();
+                            render();
+                        };
                         document.getElementById('tab-day').onclick = () => { currentView = 'day'; render(); };
                         document.getElementById('tab-cycle').onclick = () => { currentView = 'cycle'; render(); };
                         const noticesBtn = document.getElementById('tab-notices');
                         if (noticesBtn) noticesBtn.onclick = () => { currentView = 'notices'; render(); };
                         const eventsBtn = document.getElementById('tab-events');
                         if (eventsBtn) eventsBtn.onclick = () => { currentView = 'events'; render(); };
+                        const calendarBtn = document.getElementById('tab-calendar');
+                        if (calendarBtn) calendarBtn.onclick = () => { currentView = 'calendar'; render(); };
                         document.getElementById('tab-config').onclick = () => { currentView = 'config'; render(); };
 
                         document.addEventListener('click', (e) => {
