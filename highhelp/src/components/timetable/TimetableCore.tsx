@@ -39,7 +39,9 @@ export const TimetableCore = html`
     const CACHE_TTL = 300000; // 5 minutes (adjustable)
 
     let currentDateStr = new URLSearchParams(window.location.search).get('date') || getInitialDate();
-    let currentView = 'day'; 
+    const hashView = window.location.hash.replace('#', '');
+    const validViews = ['day', 'cycle', 'notices', 'events', 'exams', 'config'];
+    let currentView = validViews.includes(hashView) ? (hashView === 'exams' ? 'calendar' : hashView) : 'day';
     let tickerInterval = null;
     let hoveredPeriodData = null;
     let activeSubject = null;

@@ -160,15 +160,15 @@ app.get('/', async (c) => {
                             if (currentView === 'calendar' && window.resetCalendarMonth) window.resetCalendarMonth();
                             render();
                         };
-                        document.getElementById('tab-day').onclick = () => { currentView = 'day'; render(); };
-                        document.getElementById('tab-cycle').onclick = () => { currentView = 'cycle'; render(); };
+                        document.getElementById('tab-day').onclick = () => { currentView = 'day'; window.location.hash = 'day'; render(); };
+                        document.getElementById('tab-cycle').onclick = () => { currentView = 'cycle'; window.location.hash = 'cycle'; render(); };
                         const noticesBtn = document.getElementById('tab-notices');
-                        if (noticesBtn) noticesBtn.onclick = () => { currentView = 'notices'; render(); };
+                        if (noticesBtn) noticesBtn.onclick = () => { currentView = 'notices'; window.location.hash = 'notices'; render(); };
                         const eventsBtn = document.getElementById('tab-events');
-                        if (eventsBtn) eventsBtn.onclick = () => { currentView = 'events'; render(); };
+                        if (eventsBtn) eventsBtn.onclick = () => { currentView = 'events'; window.location.hash = 'events'; render(); };
                         const calendarBtn = document.getElementById('tab-calendar');
-                        if (calendarBtn) calendarBtn.onclick = () => { currentView = 'calendar'; render(); };
-                        document.getElementById('tab-config').onclick = () => { currentView = 'config'; render(); };
+                        if (calendarBtn) calendarBtn.onclick = () => { currentView = 'calendar'; window.location.hash = 'exams'; render(); };
+                        document.getElementById('tab-config').onclick = () => { currentView = 'config'; window.location.hash = 'config'; render(); };
 
                         document.addEventListener('click', (e) => {
                             if (activeSubject && !e.target.closest('.period-card')) {
