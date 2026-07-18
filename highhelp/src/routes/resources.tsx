@@ -46,7 +46,7 @@ app.get('/resources', async (c) => {
             <Layout title="Resources" user={user}>
                 <div class="mx-auto space-y-6">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
-                        <h1 class="text-3xl font-bold">Resources Feed</h1>
+                        <h1 class="text-3xl font-bold">Resources</h1>
                         <a href="#browse-subjects" class="text-blue-600 hover:underline">Upload Resources ↓</a>
                     </div>
 

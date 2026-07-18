@@ -50,7 +50,7 @@ export const TimetableLayout = ({ children }: { children: Child }) => (
                     </div>
 
                     <div class="text-center whitespace-nowrap flex-shrink-0">
-                        <div id="bt-timer" class="text-4xl md:text-5xl font-bold tracking-wide leading-none">--:--:--</div>
+                        <div id="bt-timer" class="text-4xl md:text-5xl font-bold tracking-wide leading-none night-gradient">--:--:--</div>
                         <div id="bt-label" class="text-xs text-red-500 dark:text-red-400 mt-2 tracking-wide uppercase">Until Start</div>
                     </div>
                 </div>

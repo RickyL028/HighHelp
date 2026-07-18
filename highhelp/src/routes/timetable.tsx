@@ -44,6 +44,28 @@ app.get('/', async (c) => {
                     window.currentUserPermission = ${user.permission_level || 0};
                     window.currentUserId = ${user.id};
                     (function() {
+                        function isNight() {
+                            return document.documentElement.classList.contains('night');
+                        }
+
+                        function applyTimetableTheme(theme) {
+                            if (theme === 'night') {
+                                document.documentElement.classList.add('night');
+                            } else {
+                                document.documentElement.classList.remove('night');
+                            }
+                            if (window.render) window.render();
+                        }
+
+                        window.setTimetableTheme = function(theme) {
+                            localStorage.setItem('timetableTheme', theme);
+                            applyTimetableTheme(theme);
+                        };
+
+                        window.addEventListener('timetableThemeChanged', (e) => {
+                            applyTimetableTheme(e.detail.theme);
+                        });
+
                         function render() {
                             if (window.location.pathname !== '/timetable') return;
                             activeSubject = null;
@@ -62,9 +84,10 @@ app.get('/', async (c) => {
                             const quickLinksWrapper = document.getElementById('quick-links-wrapper');
                             
                             // Reset tabs
+                            const nightAccent = isNight();
                             [tabDay, tabCycle, tabNotices, tabEvents, tabCalendar, tabConfig].forEach(t => {
                                 if(t) {
-                                    t.classList.remove('border-red-500', 'text-red-500');
+                                    t.classList.remove('border-red-500', 'text-red-500', 'border-purple-500', 'text-purple-500');
                                     t.classList.add('border-transparent', 'text-gray-500');
                                 }
                             });
@@ -76,14 +99,14 @@ app.get('/', async (c) => {
                             }
 
                             if (currentView === 'day') {
-                                tabDay.classList.add('border-red-500', 'text-red-500');
+                                tabDay.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
                                 tabDay.classList.remove('border-transparent', 'text-gray-500');
                                 if (headerControls) headerControls.classList.remove('hidden');
                                 if (configContainer) configContainer.classList.add('hidden');
                                 if (timetableList) timetableList.classList.remove('hidden');
                                 renderDay();
                             } else if (currentView === 'cycle') {
-                                tabCycle.classList.add('border-red-500', 'text-red-500');
+                                tabCycle.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
                                 tabCycle.classList.remove('border-transparent', 'text-gray-500');
                                 if (headerControls) headerControls.classList.add('hidden');
                                 if (configContainer) configContainer.classList.add('hidden');
@@ -91,7 +114,7 @@ app.get('/', async (c) => {
                                 renderCycle();
                             } else if (currentView === 'notices') {
                                 if (tabNotices) {
-                                    tabNotices.classList.add('border-red-500', 'text-red-500');
+                                    tabNotices.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
                                     tabNotices.classList.remove('border-transparent', 'text-gray-500');
                                 }
                                 if (headerControls) headerControls.classList.remove('hidden');
@@ -100,7 +123,7 @@ app.get('/', async (c) => {
                                 if (window.renderNotices) window.renderNotices();
                             } else if (currentView === 'events') {
                                 if (tabEvents) {
-                                    tabEvents.classList.add('border-red-500', 'text-red-500');
+                                    tabEvents.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
                                     tabEvents.classList.remove('border-transparent', 'text-gray-500');
                                 }
                                 if (headerControls) headerControls.classList.remove('hidden');
@@ -109,7 +132,7 @@ app.get('/', async (c) => {
                                 if (window.renderEvents) window.renderEvents();
                             } else if (currentView === 'calendar') {
                                 if (tabCalendar) {
-                                    tabCalendar.classList.add('border-red-500', 'text-red-500');
+                                    tabCalendar.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
                                     tabCalendar.classList.remove('border-transparent', 'text-gray-500');
                                 }
                                 if (headerControls) headerControls.classList.remove('hidden');
@@ -117,7 +140,7 @@ app.get('/', async (c) => {
                                 if (timetableList) timetableList.classList.remove('hidden');
                                 if (window.renderCalendar) window.renderCalendar();
                             } else if (currentView === 'config') {
-                                tabConfig.classList.add('border-red-500', 'text-red-500');
+                                tabConfig.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
                                 tabConfig.classList.remove('border-transparent', 'text-gray-500');
                                 if (headerControls) headerControls.classList.add('hidden');
                                 if (timetableList) timetableList.classList.add('hidden');

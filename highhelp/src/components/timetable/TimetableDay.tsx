@@ -158,7 +158,7 @@ export const TimetableDay = html`
                 if (hasContent) {
                     const nextTimeStr = getNextSubjectOccurrence(data.subjectCode, currentDateStr, bell.period);
                     const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
-                    const borderClass = highlightChange ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-neutral-900' : '';
+                    const borderClass = highlightChange ? ('ring-2 ' + (document.documentElement.classList.contains('night') ? 'ring-purple-500' : 'ring-red-500') + ' ring-offset-2 dark:ring-offset-neutral-900') : '';
                     
                     let changedBadge = '';
                     if (variationTags.length > 0) {
