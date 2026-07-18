@@ -48,11 +48,16 @@ app.get('/', async (c) => {
                             return document.documentElement.classList.contains('night');
                         }
 
+                        function isPaper() {
+                            return document.documentElement.classList.contains('paper');
+                        }
+
                         function applyTimetableTheme(theme) {
+                            document.documentElement.classList.remove('night', 'paper');
                             if (theme === 'night') {
                                 document.documentElement.classList.add('night');
-                            } else {
-                                document.documentElement.classList.remove('night');
+                            } else if (theme === 'paper') {
+                                document.documentElement.classList.add('paper');
                             }
                             if (window.render) window.render();
                         }

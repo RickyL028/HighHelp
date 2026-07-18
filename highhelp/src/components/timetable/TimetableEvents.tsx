@@ -57,7 +57,10 @@ export const TimetableEvents = html`
         const fromStr = toDateStr(weekStart);
         const toStr = toDateStr(weekEnd);
 
-        document.getElementById('date-display').innerHTML = \`<span class="font-bold text-gray-800 dark:text-neutral-200">\${formatWeekRange(weekStart)}\${getTermLabel(fromStr)}</span>\`;
+        const isPaperTheme = document.documentElement.classList.contains('paper');
+        const displayWeek = isPaperTheme ? paperDateFormat(fromStr) + ' \\u2013 ' + paperDateFormat(toStr) : formatWeekRange(weekStart);
+        const displayTerm = isPaperTheme ? getTermLabel(fromStr).replace('[ ', '/ ').replace(']', '').replace(' Week ', ' \\u2022 Wk ') : getTermLabel(fromStr);
+        document.getElementById('date-display').innerHTML = \`<span class="font-bold text-gray-800 dark:text-neutral-200">\${displayWeek}\${displayTerm}</span>\`;
 
         const snapshotDate = currentDateStr;
         const snapshotView = currentView;

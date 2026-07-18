@@ -11,7 +11,10 @@ export const TimetableNotices = html`
         container.className = '';
         container.innerHTML = '<div class="text-center py-12 text-gray-500 dark:text-neutral-500">Loading notices...</div>';
 
-        document.getElementById('date-display').innerHTML = \`<span class="font-bold text-gray-800 dark:text-neutral-200">\${currentDateStr}\${getTermLabel(currentDateStr)}</span>\`;
+        const isPaperTheme = document.documentElement.classList.contains('paper');
+        const displayDate = isPaperTheme ? paperDateFormat(currentDateStr) : currentDateStr;
+        const displayTerm = isPaperTheme ? getTermLabel(currentDateStr).replace('[ ', '/ ').replace(']', '').replace(' Week ', ' \\u2022 Wk ') : getTermLabel(currentDateStr);
+        document.getElementById('date-display').innerHTML = \`<span class="font-bold text-gray-800 dark:text-neutral-200">\${displayDate}\${displayTerm}</span>\`;
         const snapshotDate = currentDateStr;
         const snapshotView = currentView;
 

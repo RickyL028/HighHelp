@@ -15,10 +15,13 @@ export const TimetableDay = html`
         const month = (d.getMonth() + 1).toString().padStart(2, '0');
         const year = d.getFullYear();
         const dateFormatted = \`\${dayName}, \${day}/\${month}/\${year}\`;
+        const isPaperTheme = document.documentElement.classList.contains('paper');
+        const paperDateStr = isPaperTheme ? paperDateFormat(currentDateStr) : dateFormatted;
+        const paperTermLabel = isPaperTheme ? getTermLabel(currentDateStr).replace('[ ', '/ ').replace(']', '').replace('Term ', 'Term ').replace(' Week ', ' \\u2022 Wk ') : getTermLabel(currentDateStr);
         
         document.getElementById('date-display').innerHTML = \`
             <div class="relative cursor-pointer group flex items-center gap-1.5 text-center leading-tight">
-                <span class="z-10 bg-transparent text-gray-800 dark:text-neutral-200 font-bold whitespace-nowrap">\${dateFormatted}\${dayInfo ? ' [' + dayInfo.dayName[dayInfo.dayName.length - 1] + ']' : ''}\${getTermLabel(currentDateStr)}</span>
+                <span class="z-10 bg-transparent text-gray-800 dark:text-neutral-200 font-bold whitespace-nowrap">\${paperDateStr}\${dayInfo ? ' [' + dayInfo.dayName[dayInfo.dayName.length - 1] + ']' : ''}\${paperTermLabel}</span>
                 <svg class="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 <input type="date" id="date-picker-input" 
                        class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"

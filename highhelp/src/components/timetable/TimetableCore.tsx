@@ -354,6 +354,18 @@ export const TimetableCore = html`
         return \`\${h12}:\${m.toString().padStart(2, '0')} \${suffix}\`;
     }
 
+    function paperDateFormat(dateStr) {
+        const d = new Date(dateStr + 'T12:00:00');
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const dayName = days[d.getDay()];
+        const day = d.getDate();
+        const month = months[d.getMonth()];
+        const year = d.getFullYear();
+        const ord = (n) => { if (n > 3 && n < 21) return 'th'; switch (n % 10) { case 1: return 'st'; case 2: return 'nd'; case 3: return 'rd'; default: return 'th'; } };
+        return dayName + ', ' + month + ' ' + day + ord(day) + ', ' + year;
+    }
+
     function isTimePast(dateStr, timeStr) {
         if (!timeStr) return false;
         const t = new Date();

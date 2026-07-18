@@ -74,6 +74,8 @@ ${props.latex ? html`
                 const timetableTheme = localStorage.getItem('timetableTheme');
                 if (timetableTheme === 'night') {
                     document.documentElement.classList.add('night');
+                } else if (timetableTheme === 'paper') {
+                    document.documentElement.classList.add('paper');
                 }
                 const theme = localStorage.getItem('theme') || 'light';
                 if (theme === 'dark') {
@@ -156,6 +158,76 @@ ${props.latex ? html`
                 html.night .period-card>.absolute.left-0::before{content:'';position:absolute;top:50%;left:-3px;width:8px;height:8px;border-radius:50%;background:inherit;transform:translateY(-50%)}
                 html.night .period-card [data-accent-text]{color:var(--strip-color)!important}
                 html.night .dark\:border-red-500\/40{border-color:rgba(168,85,247,.4)!important}
+                /* Paper theme */
+                html.paper{font-family:'Courier New',Courier,monospace!important;background:#F5F5F0!important}
+                html.paper body{background:#F5F5F0!important;color:#3D3535!important;font-family:'Courier New',Courier,monospace!important}
+                html.paper nav{background:#F5F5F0!important;border-bottom:2px solid #3D3535!important;box-shadow:none!important}
+                html.paper nav a,html.paper nav button{color:#3D3535!important}
+                html.paper nav a:hover,html.paper nav button:hover{background:rgba(61,53,53,.06)!important}
+                html.paper main,html.paper footer{background:transparent!important}
+                html.paper #app-container{border:2px solid #3D3535!important;border-radius:255px 15px 225px 15px/15px 225px 15px 255px!important;padding:2rem 1.5rem!important;background:#F5F5F0!important}
+                html.paper .bg-background,html.paper .bg-white,html.paper .dark\:bg-neutral-800,html.paper .dark\:bg-neutral-900,html.paper .dark\:bg-neutral-950,html.paper .dark\:bg-neutral-950\/50,html.paper .bg-gray-50,html.paper .bg-gray-100,html.paper .bg-gray-50\/50,html.paper .bg-gray-800,html.paper .dark\:bg-neutral-900\/50,html.paper .dark\:bg-neutral-800{background:transparent!important}
+                html.paper .border-gray-100,html.paper .border-gray-200,html.paper .dark\:border-neutral-700,html.paper .dark\:border-neutral-800,html.paper .dark\:border-neutral-800\/50,html.paper .dark\:border-neutral-700\/50,html.paper .divide-gray-100>*>:not([hidden])~:not([hidden]),html.paper .border-gray-50{border-color:#B5AEA5!important}
+                html.paper .text-gray-800,html.paper .text-gray-900,html.paper .dark\:text-white,html.paper .dark\:text-neutral-100,html.paper .dark\:text-neutral-200,html.paper .text-black{color:#3D3535!important}
+                html.paper .text-gray-400,html.paper .text-gray-500,html.paper .dark\:text-neutral-400,html.paper .dark\:text-neutral-500,html.paper .dark\:text-neutral-600,html.paper .text-gray-300,html.paper .dark\:text-gray-200,html.paper .dark\:text-gray-300{color:#8A8078!important}
+                html.paper .text-red-500,html.paper .text-red-600,html.paper .dark\:text-red-400,html.paper .dark\:text-red-300,html.paper .text-red-700{color:#CBA153!important}
+                html.paper .bg-red-500,html.paper .bg-red-600,html.paper .bg-red-50,html.paper .dark\:bg-red-500\/10,html.paper .dark\:bg-red-500\/20,html.paper .dark\:bg-red-900\/20,html.paper .dark\:bg-red-900\/30,html.paper .dark\:bg-red-900\/40,html.paper .bg-red-100,html.paper .dark\:bg-red-900\/30{background:#CBA153!important}
+                html.paper .hover\:bg-red-50:hover,html.paper .dark\:hover\:bg-red-500\/10:hover,html.paper .dark\:hover\:bg-red-500\/20:hover,html.paper .hover\:bg-red-600:hover{background:rgba(203,161,83,.15)!important}
+                html.paper .hover\:text-red-500:hover,html.paper .hover\:text-red-600:hover,html.paper .dark\:hover\:text-red-400:hover{color:#CBA153!important}
+                html.paper .border-red-500{border-color:#CBA153!important}
+                html.paper .ring-red-500{--tw-ring-color:#CBA153!important}
+                html.paper .bg-blue-50,html.paper .dark\:bg-blue-900\/20,html.paper .dark\:bg-blue-900\/30,html.paper .bg-blue-100,html.paper .hover\:bg-blue-100:hover{background:rgba(74,98,120,.06)!important}
+                html.paper .text-blue-400,html.paper .text-blue-500,html.paper .dark\:text-blue-300,html.paper .dark\:text-blue-400,html.paper .text-blue-600,html.paper .text-blue-700,html.paper .hover\:text-blue-600:hover,html.paper .dark\:hover\:text-blue-400:hover{color:#4A6278!important}
+                html.paper .border-blue-300,html.paper .dark\:border-blue-500\/40,html.paper .hover\:border-blue-300:hover{border-color:#4A6278!important}
+                html.paper .bg-indigo-100,html.paper .dark\:bg-indigo-900\/20,html.paper .dark\:bg-indigo-900\/30{background:rgba(74,98,120,.06)!important}
+                html.paper .text-indigo-600,html.paper .text-indigo-700,html.paper .dark\:text-indigo-300{color:#4A6278!important}
+                html.paper .bg-orange-100,html.paper .dark\:bg-orange-900\/20,html.paper .dark\:bg-orange-900\/30{background:rgba(180,120,60,.08)!important}
+                html.paper .bg-green-100,html.paper .dark\:bg-green-900\/20,html.paper .dark\:bg-green-900\/30{background:rgba(80,120,80,.06)!important}
+                html.paper .bg-yellow-100,html.paper .dark\:bg-yellow-900\/30{background:rgba(180,160,80,.08)!important}
+                html.paper .text-yellow-700,html.paper .dark\:text-yellow-400{color:#8A7A40!important}
+                html.paper .bg-gray-800{background:#F5F5F0!important}
+                html.paper .shadow-sm{box-shadow:none!important}
+                html.paper .shadow-lg,html.paper .shadow-xl,html.paper .shadow-2xl{box-shadow:2px 2px 0 rgba(61,53,53,.1)!important}
+                html.paper .ring-gray-300{--tw-ring-color:#B5AEA5!important}
+                html.paper .placeholder-gray-400,html.paper .dark\:placeholder-neutral-600::placeholder{color:#B5AEA5!important}
+                html.paper #big-timer-display{background:transparent!important;border:2px solid #3D3535!important;border-radius:255px 15px 225px 15px/15px 225px 15px 255px!important;background-image:none!important}
+                html.paper #big-timer-display>#bt-timer{color:#4A6278!important;background:none!important;-webkit-background-clip:unset!important;-webkit-text-fill-color:unset!important;background-clip:unset!important}
+                html.paper #bt-label{color:#8A8078!important;text-transform:lowercase!important;font-variant:small-caps!important}
+                html.paper #daily-progress-bar{background-color:#B5AEA5!important}
+                html.paper #app-container>.flex.border-b{border-bottom:2px solid #3D3535!important}
+                html.paper #app-container .flex.overflow-x-auto.border-b svg{display:none!important}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-day::before{content:'DAY';font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-cycle::before{content:'CYCLE';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-notices::before{content:'NOTICES';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-events::before{content:'EVENTS';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-calendar::before{content:'EXAMS';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-config::before{content:'CONFIG';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+                html.paper #app-container .flex.overflow-x-auto.border-b button span:not(.ql-title){font-size:0!important}
+                html.paper .flex.items-center.gap-1\.5 button svg{display:none!important}
+                html.paper #btn-prev::before{content:'[ PREV ]';font-family:'Courier New',Courier,monospace;font-weight:700;font-size:.7rem;color:#4A6278;letter-spacing:.05em}
+                html.paper #btn-next::before{content:'[ NEXT ]';font-family:'Courier New',Courier,monospace;font-weight:700;font-size:.7rem;color:#4A6278;letter-spacing:.05em}
+                html.paper #btn-prev svg,html.paper #btn-next svg{display:none!important}
+                html.paper #btn-reset{border-color:#4A6278!important;color:#4A6278!important;font-family:'Courier New',Courier,monospace}
+                html.paper .period-card{border:1px solid #B5AEA5!important;border-left:4px solid #3D3535!important;border-radius:4px!important;box-shadow:1px 1px 0 rgba(61,53,53,.08)!important;background:#F5F5F0!important}
+                html.paper .period-card:hover{box-shadow:2px 2px 0 rgba(61,53,53,.12)!important}
+                html.paper .period-card>.absolute.left-0{width:4px!important;border-radius:0!important}
+                html.paper .period-card>.absolute.left-0::before{content:'';position:absolute;top:50%;left:-3px;width:8px;height:8px;border-radius:50%;background:inherit;transform:translateY(-50%)}
+                html.paper .period-card [data-accent-text]{color:#3D3535!important}
+                html.paper .ring-2.ring-red-500,html.paper .ring-2{border:2px solid #4A6278!important;box-shadow:2px 2px 0 rgba(74,98,120,.15)!important;--tw-ring-color:transparent!important}
+                html.paper #quick-links-wrapper{display:none!important}
+                html.paper .fixed.bg-black\/60{background:rgba(245,245,240,.92)!important}
+                html.paper #class-modal-content{border:2px solid #3D3535!important;border-radius:4px!important;background:#F5F5F0!important}
+                html.paper .bg-red-600{background:#4A6278!important}
+                html.paper .hover\:bg-red-600:hover{background:#3D5060!important}
+                html.paper .bg-red-500.text-white{background:#4A6278!important}
+                html.paper .dark\:bg-neutral-950\/30,html.paper .bg-gray-50.dark\:bg-neutral-950\/30{background:rgba(181,174,165,.15)!important}
+                html.paper .dark\:bg-neutral-900\/30{background:rgba(181,174,165,.1)!important}
+                html.paper .bg-gray-50\/30,html.paper .dark\:bg-neutral-900\/10,html.paper .dark\:bg-neutral-900\/20{background:rgba(181,174,165,.06)!important}
+                html.paper .sticky.top-0{background:#F5F5F0!important}
+                html.paper table{font-family:'Courier New',Courier,monospace}
+                html.paper .dark\:bg-red-900\/10{background:rgba(203,161,83,.08)!important}
+                html.paper .text-\[10px\]{font-size:.65rem!important}
+                html.paper .animate-pulse{animation:none!important}
             </style>
           </head>
       <body class="bg-background dark:bg-neutral-900 text-gray-800 dark:text-gray-200 font-sans min-h-screen flex flex-col transition-colors duration-300">
