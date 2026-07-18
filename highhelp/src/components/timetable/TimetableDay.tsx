@@ -184,14 +184,14 @@ export const TimetableDay = html`
                             data-link="\${data.link || ''}"
                             data-color="\${stripColor}">
                                 <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" style="background-color: \${stripColor};"></div>
-                                <div class="pl-3 font-medium \${titleColorClass} \${textSize} flex items-center">
+                                <div class="pl-3 font-medium \${titleColorClass} \${textSize} flex items-center" data-accent-text style="--strip-color: \${stripColor}">
                                     \${data.title || data.subject || 'Unknown'}
                                     \${changedBadge}
                                     \${notesBadge}
                                 </div>
                                 <div class="pl-3 flex items-center gap-4 \${textSize}">
                                     <span class="\${teacherColorClass}">\${teacherDisplay}</span>
-                                    \${data.room ? \`<span class="font-bold \${roomColorClass}">\${data.room}</span>\` : ''}
+                                    \${data.room ? \`<span class="font-bold \${roomColorClass}" data-accent-text style="--strip-color: \${stripColor}">\${data.room}</span>\` : ''}
                                 </div>
                                 <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 dark:bg-neutral-950 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
                                     <div class="flex justify-between items-center mb-2 border-b border-gray-600 dark:border-neutral-700 pb-2">

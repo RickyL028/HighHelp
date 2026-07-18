@@ -152,9 +152,9 @@ ${props.latex ? html`
                 html.night #big-timer-display #bt-timer.night-gradient{background:linear-gradient(90deg,#7dd3fc,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
                 html.night #big-timer-display{background:linear-gradient(135deg,#0f172a,#111827 40%,#0f172a)!important;background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 30 Q15 25 30 30 T60 30' fill='none' stroke='%231e293b' stroke-width='0.5'/%3E%3Cpath d='M0 40 Q15 35 30 40 T60 40' fill='none' stroke='%231e293b' stroke-width='0.5'/%3E%3C/svg%3E")!important;background-size:60px 60px!important;border-color:#1e293b!important}
                 html.night #daily-progress-bar{background-color:#1e293b!important}
-                html.night .period-card>.absolute.left-0{width:1px!important;border-radius:0!important}
-                html.night .period-card>.absolute.left-0::before{content:'';position:absolute;top:50%;left:-2.5px;width:6px;height:6px;border-radius:50%;background:inherit;transform:translateY(-50%)}
-                html.night .period-card .font-bold[class*="text-gray-900"],html.night .period-card .font-bold[class*="dark\\:text-white"]{color:inherit!important}
+                html.night .period-card>.absolute.left-0{width:4px!important;border-radius:0!important}
+                html.night .period-card>.absolute.left-0::before{content:'';position:absolute;top:50%;left:-3px;width:8px;height:8px;border-radius:50%;background:inherit;transform:translateY(-50%)}
+                html.night .period-card [data-accent-text]{color:var(--strip-color)!important}
                 html.night .dark\:border-red-500\/40{border-color:rgba(168,85,247,.4)!important}
             </style>
           </head>
