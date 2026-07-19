@@ -145,6 +145,43 @@ export const TimetableDay = html`
                 const isPast = isTimePast(currentDateStr, bell.endTime);
                 const opacityClass = isPast ? 'opacity-50 grayscale-[0.5]' : '';
 
+                const isGlassTheme = document.documentElement.classList.contains('glass');
+
+                function getGlassCardBg(hexColor) {
+                    const c = hexColor.toLowerCase();
+                    const map = {
+                        '#5F7B8C': 'rgba(95,123,140,.45)',
+                        '#896D73': 'rgba(137,109,115,.45)',
+                        '#597068': 'rgba(89,112,104,.45)',
+                        '#996830': 'rgba(153,104,48,.45)',
+                        '#8A7A28': 'rgba(138,122,40,.45)',
+                        '#726894': 'rgba(114,104,148,.45)',
+                        '#262E36': 'rgba(38,46,54,.65)',
+                        '#1F2937': 'rgba(31,41,55,.65)',
+                        '#4B4B4B': 'rgba(75,75,75,.45)',
+                        '#D4AF37': 'rgba(212,175,55,.4)',
+                        '#CBD5E1': 'rgba(203,213,225,.35)',
+                        '#2F4F4F': 'rgba(47,79,79,.45)',
+                        '#FFD700': 'rgba(255,215,0,.4)',
+                        '#6B7280': 'rgba(107,114,128,.45)',
+                        '#1E293B': 'rgba(30,41,59,.65)',
+                        '#27272A': 'rgba(39,39,42,.65)',
+                        '#374151': 'rgba(55,65,81,.5)',
+                        '#556B2F': 'rgba(85,107,47,.45)',
+                        '#4682B4': 'rgba(70,130,180,.45)',
+                        '#9B59B6': 'rgba(155,89,182,.45)',
+                        '#0E7490': 'rgba(14,116,144,.45)',
+                        '#0284C7': 'rgba(2,132,199,.45)',
+                        '#2563EB': 'rgba(37,99,235,.45)',
+                        '#9333EA': 'rgba(147,51,234,.45)',
+                        '#7C3AED': 'rgba(124,58,237,.45)',
+                    };
+                    if (map[c]) return map[c];
+                    const r = parseInt(c.slice(1,3),16), g = parseInt(c.slice(3,5),16), b = parseInt(c.slice(5,7),16);
+                    if (!isNaN(r) && !isNaN(g) && !isNaN(b)) return 'rgba('+r+','+g+','+b+',.35)';
+                    return 'rgba(95,123,140,.35)';
+                }
+
                 const periodNotes = data?.subjectCode ? dayNotes.filter(n => n.class_name === data.subjectCode) : [];
                 const notesCount = periodNotes.length;
                 const notesBadge = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[10px] font-bold rounded">\${notesCount}</span>\` : '';
@@ -161,23 +198,30 @@ export const TimetableDay = html`
                 if (hasContent) {
                     const nextTimeStr = getNextSubjectOccurrence(data.subjectCode, currentDateStr, bell.period);
                     const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
-                    const borderClass = highlightChange ? ('ring-2 ' + (document.documentElement.classList.contains('night') ? 'ring-purple-500' : 'ring-red-500') + ' ring-offset-2 dark:ring-offset-neutral-900') : '';
+                    const ringColorClass = isGlassTheme ? 'ring-[#5F7B8C]' : document.documentElement.classList.contains('night') ? 'ring-purple-500' : 'ring-red-500';
+                    const borderClass = highlightChange ? ('ring-2 ' + ringColorClass + ' ring-offset-2 dark:ring-offset-neutral-900') : '';
                     
                     let changedBadge = '';
                     if (variationTags.length > 0) {
-                        changedBadge = \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 text-[10px] font-bold rounded animate-pulse">\${variationTags[0]}</span>\`;
+                        const badgeClasses = isGlassTheme ? 'bg-[#5F7B8C]/20 text-[#7FA0B0]' : 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400';
+                        changedBadge = \`<span class="ml-2 px-1.5 py-0.5 \${badgeClasses} text-[10px] font-bold rounded animate-pulse">\${variationTags[0]}</span>\`;
                     }
 
-                    const roomColorClass = (highlightChange && (roomVar || (classVar && classVar.roomTo))) ? 'text-red-600 dark:text-red-400 font-extrabold' : 'text-gray-900 dark:text-white';
+                    const roomColorClass = isGlassTheme ? 'text-white font-extrabold' : (highlightChange && (roomVar || (classVar && classVar.roomTo))) ? 'text-red-600 dark:text-red-400 font-extrabold' : 'text-gray-900 dark:text-white';
                     
-                    const cardBgClass = isNoCover ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 line-through' : 'bg-gray-100 dark:bg-neutral-800';
-                    const titleColorClass = isNoCover ? 'text-red-700 dark:text-red-400' : 'text-gray-900 dark:text-white';
+                    const cardBgClass = isGlassTheme
+                        ? (isNoCover ? 'bg-[#896D73]/30 line-through' : 'bg-transparent')
+                        : (isNoCover ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 line-through' : 'bg-gray-100 dark:bg-neutral-800');
+                    const titleColorClass = (isGlassTheme || !isNoCover) ? 'text-white' : 'text-red-700 dark:text-red-400';
                     
-                    // Mark the substitute teacher in bold red, or just normal styling for standard periods
-                    const teacherColorClass = isNoCover ? 'text-red-700 dark:text-red-400' : (isSub ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-900 dark:text-gray-100');
+                    const teacherColorClass = isGlassTheme
+                        ? (isSub ? 'text-white font-bold' : 'text-white/80')
+                        : (isNoCover ? 'text-red-700 dark:text-red-400' : (isSub ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-900 dark:text-gray-100'));
+
+                    const glassCardStyle = isGlassTheme ? \` style="background:\${isNoCover ? 'rgba(137,109,115,.45)' : getGlassCardBg(stripColor)}"\` : '';
 
                     innerHtml = \`
-                        <div class="period-card relative flex items-center justify-between \${cardBgClass} rounded-lg p-2.5 shadow-sm hover:bg-opacity-80 transition-all cursor-default group \${borderClass}"
+                        <div class="period-card relative flex items-center justify-between \${cardBgClass} rounded-lg p-2.5 shadow-sm hover:bg-opacity-80 transition-all cursor-default group \${borderClass}"\${glassCardStyle}
                             data-subject="\${data.subjectCode}"
                             data-title="\${data.title || data.subject || ''}"
                             data-teacher="\${teacherDisplay}"

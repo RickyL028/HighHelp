@@ -77,6 +77,8 @@ ${props.latex ? html`
                 } else if (timetableTheme === 'paper') {
                     document.documentElement.classList.add('paper');
                     document.documentElement.classList.remove('dark');
+                } else if (timetableTheme === 'glass') {
+                    document.documentElement.classList.add('glass', 'dark');
                 } else {
                     const theme = localStorage.getItem('theme') || 'light';
                     if (theme === 'dark') {
@@ -230,6 +232,86 @@ ${props.latex ? html`
                 html.paper .dark\:bg-red-900\/10{background:rgba(203,161,83,.08)!important}
                 html.paper .text-\[10px\]{font-size:.65rem!important}
                 html.paper .animate-pulse{animation:none!important}
+                /* Glass / Frosted Metal theme */
+                html.glass{background:linear-gradient(180deg,#2c3543,#3b4758)!important}
+                html.glass body{background:linear-gradient(180deg,#2c3543,#3b4758)!important;color:#fff!important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif!important}
+                html.glass nav{background:rgba(30,36,46,.85)!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 1px 0 rgba(255,255,255,.06)!important}
+                html.glass nav a:hover,html.glass nav button:hover{background:rgba(255,255,255,.06)!important}
+                html.glass main{background:transparent!important}
+                html.glass footer{background:rgba(0,0,0,.2)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+                html.glass #app-container{background:transparent!important;border-radius:0!important;border:none!important;padding:0!important}
+                html.glass .bg-background,html.glass .bg-white,html.glass .dark\:bg-neutral-800,html.glass .dark\:bg-neutral-900,html.glass .dark\:bg-neutral-950,html.glass .dark\:bg-neutral-950\/50,html.glass .bg-gray-50,html.glass .bg-gray-100,html.glass .bg-gray-50\/50,html.glass .bg-gray-800,html.glass .dark\:bg-neutral-900\/50,html.glass .bg-gray-50\/30,html.glass .dark\:bg-neutral-900\/10,html.glass .dark\:bg-neutral-900\/20,html.glass .dark\:bg-neutral-900\/30,html.glass .bg-gray-50\/50{background:rgba(0,0,0,.25)!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+                html.glass .border-gray-100,html.glass .border-gray-200,html.glass .dark\:border-neutral-700,html.glass .dark\:border-neutral-800,html.glass .dark\:border-neutral-800\/50,html.glass .dark\:border-neutral-700\/50,html.glass .border-gray-50{border-color:rgba(255,255,255,.08)!important}
+                html.glass .divide-gray-100>*>:not([hidden])~:not([hidden]){border-color:rgba(255,255,255,.06)!important}
+                html.glass .text-gray-800,html.glass .text-gray-900,html.glass .dark\:text-white,html.glass .dark\:text-neutral-100,html.glass .dark\:text-neutral-200{color:#fff!important}
+                html.glass .text-gray-400,html.glass .text-gray-500,html.glass .dark\:text-neutral-400,html.glass .dark\:text-neutral-500,html.glass .dark\:text-neutral-600,html.glass .text-gray-300,html.glass .dark\:text-gray-200,html.glass .dark\:text-gray-300{color:#94a3b8!important}
+                html.glass .text-red-500,html.glass .text-red-600,html.glass .dark\:text-red-400,html.glass .dark\:text-red-300,html.glass .text-red-700{color:#5F7B8C!important}
+                html.glass .bg-red-500,html.glass .bg-red-600,html.glass .bg-red-100,html.glass .bg-red-50,html.glass .dark\:bg-red-500\/10,html.glass .dark\:bg-red-500\/20,html.glass .dark\:bg-red-900\/20,html.glass .dark\:bg-red-900\/30,html.glass .dark\:bg-red-900\/40{background:rgba(95,123,140,.25)!important}
+                html.glass .hover\:bg-red-50:hover,html.glass .dark\:hover\:bg-red-500\/10:hover,html.glass .dark\:hover\:bg-red-500\/20:hover,html.glass .hover\:bg-red-600:hover{background:rgba(95,123,140,.35)!important}
+                html.glass .hover\:text-red-500:hover,html.glass .hover\:text-red-600:hover,html.glass .dark\:hover\:text-red-400:hover{color:#7FA0B0!important}
+                html.glass .border-red-500{border-color:rgba(95,123,140,.5)!important}
+                html.glass .ring-red-500{--tw-ring-color:rgba(95,123,140,.5)!important}
+                html.glass .bg-blue-50,html.glass .dark\:bg-blue-900\/20,html.glass .dark\:bg-blue-900\/30,html.glass .bg-blue-100,html.glass .hover\:bg-blue-100:hover{background:rgba(95,123,140,.12)!important}
+                html.glass .text-blue-400,html.glass .text-blue-500,html.glass .dark\:text-blue-300,html.glass .dark\:text-blue-400,html.glass .text-blue-600,html.glass .text-blue-700,html.glass .hover\:text-blue-600:hover,html.glass .dark\:hover\:text-blue-400:hover{color:#7FA0B0!important}
+                html.glass .bg-indigo-100,html.glass .dark\:bg-indigo-900\/20,html.glass .dark\:bg-indigo-900\/30{background:rgba(95,123,140,.1)!important}
+                html.glass .text-indigo-600,html.glass .text-indigo-700,html.glass .dark\:text-indigo-300{color:#7FA0B0!important}
+                html.glass .bg-orange-100,html.glass .dark\:bg-orange-900\/20,html.glass .dark\:bg-orange-900\/30{background:rgba(137,109,115,.1)!important}
+                html.glass .bg-green-100,html.glass .dark\:bg-green-900\/20,html.glass .dark\:bg-green-900\/30{background:rgba(95,123,140,.1)!important}
+                html.glass .bg-yellow-100,html.glass .dark\:bg-yellow-900\/30{background:rgba(180,160,80,.1)!important}
+                html.glass .text-yellow-700,html.glass .dark\:text-yellow-400{color:#94a3b8!important}
+                html.glass .bg-gray-800{background:rgba(0,0,0,.3)!important}
+                html.glass .shadow-sm{box-shadow:0 1px 2px rgba(0,0,0,.2)!important}
+                html.glass .shadow-lg,html.glass .shadow-xl,html.glass .shadow-2xl{box-shadow:0 8px 32px rgba(0,0,0,.3)!important}
+                html.glass .ring-gray-300{--tw-ring-color:rgba(255,255,255,.1)!important}
+                html.glass .placeholder-gray-400,html.glass .dark\:placeholder-neutral-600::placeholder{color:rgba(148,163,184,.5)!important}
+                html.glass #big-timer-display{background:rgba(0,0,0,.35)!important;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.08)!important;border-top:1px solid rgba(255,255,255,.12)!important;border-radius:1rem!important;background-image:none!important}
+                html.glass #big-timer-display>#bt-timer{color:#fff!important;background:none!important;-webkit-background-clip:unset!important;-webkit-text-fill-color:unset!important;background-clip:unset!important}
+                html.glass #bt-label{color:#94a3b8!important;text-transform:none!important;font-variant:normal!important}
+                html.glass #daily-progress-bar{background-color:rgba(95,123,140,.3)!important}
+                html.glass #app-container>.flex.border-b{border-bottom:1px solid rgba(255,255,255,.08)!important}
+                html.glass #app-container .flex.border-b #tab-day svg,html.glass #app-container .flex.border-b #tab-cycle svg,html.glass #app-container .flex.border-b #tab-notices svg,html.glass #app-container .flex.border-b #tab-events svg,html.glass #app-container .flex.border-b #tab-calendar svg,html.glass #app-container .flex.border-b #tab-config svg{display:none!important}
+                html.glass #app-container .flex.border-b button{font-size:.75rem!important;letter-spacing:.06em!important;font-weight:400!important}
+                html.glass #app-container .flex.border-b #tab-day{font-weight:600!important;font-size:.8rem!important}
+                html.glass #btn-prev svg,html.glass #btn-next svg{display:none!important}
+                html.glass #btn-prev{width:auto!important;min-width:4rem!important;padding:0 .75rem!important;gap:.25rem!important;background:rgba(0,0,0,.3)!important;border:1px solid rgba(255,255,255,.08)!important;color:#94a3b8!important;border-radius:9999px!important}
+                html.glass #btn-next{width:auto!important;min-width:4rem!important;padding:0 .75rem!important;gap:.25rem!important;background:rgba(0,0,0,.3)!important;border:1px solid rgba(255,255,255,.08)!important;color:#94a3b8!important;border-radius:9999px!important}
+                html.glass #btn-prev::before{content:'\\276E  PREV';font-family:inherit;font-weight:600;font-size:.7rem;color:inherit;letter-spacing:.06em;white-space:nowrap}
+                html.glass #btn-next::before{content:'NEXT  \\276F';font-family:inherit;font-weight:600;font-size:.7rem;color:inherit;letter-spacing:.06em;white-space:nowrap}
+                html.glass #btn-prev:hover,html.glass #btn-next:hover{background:rgba(0,0,0,.5)!important;border-color:rgba(255,255,255,.15)!important}
+                html.glass #btn-reset{background:rgba(0,0,0,.3)!important;border:1px solid rgba(255,255,255,.08)!important;color:#94a3b8!important;border-radius:9999px!important}
+                html.glass #btn-reset:hover{background:rgba(0,0,0,.5)!important}
+                html.glass #big-timer-display .absolute{display:none!important}
+                html.glass #timetable-list{background:rgba(0,0,0,.15);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:1rem;padding:.5rem;border:1px solid rgba(255,255,255,.06)}
+                html.glass .period-card{border:none!important;border-radius:.75rem!important;padding:.6rem .8rem!important;box-shadow:0 2px 8px rgba(0,0,0,.15)!important;transition:all .15s ease!important}
+                html.glass .period-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.25)!important;transform:translateY(-1px)}
+                html.glass .period-card>.absolute.left-0{display:none!important}
+                html.glass .period-card [data-accent-text]{color:#fff!important;white-space:nowrap}
+                html.glass .period-card [data-accent-text] .font-bold{white-space:nowrap}
+                html.glass .period-card .font-bold.room-num{color:#fff!important;font-weight:700;white-space:nowrap}
+                html.glass .period-card .pl-3.flex.items-center.gap-4{justify-content:flex-end;flex-shrink:0}
+                html.glass .period-card .pl-3.font-medium{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+                html.glass .period-card .pl-3.flex.items-center.gap-4 span{white-space:nowrap}
+                html.glass .ring-2.ring-red-500,html.glass .ring-2{box-shadow:0 0 0 2px rgba(95,123,140,.4),0 4px 20px rgba(95,123,140,.15)!important;--tw-ring-color:transparent!important}
+                html.glass .ring-offset-2{--tw-ring-offset-color:rgba(30,36,46,.95)!important}
+                html.glass #quick-links-wrapper{border-color:rgba(255,255,255,.06)!important}
+                html.glass #quick-links-wrapper .quick-link-btn{background:rgba(0,0,0,.25)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-color:rgba(255,255,255,.08)!important;color:#94a3b8!important;border-radius:.75rem!important}
+                html.glass #quick-links-wrapper .quick-link-btn:hover{background:rgba(0,0,0,.4)!important;border-color:rgba(255,255,255,.15)!important;color:#fff!important}
+                html.glass .fixed.bg-black\/60{background:rgba(30,36,46,.8)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+                html.glass #class-modal-content{border:1px solid rgba(255,255,255,.1)!important;border-radius:1rem!important;background:rgba(30,36,46,.95)!important;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+                html.glass .bg-red-600{background:rgba(95,123,140,.3)!important;border:1px solid rgba(255,255,255,.1)}
+                html.glass .hover\:bg-red-600:hover{background:rgba(95,123,140,.45)!important}
+                html.glass .bg-red-500.text-white{background:rgba(95,123,140,.3)!important}
+                html.glass .dark\:bg-red-900\/10{background:rgba(95,123,140,.08)!important}
+                html.glass .sticky.top-0{background:rgba(30,36,46,.9)!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+                html.glass .dark\:bg-neutral-950\/30,html.glass .bg-gray-50.dark\:bg-neutral-950\/30{background:rgba(0,0,0,.2)!important}
+                html.glass table{border-color:rgba(255,255,255,.06)!important}
+                html.glass .text-\[10px\]{font-size:.65rem!important}
+                html.glass .animate-pulse{animation:none!important}
+                html.glass .bg-gray-700{background:rgba(0,0,0,.3)!important}
+                html.glass .flex.items-center>.text-right{color:#94a3b8!important}
+                html.glass .period-card.border-l-4{border-left:none!important}
+                html.glass .text-blue-500,html.glass .text-blue-400,html.glass .dark\:text-blue-400{color:#94a3b8!important}
+                html.glass .border-blue-500{border-color:rgba(95,123,140,.4)!important}
             </style>
           </head>
       <body class="bg-background dark:bg-neutral-900 text-gray-800 dark:text-gray-200 font-sans min-h-screen flex flex-col transition-colors duration-300">
@@ -428,7 +510,7 @@ ${props.latex ? html`
                         document.documentElement.classList.remove('dark');
                         localStorage.setItem('theme', 'light');
                     }
-                    document.documentElement.classList.remove('night', 'paper');
+                    document.documentElement.classList.remove('night', 'paper', 'glass');
                     localStorage.removeItem('timetableTheme');
                     updateIcons(newTheme);
                 };

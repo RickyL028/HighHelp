@@ -52,8 +52,18 @@ app.get('/', async (c) => {
                             return document.documentElement.classList.contains('paper');
                         }
 
+                        function isGlass() {
+                            return document.documentElement.classList.contains('glass');
+                        }
+
+                        function getThemeAccent() {
+                            if (isNight()) return 'purple';
+                            if (isGlass()) return 'glass';
+                            return 'red';
+                        }
+
                         function applyTimetableTheme(theme) {
-                            document.documentElement.classList.remove('night', 'paper');
+                            document.documentElement.classList.remove('night', 'paper', 'glass');
                             if (theme === 'night') {
                                 document.documentElement.classList.add('night', 'dark');
                                 localStorage.setItem('theme', 'dark');
@@ -61,6 +71,9 @@ app.get('/', async (c) => {
                                 document.documentElement.classList.add('paper');
                                 document.documentElement.classList.remove('dark');
                                 localStorage.setItem('theme', 'light');
+                            } else if (theme === 'glass') {
+                                document.documentElement.classList.add('glass', 'dark');
+                                localStorage.setItem('theme', 'dark');
                             } else {
                                 const saved = localStorage.getItem('theme') || 'light';
                                 if (saved === 'dark') {
@@ -112,10 +125,11 @@ app.get('/', async (c) => {
                             const quickLinksWrapper = document.getElementById('quick-links-wrapper');
                             
                             // Reset tabs
-                            const nightAccent = isNight();
+                            const themeAccent = getThemeAccent();
+                            const accentColors = themeAccent === 'purple' ? ['border-purple-500', 'text-purple-500'] : themeAccent === 'glass' ? ['border-[#5F7B8C]', 'text-[#5F7B8C]'] : ['border-red-500', 'text-red-500'];
                             [tabDay, tabCycle, tabNotices, tabEvents, tabCalendar, tabConfig].forEach(t => {
                                 if(t) {
-                                    t.classList.remove('border-red-500', 'text-red-500', 'border-purple-500', 'text-purple-500');
+                                    t.classList.remove('border-red-500', 'text-red-500', 'border-purple-500', 'text-purple-500', 'border-[#5F7B8C]', 'text-[#5F7B8C]');
                                     t.classList.add('border-transparent', 'text-gray-500');
                                 }
                             });
@@ -127,14 +141,14 @@ app.get('/', async (c) => {
                             }
 
                             if (currentView === 'day') {
-                                tabDay.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
+                                tabDay.classList.add(accentColors[0], accentColors[1]);
                                 tabDay.classList.remove('border-transparent', 'text-gray-500');
                                 if (headerControls) headerControls.classList.remove('hidden');
                                 if (configContainer) configContainer.classList.add('hidden');
                                 if (timetableList) timetableList.classList.remove('hidden');
                                 renderDay();
                             } else if (currentView === 'cycle') {
-                                tabCycle.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
+                                tabCycle.classList.add(accentColors[0], accentColors[1]);
                                 tabCycle.classList.remove('border-transparent', 'text-gray-500');
                                 if (headerControls) headerControls.classList.add('hidden');
                                 if (configContainer) configContainer.classList.add('hidden');
@@ -142,7 +156,7 @@ app.get('/', async (c) => {
                                 renderCycle();
                             } else if (currentView === 'notices') {
                                 if (tabNotices) {
-                                    tabNotices.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
+                                    tabNotices.classList.add(accentColors[0], accentColors[1]);
                                     tabNotices.classList.remove('border-transparent', 'text-gray-500');
                                 }
                                 if (headerControls) headerControls.classList.remove('hidden');
@@ -151,7 +165,7 @@ app.get('/', async (c) => {
                                 if (window.renderNotices) window.renderNotices();
                             } else if (currentView === 'events') {
                                 if (tabEvents) {
-                                    tabEvents.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
+                                    tabEvents.classList.add(accentColors[0], accentColors[1]);
                                     tabEvents.classList.remove('border-transparent', 'text-gray-500');
                                 }
                                 if (headerControls) headerControls.classList.remove('hidden');
@@ -160,7 +174,7 @@ app.get('/', async (c) => {
                                 if (window.renderEvents) window.renderEvents();
                             } else if (currentView === 'calendar') {
                                 if (tabCalendar) {
-                                    tabCalendar.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
+                                    tabCalendar.classList.add(accentColors[0], accentColors[1]);
                                     tabCalendar.classList.remove('border-transparent', 'text-gray-500');
                                 }
                                 if (headerControls) headerControls.classList.remove('hidden');
@@ -168,7 +182,7 @@ app.get('/', async (c) => {
                                 if (timetableList) timetableList.classList.remove('hidden');
                                 if (window.renderCalendar) window.renderCalendar();
                             } else if (currentView === 'config') {
-                                tabConfig.classList.add(nightAccent ? 'border-purple-500' : 'border-red-500', nightAccent ? 'text-purple-500' : 'text-red-500');
+                                tabConfig.classList.add(accentColors[0], accentColors[1]);
                                 tabConfig.classList.remove('border-transparent', 'text-gray-500');
                                 if (headerControls) headerControls.classList.add('hidden');
                                 if (timetableList) timetableList.classList.add('hidden');
