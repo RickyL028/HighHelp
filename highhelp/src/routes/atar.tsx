@@ -124,7 +124,7 @@ app.get('/atar', async (c) => {
               <table class="w-full text-sm text-left border-collapse border-t border-gray-300 dark:border-neutral-700">
                 <tbody>
                   <tr class="border-b border-gray-200 dark:border-neutral-800">
-                    <td class="py-2">Projected ATAR</td>
+                    <td class="py-2">Equivalent ATAR</td>
                     <td class="py-2 text-right font-bold" id="final-atar">--.--</td>
                   </tr>
                   <tr>

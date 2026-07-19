@@ -212,7 +212,7 @@ export const TimetableDay = html`
                     const cardBgClass = isGlassTheme
                         ? (isNoCover ? 'bg-[#896D73]/30 line-through' : 'bg-transparent')
                         : (isNoCover ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 line-through' : 'bg-gray-100 dark:bg-neutral-800');
-                    const titleColorClass = (isGlassTheme || !isNoCover) ? 'text-white' : 'text-red-700 dark:text-red-400';
+                    const titleColorClass = isGlassTheme ? 'text-white' : (isNoCover ? 'text-red-700 dark:text-red-400' : 'text-gray-900 dark:text-white');
                     
                     const teacherColorClass = isGlassTheme
                         ? (isSub ? 'text-white font-bold' : 'text-white/80')

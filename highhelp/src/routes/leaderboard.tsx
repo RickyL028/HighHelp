@@ -133,7 +133,7 @@ const LEADERBOARD_DATA = [
         displayLimit: 1,
         showPercentage: false,
         entries: [
-            { name: "?", rank: 1, percentage: 670 },
+            { name: "(Year 10)", rank: 1, percentage: 670 },
             { name: "?", rank: 2, percentage: 98 },
             { name: "?", rank: 3, percentage: 98 },
             { name: "?", rank: 4, percentage: 98 },
@@ -193,7 +193,7 @@ const LEADERBOARD_DATA = [
         displayLimit: 1,
         showPercentage: false,
         entries: [
-            { name: "?", rank: 1, percentage: 670 },
+            { name: "(Year 10)", rank: 1, percentage: 670 },
             { name: "?", rank: 2, percentage: 98 },
             { name: "?", rank: 3, percentage: 98 },
             { name: "?", rank: 4, percentage: 98 },
