@@ -51,7 +51,12 @@ app.get('/events', async (c) => {
         if (cachedResponse) {
             text = await cachedResponse.text()
         } else {
-            const response = await fetch(url)
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; HighHelp/1.0)',
+                    'Accept': 'text/calendar, text/plain, */*'
+                }
+            })
             if (!response.ok) {
                 return c.json({ error: 'Failed to fetch calendar' }, 500)
             }
