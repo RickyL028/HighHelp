@@ -1,0 +1,789 @@
+[
+  {
+    "results": [
+      {
+        "id": 1,
+        "user_id": 12,
+        "rank": 6,
+        "aggregate": 527.308,
+        "calculators_data": "[{\"id\":1780309650952,\"name\":\"Chemistry\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1780309725184,\"name\":\"Engineering Studies\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1780309620402,\"name\":\"Mathematics Extension 1\",\"percentile\":87,\"hsc\":95.2,\"atar\":93.48,\"units\":1,\"aggregateContribution\":46.74,\"exclude\":false,\"countedUnits\":1},{\"id\":1780309708785,\"name\":\"Studies of Religion 1-unit\",\"percentile\":96,\"hsc\":96.8,\"atar\":91.92,\"units\":1,\"aggregateContribution\":45.96,\"exclude\":false,\"countedUnits\":1},{\"id\":1780309693908,\"name\":\"Mathematics Advanced\",\"percentile\":87,\"hsc\":93,\"atar\":84.2,\"units\":2,\"aggregateContribution\":84.2,\"exclude\":false,\"countedUnits\":2},{\"id\":1780309669017,\"name\":\"English Advanced\",\"percentile\":75,\"hsc\":87,\"atar\":77.8,\"units\":2,\"aggregateContribution\":77.8,\"exclude\":false,\"countedUnits\":2},{\"id\":1780309659880,\"name\":\"Physics\",\"percentile\":67,\"hsc\":80.8,\"atar\":72.608,\"units\":2,\"aggregateContribution\":72.608,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 08:49:52"
+      },
+      {
+        "id": 2,
+        "user_id": 3,
+        "rank": 17,
+        "aggregate": 509.9199993617067,
+        "calculators_data": "[{\"id\":1781945184094,\"name\":\"Software Engineering\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945200327,\"name\":\"Mathematics Extension 1\",\"percentile\":85.79881656804733,\"hsc\":94.87968441814596,\"atar\":93.11163708086785,\"units\":1,\"aggregateContribution\":46.555818540433926,\"exclude\":false,\"countedUnits\":1},{\"id\":1781945196344,\"name\":\"English Extension 1\",\"percentile\":82.27848101265822,\"hsc\":92.97046413502109,\"atar\":84.71139240506328,\"units\":1,\"aggregateContribution\":42.35569620253164,\"exclude\":false,\"countedUnits\":1},{\"id\":1781945179944,\"name\":\"English Advanced\",\"percentile\":87.96296296296296,\"hsc\":90.45679012345678,\"atar\":84.19506172839506,\"units\":2,\"aggregateContribution\":84.19506172839506,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945186527,\"name\":\"Physics\",\"percentile\":85.8108108108108,\"hsc\":89.04504504504504,\"atar\":83.65405405405406,\"units\":2,\"aggregateContribution\":83.65405405405406,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945193643,\"name\":\"Mathematics Advanced\",\"percentile\":85.79881656804733,\"hsc\":92.59960552268244,\"atar\":83.55936883629191,\"units\":2,\"aggregateContribution\":83.55936883629191,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945191694,\"name\":\"Business Studies\",\"percentile\":80,\"hsc\":86,\"atar\":69.60000000000001,\"units\":2,\"aggregateContribution\":69.60000000000001,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 08:50:21"
+      },
+      {
+        "id": 3,
+        "user_id": 132,
+        "rank": 30,
+        "aggregate": 548.232,
+        "calculators_data": "[{\"id\":1780365630368,\"name\":\"Chinese Continuers\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781151795195,\"name\":\"Chinese Extension\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":1,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":1},{\"id\":1780365599453,\"name\":\"Mathematics Extension 1\",\"percentile\":98,\"hsc\":99.2,\"atar\":98.88,\"units\":1,\"aggregateContribution\":49.44,\"exclude\":false,\"countedUnits\":1},{\"id\":1780365606764,\"name\":\"Mathematics Advanced\",\"percentile\":98,\"hsc\":98.8,\"atar\":97.16,\"units\":2,\"aggregateContribution\":97.16,\"exclude\":false,\"countedUnits\":2},{\"id\":1780365622403,\"name\":\"Physics\",\"percentile\":92,\"hsc\":92.8,\"atar\":88.8,\"units\":2,\"aggregateContribution\":88.8,\"exclude\":false,\"countedUnits\":2},{\"id\":1780365614860,\"name\":\"English Advanced\",\"percentile\":87,\"hsc\":90.2,\"atar\":83.72,\"units\":2,\"aggregateContribution\":83.72,\"exclude\":false,\"countedUnits\":2},{\"id\":1780365627245,\"name\":\"Chemistry\",\"percentile\":74,\"hsc\":83.648,\"atar\":79.112,\"units\":2,\"aggregateContribution\":79.112,\"exclude\":false,\"countedUnits\":2},{\"id\":1780365618017,\"name\":\"English Extension 1\",\"percentile\":35,\"hsc\":76.6,\"atar\":66.66,\"units\":1,\"aggregateContribution\":33.33,\"exclude\":false,\"countedUnits\":0}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 09:01:58"
+      },
+      {
+        "id": 4,
+        "user_id": 132,
+        "rank": 30,
+        "aggregate": 519.832,
+        "calculators_data": "[{\"id\":1780365599453,\"name\":\"Mathematics Extension 1\",\"percentile\":98,\"hsc\":99.2,\"atar\":98.88,\"units\":1,\"aggregateContribution\":49.44,\"exclude\":false,\"countedUnits\":1},{\"id\":1780365606764,\"name\":\"Mathematics Advanced\",\"percentile\":98,\"hsc\":98.8,\"atar\":97.16,\"units\":2,\"aggregateContribution\":97.16,\"exclude\":false,\"countedUnits\":2},{\"id\":1780365622403,\"name\":\"Physics\",\"percentile\":92,\"hsc\":92.8,\"atar\":88.8,\"units\":2,\"aggregateContribution\":88.8,\"exclude\":false,\"countedUnits\":2},{\"id\":1780365614860,\"name\":\"English Advanced\",\"percentile\":87,\"hsc\":90.2,\"atar\":83.72,\"units\":2,\"aggregateContribution\":83.72,\"exclude\":false,\"countedUnits\":2},{\"id\":1781151795195,\"name\":\"Chinese Extension\",\"percentile\":75,\"hsc\":94,\"atar\":82.4,\"units\":1,\"aggregateContribution\":41.2,\"exclude\":false,\"countedUnits\":1},{\"id\":1780365630368,\"name\":\"Chinese Continuers\",\"percentile\":75,\"hsc\":95,\"atar\":80.4,\"units\":2,\"aggregateContribution\":80.4,\"exclude\":false,\"countedUnits\":2},{\"id\":1780365627245,\"name\":\"Chemistry\",\"percentile\":74,\"hsc\":83.648,\"atar\":79.112,\"units\":2,\"aggregateContribution\":79.112,\"exclude\":false,\"countedUnits\":2},{\"id\":1780365618017,\"name\":\"English Extension 1\",\"percentile\":35,\"hsc\":76.6,\"atar\":66.66,\"units\":1,\"aggregateContribution\":33.33,\"exclude\":false,\"countedUnits\":0}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 09:04:27"
+      },
+      {
+        "id": 5,
+        "user_id": 3,
+        "rank": 19,
+        "aggregate": 511.52694,
+        "calculators_data": "[{\"id\":1781946635254,\"name\":\"Economics\",\"percentile\":98.92,\"hsc\":99.028,\"atar\":98.488,\"units\":2,\"aggregateContribution\":98.488,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945179944,\"name\":\"English Advanced\",\"percentile\":98.61,\"hsc\":98.749,\"atar\":97.9428,\"units\":2,\"aggregateContribution\":97.9428,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945191694,\"name\":\"Business Studies\",\"percentile\":97.5,\"hsc\":97.5,\"atar\":94.6,\"units\":2,\"aggregateContribution\":94.6,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945196344,\"name\":\"English Extension 1\",\"percentile\":94.3,\"hsc\":96.58,\"atar\":93.04599999999999,\"units\":1,\"aggregateContribution\":46.522999999999996,\"exclude\":false,\"countedUnits\":1},{\"id\":1781946639120,\"name\":\"Chemistry\",\"percentile\":65.63,\"hsc\":80.70176000000001,\"atar\":75.02744,\"units\":2,\"aggregateContribution\":75.02744,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945200327,\"name\":\"Mathematics Extension 1\",\"percentile\":42.01,\"hsc\":84.78428,\"atar\":74.70188,\"units\":1,\"aggregateContribution\":37.35094,\"exclude\":false,\"countedUnits\":1},{\"id\":1781945193643,\"name\":\"Mathematics Advanced\",\"percentile\":42.01,\"hsc\":74.53384,\"atar\":61.594759999999994,\"units\":2,\"aggregateContribution\":61.594759999999994,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 09:11:38"
+      },
+      {
+        "id": 6,
+        "user_id": 3,
+        "rank": 1,
+        "aggregate": 572.9985829746641,
+        "calculators_data": "[{\"id\":1781946639120,\"name\":\"Chemistry\",\"percentile\":98.95833333333334,\"hsc\":98.95833333333334,\"atar\":98.66666666666669,\"units\":2,\"aggregateContribution\":98.66666666666669,\"exclude\":false,\"countedUnits\":2},{\"id\":1781946869816,\"name\":\"Physics\",\"percentile\":98.31932773109243,\"hsc\":98.48739495798318,\"atar\":97.6470588235294,\"units\":2,\"aggregateContribution\":97.6470588235294,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945200327,\"name\":\"Mathematics Extension 1\",\"percentile\":95.26627218934911,\"hsc\":98.10650887573965,\"atar\":97.3491124260355,\"units\":1,\"aggregateContribution\":48.67455621301775,\"exclude\":false,\"countedUnits\":1},{\"id\":1781946862618,\"name\":\"Biology\",\"percentile\":98.57142857142858,\"hsc\":98.2857142857143,\"atar\":97.11428571428574,\"units\":2,\"aggregateContribution\":97.11428571428574,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945193643,\"name\":\"Mathematics Advanced\",\"percentile\":95.26627218934911,\"hsc\":97.15976331360946,\"atar\":93.27810650887574,\"units\":2,\"aggregateContribution\":93.27810650887574,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945196344,\"name\":\"English Extension 1\",\"percentile\":94.30379746835443,\"hsc\":96.58227848101266,\"atar\":93.0506329113924,\"units\":1,\"aggregateContribution\":46.5253164556962,\"exclude\":false,\"countedUnits\":1},{\"id\":1781945179944,\"name\":\"English Advanced\",\"percentile\":93.98148148148148,\"hsc\":94.58333333333333,\"atar\":91.0925925925926,\"units\":2,\"aggregateContribution\":91.0925925925926,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 09:16:07"
+      },
+      {
+        "id": 7,
+        "user_id": 3,
+        "rank": 13,
+        "aggregate": 521.8430111111111,
+        "calculators_data": "[{\"id\":1781945196344,\"name\":\"English Extension 1\",\"percentile\":98.61,\"hsc\":99.166,\"atar\":98.3042,\"units\":1,\"aggregateContribution\":49.1521,\"exclude\":false,\"countedUnits\":1},{\"id\":1781945179944,\"name\":\"English Advanced\",\"percentile\":98.61111111111111,\"hsc\":98.75,\"atar\":97.94444444444444,\"units\":2,\"aggregateContribution\":97.94444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1781947158546,\"name\":\"Biology\",\"percentile\":95.71,\"hsc\":94.85199999999999,\"atar\":91.33419999999998,\"units\":2,\"aggregateContribution\":91.33419999999998,\"exclude\":false,\"countedUnits\":2},{\"id\":1781947242764,\"name\":\"Visual Arts\",\"percentile\":95,\"hsc\":95.5,\"atar\":87.5,\"units\":2,\"aggregateContribution\":87.5,\"exclude\":false,\"countedUnits\":2},{\"id\":1781947160693,\"name\":\"Chemistry\",\"percentile\":89.98,\"hsc\":89.992,\"atar\":87.18986666666667,\"units\":2,\"aggregateContribution\":87.18986666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945200327,\"name\":\"Mathematics Extension 1\",\"percentile\":56.8,\"hsc\":91.56320000000001,\"atar\":82.2288,\"units\":1,\"aggregateContribution\":41.1144,\"exclude\":false,\"countedUnits\":1},{\"id\":1781945193643,\"name\":\"Mathematics Advanced\",\"percentile\":56.8,\"hsc\":81.8656,\"atar\":67.60799999999999,\"units\":2,\"aggregateContribution\":67.60799999999999,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 09:20:54"
+      },
+      {
+        "id": 8,
+        "user_id": 45,
+        "rank": 8,
+        "aggregate": 523.655,
+        "calculators_data": "[{\"id\":1780961368157,\"name\":\"Mathematics Extension 1\",\"percentile\":94.67,\"hsc\":97.868,\"atar\":97.01520000000001,\"units\":1,\"aggregateContribution\":48.507600000000004,\"exclude\":false,\"countedUnits\":1},{\"id\":1780961371272,\"name\":\"Chemistry\",\"percentile\":95.83,\"hsc\":95.83,\"atar\":94.6624,\"units\":2,\"aggregateContribution\":94.6624,\"exclude\":false,\"countedUnits\":2},{\"id\":1781167022588,\"name\":\"Mathematics Advanced\",\"percentile\":94.67,\"hsc\":96.802,\"atar\":92.4314,\"units\":2,\"aggregateContribution\":92.4314,\"exclude\":false,\"countedUnits\":2},{\"id\":1781604120160,\"name\":\"Physics\",\"percentile\":88.24,\"hsc\":90.17866666666666,\"atar\":85.0144,\"units\":2,\"aggregateContribution\":85.0144,\"exclude\":false,\"countedUnits\":2},{\"id\":1780960514957,\"name\":\"English Advanced\",\"percentile\":87.96,\"hsc\":90.456,\"atar\":84.1936,\"units\":2,\"aggregateContribution\":84.1936,\"exclude\":false,\"countedUnits\":2},{\"id\":1781604118061,\"name\":\"Engineering Studies\",\"percentile\":90.32,\"hsc\":89.35199999999999,\"atar\":79.86559999999999,\"units\":2,\"aggregateContribution\":79.86559999999999,\"exclude\":false,\"countedUnits\":2},{\"id\":1781167029255,\"name\":\"English Extension 1\",\"percentile\":63,\"hsc\":90.08,\"atar\":77.96,\"units\":1,\"aggregateContribution\":38.98,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 09:25:29"
+      },
+      {
+        "id": 9,
+        "user_id": 13,
+        "rank": 41,
+        "aggregate": 453.57599999999996,
+        "calculators_data": "[{\"id\":1780400602774,\"name\":\"English Advanced\",\"percentile\":94,\"hsc\":94.6,\"atar\":91.12,\"units\":2,\"aggregateContribution\":91.12,\"exclude\":false,\"countedUnits\":2},{\"id\":1780400593298,\"name\":\"Chemistry\",\"percentile\":90,\"hsc\":90,\"atar\":87.2,\"units\":2,\"aggregateContribution\":87.2,\"exclude\":false,\"countedUnits\":2},{\"id\":1780400614574,\"name\":\"English Extension 1\",\"percentile\":78,\"hsc\":92.4,\"atar\":83,\"units\":1,\"aggregateContribution\":41.5,\"exclude\":false,\"countedUnits\":1},{\"id\":1780401343005,\"name\":\"Mathematics Extension 1\",\"percentile\":57,\"hsc\":91.568,\"atar\":82.312,\"units\":1,\"aggregateContribution\":41.156,\"exclude\":false,\"countedUnits\":1},{\"id\":1780400570993,\"name\":\"Biology\",\"percentile\":86,\"hsc\":86.66666666666667,\"atar\":77.08,\"units\":2,\"aggregateContribution\":77.08,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948140494,\"name\":\"Mathematics Advanced\",\"percentile\":57,\"hsc\":81.944,\"atar\":67.72,\"units\":2,\"aggregateContribution\":67.72,\"exclude\":false,\"countedUnits\":2},{\"id\":1780400584064,\"name\":\"Business Studies\",\"percentile\":50,\"hsc\":75.8,\"atar\":47.8,\"units\":2,\"aggregateContribution\":47.8,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 09:39:06"
+      },
+      {
+        "id": 10,
+        "user_id": 86,
+        "rank": 1,
+        "aggregate": 591.06,
+        "calculators_data": "[{\"id\":1781948666702,\"name\":\"Mathematics Extension 1\",\"percentile\":99,\"hsc\":99.6,\"atar\":99.44,\"units\":1,\"aggregateContribution\":49.72,\"exclude\":false,\"countedUnits\":1},{\"id\":1781948648438,\"name\":\"Chinese Extension\",\"percentile\":99,\"hsc\":99.6,\"atar\":98.88,\"units\":1,\"aggregateContribution\":49.44,\"exclude\":false,\"countedUnits\":1},{\"id\":1781948724497,\"name\":\"Chemistry\",\"percentile\":99,\"hsc\":99,\"atar\":98.72,\"units\":2,\"aggregateContribution\":98.72,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948758457,\"name\":\"Chinese Continuers\",\"percentile\":99,\"hsc\":99.7,\"atar\":98.7,\"units\":2,\"aggregateContribution\":98.7,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948746377,\"name\":\"Mathematics Advanced\",\"percentile\":99,\"hsc\":99.4,\"atar\":98.58,\"units\":2,\"aggregateContribution\":98.58,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948733336,\"name\":\"Biology\",\"percentile\":99,\"hsc\":98.8,\"atar\":97.98,\"units\":2,\"aggregateContribution\":97.98,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948713920,\"name\":\"Engineering Studies\",\"percentile\":99,\"hsc\":98.9,\"atar\":97.92,\"units\":2,\"aggregateContribution\":97.92,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 09:47:01"
+      },
+      {
+        "id": 11,
+        "user_id": 125,
+        "rank": 23,
+        "aggregate": 489.5133333333334,
+        "calculators_data": "[{\"id\":1781948521518,\"name\":\"Mathematics Extension 1\",\"percentile\":90,\"hsc\":96,\"atar\":94.4,\"units\":1,\"aggregateContribution\":47.2,\"exclude\":false,\"countedUnits\":1},{\"id\":1781948737154,\"name\":\"Music 2\",\"percentile\":90,\"hsc\":96,\"atar\":89.8,\"units\":2,\"aggregateContribution\":89.8,\"exclude\":false,\"countedUnits\":2},{\"id\":1781949064540,\"name\":\"Mathematics Advanced\",\"percentile\":90,\"hsc\":94,\"atar\":85.8,\"units\":2,\"aggregateContribution\":85.8,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948663389,\"name\":\"Chemistry\",\"percentile\":85,\"hsc\":88,\"atar\":84.66666666666667,\"units\":2,\"aggregateContribution\":84.66666666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1781947940215,\"name\":\"English Advanced\",\"percentile\":80,\"hsc\":88.33333333333333,\"atar\":80.26666666666667,\"units\":2,\"aggregateContribution\":80.26666666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948566228,\"name\":\"Physics\",\"percentile\":70,\"hsc\":82,\"atar\":74.47999999999999,\"units\":2,\"aggregateContribution\":74.47999999999999,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948691934,\"name\":\"Studies of Religion 2-unit\",\"percentile\":50,\"hsc\":77.8,\"atar\":54.6,\"units\":2,\"aggregateContribution\":54.6,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 09:51:39"
+      },
+      {
+        "id": 12,
+        "user_id": 7,
+        "rank": 46,
+        "aggregate": 438.5099858240826,
+        "calculators_data": "[{\"id\":1780490205863,\"name\":\"English Advanced\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1780490203613,\"name\":\"English Extension 1\",\"percentile\":98.10126582278481,\"hsc\":98.86075949367088,\"atar\":97.68354430379748,\"units\":1,\"aggregateContribution\":48.84177215189874,\"exclude\":false,\"countedUnits\":1},{\"id\":1780490210899,\"name\":\"Mathematics Extension 1\",\"percentile\":80.4733727810651,\"hsc\":93.45956607495069,\"atar\":91.4785009861933,\"units\":1,\"aggregateContribution\":45.73925049309665,\"exclude\":false,\"countedUnits\":1},{\"id\":1780490208985,\"name\":\"Mathematics Advanced\",\"percentile\":80.4733727810651,\"hsc\":90.82445759368836,\"atar\":80.71913214990138,\"units\":2,\"aggregateContribution\":80.71913214990138,\"exclude\":false,\"countedUnits\":2},{\"id\":1780490215759,\"name\":\"Physics\",\"percentile\":28.57142857142857,\"hsc\":63.714285714285715,\"atar\":56.857142857142854,\"units\":2,\"aggregateContribution\":56.857142857142854,\"exclude\":false,\"countedUnits\":2},{\"id\":1780490198939,\"name\":\"Business Studies\",\"percentile\":58.33333333333333,\"hsc\":78.53333333333333,\"atar\":53.599999999999994,\"units\":2,\"aggregateContribution\":53.599999999999994,\"exclude\":false,\"countedUnits\":2},{\"id\":1780490201699,\"name\":\"Economics\",\"percentile\":10.752688172043012,\"hsc\":56.02150537634409,\"atar\":52.75268817204301,\"units\":2,\"aggregateContribution\":52.75268817204301,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 09:53:05"
+      },
+      {
+        "id": 13,
+        "user_id": 33,
+        "rank": 13,
+        "aggregate": 48.99,
+        "calculators_data": "[{\"id\":1781354929014,\"name\":\"Studies of Religion 1-unit\",\"percentile\":99,\"hsc\":99.2,\"atar\":97.98,\"units\":1,\"aggregateContribution\":48.99,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 09:57:00"
+      },
+      {
+        "id": 14,
+        "user_id": 33,
+        "rank": 13,
+        "aggregate": 433.8278073744979,
+        "calculators_data": "[{\"id\":1781949445877,\"name\":\"English Advanced\",\"percentile\":98.61111111111111,\"hsc\":98.75,\"atar\":97.94444444444444,\"units\":2,\"aggregateContribution\":97.94444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1781354929014,\"name\":\"Studies of Religion 1-unit\",\"percentile\":98.83720930232558,\"hsc\":99.06976744186046,\"atar\":97.65116279069767,\"units\":1,\"aggregateContribution\":48.825581395348834,\"exclude\":false,\"countedUnits\":1},{\"id\":1781949550915,\"name\":\"Biology\",\"percentile\":95.71428571428572,\"hsc\":94.85714285714286,\"atar\":91.34285714285716,\"units\":2,\"aggregateContribution\":91.34285714285716,\"exclude\":false,\"countedUnits\":2},{\"id\":1781949542165,\"name\":\"Chemistry\",\"percentile\":89.58333333333334,\"hsc\":89.83333333333334,\"atar\":86.9888888888889,\"units\":2,\"aggregateContribution\":86.9888888888889,\"exclude\":false,\"countedUnits\":2},{\"id\":1781949521002,\"name\":\"Mathematics Extension 1\",\"percentile\":56.80473372781065,\"hsc\":91.56331360946746,\"atar\":82.23076923076923,\"units\":1,\"aggregateContribution\":41.11538461538461,\"exclude\":false,\"countedUnits\":1},{\"id\":1781949513538,\"name\":\"Mathematics Advanced\",\"percentile\":56.80473372781065,\"hsc\":81.86745562130177,\"atar\":67.61065088757397,\"units\":2,\"aggregateContribution\":67.61065088757397,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 09:59:18"
+      },
+      {
+        "id": 15,
+        "user_id": 6,
+        "rank": 9,
+        "aggregate": 502.06931365216485,
+        "calculators_data": "[{\"id\":1780353780944,\"name\":\"Mathematics Extension 1\",\"percentile\":91.71597633136095,\"hsc\":96.68639053254438,\"atar\":95.36094674556213,\"units\":1,\"aggregateContribution\":47.680473372781066,\"exclude\":false,\"countedUnits\":1},{\"id\":1780353755789,\"name\":\"English Extension 1\",\"percentile\":94.30379746835443,\"hsc\":96.58227848101266,\"atar\":93.0506329113924,\"units\":1,\"aggregateContribution\":46.5253164556962,\"exclude\":false,\"countedUnits\":1},{\"id\":1780353774438,\"name\":\"Physics\",\"percentile\":92.43697478991596,\"hsc\":93.19327731092437,\"atar\":89.41176470588235,\"units\":2,\"aggregateContribution\":89.41176470588235,\"exclude\":false,\"countedUnits\":2},{\"id\":1780353778285,\"name\":\"Mathematics Advanced\",\"percentile\":91.71597633136095,\"hsc\":95.02958579881657,\"atar\":88.23668639053254,\"units\":2,\"aggregateContribution\":88.23668639053254,\"exclude\":false,\"countedUnits\":2},{\"id\":1780353793716,\"name\":\"Software Engineering\",\"percentile\":90.9090909090909,\"hsc\":90,\"atar\":82.72727272727272,\"units\":2,\"aggregateContribution\":82.72727272727272,\"exclude\":false,\"countedUnits\":2},{\"id\":1780353762732,\"name\":\"Chemistry\",\"percentile\":65.6,\"hsc\":80.6912,\"atar\":75.0128,\"units\":2,\"aggregateContribution\":75.0128,\"exclude\":false,\"countedUnits\":2},{\"id\":1780353759303,\"name\":\"English Advanced\",\"percentile\":65.625,\"hsc\":85.2,\"atar\":72.475,\"units\":2,\"aggregateContribution\":72.475,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 09:59:27"
+      },
+      {
+        "id": 16,
+        "user_id": 6,
+        "rank": 9,
+        "aggregate": 508.9930790842636,
+        "calculators_data": "[{\"id\":1780353780944,\"name\":\"Mathematics Extension 1\",\"percentile\":91.71597633136095,\"hsc\":96.68639053254438,\"atar\":95.36094674556213,\"units\":1,\"aggregateContribution\":47.680473372781066,\"exclude\":false,\"countedUnits\":1},{\"id\":1780353755789,\"name\":\"English Extension 1\",\"percentile\":94.30379746835443,\"hsc\":96.58227848101266,\"atar\":93.0506329113924,\"units\":1,\"aggregateContribution\":46.5253164556962,\"exclude\":false,\"countedUnits\":1},{\"id\":1780353774438,\"name\":\"Physics\",\"percentile\":92.43697478991596,\"hsc\":93.19327731092437,\"atar\":89.41176470588235,\"units\":2,\"aggregateContribution\":89.41176470588235,\"exclude\":false,\"countedUnits\":2},{\"id\":1780353778285,\"name\":\"Mathematics Advanced\",\"percentile\":91.71597633136095,\"hsc\":95.02958579881657,\"atar\":88.23668639053254,\"units\":2,\"aggregateContribution\":88.23668639053254,\"exclude\":false,\"countedUnits\":2},{\"id\":1780353793716,\"name\":\"Software Engineering\",\"percentile\":90.9090909090909,\"hsc\":90,\"atar\":82.72727272727272,\"units\":2,\"aggregateContribution\":82.72727272727272,\"exclude\":false,\"countedUnits\":2},{\"id\":1780353759303,\"name\":\"English Advanced\",\"percentile\":78.24074074074075,\"hsc\":87.8641975308642,\"atar\":79.39876543209877,\"units\":2,\"aggregateContribution\":79.39876543209877,\"exclude\":false,\"countedUnits\":2},{\"id\":1780353762732,\"name\":\"Chemistry\",\"percentile\":65.6,\"hsc\":80.6912,\"atar\":75.0128,\"units\":2,\"aggregateContribution\":75.0128,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 10:05:18"
+      },
+      {
+        "id": 17,
+        "user_id": 95,
+        "rank": 2,
+        "aggregate": 535.1383086698951,
+        "calculators_data": "[{\"id\":1781949622241,\"name\":\"Mathematics Extension 1\",\"percentile\":90.53254437869822,\"hsc\":96.21301775147928,\"atar\":94.69822485207101,\"units\":1,\"aggregateContribution\":47.349112426035504,\"exclude\":false,\"countedUnits\":1},{\"id\":1781949617174,\"name\":\"English Extension 1\",\"percentile\":94.30379746835443,\"hsc\":96.58227848101266,\"atar\":93.0506329113924,\"units\":1,\"aggregateContribution\":46.5253164556962,\"exclude\":false,\"countedUnits\":1},{\"id\":1781949658673,\"name\":\"Physics\",\"percentile\":94.9579831932773,\"hsc\":95.46218487394957,\"atar\":92.94117647058822,\"units\":2,\"aggregateContribution\":92.94117647058822,\"exclude\":false,\"countedUnits\":2},{\"id\":1781949662691,\"name\":\"Chemistry\",\"percentile\":93.75,\"hsc\":93.75,\"atar\":92,\"units\":2,\"aggregateContribution\":92,\"exclude\":false,\"countedUnits\":2},{\"id\":1781949627440,\"name\":\"Mathematics Advanced\",\"percentile\":90.53254437869822,\"hsc\":94.31952662721893,\"atar\":86.55621301775147,\"units\":2,\"aggregateContribution\":86.55621301775147,\"exclude\":false,\"countedUnits\":2},{\"id\":1781949670591,\"name\":\"Biology\",\"percentile\":92.85714285714286,\"hsc\":91.42857142857143,\"atar\":85.57142857142858,\"units\":2,\"aggregateContribution\":85.57142857142858,\"exclude\":false,\"countedUnits\":2},{\"id\":1781949591008,\"name\":\"English Advanced\",\"percentile\":87.96296296296296,\"hsc\":90.45679012345678,\"atar\":84.19506172839506,\"units\":2,\"aggregateContribution\":84.19506172839506,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 10:06:37"
+      },
+      {
+        "id": 18,
+        "user_id": 33,
+        "rank": 13,
+        "aggregate": 514.6678073744979,
+        "calculators_data": "[{\"id\":1781949445877,\"name\":\"English Advanced\",\"percentile\":98.61111111111111,\"hsc\":98.75,\"atar\":97.94444444444444,\"units\":2,\"aggregateContribution\":97.94444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1781354929014,\"name\":\"Studies of Religion 1-unit\",\"percentile\":98.83720930232558,\"hsc\":99.06976744186046,\"atar\":97.65116279069767,\"units\":1,\"aggregateContribution\":48.825581395348834,\"exclude\":false,\"countedUnits\":1},{\"id\":1781949550915,\"name\":\"Biology\",\"percentile\":95.71428571428572,\"hsc\":94.85714285714286,\"atar\":91.34285714285716,\"units\":2,\"aggregateContribution\":91.34285714285716,\"exclude\":false,\"countedUnits\":2},{\"id\":1781949542165,\"name\":\"Chemistry\",\"percentile\":89.58333333333334,\"hsc\":89.83333333333334,\"atar\":86.9888888888889,\"units\":2,\"aggregateContribution\":86.9888888888889,\"exclude\":false,\"countedUnits\":2},{\"id\":1781949521002,\"name\":\"Mathematics Extension 1\",\"percentile\":56.80473372781065,\"hsc\":91.56331360946746,\"atar\":82.23076923076923,\"units\":1,\"aggregateContribution\":41.11538461538461,\"exclude\":false,\"countedUnits\":1},{\"id\":1781949769142,\"name\":\"Chinese Continuers\",\"percentile\":76,\"hsc\":95.13333333333334,\"atar\":80.84,\"units\":2,\"aggregateContribution\":80.84,\"exclude\":false,\"countedUnits\":2},{\"id\":1781949513538,\"name\":\"Mathematics Advanced\",\"percentile\":56.80473372781065,\"hsc\":81.86745562130177,\"atar\":67.61065088757397,\"units\":2,\"aggregateContribution\":67.61065088757397,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 10:12:56"
+      },
+      {
+        "id": 19,
+        "user_id": 3,
+        "rank": 30,
+        "aggregate": 484.3430111111111,
+        "calculators_data": "[{\"id\":1781945196344,\"name\":\"English Extension 1\",\"percentile\":98.61,\"hsc\":99.166,\"atar\":98.3042,\"units\":1,\"aggregateContribution\":49.1521,\"exclude\":false,\"countedUnits\":1},{\"id\":1781945179944,\"name\":\"English Advanced\",\"percentile\":98.61111111111111,\"hsc\":98.75,\"atar\":97.94444444444444,\"units\":2,\"aggregateContribution\":97.94444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1781947158546,\"name\":\"Biology\",\"percentile\":95.71,\"hsc\":94.85199999999999,\"atar\":91.33419999999998,\"units\":2,\"aggregateContribution\":91.33419999999998,\"exclude\":false,\"countedUnits\":2},{\"id\":1781947160693,\"name\":\"Chemistry\",\"percentile\":89.98,\"hsc\":89.992,\"atar\":87.18986666666667,\"units\":2,\"aggregateContribution\":87.18986666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945200327,\"name\":\"Mathematics Extension 1\",\"percentile\":56.8,\"hsc\":91.56320000000001,\"atar\":82.2288,\"units\":1,\"aggregateContribution\":41.1144,\"exclude\":false,\"countedUnits\":1},{\"id\":1781945193643,\"name\":\"Mathematics Advanced\",\"percentile\":56.8,\"hsc\":81.8656,\"atar\":67.60799999999999,\"units\":2,\"aggregateContribution\":67.60799999999999,\"exclude\":false,\"countedUnits\":2},{\"id\":1781947242764,\"name\":\"Visual Arts\",\"percentile\":0,\"hsc\":50,\"atar\":50,\"units\":2,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 10:15:26"
+      },
+      {
+        "id": 20,
+        "user_id": 11,
+        "rank": 81,
+        "aggregate": 413.30800000000005,
+        "calculators_data": "[{\"id\":1781951200821,\"name\":\"Mathematics Extension 1\",\"percentile\":99,\"hsc\":99.6,\"atar\":99.44,\"units\":1,\"aggregateContribution\":49.72,\"exclude\":false,\"countedUnits\":1},{\"id\":1781951194305,\"name\":\"Mathematics Advanced\",\"percentile\":99,\"hsc\":99.4,\"atar\":98.58,\"units\":2,\"aggregateContribution\":98.58,\"exclude\":false,\"countedUnits\":2},{\"id\":1781951238237,\"name\":\"Chemistry\",\"percentile\":46,\"hsc\":73.184,\"atar\":66.00800000000001,\"units\":2,\"aggregateContribution\":66.00800000000001,\"exclude\":false,\"countedUnits\":2},{\"id\":1781951222919,\"name\":\"Physics\",\"percentile\":53,\"hsc\":75.2,\"atar\":63.872,\"units\":2,\"aggregateContribution\":63.872,\"exclude\":false,\"countedUnits\":2},{\"id\":1781951174813,\"name\":\"English Advanced\",\"percentile\":33,\"hsc\":71.25200000000001,\"atar\":58.976,\"units\":2,\"aggregateContribution\":58.976,\"exclude\":false,\"countedUnits\":2},{\"id\":1781951211288,\"name\":\"Studies of Religion 1-unit\",\"percentile\":10,\"hsc\":55.519999999999996,\"atar\":51.08,\"units\":1,\"aggregateContribution\":25.54,\"exclude\":false,\"countedUnits\":1},{\"id\":1781951258385,\"name\":\"Software Engineering\",\"percentile\":9,\"hsc\":54.536,\"atar\":50.612,\"units\":2,\"aggregateContribution\":50.612,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 10:27:54"
+      },
+      {
+        "id": 21,
+        "user_id": 17,
+        "rank": 67,
+        "aggregate": 464.73199999999997,
+        "calculators_data": "[{\"id\":1781739849740,\"name\":\"Mathematics Extension 1\",\"percentile\":94,\"hsc\":97.6,\"atar\":96.64,\"units\":1,\"aggregateContribution\":48.32,\"exclude\":false,\"countedUnits\":1},{\"id\":1780308492411,\"name\":\"Software Engineering\",\"percentile\":96,\"hsc\":95.6,\"atar\":92.4,\"units\":2,\"aggregateContribution\":92.4,\"exclude\":false,\"countedUnits\":2},{\"id\":1780315027665,\"name\":\"Mathematics Advanced\",\"percentile\":94,\"hsc\":96.4,\"atar\":91.48,\"units\":2,\"aggregateContribution\":91.48,\"exclude\":false,\"countedUnits\":2},{\"id\":1780308488150,\"name\":\"Physics\",\"percentile\":88,\"hsc\":90.06666666666666,\"atar\":84.88,\"units\":2,\"aggregateContribution\":84.88,\"exclude\":false,\"countedUnits\":2},{\"id\":1781496915568,\"name\":\"English Extension 1\",\"percentile\":52,\"hsc\":88.32,\"atar\":74.44,\"units\":1,\"aggregateContribution\":37.22,\"exclude\":false,\"countedUnits\":1},{\"id\":1781496912388,\"name\":\"Economics\",\"percentile\":28,\"hsc\":65.68,\"atar\":57.168,\"units\":2,\"aggregateContribution\":57.168,\"exclude\":false,\"countedUnits\":2},{\"id\":1781739557993,\"name\":\"English Advanced\",\"percentile\":12,\"hsc\":57.728,\"atar\":53.264,\"units\":2,\"aggregateContribution\":53.264,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 10:33:28"
+      },
+      {
+        "id": 22,
+        "user_id": 86,
+        "rank": 67,
+        "aggregate": 591.06,
+        "calculators_data": "[{\"id\":1781948666702,\"name\":\"Mathematics Extension 1\",\"percentile\":99,\"hsc\":99.6,\"atar\":99.44,\"units\":1,\"aggregateContribution\":49.72,\"exclude\":false,\"countedUnits\":1},{\"id\":1781948648438,\"name\":\"Chinese Extension\",\"percentile\":99,\"hsc\":99.6,\"atar\":98.88,\"units\":1,\"aggregateContribution\":49.44,\"exclude\":false,\"countedUnits\":1},{\"id\":1781948724497,\"name\":\"Chemistry\",\"percentile\":99,\"hsc\":99,\"atar\":98.72,\"units\":2,\"aggregateContribution\":98.72,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948758457,\"name\":\"Chinese Continuers\",\"percentile\":99,\"hsc\":99.7,\"atar\":98.7,\"units\":2,\"aggregateContribution\":98.7,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948746377,\"name\":\"Mathematics Advanced\",\"percentile\":99,\"hsc\":99.4,\"atar\":98.58,\"units\":2,\"aggregateContribution\":98.58,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948733336,\"name\":\"Biology\",\"percentile\":99,\"hsc\":98.8,\"atar\":97.98,\"units\":2,\"aggregateContribution\":97.98,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948713920,\"name\":\"Engineering Studies\",\"percentile\":99,\"hsc\":98.9,\"atar\":97.92,\"units\":2,\"aggregateContribution\":97.92,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 10:37:51"
+      },
+      {
+        "id": 23,
+        "user_id": 86,
+        "rank": 67,
+        "aggregate": 600,
+        "calculators_data": "[{\"id\":1781948648438,\"name\":\"Chinese Extension\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":1,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":1},{\"id\":1781948713920,\"name\":\"Engineering Studies\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948724497,\"name\":\"Chemistry\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948733336,\"name\":\"Biology\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948746377,\"name\":\"Mathematics Advanced\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":0,\"aggregateContribution\":0,\"exclude\":true,\"countedUnits\":0},{\"id\":1781951912746,\"name\":\"Mathematics Extension 2\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781951943840,\"name\":\"Physics\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781951998523,\"name\":\"Legal Studies\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 10:40:04"
+      },
+      {
+        "id": 24,
+        "user_id": 86,
+        "rank": 69,
+        "aggregate": 600,
+        "calculators_data": "[{\"id\":1781948648438,\"name\":\"Chinese Extension\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":1,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":1},{\"id\":1781948713920,\"name\":\"Engineering Studies\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948724497,\"name\":\"Chemistry\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948733336,\"name\":\"Biology\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781948746377,\"name\":\"Mathematics Advanced\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":0,\"aggregateContribution\":0,\"exclude\":true,\"countedUnits\":0},{\"id\":1781951912746,\"name\":\"Mathematics Extension 2\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781951943840,\"name\":\"Physics\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1781951998523,\"name\":\"Legal Studies\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 10:41:33"
+      },
+      {
+        "id": 25,
+        "user_id": 8,
+        "rank": 35,
+        "aggregate": 463.624,
+        "calculators_data": "[{\"id\":1780308399311,\"name\":\"Mathematics Extension 1\",\"percentile\":71,\"hsc\":91.904,\"atar\":88.136,\"units\":1,\"aggregateContribution\":44.068,\"exclude\":false,\"countedUnits\":1},{\"id\":1780308401739,\"name\":\"English Advanced\",\"percentile\":88,\"hsc\":90.46666666666667,\"atar\":84.21333333333334,\"units\":2,\"aggregateContribution\":84.21333333333334,\"exclude\":false,\"countedUnits\":2},{\"id\":1780308532124,\"name\":\"Chemistry\",\"percentile\":82,\"hsc\":86.8,\"atar\":83.14666666666666,\"units\":2,\"aggregateContribution\":83.14666666666666,\"exclude\":false,\"countedUnits\":2},{\"id\":1781524449639,\"name\":\"English Extension 1\",\"percentile\":78,\"hsc\":92.4,\"atar\":83,\"units\":1,\"aggregateContribution\":41.5,\"exclude\":false,\"countedUnits\":1},{\"id\":1781524467628,\"name\":\"Mathematics Advanced\",\"percentile\":71,\"hsc\":87.432,\"atar\":75.56,\"units\":2,\"aggregateContribution\":75.56,\"exclude\":false,\"countedUnits\":2},{\"id\":1780308410147,\"name\":\"Physics\",\"percentile\":69,\"hsc\":81.6,\"atar\":73.856,\"units\":2,\"aggregateContribution\":73.856,\"exclude\":false,\"countedUnits\":2},{\"id\":1780308316143,\"name\":\"Engineering Studies\",\"percentile\":65,\"hsc\":78.03999999999999,\"atar\":61.28,\"units\":2,\"aggregateContribution\":61.28,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 10:41:51"
+      },
+      {
+        "id": 26,
+        "user_id": 51,
+        "rank": 32,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 10:46:01"
+      },
+      {
+        "id": 27,
+        "user_id": 51,
+        "rank": 32,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 10:46:01"
+      },
+      {
+        "id": 28,
+        "user_id": 51,
+        "rank": 32,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 10:46:14"
+      },
+      {
+        "id": 29,
+        "user_id": 37,
+        "rank": 102,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 10:59:54"
+      },
+      {
+        "id": 30,
+        "user_id": 30,
+        "rank": 3,
+        "aggregate": 532.129361175536,
+        "calculators_data": "[{\"id\":1781954858753,\"name\":\"Studies of Religion 2-unit\",\"percentile\":97.67441860465115,\"hsc\":97.67441860465115,\"atar\":95.58139534883719,\"units\":2,\"aggregateContribution\":95.58139534883719,\"exclude\":false,\"countedUnits\":2},{\"id\":1781954809136,\"name\":\"Mathematics Extension 1\",\"percentile\":88.16568047337279,\"hsc\":95.51084812623274,\"atar\":93.83747534516766,\"units\":1,\"aggregateContribution\":46.91873767258383,\"exclude\":false,\"countedUnits\":1},{\"id\":1781954818408,\"name\":\"English Advanced\",\"percentile\":93.98148148148148,\"hsc\":94.58333333333333,\"atar\":91.0925925925926,\"units\":2,\"aggregateContribution\":91.0925925925926,\"exclude\":false,\"countedUnits\":2},{\"id\":1781954845570,\"name\":\"Physics\",\"percentile\":92.43697478991596,\"hsc\":93.19327731092437,\"atar\":89.41176470588235,\"units\":2,\"aggregateContribution\":89.41176470588235,\"exclude\":false,\"countedUnits\":2},{\"id\":1781954828342,\"name\":\"Chemistry\",\"percentile\":89.58333333333334,\"hsc\":89.83333333333334,\"atar\":86.9888888888889,\"units\":2,\"aggregateContribution\":86.9888888888889,\"exclude\":false,\"countedUnits\":2},{\"id\":1781954802703,\"name\":\"Mathematics Advanced\",\"percentile\":88.16568047337279,\"hsc\":93.38856015779093,\"atar\":84.82169625246549,\"units\":2,\"aggregateContribution\":84.82169625246549,\"exclude\":false,\"countedUnits\":2},{\"id\":1781954877508,\"name\":\"Business Studies\",\"percentile\":85.71428571428572,\"hsc\":88.28571428571429,\"atar\":74.62857142857143,\"units\":2,\"aggregateContribution\":74.62857142857143,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 11:28:44"
+      },
+      {
+        "id": 31,
+        "user_id": 75,
+        "rank": 27,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 11:52:45"
+      },
+      {
+        "id": 32,
+        "user_id": 192,
+        "rank": 52,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 11:53:52"
+      },
+      {
+        "id": 33,
+        "user_id": 192,
+        "rank": 52,
+        "aggregate": 430.05947073434595,
+        "calculators_data": "[{\"id\":1781956495473,\"name\":\"Software Engineering\",\"percentile\":90.9090909090909,\"hsc\":90,\"atar\":82.72727272727272,\"units\":2,\"aggregateContribution\":82.72727272727272,\"exclude\":false,\"countedUnits\":2},{\"id\":1781956486701,\"name\":\"English Extension 1\",\"percentile\":71.51898734177216,\"hsc\":91.44303797468355,\"atar\":80.6860759493671,\"units\":1,\"aggregateContribution\":40.34303797468355,\"exclude\":false,\"countedUnits\":1},{\"id\":1781956478593,\"name\":\"English Advanced\",\"percentile\":78.24074074074075,\"hsc\":87.8641975308642,\"atar\":79.39876543209877,\"units\":2,\"aggregateContribution\":79.39876543209877,\"exclude\":false,\"countedUnits\":2},{\"id\":1781956461092,\"name\":\"Engineering Studies\",\"percentile\":83.87096774193549,\"hsc\":85.73118279569893,\"atar\":74.29677419354839,\"units\":2,\"aggregateContribution\":74.29677419354839,\"exclude\":false,\"countedUnits\":2},{\"id\":1781956727170,\"name\":\"Mathematics Extension 1\",\"percentile\":30.17751479289941,\"hsc\":74.98698224852072,\"atar\":67.74437869822485,\"units\":1,\"aggregateContribution\":33.872189349112425,\"exclude\":false,\"countedUnits\":1},{\"id\":1781956667295,\"name\":\"Physics\",\"percentile\":46.21848739495798,\"hsc\":72.18487394957984,\"atar\":61.09243697478992,\"units\":2,\"aggregateContribution\":61.09243697478992,\"exclude\":false,\"countedUnits\":2},{\"id\":1781956491105,\"name\":\"Mathematics Advanced\",\"percentile\":30.17751479289941,\"hsc\":67.62366863905325,\"atar\":58.32899408284023,\"units\":2,\"aggregateContribution\":58.32899408284023,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 12:01:14"
+      },
+      {
+        "id": 34,
+        "user_id": 31,
+        "rank": 10,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 12:11:08"
+      },
+      {
+        "id": 35,
+        "user_id": 31,
+        "rank": 26,
+        "aggregate": 485.95466666666664,
+        "calculators_data": "[{\"id\":1781957904930,\"name\":\"Mathematics Extension 1\",\"percentile\":79.5,\"hsc\":93.2,\"atar\":91.18,\"units\":1,\"aggregateContribution\":45.59,\"exclude\":false,\"countedUnits\":1},{\"id\":1781957572794,\"name\":\"Chemistry\",\"percentile\":89.5,\"hsc\":89.8,\"atar\":86.94666666666667,\"units\":2,\"aggregateContribution\":86.94666666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1781957594351,\"name\":\"Engineering Studies\",\"percentile\":93.5,\"hsc\":92.85,\"atar\":86.48,\"units\":2,\"aggregateContribution\":86.48,\"exclude\":false,\"countedUnits\":2},{\"id\":1781957908399,\"name\":\"Mathematics Advanced\",\"percentile\":79.5,\"hsc\":90.5,\"atar\":80.2,\"units\":2,\"aggregateContribution\":80.2,\"exclude\":false,\"countedUnits\":2},{\"id\":1781957792096,\"name\":\"Physics\",\"percentile\":77.5,\"hsc\":85.16666666666667,\"atar\":79,\"units\":2,\"aggregateContribution\":79,\"exclude\":false,\"countedUnits\":2},{\"id\":1781957727666,\"name\":\"English Extension 1\",\"percentile\":47,\"hsc\":85.72,\"atar\":72.372,\"units\":1,\"aggregateContribution\":36.186,\"exclude\":false,\"countedUnits\":1},{\"id\":1781957690441,\"name\":\"English Advanced\",\"percentile\":64,\"hsc\":84.888,\"atar\":71.55199999999999,\"units\":2,\"aggregateContribution\":71.55199999999999,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-20 12:19:28"
+      },
+      {
+        "id": 36,
+        "user_id": 18,
+        "rank": 31,
+        "aggregate": 426.76,
+        "calculators_data": "[{\"id\":1781959012558,\"name\":\"English Advanced\",\"percentile\":95,\"hsc\":95.5,\"atar\":92.6,\"units\":2,\"aggregateContribution\":92.6,\"exclude\":false,\"countedUnits\":2},{\"id\":1781959070673,\"name\":\"Mathematics Extension 1\",\"percentile\":79,\"hsc\":93.06666666666666,\"atar\":91.02666666666667,\"units\":1,\"aggregateContribution\":45.513333333333335,\"exclude\":false,\"countedUnits\":1},{\"id\":1781959034914,\"name\":\"English Extension 1\",\"percentile\":88,\"hsc\":93.73333333333333,\"atar\":87,\"units\":1,\"aggregateContribution\":43.5,\"exclude\":false,\"countedUnits\":1},{\"id\":1781958986255,\"name\":\"Chemistry\",\"percentile\":88,\"hsc\":89.2,\"atar\":86.18666666666667,\"units\":2,\"aggregateContribution\":86.18666666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1781959090701,\"name\":\"Physics\",\"percentile\":85,\"hsc\":88.66666666666667,\"atar\":83.2,\"units\":2,\"aggregateContribution\":83.2,\"exclude\":false,\"countedUnits\":2},{\"id\":1781958945552,\"name\":\"Business Studies\",\"percentile\":87,\"hsc\":88.8,\"atar\":75.76,\"units\":2,\"aggregateContribution\":75.76,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 12:38:35"
+      },
+      {
+        "id": 37,
+        "user_id": 122,
+        "rank": 42,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-20 23:48:24"
+      },
+      {
+        "id": 38,
+        "user_id": 27,
+        "rank": 95,
+        "aggregate": 402.92326275632973,
+        "calculators_data": "[{\"id\":1780351627280,\"name\":\"Mathematics Extension 1\",\"percentile\":83.4319526627219,\"hsc\":94.24852071005917,\"atar\":92.38579881656806,\"units\":1,\"aggregateContribution\":46.19289940828403,\"exclude\":false,\"countedUnits\":1},{\"id\":1780351624897,\"name\":\"Mathematics Advanced\",\"percentile\":83.4319526627219,\"hsc\":91.81065088757397,\"atar\":82.29704142011835,\"units\":2,\"aggregateContribution\":82.29704142011835,\"exclude\":false,\"countedUnits\":2},{\"id\":1780351601036,\"name\":\"English Advanced\",\"percentile\":63.888888888888886,\"hsc\":84.86666666666667,\"atar\":71.48888888888888,\"units\":2,\"aggregateContribution\":71.48888888888888,\"exclude\":false,\"countedUnits\":2},{\"id\":1780351621081,\"name\":\"Physics\",\"percentile\":57.98319327731092,\"hsc\":77.19327731092437,\"atar\":66.98151260504201,\"units\":2,\"aggregateContribution\":66.98151260504201,\"exclude\":false,\"countedUnits\":2},{\"id\":1780351607150,\"name\":\"Chemistry\",\"percentile\":22.916666666666664,\"hsc\":61.55,\"atar\":57.975,\"units\":2,\"aggregateContribution\":57.975,\"exclude\":false,\"countedUnits\":2},{\"id\":1780351603968,\"name\":\"English Extension 1\",\"percentile\":5.063291139240511,\"hsc\":53.84810126582279,\"atar\":52.41012658227848,\"units\":1,\"aggregateContribution\":26.20506329113924,\"exclude\":false,\"countedUnits\":1},{\"id\":1780351609367,\"name\":\"Biology\",\"percentile\":37.142857142857146,\"hsc\":67.38285714285715,\"atar\":51.78285714285714,\"units\":2,\"aggregateContribution\":51.78285714285714,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-21 05:56:37"
+      },
+      {
+        "id": 39,
+        "user_id": 84,
+        "rank": 19,
+        "aggregate": 439.47999999999996,
+        "calculators_data": "[{\"id\":1780311919094,\"name\":\"Business Studies\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311945949,\"name\":\"Economics\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311961104,\"name\":\"English Advanced\",\"percentile\":99,\"hsc\":99.1,\"atar\":98.52,\"units\":2,\"aggregateContribution\":98.52,\"exclude\":false,\"countedUnits\":2},{\"id\":1780312003765,\"name\":\"Chemistry\",\"percentile\":70,\"hsc\":82.24,\"atar\":77.16,\"units\":2,\"aggregateContribution\":77.16,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311981993,\"name\":\"Mathematics Advanced\",\"percentile\":50,\"hsc\":79.2,\"atar\":63.8,\"units\":2,\"aggregateContribution\":63.8,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-21 12:14:23"
+      },
+      {
+        "id": 40,
+        "user_id": 134,
+        "rank": 8,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-21 12:14:44"
+      },
+      {
+        "id": 41,
+        "user_id": 134,
+        "rank": 1,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-21 12:15:24"
+      },
+      {
+        "id": 42,
+        "user_id": 9,
+        "rank": 150,
+        "aggregate": 348.48199999999997,
+        "calculators_data": "[{\"id\":1782044039398,\"name\":\"English Extension 1\",\"percentile\":99,\"hsc\":99.4,\"atar\":98.78,\"units\":1,\"aggregateContribution\":49.39,\"exclude\":false,\"countedUnits\":1},{\"id\":1782044062120,\"name\":\"English Advanced\",\"percentile\":99,\"hsc\":99.1,\"atar\":98.52,\"units\":2,\"aggregateContribution\":98.52,\"exclude\":false,\"countedUnits\":2},{\"id\":1782044146346,\"name\":\"Economics\",\"percentile\":40,\"hsc\":72.4,\"atar\":60.239999999999995,\"units\":2,\"aggregateContribution\":60.239999999999995,\"exclude\":false,\"countedUnits\":2},{\"id\":1782044134360,\"name\":\"Business Studies\",\"percentile\":67,\"hsc\":81.376,\"atar\":59.632000000000005,\"units\":2,\"aggregateContribution\":59.632000000000005,\"exclude\":false,\"countedUnits\":2},{\"id\":1782044078114,\"name\":\"Mathematics Extension 1\",\"percentile\":10,\"hsc\":58.28,\"atar\":55.88,\"units\":1,\"aggregateContribution\":27.94,\"exclude\":false,\"countedUnits\":1},{\"id\":1782044127097,\"name\":\"Mathematics Advanced\",\"percentile\":10,\"hsc\":55.84,\"atar\":52.76,\"units\":2,\"aggregateContribution\":52.76,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-21 12:16:00"
+      },
+      {
+        "id": 43,
+        "user_id": 22,
+        "rank": 70,
+        "aggregate": 87.2,
+        "calculators_data": "[{\"id\":1780617118426,\"name\":\"Chemistry\",\"percentile\":90,\"hsc\":90,\"atar\":87.2,\"units\":2,\"aggregateContribution\":87.2,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-21 12:21:26"
+      },
+      {
+        "id": 44,
+        "user_id": 4,
+        "rank": 30,
+        "aggregate": 458.6853333333334,
+        "calculators_data": "[{\"id\":1780618974475,\"name\":\"Physics\",\"percentile\":95,\"hsc\":95.5,\"atar\":93,\"units\":2,\"aggregateContribution\":93,\"exclude\":false,\"countedUnits\":2},{\"id\":1780308682779,\"name\":\"English Extension 1\",\"percentile\":94,\"hsc\":96.4,\"atar\":92.67999999999999,\"units\":1,\"aggregateContribution\":46.339999999999996,\"exclude\":false,\"countedUnits\":1},{\"id\":1780308746945,\"name\":\"Mathematics Extension 1\",\"percentile\":50,\"hsc\":91.4,\"atar\":79.4,\"units\":1,\"aggregateContribution\":39.7,\"exclude\":false,\"countedUnits\":1},{\"id\":1780308662512,\"name\":\"English Advanced\",\"percentile\":78,\"hsc\":87.8,\"atar\":79.28,\"units\":2,\"aggregateContribution\":79.28,\"exclude\":false,\"countedUnits\":2},{\"id\":1780308657729,\"name\":\"Modern History\",\"percentile\":85,\"hsc\":87.66666666666667,\"atar\":74.73333333333333,\"units\":2,\"aggregateContribution\":74.73333333333333,\"exclude\":false,\"countedUnits\":2},{\"id\":1780308628946,\"name\":\"Mathematics Advanced\",\"percentile\":50,\"hsc\":79.2,\"atar\":63.8,\"units\":2,\"aggregateContribution\":63.8,\"exclude\":false,\"countedUnits\":2},{\"id\":1780308635245,\"name\":\"Chemistry\",\"percentile\":34,\"hsc\":67.136,\"atar\":61.83200000000001,\"units\":2,\"aggregateContribution\":61.83200000000001,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-21 12:24:35"
+      },
+      {
+        "id": 45,
+        "user_id": 134,
+        "rank": 1,
+        "aggregate": 524.3240267616463,
+        "calculators_data": "[{\"id\":1782044663684,\"name\":\"Chemistry\",\"percentile\":98.95833333333334,\"hsc\":98.95833333333334,\"atar\":98.66666666666669,\"units\":2,\"aggregateContribution\":98.66666666666669,\"exclude\":false,\"countedUnits\":2},{\"id\":1782044702317,\"name\":\"Physics\",\"percentile\":98.31932773109243,\"hsc\":98.48739495798318,\"atar\":97.6470588235294,\"units\":2,\"aggregateContribution\":97.6470588235294,\"exclude\":false,\"countedUnits\":2},{\"id\":1782044201896,\"name\":\"Biology\",\"percentile\":98.57142857142858,\"hsc\":98.2857142857143,\"atar\":97.11428571428574,\"units\":2,\"aggregateContribution\":97.11428571428574,\"exclude\":false,\"countedUnits\":2},{\"id\":1782044647133,\"name\":\"Mathematics Advanced\",\"percentile\":95.26627218934911,\"hsc\":97.15976331360946,\"atar\":93.27810650887574,\"units\":2,\"aggregateContribution\":93.27810650887574,\"exclude\":false,\"countedUnits\":2},{\"id\":1782044690168,\"name\":\"English Extension 1\",\"percentile\":94.30379746835443,\"hsc\":96.58227848101266,\"atar\":93.0506329113924,\"units\":1,\"aggregateContribution\":46.5253164556962,\"exclude\":false,\"countedUnits\":1},{\"id\":1782044675858,\"name\":\"English Advanced\",\"percentile\":93.98148148148148,\"hsc\":94.58333333333333,\"atar\":91.0925925925926,\"units\":2,\"aggregateContribution\":91.0925925925926,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-21 12:25:14"
+      },
+      {
+        "id": 46,
+        "user_id": 84,
+        "rank": 19,
+        "aggregate": 426.62267118906294,
+        "calculators_data": "[{\"id\":1780311945949,\"name\":\"Economics\",\"percentile\":98.88888888888889,\"hsc\":99,\"atar\":98.44444444444444,\"units\":2,\"aggregateContribution\":98.44444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311961104,\"name\":\"English Advanced\",\"percentile\":98.61111111111111,\"hsc\":98.75,\"atar\":97.94444444444444,\"units\":2,\"aggregateContribution\":97.94444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311919094,\"name\":\"Business Studies\",\"percentile\":97.14285714285714,\"hsc\":97.14285714285714,\"atar\":93.82857142857142,\"units\":2,\"aggregateContribution\":93.82857142857142,\"exclude\":false,\"countedUnits\":2},{\"id\":1780312003765,\"name\":\"Chemistry\",\"percentile\":65.97938144329896,\"hsc\":80.82474226804123,\"atar\":75.1979381443299,\"units\":2,\"aggregateContribution\":75.1979381443299,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311981993,\"name\":\"Mathematics Advanced\",\"percentile\":40.6060606060606,\"hsc\":73.7139393939394,\"atar\":61.20727272727272,\"units\":2,\"aggregateContribution\":61.20727272727272,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-21 12:32:03"
+      },
+      {
+        "id": 47,
+        "user_id": 84,
+        "rank": 19,
+        "aggregate": 426.62267118906294,
+        "calculators_data": "[{\"id\":1780311945949,\"name\":\"Economics\",\"percentile\":98.88888888888889,\"hsc\":99,\"atar\":98.44444444444444,\"units\":2,\"aggregateContribution\":98.44444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311961104,\"name\":\"English Advanced\",\"percentile\":98.61111111111111,\"hsc\":98.75,\"atar\":97.94444444444444,\"units\":2,\"aggregateContribution\":97.94444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311919094,\"name\":\"Business Studies\",\"percentile\":97.14285714285714,\"hsc\":97.14285714285714,\"atar\":93.82857142857142,\"units\":2,\"aggregateContribution\":93.82857142857142,\"exclude\":false,\"countedUnits\":2},{\"id\":1780312003765,\"name\":\"Chemistry\",\"percentile\":65.97938144329896,\"hsc\":80.82474226804123,\"atar\":75.1979381443299,\"units\":2,\"aggregateContribution\":75.1979381443299,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311981993,\"name\":\"Mathematics Advanced\",\"percentile\":40.6060606060606,\"hsc\":73.7139393939394,\"atar\":61.20727272727272,\"units\":2,\"aggregateContribution\":61.20727272727272,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-21 12:32:04"
+      },
+      {
+        "id": 48,
+        "user_id": 3,
+        "rank": 31,
+        "aggregate": 506.6933333333333,
+        "calculators_data": "[{\"id\":1781945179944,\"name\":\"English Advanced\",\"percentile\":95,\"hsc\":95.5,\"atar\":92.6,\"units\":2,\"aggregateContribution\":92.6,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945200327,\"name\":\"Mathematics Extension 1\",\"percentile\":79,\"hsc\":93.06666666666666,\"atar\":91.02666666666667,\"units\":1,\"aggregateContribution\":45.513333333333335,\"exclude\":false,\"countedUnits\":1},{\"id\":1781945196344,\"name\":\"English Extension 1\",\"percentile\":88,\"hsc\":93.73333333333333,\"atar\":87,\"units\":1,\"aggregateContribution\":43.5,\"exclude\":false,\"countedUnits\":1},{\"id\":1781947160693,\"name\":\"Chemistry\",\"percentile\":88,\"hsc\":89.2,\"atar\":86.18666666666667,\"units\":2,\"aggregateContribution\":86.18666666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1782079027897,\"name\":\"Physics\",\"percentile\":85,\"hsc\":88.66666666666667,\"atar\":83.2,\"units\":2,\"aggregateContribution\":83.2,\"exclude\":false,\"countedUnits\":2},{\"id\":1781945193643,\"name\":\"Mathematics Advanced\",\"percentile\":79,\"hsc\":90.33333333333333,\"atar\":79.93333333333334,\"units\":2,\"aggregateContribution\":79.93333333333334,\"exclude\":false,\"countedUnits\":2},{\"id\":1782079053580,\"name\":\"Business Studies\",\"percentile\":87,\"hsc\":88.8,\"atar\":75.76,\"units\":2,\"aggregateContribution\":75.76,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-21 21:58:31"
+      },
+      {
+        "id": 49,
+        "user_id": 207,
+        "rank": 33,
+        "aggregate": 499.3227021219447,
+        "calculators_data": "[{\"id\":1782084234528,\"name\":\"Mathematics Advanced\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1782084236612,\"name\":\"Mathematics Extension 1\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":1,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":1},{\"id\":1782084242179,\"name\":\"Physics\",\"percentile\":96.63865546218487,\"hsc\":96.97478991596638,\"atar\":95.29411764705883,\"units\":2,\"aggregateContribution\":95.29411764705883,\"exclude\":false,\"countedUnits\":2},{\"id\":1782084248379,\"name\":\"Economics\",\"percentile\":96,\"hsc\":96.4,\"atar\":94.4,\"units\":2,\"aggregateContribution\":94.4,\"exclude\":false,\"countedUnits\":2},{\"id\":1782084239962,\"name\":\"English Advanced\",\"percentile\":65.29680365296804,\"hsc\":85.13698630136986,\"atar\":72.28858447488585,\"units\":2,\"aggregateContribution\":72.28858447488585,\"exclude\":false,\"countedUnits\":2},{\"id\":1782084245746,\"name\":\"English Extension 1\",\"percentile\":30,\"hsc\":72.8,\"atar\":64.28,\"units\":1,\"aggregateContribution\":32.14,\"exclude\":false,\"countedUnits\":1},{\"id\":1782084259397,\"name\":\"Chinese Continuers\",\"percentile\":16.666666666666664,\"hsc\":62.33333333333333,\"atar\":55.199999999999996,\"units\":2,\"aggregateContribution\":55.199999999999996,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-21 23:25:53"
+      },
+      {
+        "id": 50,
+        "user_id": 136,
+        "rank": 216,
+        "aggregate": 482.24,
+        "calculators_data": "[{\"id\":1780358939941,\"name\":\"Mathematics Extension 1\",\"percentile\":99,\"hsc\":99.6,\"atar\":99.44,\"units\":2,\"aggregateContribution\":99.44,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358936476,\"name\":\"Mathematics Extension 2\",\"percentile\":98,\"hsc\":98.8,\"atar\":99.16,\"units\":2,\"aggregateContribution\":99.16,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358954209,\"name\":\"English Advanced\",\"percentile\":98,\"hsc\":98.2,\"atar\":97.04,\"units\":2,\"aggregateContribution\":97.04,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358958508,\"name\":\"Chemistry\",\"percentile\":95,\"hsc\":95,\"atar\":93.6,\"units\":2,\"aggregateContribution\":93.6,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358966992,\"name\":\"Physics\",\"percentile\":95,\"hsc\":95.5,\"atar\":93,\"units\":2,\"aggregateContribution\":93,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358932824,\"name\":\"Business Studies\",\"percentile\":90,\"hsc\":90,\"atar\":78.4,\"units\":2,\"aggregateContribution\":78.4,\"exclude\":false,\"countedUnits\":0}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 04:36:49"
+      },
+      {
+        "id": 51,
+        "user_id": 98,
+        "rank": 216,
+        "aggregate": 100,
+        "calculators_data": "[{\"id\":1782103172823,\"name\":\"English Advanced\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 04:39:54"
+      },
+      {
+        "id": 52,
+        "user_id": 136,
+        "rank": 80,
+        "aggregate": 415.4806925268464,
+        "calculators_data": "[{\"id\":1780358939941,\"name\":\"Mathematics Extension 1\",\"percentile\":71.00591715976333,\"hsc\":91.90414201183432,\"atar\":88.13846153846154,\"units\":1,\"aggregateContribution\":44.06923076923077,\"exclude\":false,\"countedUnits\":1},{\"id\":1780358954209,\"name\":\"English Advanced\",\"percentile\":87.96296296296296,\"hsc\":90.45679012345678,\"atar\":84.19506172839506,\"units\":2,\"aggregateContribution\":84.19506172839506,\"exclude\":false,\"countedUnits\":2},{\"id\":1782103139157,\"name\":\"English Extension 1\",\"percentile\":73.45679012345678,\"hsc\":91.75308641975309,\"atar\":81.30617283950616,\"units\":1,\"aggregateContribution\":40.65308641975308,\"exclude\":false,\"countedUnits\":1},{\"id\":1782103188772,\"name\":\"Mathematics Advanced\",\"percentile\":71.00591715976333,\"hsc\":87.43431952662722,\"atar\":75.56331360946746,\"units\":2,\"aggregateContribution\":75.56331360946746,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358958508,\"name\":\"Chemistry\",\"percentile\":33.333333333333336,\"hsc\":66.80000000000001,\"atar\":61.60000000000001,\"units\":2,\"aggregateContribution\":61.60000000000001,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358932824,\"name\":\"Business Studies\",\"percentile\":66.66666666666667,\"hsc\":81.26666666666667,\"atar\":59.400000000000006,\"units\":2,\"aggregateContribution\":59.400000000000006,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358966992,\"name\":\"Physics\",\"percentile\":0,\"hsc\":50,\"atar\":50,\"units\":2,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 04:40:33"
+      },
+      {
+        "id": 53,
+        "user_id": 98,
+        "rank": 216,
+        "aggregate": 50,
+        "calculators_data": "[{\"id\":1782103172823,\"name\":\"English Advanced\",\"percentile\":0,\"hsc\":50,\"atar\":50,\"units\":2,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 04:40:45"
+      },
+      {
+        "id": 54,
+        "user_id": 136,
+        "rank": 40,
+        "aggregate": 442.94960008987164,
+        "calculators_data": "[{\"id\":1780358939941,\"name\":\"Mathematics Extension 1\",\"percentile\":71.00591715976333,\"hsc\":91.90414201183432,\"atar\":88.13846153846154,\"units\":1,\"aggregateContribution\":44.06923076923077,\"exclude\":false,\"countedUnits\":1},{\"id\":1780358954209,\"name\":\"English Advanced\",\"percentile\":87.96296296296296,\"hsc\":90.45679012345678,\"atar\":84.19506172839506,\"units\":2,\"aggregateContribution\":84.19506172839506,\"exclude\":false,\"countedUnits\":2},{\"id\":1782103139157,\"name\":\"English Extension 1\",\"percentile\":73.45679012345678,\"hsc\":91.75308641975309,\"atar\":81.30617283950616,\"units\":1,\"aggregateContribution\":40.65308641975308,\"exclude\":false,\"countedUnits\":1},{\"id\":1780358966992,\"name\":\"Physics\",\"percentile\":74.78991596638656,\"hsc\":83.91596638655463,\"atar\":77.46890756302521,\"units\":2,\"aggregateContribution\":77.46890756302521,\"exclude\":false,\"countedUnits\":2},{\"id\":1782103188772,\"name\":\"Mathematics Advanced\",\"percentile\":71.00591715976333,\"hsc\":87.43431952662722,\"atar\":75.56331360946746,\"units\":2,\"aggregateContribution\":75.56331360946746,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358958508,\"name\":\"Chemistry\",\"percentile\":33.333333333333336,\"hsc\":66.80000000000001,\"atar\":61.60000000000001,\"units\":2,\"aggregateContribution\":61.60000000000001,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358932824,\"name\":\"Business Studies\",\"percentile\":66.66666666666667,\"hsc\":81.26666666666667,\"atar\":59.400000000000006,\"units\":2,\"aggregateContribution\":59.400000000000006,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 04:52:45"
+      },
+      {
+        "id": 55,
+        "user_id": 136,
+        "rank": 40,
+        "aggregate": 365.4806925268464,
+        "calculators_data": "[{\"id\":1780358939941,\"name\":\"Mathematics Extension 1\",\"percentile\":71.00591715976333,\"hsc\":91.90414201183432,\"atar\":88.13846153846154,\"units\":1,\"aggregateContribution\":44.06923076923077,\"exclude\":false,\"countedUnits\":1},{\"id\":1780358954209,\"name\":\"English Advanced\",\"percentile\":87.96296296296296,\"hsc\":90.45679012345678,\"atar\":84.19506172839506,\"units\":2,\"aggregateContribution\":84.19506172839506,\"exclude\":false,\"countedUnits\":2},{\"id\":1782103139157,\"name\":\"English Extension 1\",\"percentile\":73.45679012345678,\"hsc\":91.75308641975309,\"atar\":81.30617283950616,\"units\":1,\"aggregateContribution\":40.65308641975308,\"exclude\":false,\"countedUnits\":1},{\"id\":1782103188772,\"name\":\"Mathematics Advanced\",\"percentile\":71.00591715976333,\"hsc\":87.43431952662722,\"atar\":75.56331360946746,\"units\":2,\"aggregateContribution\":75.56331360946746,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358958508,\"name\":\"Chemistry\",\"percentile\":33.333333333333336,\"hsc\":66.80000000000001,\"atar\":61.60000000000001,\"units\":2,\"aggregateContribution\":61.60000000000001,\"exclude\":false,\"countedUnits\":2},{\"id\":1780358932824,\"name\":\"Business Studies\",\"percentile\":66.66666666666667,\"hsc\":81.26666666666667,\"atar\":59.400000000000006,\"units\":2,\"aggregateContribution\":59.400000000000006,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 04:53:47"
+      },
+      {
+        "id": 56,
+        "user_id": 166,
+        "rank": 70,
+        "aggregate": 87.2,
+        "calculators_data": "[{\"id\":1782130037655,\"name\":\"Chemistry\",\"percentile\":90,\"hsc\":90,\"atar\":87.2,\"units\":2,\"aggregateContribution\":87.2,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 12:07:28"
+      },
+      {
+        "id": 57,
+        "user_id": 166,
+        "rank": 70,
+        "aggregate": 87.2,
+        "calculators_data": "[{\"id\":1782130037655,\"name\":\"Chemistry\",\"percentile\":90,\"hsc\":90,\"atar\":87.2,\"units\":2,\"aggregateContribution\":87.2,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 12:07:28"
+      },
+      {
+        "id": 58,
+        "user_id": 118,
+        "rank": 44,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 23:08:36"
+      },
+      {
+        "id": 59,
+        "user_id": 51,
+        "rank": 32,
+        "aggregate": 447.0504534451903,
+        "calculators_data": "[{\"id\":1782103333059,\"name\":\"Mathematics Extension 1\",\"percentile\":92.3076923076923,\"hsc\":96.92307692307692,\"atar\":95.6923076923077,\"units\":1,\"aggregateContribution\":47.84615384615385,\"exclude\":false,\"countedUnits\":1},{\"id\":1782169613847,\"name\":\"Physics\",\"percentile\":96.42857142857143,\"hsc\":96.78571428571429,\"atar\":95,\"units\":2,\"aggregateContribution\":95,\"exclude\":false,\"countedUnits\":2},{\"id\":1782103349519,\"name\":\"Mathematics Advanced\",\"percentile\":92.3076923076923,\"hsc\":95.38461538461539,\"atar\":89.07692307692308,\"units\":2,\"aggregateContribution\":89.07692307692308,\"exclude\":false,\"countedUnits\":2},{\"id\":1782169656457,\"name\":\"Chemistry\",\"percentile\":57.14285714285714,\"hsc\":77.71428571428571,\"atar\":70.88571428571429,\"units\":2,\"aggregateContribution\":70.88571428571429,\"exclude\":false,\"countedUnits\":2},{\"id\":1782169684045,\"name\":\"English Extension 1\",\"percentile\":28.947368421052634,\"hsc\":72,\"atar\":63.77894736842105,\"units\":1,\"aggregateContribution\":31.889473684210525,\"exclude\":false,\"countedUnits\":1},{\"id\":1782103367105,\"name\":\"English Advanced\",\"percentile\":35.18518518518518,\"hsc\":72.65925925925926,\"atar\":59.57037037037037,\"units\":2,\"aggregateContribution\":59.57037037037037,\"exclude\":false,\"countedUnits\":2},{\"id\":1782169702234,\"name\":\"Software Engineering\",\"percentile\":40.90909090909091,\"hsc\":70.61818181818182,\"atar\":52.78181818181818,\"units\":2,\"aggregateContribution\":52.78181818181818,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 23:08:54"
+      },
+      {
+        "id": 60,
+        "user_id": 118,
+        "rank": 24,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 23:08:59"
+      },
+      {
+        "id": 61,
+        "user_id": 118,
+        "rank": 24,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 23:09:01"
+      },
+      {
+        "id": 62,
+        "user_id": 51,
+        "rank": 32,
+        "aggregate": 447.0504534451903,
+        "calculators_data": "[{\"id\":1782103333059,\"name\":\"Mathematics Extension 1\",\"percentile\":92.3076923076923,\"hsc\":96.92307692307692,\"atar\":95.6923076923077,\"units\":1,\"aggregateContribution\":47.84615384615385,\"exclude\":false,\"countedUnits\":1},{\"id\":1782169613847,\"name\":\"Physics\",\"percentile\":96.42857142857143,\"hsc\":96.78571428571429,\"atar\":95,\"units\":2,\"aggregateContribution\":95,\"exclude\":false,\"countedUnits\":2},{\"id\":1782103349519,\"name\":\"Mathematics Advanced\",\"percentile\":92.3076923076923,\"hsc\":95.38461538461539,\"atar\":89.07692307692308,\"units\":2,\"aggregateContribution\":89.07692307692308,\"exclude\":false,\"countedUnits\":2},{\"id\":1782169656457,\"name\":\"Chemistry\",\"percentile\":57.14285714285714,\"hsc\":77.71428571428571,\"atar\":70.88571428571429,\"units\":2,\"aggregateContribution\":70.88571428571429,\"exclude\":false,\"countedUnits\":2},{\"id\":1782169684045,\"name\":\"English Extension 1\",\"percentile\":28.947368421052634,\"hsc\":72,\"atar\":63.77894736842105,\"units\":1,\"aggregateContribution\":31.889473684210525,\"exclude\":false,\"countedUnits\":1},{\"id\":1782103367105,\"name\":\"English Advanced\",\"percentile\":35.18518518518518,\"hsc\":72.65925925925926,\"atar\":59.57037037037037,\"units\":2,\"aggregateContribution\":59.57037037037037,\"exclude\":false,\"countedUnits\":2},{\"id\":1782169702234,\"name\":\"Software Engineering\",\"percentile\":40.90909090909091,\"hsc\":70.61818181818182,\"atar\":52.78181818181818,\"units\":2,\"aggregateContribution\":52.78181818181818,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 23:09:26"
+      },
+      {
+        "id": 63,
+        "user_id": 51,
+        "rank": 32,
+        "aggregate": 447.6926253306,
+        "calculators_data": "[{\"id\":1782103333059,\"name\":\"Mathematics Extension 1\",\"percentile\":92.3076923076923,\"hsc\":96.92307692307692,\"atar\":95.6923076923077,\"units\":1,\"aggregateContribution\":47.84615384615385,\"exclude\":false,\"countedUnits\":1},{\"id\":1782169613847,\"name\":\"Physics\",\"percentile\":96.42857142857143,\"hsc\":96.78571428571429,\"atar\":95,\"units\":2,\"aggregateContribution\":95,\"exclude\":false,\"countedUnits\":2},{\"id\":1782169947732,\"name\":\"Mathematics Advanced\",\"percentile\":92.3076923076923,\"hsc\":95.38461538461539,\"atar\":89.07692307692308,\"units\":2,\"aggregateContribution\":89.07692307692308,\"exclude\":false,\"countedUnits\":2},{\"id\":1782169656457,\"name\":\"Chemistry\",\"percentile\":57.14285714285714,\"hsc\":77.71428571428571,\"atar\":70.88571428571429,\"units\":2,\"aggregateContribution\":70.88571428571429,\"exclude\":false,\"countedUnits\":2},{\"id\":1782169684045,\"name\":\"English Extension 1\",\"percentile\":31.645569620253166,\"hsc\":74.0506329113924,\"atar\":65.0632911392405,\"units\":1,\"aggregateContribution\":32.53164556962025,\"exclude\":false,\"countedUnits\":1},{\"id\":1782103367105,\"name\":\"English Advanced\",\"percentile\":35.18518518518518,\"hsc\":72.65925925925926,\"atar\":59.57037037037037,\"units\":2,\"aggregateContribution\":59.57037037037037,\"exclude\":false,\"countedUnits\":2},{\"id\":1782169702234,\"name\":\"Software Engineering\",\"percentile\":40.90909090909091,\"hsc\":70.61818181818182,\"atar\":52.78181818181818,\"units\":2,\"aggregateContribution\":52.78181818181818,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-22 23:13:11"
+      },
+      {
+        "id": 64,
+        "user_id": 34,
+        "rank": 53,
+        "aggregate": 431.73476666666664,
+        "calculators_data": "[{\"id\":1780530228583,\"name\":\"Mathematics Extension 1\",\"percentile\":89,\"hsc\":95.73333333333333,\"atar\":94.09333333333333,\"units\":1,\"aggregateContribution\":47.04666666666667,\"exclude\":false,\"countedUnits\":1},{\"id\":1780530224397,\"name\":\"Mathematics Advanced\",\"percentile\":89,\"hsc\":93.66666666666667,\"atar\":85.26666666666667,\"units\":2,\"aggregateContribution\":85.26666666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530201489,\"name\":\"English Advanced\",\"percentile\":78,\"hsc\":87.8,\"atar\":79.28,\"units\":2,\"aggregateContribution\":79.28,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530218418,\"name\":\"Geography\",\"percentile\":85,\"hsc\":89,\"atar\":76.73333333333333,\"units\":2,\"aggregateContribution\":76.73333333333333,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530179953,\"name\":\"Chemistry\",\"percentile\":46.875,\"hsc\":73.625,\"atar\":66.3125,\"units\":2,\"aggregateContribution\":66.3125,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530195782,\"name\":\"Engineering Studies\",\"percentile\":38.7,\"hsc\":68.2664,\"atar\":51.8576,\"units\":2,\"aggregateContribution\":51.8576,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530211431,\"name\":\"English Extension 1\",\"percentile\":1,\"hsc\":50.76,\"atar\":50.476,\"units\":1,\"aggregateContribution\":25.238,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 23:42:59"
+      },
+      {
+        "id": 65,
+        "user_id": 34,
+        "rank": 63,
+        "aggregate": 431.73476666666664,
+        "calculators_data": "[{\"id\":1780530228583,\"name\":\"Mathematics Extension 1\",\"percentile\":89,\"hsc\":95.73333333333333,\"atar\":94.09333333333333,\"units\":1,\"aggregateContribution\":47.04666666666667,\"exclude\":false,\"countedUnits\":1},{\"id\":1780530224397,\"name\":\"Mathematics Advanced\",\"percentile\":89,\"hsc\":93.66666666666667,\"atar\":85.26666666666667,\"units\":2,\"aggregateContribution\":85.26666666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530201489,\"name\":\"English Advanced\",\"percentile\":78,\"hsc\":87.8,\"atar\":79.28,\"units\":2,\"aggregateContribution\":79.28,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530218418,\"name\":\"Geography\",\"percentile\":85,\"hsc\":89,\"atar\":76.73333333333333,\"units\":2,\"aggregateContribution\":76.73333333333333,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530179953,\"name\":\"Chemistry\",\"percentile\":46.875,\"hsc\":73.625,\"atar\":66.3125,\"units\":2,\"aggregateContribution\":66.3125,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530195782,\"name\":\"Engineering Studies\",\"percentile\":38.7,\"hsc\":68.2664,\"atar\":51.8576,\"units\":2,\"aggregateContribution\":51.8576,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530211431,\"name\":\"English Extension 1\",\"percentile\":1,\"hsc\":50.76,\"atar\":50.476,\"units\":1,\"aggregateContribution\":25.238,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 23:43:20"
+      },
+      {
+        "id": 66,
+        "user_id": 34,
+        "rank": 63,
+        "aggregate": 431.73476666666664,
+        "calculators_data": "[{\"id\":1780530228583,\"name\":\"Mathematics Extension 1\",\"percentile\":89,\"hsc\":95.73333333333333,\"atar\":94.09333333333333,\"units\":1,\"aggregateContribution\":47.04666666666667,\"exclude\":false,\"countedUnits\":1},{\"id\":1780530224397,\"name\":\"Mathematics Advanced\",\"percentile\":89,\"hsc\":93.66666666666667,\"atar\":85.26666666666667,\"units\":2,\"aggregateContribution\":85.26666666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530201489,\"name\":\"English Advanced\",\"percentile\":78,\"hsc\":87.8,\"atar\":79.28,\"units\":2,\"aggregateContribution\":79.28,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530218418,\"name\":\"Geography\",\"percentile\":85,\"hsc\":89,\"atar\":76.73333333333333,\"units\":2,\"aggregateContribution\":76.73333333333333,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530179953,\"name\":\"Chemistry\",\"percentile\":46.875,\"hsc\":73.625,\"atar\":66.3125,\"units\":2,\"aggregateContribution\":66.3125,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530195782,\"name\":\"Engineering Studies\",\"percentile\":38.7,\"hsc\":68.2664,\"atar\":51.8576,\"units\":2,\"aggregateContribution\":51.8576,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530211431,\"name\":\"English Extension 1\",\"percentile\":1,\"hsc\":50.76,\"atar\":50.476,\"units\":1,\"aggregateContribution\":25.238,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-22 23:43:22"
+      },
+      {
+        "id": 67,
+        "user_id": 34,
+        "rank": 63,
+        "aggregate": 431.73476666666664,
+        "calculators_data": "[{\"id\":1780530228583,\"name\":\"Mathematics Extension 1\",\"percentile\":89,\"hsc\":95.73333333333333,\"atar\":94.09333333333333,\"units\":1,\"aggregateContribution\":47.04666666666667,\"exclude\":false,\"countedUnits\":1},{\"id\":1780530224397,\"name\":\"Mathematics Advanced\",\"percentile\":89,\"hsc\":93.66666666666667,\"atar\":85.26666666666667,\"units\":2,\"aggregateContribution\":85.26666666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530201489,\"name\":\"English Advanced\",\"percentile\":78,\"hsc\":87.8,\"atar\":79.28,\"units\":2,\"aggregateContribution\":79.28,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530218418,\"name\":\"Geography\",\"percentile\":85,\"hsc\":89,\"atar\":76.73333333333333,\"units\":2,\"aggregateContribution\":76.73333333333333,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530179953,\"name\":\"Chemistry\",\"percentile\":46.875,\"hsc\":73.625,\"atar\":66.3125,\"units\":2,\"aggregateContribution\":66.3125,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530195782,\"name\":\"Engineering Studies\",\"percentile\":38.7,\"hsc\":68.2664,\"atar\":51.8576,\"units\":2,\"aggregateContribution\":51.8576,\"exclude\":false,\"countedUnits\":2},{\"id\":1780530211431,\"name\":\"English Extension 1\",\"percentile\":1,\"hsc\":50.76,\"atar\":50.476,\"units\":1,\"aggregateContribution\":25.238,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-22 23:43:23"
+      },
+      {
+        "id": 68,
+        "user_id": 41,
+        "rank": 25,
+        "aggregate": 489.11040690976927,
+        "calculators_data": "[{\"id\":1780313774087,\"name\":\"Economics\",\"percentile\":98.9247311827957,\"hsc\":99.03225806451613,\"atar\":98.49462365591397,\"units\":2,\"aggregateContribution\":98.49462365591397,\"exclude\":false,\"countedUnits\":2},{\"id\":1780313754394,\"name\":\"English Advanced\",\"percentile\":98.61111111111111,\"hsc\":98.75,\"atar\":97.94444444444444,\"units\":2,\"aggregateContribution\":97.94444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1780313769206,\"name\":\"Legal Studies\",\"percentile\":94.44444444444444,\"hsc\":95,\"atar\":88.77777777777777,\"units\":2,\"aggregateContribution\":88.77777777777777,\"exclude\":false,\"countedUnits\":2},{\"id\":1780313757590,\"name\":\"English Extension 1\",\"percentile\":62.65822784810127,\"hsc\":90.0253164556962,\"atar\":77.85063291139241,\"units\":1,\"aggregateContribution\":38.925316455696205,\"exclude\":false,\"countedUnits\":1},{\"id\":1781613206106,\"name\":\"Mathematics Extension 1\",\"percentile\":40.23668639053254,\"hsc\":83.31597633136096,\"atar\":73.65917159763313,\"units\":1,\"aggregateContribution\":36.82958579881657,\"exclude\":false,\"countedUnits\":1},{\"id\":1780313775853,\"name\":\"Business Studies\",\"percentile\":77.08333333333334,\"hsc\":84.83333333333334,\"atar\":67.03333333333335,\"units\":2,\"aggregateContribution\":67.03333333333335,\"exclude\":false,\"countedUnits\":2},{\"id\":1780313761869,\"name\":\"Mathematics Advanced\",\"percentile\":40.23668639053254,\"hsc\":73.498224852071,\"atar\":61.10532544378698,\"units\":2,\"aggregateContribution\":61.10532544378698,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-23 00:28:05"
+      },
+      {
+        "id": 69,
+        "user_id": 97,
+        "rank": 124,
+        "aggregate": 387.63196484990374,
+        "calculators_data": "[{\"id\":1781142487345,\"name\":\"Studies of Religion 2-unit\",\"percentile\":83.69565217391303,\"hsc\":88.31884057971014,\"atar\":76.71304347826086,\"units\":2,\"aggregateContribution\":76.71304347826086,\"exclude\":false,\"countedUnits\":2},{\"id\":1781142555489,\"name\":\"English Extension 1\",\"percentile\":48.10126582278481,\"hsc\":86.55696202531647,\"atar\":72.89620253164557,\"units\":1,\"aggregateContribution\":36.448101265822785,\"exclude\":false,\"countedUnits\":1},{\"id\":1781142480274,\"name\":\"Legal Studies\",\"percentile\":80.55555555555556,\"hsc\":87.85185185185185,\"atar\":72.87407407407407,\"units\":2,\"aggregateContribution\":72.87407407407407,\"exclude\":false,\"countedUnits\":2},{\"id\":1781142475351,\"name\":\"Mathematics Advanced\",\"percentile\":47.61904761904761,\"hsc\":77.80952380952381,\"atar\":63.14285714285714,\"units\":2,\"aggregateContribution\":63.14285714285714,\"exclude\":false,\"countedUnits\":2},{\"id\":1781142467499,\"name\":\"English Advanced\",\"percentile\":44.44444444444444,\"hsc\":78.62222222222222,\"atar\":62.08888888888889,\"units\":2,\"aggregateContribution\":62.08888888888889,\"exclude\":false,\"countedUnits\":2},{\"id\":1781142548880,\"name\":\"Biology\",\"percentile\":30,\"hsc\":64.04,\"atar\":51.44,\"units\":2,\"aggregateContribution\":51.44,\"exclude\":false,\"countedUnits\":2},{\"id\":1781142535177,\"name\":\"PDHPE\",\"percentile\":56.25,\"hsc\":76.69999999999999,\"atar\":49.85,\"units\":2,\"aggregateContribution\":49.85,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-23 00:53:46"
+      },
+      {
+        "id": 70,
+        "user_id": 15,
+        "rank": 11,
+        "aggregate": 514.3359602518693,
+        "calculators_data": "[{\"id\":1782182619445,\"name\":\"English Extension 1\",\"percentile\":98.80952380952381,\"hsc\":99.28571428571429,\"atar\":98.54761904761905,\"units\":1,\"aggregateContribution\":49.273809523809526,\"exclude\":false,\"countedUnits\":1},{\"id\":1782182601715,\"name\":\"Mathematics Extension 1\",\"percentile\":97.14285714285714,\"hsc\":98.85714285714286,\"atar\":98.4,\"units\":1,\"aggregateContribution\":49.2,\"exclude\":false,\"countedUnits\":1},{\"id\":1782182598980,\"name\":\"Mathematics Advanced\",\"percentile\":97.14285714285714,\"hsc\":98.28571428571428,\"atar\":95.94285714285714,\"units\":2,\"aggregateContribution\":95.94285714285714,\"exclude\":false,\"countedUnits\":2},{\"id\":1782182616161,\"name\":\"English Advanced\",\"percentile\":93.80952380952381,\"hsc\":94.42857142857143,\"atar\":90.83809523809524,\"units\":2,\"aggregateContribution\":90.83809523809524,\"exclude\":false,\"countedUnits\":2},{\"id\":1782182594730,\"name\":\"Business Studies\",\"percentile\":91.66666666666666,\"hsc\":91.66666666666666,\"atar\":81.99999999999999,\"units\":2,\"aggregateContribution\":81.99999999999999,\"exclude\":false,\"countedUnits\":2},{\"id\":1782182612880,\"name\":\"Chemistry\",\"percentile\":65.625,\"hsc\":80.7,\"atar\":75.025,\"units\":2,\"aggregateContribution\":75.025,\"exclude\":false,\"countedUnits\":2},{\"id\":1782182607114,\"name\":\"Physics\",\"percentile\":66.11570247933885,\"hsc\":80.44628099173553,\"atar\":72.05619834710744,\"units\":2,\"aggregateContribution\":72.05619834710744,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-23 02:44:34"
+      },
+      {
+        "id": 71,
+        "user_id": 91,
+        "rank": 27,
+        "aggregate": 400.0576097105509,
+        "calculators_data": "[{\"id\":1782183346329,\"name\":\"Chemistry\",\"percentile\":88.88888888888889,\"hsc\":89.55555555555556,\"atar\":86.63703703703703,\"units\":2,\"aggregateContribution\":86.63703703703703,\"exclude\":false,\"countedUnits\":2},{\"id\":1782183356425,\"name\":\"English Extension 1\",\"percentile\":75,\"hsc\":92,\"atar\":81.8,\"units\":1,\"aggregateContribution\":40.9,\"exclude\":false,\"countedUnits\":1},{\"id\":1782183342998,\"name\":\"Business Studies\",\"percentile\":91.42857142857143,\"hsc\":91.42857142857143,\"atar\":81.4857142857143,\"units\":2,\"aggregateContribution\":81.4857142857143,\"exclude\":false,\"countedUnits\":2},{\"id\":1782183371477,\"name\":\"Physics\",\"percentile\":77.31092436974791,\"hsc\":85.07843137254902,\"atar\":78.89411764705882,\"units\":2,\"aggregateContribution\":78.89411764705882,\"exclude\":false,\"countedUnits\":2},{\"id\":1782183360122,\"name\":\"English Advanced\",\"percentile\":72.22222222222221,\"hsc\":86.46666666666667,\"atar\":76.22222222222221,\"units\":2,\"aggregateContribution\":76.22222222222221,\"exclude\":false,\"countedUnits\":2},{\"id\":1782183364869,\"name\":\"Mathematics Advanced\",\"percentile\":64.35185185185186,\"hsc\":84.82592592592593,\"atar\":71.83703703703704,\"units\":2,\"aggregateContribution\":71.83703703703704,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-23 03:00:33"
+      },
+      {
+        "id": 72,
+        "user_id": 91,
+        "rank": 27,
+        "aggregate": 478.6609282290694,
+        "calculators_data": "[{\"id\":1782183346329,\"name\":\"Chemistry\",\"percentile\":88.88888888888889,\"hsc\":89.55555555555556,\"atar\":86.63703703703703,\"units\":2,\"aggregateContribution\":86.63703703703703,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184675453,\"name\":\"Mathematics Extension 1\",\"percentile\":64.35,\"hsc\":91.7444,\"atar\":85.36959999999999,\"units\":1,\"aggregateContribution\":42.684799999999996,\"exclude\":false,\"countedUnits\":1},{\"id\":1782183356425,\"name\":\"English Extension 1\",\"percentile\":75,\"hsc\":92,\"atar\":81.8,\"units\":1,\"aggregateContribution\":40.9,\"exclude\":false,\"countedUnits\":1},{\"id\":1782183342998,\"name\":\"Business Studies\",\"percentile\":91.42857142857143,\"hsc\":91.42857142857143,\"atar\":81.4857142857143,\"units\":2,\"aggregateContribution\":81.4857142857143,\"exclude\":false,\"countedUnits\":2},{\"id\":1782183371477,\"name\":\"Physics\",\"percentile\":77.31092436974791,\"hsc\":85.07843137254902,\"atar\":78.89411764705882,\"units\":2,\"aggregateContribution\":78.89411764705882,\"exclude\":false,\"countedUnits\":2},{\"id\":1782183360122,\"name\":\"English Advanced\",\"percentile\":72.22222222222221,\"hsc\":86.46666666666667,\"atar\":76.22222222222221,\"units\":2,\"aggregateContribution\":76.22222222222221,\"exclude\":false,\"countedUnits\":2},{\"id\":1782183364869,\"name\":\"Mathematics Advanced\",\"percentile\":64.35185185185186,\"hsc\":84.82592592592593,\"atar\":71.83703703703704,\"units\":2,\"aggregateContribution\":71.83703703703704,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-23 03:18:10"
+      },
+      {
+        "id": 73,
+        "user_id": 84,
+        "rank": 19,
+        "aggregate": 510.7246031746032,
+        "calculators_data": "[{\"id\":1780311945949,\"name\":\"Economics\",\"percentile\":98.88888888888889,\"hsc\":99,\"atar\":98.44444444444444,\"units\":2,\"aggregateContribution\":98.44444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311961104,\"name\":\"English Advanced\",\"percentile\":98.61111111111111,\"hsc\":98.75,\"atar\":97.94444444444444,\"units\":2,\"aggregateContribution\":97.94444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311919094,\"name\":\"Business Studies\",\"percentile\":97.14285714285714,\"hsc\":97.14285714285714,\"atar\":93.82857142857142,\"units\":2,\"aggregateContribution\":93.82857142857142,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184871924,\"name\":\"English Extension 1\",\"percentile\":94.64285714285714,\"hsc\":96.78571428571428,\"atar\":93.46428571428571,\"units\":1,\"aggregateContribution\":46.732142857142854,\"exclude\":false,\"countedUnits\":1},{\"id\":1780312003765,\"name\":\"Chemistry\",\"percentile\":65.625,\"hsc\":80.7,\"atar\":75.025,\"units\":2,\"aggregateContribution\":75.025,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184914339,\"name\":\"Mathematics Extension 1\",\"percentile\":41.666666666666664,\"hsc\":84.5,\"atar\":74.5,\"units\":1,\"aggregateContribution\":37.25,\"exclude\":false,\"countedUnits\":1},{\"id\":1780311981993,\"name\":\"Mathematics Advanced\",\"percentile\":41.666666666666664,\"hsc\":74.33333333333333,\"atar\":61.5,\"units\":2,\"aggregateContribution\":61.5,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-23 03:23:04"
+      },
+      {
+        "id": 74,
+        "user_id": 57,
+        "rank": 112,
+        "aggregate": 403.4228205977732,
+        "calculators_data": "[{\"id\":1782184738800,\"name\":\"Mathematics Extension 1\",\"percentile\":57.738095238095234,\"hsc\":91.58571428571429,\"atar\":82.61904761904762,\"units\":1,\"aggregateContribution\":41.30952380952381,\"exclude\":false,\"countedUnits\":1},{\"id\":1782184758481,\"name\":\"Legal Studies\",\"percentile\":85.29411764705883,\"hsc\":89.43137254901961,\"atar\":76.34901960784313,\"units\":2,\"aggregateContribution\":76.34901960784313,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184862918,\"name\":\"English Extension 1\",\"percentile\":50,\"hsc\":88,\"atar\":73.8,\"units\":1,\"aggregateContribution\":36.9,\"exclude\":false,\"countedUnits\":1},{\"id\":1782184732647,\"name\":\"Business Studies\",\"percentile\":80,\"hsc\":86,\"atar\":69.60000000000001,\"units\":2,\"aggregateContribution\":69.60000000000001,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184736147,\"name\":\"Mathematics Advanced\",\"percentile\":57.738095238095234,\"hsc\":82.23333333333333,\"atar\":68.13333333333333,\"units\":2,\"aggregateContribution\":68.13333333333333,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184824149,\"name\":\"Economics\",\"percentile\":31.182795698924725,\"hsc\":67.46236559139786,\"atar\":57.982795698924726,\"units\":2,\"aggregateContribution\":57.982795698924726,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184790384,\"name\":\"English Advanced\",\"percentile\":11.574074074074069,\"hsc\":57.4537037037037,\"atar\":53.148148148148145,\"units\":2,\"aggregateContribution\":53.148148148148145,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-23 03:23:16"
+      },
+      {
+        "id": 75,
+        "user_id": 57,
+        "rank": 112,
+        "aggregate": 403.4228205977732,
+        "calculators_data": "[{\"id\":1782184738800,\"name\":\"Mathematics Extension 1\",\"percentile\":57.738095238095234,\"hsc\":91.58571428571429,\"atar\":82.61904761904762,\"units\":1,\"aggregateContribution\":41.30952380952381,\"exclude\":false,\"countedUnits\":1},{\"id\":1782184758481,\"name\":\"Legal Studies\",\"percentile\":85.29411764705883,\"hsc\":89.43137254901961,\"atar\":76.34901960784313,\"units\":2,\"aggregateContribution\":76.34901960784313,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184862918,\"name\":\"English Extension 1\",\"percentile\":50,\"hsc\":88,\"atar\":73.8,\"units\":1,\"aggregateContribution\":36.9,\"exclude\":false,\"countedUnits\":1},{\"id\":1782184732647,\"name\":\"Business Studies\",\"percentile\":80,\"hsc\":86,\"atar\":69.60000000000001,\"units\":2,\"aggregateContribution\":69.60000000000001,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184736147,\"name\":\"Mathematics Advanced\",\"percentile\":57.738095238095234,\"hsc\":82.23333333333333,\"atar\":68.13333333333333,\"units\":2,\"aggregateContribution\":68.13333333333333,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184824149,\"name\":\"Economics\",\"percentile\":31.182795698924725,\"hsc\":67.46236559139786,\"atar\":57.982795698924726,\"units\":2,\"aggregateContribution\":57.982795698924726,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184790384,\"name\":\"English Advanced\",\"percentile\":11.574074074074069,\"hsc\":57.4537037037037,\"atar\":53.148148148148145,\"units\":2,\"aggregateContribution\":53.148148148148145,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-23 03:24:25"
+      },
+      {
+        "id": 76,
+        "user_id": 54,
+        "rank": 173,
+        "aggregate": 0,
+        "calculators_data": "[]",
+        "is_deleted": 1,
+        "created_at": "2026-06-23 10:28:09"
+      },
+      {
+        "id": 77,
+        "user_id": 139,
+        "rank": 204,
+        "aggregate": 393.1333333333333,
+        "calculators_data": "[{\"id\":1780534814196,\"name\":\"Mathematics Advanced\",\"percentile\":90,\"hsc\":94,\"atar\":85.8,\"units\":2,\"aggregateContribution\":85.8,\"exclude\":false,\"countedUnits\":2},{\"id\":1780534763897,\"name\":\"English Advanced\",\"percentile\":85,\"hsc\":89.66666666666667,\"atar\":82.73333333333333,\"units\":2,\"aggregateContribution\":82.73333333333333,\"exclude\":false,\"countedUnits\":2},{\"id\":1780534796931,\"name\":\"PDHPE\",\"percentile\":90,\"hsc\":89,\"atar\":74.6,\"units\":2,\"aggregateContribution\":74.6,\"exclude\":false,\"countedUnits\":2},{\"id\":1780534760248,\"name\":\"Biology\",\"percentile\":0,\"hsc\":50,\"atar\":50,\"units\":2,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":2},{\"id\":1780534793349,\"name\":\"Physics\",\"percentile\":0,\"hsc\":50,\"atar\":50,\"units\":2,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":2},{\"id\":1780535018057,\"name\":\"Geography\",\"percentile\":0,\"hsc\":50,\"atar\":50,\"units\":2,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-23 23:30:08"
+      },
+      {
+        "id": 78,
+        "user_id": 111,
+        "rank": 150,
+        "aggregate": 378.9599999999999,
+        "calculators_data": "[{\"id\":1782264843365,\"name\":\"Mathematics Advanced\",\"percentile\":90,\"hsc\":94,\"atar\":85.8,\"units\":2,\"aggregateContribution\":85.8,\"exclude\":false,\"countedUnits\":2},{\"id\":1782264849857,\"name\":\"Economics\",\"percentile\":81,\"hsc\":88.6,\"atar\":81.08,\"units\":2,\"aggregateContribution\":81.08,\"exclude\":false,\"countedUnits\":2},{\"id\":1782264847945,\"name\":\"Engineering Studies\",\"percentile\":71,\"hsc\":79.816,\"atar\":64.83200000000001,\"units\":2,\"aggregateContribution\":64.83200000000001,\"exclude\":false,\"countedUnits\":2},{\"id\":1782264791081,\"name\":\"English Extension 1\",\"percentile\":28,\"hsc\":71.28,\"atar\":63.328,\"units\":1,\"aggregateContribution\":31.664,\"exclude\":false,\"countedUnits\":1},{\"id\":1782264834165,\"name\":\"English Advanced\",\"percentile\":49,\"hsc\":81.556,\"atar\":63.328,\"units\":2,\"aggregateContribution\":63.328,\"exclude\":false,\"countedUnits\":2},{\"id\":1782264852328,\"name\":\"Biology\",\"percentile\":47,\"hsc\":71.99600000000001,\"atar\":52.256,\"units\":2,\"aggregateContribution\":52.256,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-24 01:36:20"
+      },
+      {
+        "id": 79,
+        "user_id": 111,
+        "rank": 216,
+        "aggregate": 332.7526944133892,
+        "calculators_data": "[{\"id\":1782264834165,\"name\":\"English Advanced\",\"percentile\":51.388888888888886,\"hsc\":82.46666666666667,\"atar\":64.38888888888889,\"units\":2,\"aggregateContribution\":64.38888888888889,\"exclude\":false,\"countedUnits\":2},{\"id\":1782265179914,\"name\":\"Mathematics Extension 1\",\"percentile\":9.467455621301779,\"hsc\":57.83905325443787,\"atar\":55.56686390532545,\"units\":1,\"aggregateContribution\":27.783431952662724,\"exclude\":false,\"countedUnits\":1},{\"id\":1782264849857,\"name\":\"Economics\",\"percentile\":19.354838709677423,\"hsc\":60.83870967741936,\"atar\":54.95483870967742,\"units\":2,\"aggregateContribution\":54.95483870967742,\"exclude\":false,\"countedUnits\":2},{\"id\":1782264791081,\"name\":\"English Extension 1\",\"percentile\":9.467455621301779,\"hsc\":57.19526627218935,\"atar\":54.50650887573965,\"units\":1,\"aggregateContribution\":27.253254437869824,\"exclude\":false,\"countedUnits\":1},{\"id\":1782264852328,\"name\":\"Biology\",\"percentile\":52.85714285714286,\"hsc\":74.49714285714286,\"atar\":54.36571428571429,\"units\":2,\"aggregateContribution\":54.36571428571429,\"exclude\":false,\"countedUnits\":2},{\"id\":1782264843365,\"name\":\"Mathematics Advanced\",\"percentile\":9.467455621301779,\"hsc\":55.52899408284024,\"atar\":52.61301775147929,\"units\":2,\"aggregateContribution\":52.61301775147929,\"exclude\":false,\"countedUnits\":2},{\"id\":1782264847945,\"name\":\"Engineering Studies\",\"percentile\":29.032258064516125,\"hsc\":63.703225806451606,\"atar\":51.39354838709677,\"units\":2,\"aggregateContribution\":51.39354838709677,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-24 07:55:09"
+      },
+      {
+        "id": 80,
+        "user_id": 93,
+        "rank": 25,
+        "aggregate": 497.18,
+        "calculators_data": "[{\"id\":1780727249861,\"name\":\"English Extension 1\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":1,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":1},{\"id\":1780727257952,\"name\":\"Mathematics Advanced\",\"percentile\":100,\"hsc\":100,\"atar\":100,\"units\":2,\"aggregateContribution\":100,\"exclude\":false,\"countedUnits\":2},{\"id\":1780727254627,\"name\":\"English Advanced\",\"percentile\":99,\"hsc\":99.1,\"atar\":98.52,\"units\":2,\"aggregateContribution\":98.52,\"exclude\":false,\"countedUnits\":2},{\"id\":1780727247219,\"name\":\"Chemistry\",\"percentile\":70,\"hsc\":82.24,\"atar\":77.16,\"units\":2,\"aggregateContribution\":77.16,\"exclude\":false,\"countedUnits\":2},{\"id\":1780727268398,\"name\":\"Economics\",\"percentile\":70,\"hsc\":85.2,\"atar\":74.8,\"units\":2,\"aggregateContribution\":74.8,\"exclude\":false,\"countedUnits\":2},{\"id\":1780727243602,\"name\":\"Biology\",\"percentile\":70,\"hsc\":81.08,\"atar\":66.16,\"units\":2,\"aggregateContribution\":66.16,\"exclude\":false,\"countedUnits\":2},{\"id\":1780727264099,\"name\":\"Studies of Religion 1-unit\",\"percentile\":60,\"hsc\":80.96,\"atar\":61.08,\"units\":1,\"aggregateContribution\":30.54,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-25 01:03:48"
+      },
+      {
+        "id": 81,
+        "user_id": 93,
+        "rank": 25,
+        "aggregate": 484.4132719740086,
+        "calculators_data": "[{\"id\":1780727249861,\"name\":\"English Extension 1\",\"percentile\":99.40476190476191,\"hsc\":99.64285714285715,\"atar\":99.27380952380953,\"units\":1,\"aggregateContribution\":49.636904761904766,\"exclude\":false,\"countedUnits\":1},{\"id\":1780727254627,\"name\":\"English Advanced\",\"percentile\":98.57142857142858,\"hsc\":98.71428571428572,\"atar\":97.8857142857143,\"units\":2,\"aggregateContribution\":97.8857142857143,\"exclude\":false,\"countedUnits\":2},{\"id\":1780727257952,\"name\":\"Mathematics Advanced\",\"percentile\":97.91666666666666,\"hsc\":98.75,\"atar\":97.04166666666666,\"units\":2,\"aggregateContribution\":97.04166666666666,\"exclude\":false,\"countedUnits\":2},{\"id\":1780727247219,\"name\":\"Chemistry\",\"percentile\":65.625,\"hsc\":80.7,\"atar\":75.025,\"units\":2,\"aggregateContribution\":75.025,\"exclude\":false,\"countedUnits\":2},{\"id\":1780727268398,\"name\":\"Economics\",\"percentile\":67.74193548387098,\"hsc\":84.38709677419355,\"atar\":73.44516129032257,\"units\":2,\"aggregateContribution\":73.44516129032257,\"exclude\":false,\"countedUnits\":2},{\"id\":1780727243602,\"name\":\"Biology\",\"percentile\":64.47368421052632,\"hsc\":78.9578947368421,\"atar\":62.3578947368421,\"units\":2,\"aggregateContribution\":62.3578947368421,\"exclude\":false,\"countedUnits\":2},{\"id\":1780727264099,\"name\":\"Studies of Religion 1-unit\",\"percentile\":54.65116279069768,\"hsc\":79.16279069767441,\"atar\":58.04186046511628,\"units\":1,\"aggregateContribution\":29.02093023255814,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-25 01:35:00"
+      },
+      {
+        "id": 82,
+        "user_id": 141,
+        "rank": 216,
+        "aggregate": 483.1,
+        "calculators_data": "[{\"id\":1782375562225,\"name\":\"English Extension 1\",\"percentile\":90,\"hsc\":94,\"atar\":87.8,\"units\":1,\"aggregateContribution\":43.9,\"exclude\":false,\"countedUnits\":1},{\"id\":1782375540824,\"name\":\"Economics\",\"percentile\":90,\"hsc\":91,\"atar\":86,\"units\":2,\"aggregateContribution\":86,\"exclude\":false,\"countedUnits\":2},{\"id\":1782375535475,\"name\":\"English Advanced\",\"percentile\":90,\"hsc\":91,\"atar\":85.2,\"units\":2,\"aggregateContribution\":85.2,\"exclude\":false,\"countedUnits\":2},{\"id\":1782375532566,\"name\":\"Software Engineering\",\"percentile\":90,\"hsc\":89,\"atar\":81,\"units\":2,\"aggregateContribution\":81,\"exclude\":false,\"countedUnits\":2},{\"id\":1782375543310,\"name\":\"Geography\",\"percentile\":90,\"hsc\":91,\"atar\":81,\"units\":2,\"aggregateContribution\":81,\"exclude\":false,\"countedUnits\":2},{\"id\":1782375550210,\"name\":\"Studies of Religion 2-unit\",\"percentile\":90,\"hsc\":90,\"atar\":81,\"units\":2,\"aggregateContribution\":81,\"exclude\":false,\"countedUnits\":2},{\"id\":1782375556386,\"name\":\"Modern History\",\"percentile\":50,\"hsc\":74.2,\"atar\":50,\"units\":2,\"aggregateContribution\":50,\"exclude\":false,\"countedUnits\":1}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-25 08:21:54"
+      },
+      {
+        "id": 83,
+        "user_id": 84,
+        "rank": 19,
+        "aggregate": 463.9924603174603,
+        "calculators_data": "[{\"id\":1780311945949,\"name\":\"Economics\",\"percentile\":98.88888888888889,\"hsc\":99,\"atar\":98.44444444444444,\"units\":2,\"aggregateContribution\":98.44444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311961104,\"name\":\"English Advanced\",\"percentile\":98.61111111111111,\"hsc\":98.75,\"atar\":97.94444444444444,\"units\":2,\"aggregateContribution\":97.94444444444444,\"exclude\":false,\"countedUnits\":2},{\"id\":1780311919094,\"name\":\"Business Studies\",\"percentile\":97.14285714285714,\"hsc\":97.14285714285714,\"atar\":93.82857142857142,\"units\":2,\"aggregateContribution\":93.82857142857142,\"exclude\":false,\"countedUnits\":2},{\"id\":1780312003765,\"name\":\"Chemistry\",\"percentile\":65.625,\"hsc\":80.7,\"atar\":75.025,\"units\":2,\"aggregateContribution\":75.025,\"exclude\":false,\"countedUnits\":2},{\"id\":1782184914339,\"name\":\"Mathematics Extension 1\",\"percentile\":41.666666666666664,\"hsc\":84.5,\"atar\":74.5,\"units\":1,\"aggregateContribution\":37.25,\"exclude\":false,\"countedUnits\":1},{\"id\":1780311981993,\"name\":\"Mathematics Advanced\",\"percentile\":41.666666666666664,\"hsc\":74.33333333333333,\"atar\":61.5,\"units\":2,\"aggregateContribution\":61.5,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-25 23:48:43"
+      },
+      {
+        "id": 84,
+        "user_id": 53,
+        "rank": 80,
+        "aggregate": 397.90662142235334,
+        "calculators_data": "[{\"id\":1780361562113,\"name\":\"Mathematics Extension 1\",\"percentile\":69.04761904761905,\"hsc\":91.85714285714286,\"atar\":87.32380952380953,\"units\":1,\"aggregateContribution\":43.661904761904765,\"exclude\":false,\"countedUnits\":1},{\"id\":1780361542390,\"name\":\"Mathematics Advanced\",\"percentile\":69.04761904761905,\"hsc\":86.66666666666667,\"atar\":74.46666666666667,\"units\":2,\"aggregateContribution\":74.46666666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1780361538752,\"name\":\"Software Engineering\",\"percentile\":68.18181818181819,\"hsc\":80.87272727272727,\"atar\":64.89090909090909,\"units\":2,\"aggregateContribution\":64.89090909090909,\"exclude\":false,\"countedUnits\":2},{\"id\":1780361587770,\"name\":\"Studies of Religion 1-unit\",\"percentile\":65.11627906976744,\"hsc\":82.67906976744186,\"atar\":63.986046511627904,\"units\":1,\"aggregateContribution\":31.993023255813952,\"exclude\":false,\"countedUnits\":1},{\"id\":1780361581298,\"name\":\"English Advanced\",\"percentile\":50,\"hsc\":82.2,\"atar\":63.6,\"units\":2,\"aggregateContribution\":63.6,\"exclude\":false,\"countedUnits\":2},{\"id\":1780361570304,\"name\":\"Physics\",\"percentile\":47.05882352941176,\"hsc\":72.58823529411765,\"atar\":61.294117647058826,\"units\":2,\"aggregateContribution\":61.294117647058826,\"exclude\":false,\"countedUnits\":2},{\"id\":1780361551741,\"name\":\"Economics\",\"percentile\":31.25,\"hsc\":67.5,\"atar\":58,\"units\":2,\"aggregateContribution\":58,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 1,
+        "created_at": "2026-06-29 00:35:34"
+      },
+      {
+        "id": 85,
+        "user_id": 53,
+        "rank": 80,
+        "aggregate": 397.90662142235334,
+        "calculators_data": "[{\"id\":1780361562113,\"name\":\"Mathematics Extension 1\",\"percentile\":69.04761904761905,\"hsc\":91.85714285714286,\"atar\":87.32380952380953,\"units\":1,\"aggregateContribution\":43.661904761904765,\"exclude\":false,\"countedUnits\":1},{\"id\":1780361542390,\"name\":\"Mathematics Advanced\",\"percentile\":69.04761904761905,\"hsc\":86.66666666666667,\"atar\":74.46666666666667,\"units\":2,\"aggregateContribution\":74.46666666666667,\"exclude\":false,\"countedUnits\":2},{\"id\":1780361538752,\"name\":\"Software Engineering\",\"percentile\":68.18181818181819,\"hsc\":80.87272727272727,\"atar\":64.89090909090909,\"units\":2,\"aggregateContribution\":64.89090909090909,\"exclude\":false,\"countedUnits\":2},{\"id\":1780361587770,\"name\":\"Studies of Religion 1-unit\",\"percentile\":65.11627906976744,\"hsc\":82.67906976744186,\"atar\":63.986046511627904,\"units\":1,\"aggregateContribution\":31.993023255813952,\"exclude\":false,\"countedUnits\":1},{\"id\":1780361581298,\"name\":\"English Advanced\",\"percentile\":50,\"hsc\":82.2,\"atar\":63.6,\"units\":2,\"aggregateContribution\":63.6,\"exclude\":false,\"countedUnits\":2},{\"id\":1780361570304,\"name\":\"Physics\",\"percentile\":47.05882352941176,\"hsc\":72.58823529411765,\"atar\":61.294117647058826,\"units\":2,\"aggregateContribution\":61.294117647058826,\"exclude\":false,\"countedUnits\":2},{\"id\":1780361551741,\"name\":\"Economics\",\"percentile\":31.25,\"hsc\":67.5,\"atar\":58,\"units\":2,\"aggregateContribution\":58,\"exclude\":false,\"countedUnits\":2}]",
+        "is_deleted": 0,
+        "created_at": "2026-06-29 00:35:37"
+      }
+    ],
+    "success": true,
+    "meta": {
+      "served_by": "v3-prod",
+      "served_by_region": "OC",
+      "served_by_colo": "BNE",
+      "served_by_primary": true,
+      "timings": {
+        "sql_duration_ms": 1.72
+      },
+      "duration": 1.72,
+      "changes": 0,
+      "last_row_id": 0,
+      "changed_db": false,
+      "size_after": 2048000,
+      "rows_read": 85,
+      "rows_written": 0,
+      "total_attempts": 1
+    }
+  }
+]

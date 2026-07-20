@@ -33,9 +33,10 @@ export const TimetableTicker = html`
                     bellCache[dateStr] = bells;
                 }
             }
-            // If still no bells and it's within first 2 days, try to fetch quietly
-            if (!bells && i < 2) {
-                fetchDayData(dateStr); // Trigger background fetch
+            // If still no bells and it's within first 2 days, try to fetch quietly (once per date)
+            if (!bells && i < 2 && !bellsFetchRequested[dateStr]) {
+                bellsFetchRequested[dateStr] = true;
+                fetchDayData(dateStr);
             }
             if (!bells) bells = DEFAULT_BELL_TIMES;
             for(let bell of bells) {

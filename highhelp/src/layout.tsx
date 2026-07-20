@@ -71,11 +71,21 @@ ${props.latex ? html`
         <script>
             // Theme initialization - run as early as possible to avoid flash
             (function() {
-                const theme = localStorage.getItem('theme') || 'light';
-                if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
-                } else {
+                const timetableTheme = localStorage.getItem('timetableTheme');
+                if (timetableTheme === 'night') {
+                    document.documentElement.classList.add('night', 'dark');
+                } else if (timetableTheme === 'paper') {
+                    document.documentElement.classList.add('paper');
                     document.documentElement.classList.remove('dark');
+                } else if (timetableTheme === 'glass') {
+                    document.documentElement.classList.add('glass', 'dark');
+                } else {
+                    const theme = localStorage.getItem('theme') || 'light';
+                    if (theme === 'dark') {
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                    }
                 }
             })();
 
@@ -94,6 +104,215 @@ ${props.latex ? html`
                 },
               }
             </script>
+            <style>
+                .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
+                .scrollbar-hide::-webkit-scrollbar{display:none}
+                html{background-color:#3E2723}
+                /* Night theme */
+                html.night body{background-color:#0A0E17!important;color:#fff!important}
+                html.night nav{background-color:#0A0E17!important}
+                html.night main,html.night footer{background-color:#0A0E17!important}
+                html.night nav a:hover,html.night nav button:hover{background-color:rgba(168,85,247,.15)!important}
+                html.night .bg-background,html.night .bg-white{background-color:#111827!important}
+                html.night .border-gray-100,html.night .border-gray-200,html.night .dark\:border-neutral-700,html.night .dark\:border-neutral-800{border-color:#1e293b!important}
+                html.night .bg-gray-50,html.night .bg-gray-50\/50,html.night .bg-gray-100,html.night .dark\:bg-neutral-800,html.night .dark\:bg-neutral-900,html.night .dark\:bg-neutral-950\/50{background-color:#111827!important}
+                html.night .text-gray-800,html.night .text-gray-900,html.night .dark\:text-white,html.night .dark\:text-neutral-100,html.night .dark\:text-neutral-200{color:#fff!important}
+                html.night .text-gray-400,html.night .text-gray-500,html.night .dark\:text-neutral-400,html.night .dark\:text-neutral-500,html.night .dark\:text-neutral-600{color:#94a3b8!important}
+                html.night .dark\:bg-red-900\/20,html.night .dark\:bg-red-900\/30,html.night .dark\:bg-red-900\/40,html.night .bg-red-50,html.night .dark\:bg-red-500\/10,html.night .dark\:bg-red-500\/20{background-color:rgba(168,85,247,.1)!important}
+                html.night .text-red-500,html.night .text-red-600,html.night .dark\:text-red-400,html.night .dark\:text-red-300,html.night .text-red-700{color:#a855f7!important}
+                html.night .bg-red-500,html.night .bg-red-600{background-color:#a855f7!important}
+                html.night .hover\:bg-red-50:hover,html.night .dark\:hover\:bg-red-500\/10:hover,html.night .dark\:hover\:bg-red-500\/20:hover{background-color:rgba(168,85,247,.1)!important}
+                html.night .hover\:bg-red-600:hover{background-color:#9333ea!important}
+                html.night .hover\:text-red-500:hover,html.night .hover\:text-red-600:hover{color:#a855f7!important}
+                html.night .border-red-500{border-color:#a855f7!important}
+                html.night .ring-red-500,html.night .dark\:ring-offset-neutral-900{--tw-ring-color:#a855f7!important}
+                html.night .bg-red-100,html.night .dark\:bg-red-900\/30{background-color:rgba(168,85,247,.1)!important}
+                html.night .text-red-700,html.night .dark\:text-red-400,html.night .text-red-600{color:#a855f7!important}
+                html.night .dark\:bg-neutral-900\/50{background-color:rgba(17,24,39,.5)!important}
+                html.night .bg-gray-50\/30,html.night .dark\:bg-neutral-900\/10,html.night .dark\:bg-neutral-900\/20,html.night .dark\:bg-neutral-900\/30{background-color:rgba(17,24,39,.2)!important}
+                html.night .bg-gray-50\/50,html.night .dark\:bg-neutral-900\/30{background-color:rgba(17,24,39,.3)!important}
+                html.night .border-gray-50,html.night .dark\:border-neutral-800\/50,html.night .dark\:border-neutral-700\/50{border-color:rgba(30,41,59,.5)!important}
+                html.night .bg-red-50\/40,html.night .dark\:bg-red-900\/10{background-color:rgba(168,85,247,.05)!important}
+                html.night .shadow-sm{box-shadow:0 1px 2px 0 rgba(0,0,0,.3)!important}
+                html.night .shadow-lg{box-shadow:0 10px 15px -3px rgba(0,0,0,.4)!important}
+                html.night .shadow-xl,html.night .shadow-2xl{box-shadow:0 20px 25px -5px rgba(0,0,0,.5)!important}
+                html.night .divide-gray-100>*>:not([hidden])~:not([hidden]){border-color:#1e293b!important}
+                html.night .ring-gray-300{--tw-ring-color:#1e293b!important}
+                html.night .placeholder-gray-400,html.night .dark\:placeholder-neutral-600::placeholder{color:#475569!important}
+                html.night .bg-blue-50,html.night .dark\:bg-blue-900\/20,html.night .dark\:bg-blue-900\/30{background-color:rgba(168,85,247,.08)!important}
+                html.night .text-blue-400,html.night .text-blue-500,html.night .dark\:text-blue-300,html.night .dark\:text-blue-400,html.night .text-blue-600,html.night .text-blue-700{color:#c4b5fd!important}
+                html.night .bg-blue-100,html.night .hover\:bg-blue-100:hover{background-color:rgba(168,85,247,.1)!important}
+                html.night .border-blue-300,html.night .dark\:border-blue-500\/40,html.night .hover\:border-blue-300:hover,html.night .dark\:hover\:border-blue-500\/40:hover{border-color:rgba(168,85,247,.3)!important}
+                html.night .text-blue-600,html.night .hover\:text-blue-600:hover,html.night .dark\:hover\:text-blue-400:hover{color:#c4b5fd!important}
+                html.night .bg-indigo-100,html.night .dark\:bg-indigo-900\/20,html.night .dark\:bg-indigo-900\/30{background-color:rgba(168,85,247,.08)!important}
+                html.night .text-indigo-600,html.night .text-indigo-700,html.night .dark\:text-indigo-300{color:#c4b5fd!important}
+                html.night .bg-orange-100,html.night .dark\:bg-orange-900\/20,html.night .dark\:bg-orange-900\/30{background-color:rgba(251,146,60,.1)!important}
+                html.night .bg-green-100,html.night .dark\:bg-green-900\/20,html.night .dark\:bg-green-900\/30{background-color:rgba(52,211,153,.1)!important}
+                html.night .bg-yellow-100,html.night .dark\:bg-yellow-900\/30{background-color:rgba(250,204,21,.1)!important}
+                html.night .text-yellow-700,html.night .dark\:text-yellow-400{color:#fbbf24!important}
+                html.night .bg-gray-800{background-color:#111827!important}
+                html.night .text-gray-300,html.night .dark\:text-gray-200,html.night .dark\:text-gray-300{color:#e2e8f0!important}
+                html.night .border-gray-600,html.night .dark\:border-gray-700{border-color:#1e293b!important}
+                html.night .border-white\/50,html.night .dark\:border-neutral-700\/50{border-color:rgba(30,41,59,.5)!important}
+                html.night .bg-gray-700{background-color:#1e293b!important}
+                html.night #big-timer-display #bt-timer.night-gradient{background:linear-gradient(90deg,#7dd3fc,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+                html.night #big-timer-display{background:linear-gradient(135deg,#0f172a,#111827 40%,#0f172a)!important;background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 30 Q15 25 30 30 T60 30' fill='none' stroke='%231e293b' stroke-width='0.5'/%3E%3Cpath d='M0 40 Q15 35 30 40 T60 40' fill='none' stroke='%231e293b' stroke-width='0.5'/%3E%3C/svg%3E")!important;background-size:60px 60px!important;border-color:#1e293b!important}
+                html.night #daily-progress-bar{background-color:#1e293b!important}
+                html.night .period-card>.absolute.left-0{width:4px!important;border-radius:0!important}
+                html.night .period-card>.absolute.left-0::before{content:'';position:absolute;top:50%;left:-3px;width:8px;height:8px;border-radius:50%;background:inherit;transform:translateY(-50%)}
+                html.night .period-card [data-accent-text]{color:var(--strip-color)!important}
+                html.night .dark\:border-red-500\/40{border-color:rgba(168,85,247,.4)!important}
+                /* Paper theme */
+                html.paper{font-family:'Courier New',Courier,monospace!important;background:#F5F5F0!important}
+                html.paper body{background:#F5F5F0!important;color:#3D3535!important;font-family:'Courier New',Courier,monospace!important}
+                html.paper nav{background:#F5F5F0!important;border-bottom:2px solid #3D3535!important;box-shadow:none!important}
+                html.paper nav a,html.paper nav button{color:#3D3535!important}
+                html.paper nav a:hover,html.paper nav button:hover{background:rgba(61,53,53,.06)!important}
+                html.paper main,html.paper footer{background:transparent!important}
+                html.paper #app-container{border:2px solid #3D3535!important;border-radius:255px 15px 225px 15px/15px 225px 15px 255px!important;padding:2rem 1.5rem!important;background:#F5F5F0!important}
+                html.paper .bg-background,html.paper .bg-white,html.paper .dark\:bg-neutral-800,html.paper .dark\:bg-neutral-900,html.paper .dark\:bg-neutral-950,html.paper .dark\:bg-neutral-950\/50,html.paper .bg-gray-50,html.paper .bg-gray-100,html.paper .bg-gray-50\/50,html.paper .bg-gray-800,html.paper .dark\:bg-neutral-900\/50,html.paper .dark\:bg-neutral-800{background:transparent!important}
+                html.paper .border-gray-100,html.paper .border-gray-200,html.paper .dark\:border-neutral-700,html.paper .dark\:border-neutral-800,html.paper .dark\:border-neutral-800\/50,html.paper .dark\:border-neutral-700\/50,html.paper .divide-gray-100>*>:not([hidden])~:not([hidden]),html.paper .border-gray-50{border-color:#B5AEA5!important}
+                html.paper .text-gray-800,html.paper .text-gray-900,html.paper .dark\:text-white,html.paper .dark\:text-neutral-100,html.paper .dark\:text-neutral-200,html.paper .text-black{color:#3D3535!important}
+                html.paper .text-gray-400,html.paper .text-gray-500,html.paper .dark\:text-neutral-400,html.paper .dark\:text-neutral-500,html.paper .dark\:text-neutral-600,html.paper .text-gray-300,html.paper .dark\:text-gray-200,html.paper .dark\:text-gray-300{color:#8A8078!important}
+                html.paper .text-red-500,html.paper .text-red-600,html.paper .dark\:text-red-400,html.paper .dark\:text-red-300,html.paper .text-red-700{color:#CBA153!important}
+                html.paper .bg-red-500,html.paper .bg-red-600,html.paper .bg-red-50,html.paper .dark\:bg-red-500\/10,html.paper .dark\:bg-red-500\/20,html.paper .dark\:bg-red-900\/20,html.paper .dark\:bg-red-900\/30,html.paper .dark\:bg-red-900\/40,html.paper .bg-red-100,html.paper .dark\:bg-red-900\/30{background:#CBA153!important}
+                html.paper .hover\:bg-red-50:hover,html.paper .dark\:hover\:bg-red-500\/10:hover,html.paper .dark\:hover\:bg-red-500\/20:hover,html.paper .hover\:bg-red-600:hover{background:rgba(203,161,83,.15)!important}
+                html.paper .hover\:text-red-500:hover,html.paper .hover\:text-red-600:hover,html.paper .dark\:hover\:text-red-400:hover{color:#CBA153!important}
+                html.paper .border-red-500{border-color:#CBA153!important}
+                html.paper .ring-red-500{--tw-ring-color:#CBA153!important}
+                html.paper .bg-blue-50,html.paper .dark\:bg-blue-900\/20,html.paper .dark\:bg-blue-900\/30,html.paper .bg-blue-100,html.paper .hover\:bg-blue-100:hover{background:rgba(74,98,120,.06)!important}
+                html.paper .text-blue-400,html.paper .text-blue-500,html.paper .dark\:text-blue-300,html.paper .dark\:text-blue-400,html.paper .text-blue-600,html.paper .text-blue-700,html.paper .hover\:text-blue-600:hover,html.paper .dark\:hover\:text-blue-400:hover{color:#4A6278!important}
+                html.paper .border-blue-300,html.paper .dark\:border-blue-500\/40,html.paper .hover\:border-blue-300:hover{border-color:#4A6278!important}
+                html.paper .bg-indigo-100,html.paper .dark\:bg-indigo-900\/20,html.paper .dark\:bg-indigo-900\/30{background:rgba(74,98,120,.06)!important}
+                html.paper .text-indigo-600,html.paper .text-indigo-700,html.paper .dark\:text-indigo-300{color:#4A6278!important}
+                html.paper .bg-orange-100,html.paper .dark\:bg-orange-900\/20,html.paper .dark\:bg-orange-900\/30{background:rgba(180,120,60,.08)!important}
+                html.paper .bg-green-100,html.paper .dark\:bg-green-900\/20,html.paper .dark\:bg-green-900\/30{background:rgba(80,120,80,.06)!important}
+                html.paper .bg-yellow-100,html.paper .dark\:bg-yellow-900\/30{background:rgba(180,160,80,.08)!important}
+                html.paper .text-yellow-700,html.paper .dark\:text-yellow-400{color:#8A7A40!important}
+                html.paper .bg-gray-800{background:#F5F5F0!important}
+                html.paper .shadow-sm{box-shadow:none!important}
+                html.paper .shadow-lg,html.paper .shadow-xl,html.paper .shadow-2xl{box-shadow:2px 2px 0 rgba(61,53,53,.1)!important}
+                html.paper .ring-gray-300{--tw-ring-color:#B5AEA5!important}
+                html.paper .placeholder-gray-400,html.paper .dark\:placeholder-neutral-600::placeholder{color:#B5AEA5!important}
+                html.paper #big-timer-display{background:transparent!important;border:2px solid #3D3535!important;border-radius:255px 15px 225px 15px/15px 225px 15px 255px!important;background-image:none!important}
+                html.paper #big-timer-display>#bt-timer{color:#4A6278!important;background:none!important;-webkit-background-clip:unset!important;-webkit-text-fill-color:unset!important;background-clip:unset!important}
+                html.paper #bt-label{color:#8A8078!important;text-transform:lowercase!important;font-variant:small-caps!important}
+                html.paper #daily-progress-bar{background-color:#B5AEA5!important}
+                html.paper #app-container>.flex.border-b{border-bottom:2px solid #3D3535!important}
+                html.paper #app-container .flex.overflow-x-auto.border-b svg{display:none!important}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-day::before{content:'DAY';font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-cycle::before{content:'CYCLE';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-notices::before{content:'NOTICES';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-events::before{content:'EVENTS';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-calendar::before{content:'EXAMS';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-config::before{content:'CONFIG';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+                html.paper #app-container .flex.overflow-x-auto.border-b button span:not(.ql-title){font-size:0!important}
+                html.paper .flex.items-center.gap-1\.5 button svg{display:none!important}
+                html.paper #btn-prev::before{content:'[ PREV ]';font-family:'Courier New',Courier,monospace;font-weight:700;font-size:.7rem;color:#4A6278;letter-spacing:.05em}
+                html.paper #btn-next::before{content:'[ NEXT ]';font-family:'Courier New',Courier,monospace;font-weight:700;font-size:.7rem;color:#4A6278;letter-spacing:.05em}
+                html.paper #btn-prev svg,html.paper #btn-next svg{display:none!important}
+                html.paper #btn-reset{border-color:#4A6278!important;color:#4A6278!important;font-family:'Courier New',Courier,monospace}
+                html.paper .period-card{border:1px solid #B5AEA5!important;border-left:4px solid #3D3535!important;border-radius:4px!important;box-shadow:1px 1px 0 rgba(61,53,53,.08)!important;background:#F5F5F0!important}
+                html.paper .period-card:hover{box-shadow:2px 2px 0 rgba(61,53,53,.12)!important}
+                html.paper .period-card>.absolute.left-0{width:4px!important;border-radius:0!important}
+                html.paper .period-card>.absolute.left-0::before{content:'';position:absolute;top:50%;left:-3px;width:8px;height:8px;border-radius:50%;background:inherit;transform:translateY(-50%)}
+                html.paper .period-card [data-accent-text]{color:#3D3535!important}
+                html.paper .ring-2.ring-red-500,html.paper .ring-2{border:2px solid #4A6278!important;box-shadow:2px 2px 0 rgba(74,98,120,.15)!important;--tw-ring-color:transparent!important}
+                html.paper #quick-links-wrapper{display:none!important}
+                html.paper .fixed.bg-black\/60{background:rgba(245,245,240,.92)!important}
+                html.paper #class-modal-content{border:2px solid #3D3535!important;border-radius:4px!important;background:#F5F5F0!important}
+                html.paper .bg-red-600{background:#4A6278!important}
+                html.paper .hover\:bg-red-600:hover{background:#3D5060!important}
+                html.paper .bg-red-500.text-white{background:#4A6278!important}
+                html.paper .dark\:bg-neutral-950\/30,html.paper .bg-gray-50.dark\:bg-neutral-950\/30{background:rgba(181,174,165,.15)!important}
+                html.paper .dark\:bg-neutral-900\/30{background:rgba(181,174,165,.1)!important}
+                html.paper .bg-gray-50\/30,html.paper .dark\:bg-neutral-900\/10,html.paper .dark\:bg-neutral-900\/20{background:rgba(181,174,165,.06)!important}
+                html.paper .sticky.top-0{background:#F5F5F0!important}
+                html.paper table{font-family:'Courier New',Courier,monospace}
+                html.paper .dark\:bg-red-900\/10{background:rgba(203,161,83,.08)!important}
+                html.paper .text-\[10px\]{font-size:.65rem!important}
+                html.paper .animate-pulse{animation:none!important}
+                /* Glass / Frosted Metal theme */
+                html.glass{background:linear-gradient(180deg,#2c3543,#3b4758)!important}
+                html.glass body{background:linear-gradient(180deg,#2c3543,#3b4758)!important;color:#fff!important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif!important}
+                html.glass nav{background:rgba(30,36,46,.85)!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 1px 0 rgba(255,255,255,.06)!important}
+                html.glass nav a:hover,html.glass nav button:hover{background:rgba(255,255,255,.06)!important}
+                html.glass main{background:transparent!important}
+                html.glass footer{background:rgba(0,0,0,.2)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+                html.glass #app-container{background:transparent!important;border-radius:0!important;border:none!important;padding:0!important}
+                html.glass .bg-background,html.glass .bg-white,html.glass .dark\:bg-neutral-800,html.glass .dark\:bg-neutral-900,html.glass .dark\:bg-neutral-950,html.glass .dark\:bg-neutral-950\/50,html.glass .bg-gray-50,html.glass .bg-gray-100,html.glass .bg-gray-50\/50,html.glass .bg-gray-800,html.glass .dark\:bg-neutral-900\/50,html.glass .bg-gray-50\/30,html.glass .dark\:bg-neutral-900\/10,html.glass .dark\:bg-neutral-900\/20,html.glass .dark\:bg-neutral-900\/30,html.glass .bg-gray-50\/50{background:rgba(0,0,0,.25)!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+                html.glass .border-gray-100,html.glass .border-gray-200,html.glass .dark\:border-neutral-700,html.glass .dark\:border-neutral-800,html.glass .dark\:border-neutral-800\/50,html.glass .dark\:border-neutral-700\/50,html.glass .border-gray-50{border-color:rgba(255,255,255,.08)!important}
+                html.glass .divide-gray-100>*>:not([hidden])~:not([hidden]){border-color:rgba(255,255,255,.06)!important}
+                html.glass .text-gray-800,html.glass .text-gray-900,html.glass .dark\:text-white,html.glass .dark\:text-neutral-100,html.glass .dark\:text-neutral-200{color:#fff!important}
+                html.glass .text-gray-400,html.glass .text-gray-500,html.glass .dark\:text-neutral-400,html.glass .dark\:text-neutral-500,html.glass .dark\:text-neutral-600,html.glass .text-gray-300,html.glass .dark\:text-gray-200,html.glass .dark\:text-gray-300{color:#94a3b8!important}
+                html.glass .text-red-500,html.glass .text-red-600,html.glass .dark\:text-red-400,html.glass .dark\:text-red-300,html.glass .text-red-700{color:#5F7B8C!important}
+                html.glass .bg-red-500,html.glass .bg-red-600,html.glass .bg-red-100,html.glass .bg-red-50,html.glass .dark\:bg-red-500\/10,html.glass .dark\:bg-red-500\/20,html.glass .dark\:bg-red-900\/20,html.glass .dark\:bg-red-900\/30,html.glass .dark\:bg-red-900\/40{background:rgba(95,123,140,.25)!important}
+                html.glass .hover\:bg-red-50:hover,html.glass .dark\:hover\:bg-red-500\/10:hover,html.glass .dark\:hover\:bg-red-500\/20:hover,html.glass .hover\:bg-red-600:hover{background:rgba(95,123,140,.35)!important}
+                html.glass .hover\:text-red-500:hover,html.glass .hover\:text-red-600:hover,html.glass .dark\:hover\:text-red-400:hover{color:#7FA0B0!important}
+                html.glass .border-red-500{border-color:rgba(95,123,140,.5)!important}
+                html.glass .ring-red-500{--tw-ring-color:rgba(95,123,140,.5)!important}
+                html.glass .bg-blue-50,html.glass .dark\:bg-blue-900\/20,html.glass .dark\:bg-blue-900\/30,html.glass .bg-blue-100,html.glass .hover\:bg-blue-100:hover{background:rgba(95,123,140,.12)!important}
+                html.glass .text-blue-400,html.glass .text-blue-500,html.glass .dark\:text-blue-300,html.glass .dark\:text-blue-400,html.glass .text-blue-600,html.glass .text-blue-700,html.glass .hover\:text-blue-600:hover,html.glass .dark\:hover\:text-blue-400:hover{color:#7FA0B0!important}
+                html.glass .bg-indigo-100,html.glass .dark\:bg-indigo-900\/20,html.glass .dark\:bg-indigo-900\/30{background:rgba(95,123,140,.1)!important}
+                html.glass .text-indigo-600,html.glass .text-indigo-700,html.glass .dark\:text-indigo-300{color:#7FA0B0!important}
+                html.glass .bg-orange-100,html.glass .dark\:bg-orange-900\/20,html.glass .dark\:bg-orange-900\/30{background:rgba(137,109,115,.1)!important}
+                html.glass .bg-green-100,html.glass .dark\:bg-green-900\/20,html.glass .dark\:bg-green-900\/30{background:rgba(95,123,140,.1)!important}
+                html.glass .bg-yellow-100,html.glass .dark\:bg-yellow-900\/30{background:rgba(180,160,80,.1)!important}
+                html.glass .text-yellow-700,html.glass .dark\:text-yellow-400{color:#94a3b8!important}
+                html.glass .bg-gray-800{background:rgba(0,0,0,.3)!important}
+                html.glass .shadow-sm{box-shadow:0 1px 2px rgba(0,0,0,.2)!important}
+                html.glass .shadow-lg,html.glass .shadow-xl,html.glass .shadow-2xl{box-shadow:0 8px 32px rgba(0,0,0,.3)!important}
+                html.glass .ring-gray-300{--tw-ring-color:rgba(255,255,255,.1)!important}
+                html.glass .placeholder-gray-400,html.glass .dark\:placeholder-neutral-600::placeholder{color:rgba(148,163,184,.5)!important}
+                html.glass #big-timer-display{background:rgba(0,0,0,.35)!important;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.08)!important;border-top:1px solid rgba(255,255,255,.12)!important;border-radius:1rem!important;background-image:none!important}
+                html.glass #big-timer-display>#bt-timer{color:#fff!important;background:none!important;-webkit-background-clip:unset!important;-webkit-text-fill-color:unset!important;background-clip:unset!important}
+                html.glass #bt-label{color:#94a3b8!important;text-transform:none!important;font-variant:normal!important}
+                html.glass #daily-progress-bar{background-color:rgba(95,123,140,.3)!important}
+                html.glass #app-container>.flex.border-b{border-bottom:1px solid rgba(255,255,255,.08)!important}
+                html.glass #app-container .flex.border-b #tab-day svg,html.glass #app-container .flex.border-b #tab-cycle svg,html.glass #app-container .flex.border-b #tab-notices svg,html.glass #app-container .flex.border-b #tab-events svg,html.glass #app-container .flex.border-b #tab-calendar svg,html.glass #app-container .flex.border-b #tab-config svg{display:none!important}
+                html.glass #app-container .flex.border-b button{font-size:.75rem!important;letter-spacing:.06em!important;font-weight:400!important}
+                html.glass #app-container .flex.border-b #tab-day{font-weight:600!important;font-size:.8rem!important}
+                html.glass #btn-prev svg,html.glass #btn-next svg{display:none!important}
+                html.glass #btn-prev{width:auto!important;min-width:4rem!important;padding:0 .75rem!important;gap:.25rem!important;background:rgba(0,0,0,.3)!important;border:1px solid rgba(255,255,255,.08)!important;color:#94a3b8!important;border-radius:9999px!important}
+                html.glass #btn-next{width:auto!important;min-width:4rem!important;padding:0 .75rem!important;gap:.25rem!important;background:rgba(0,0,0,.3)!important;border:1px solid rgba(255,255,255,.08)!important;color:#94a3b8!important;border-radius:9999px!important}
+                html.glass #btn-prev::before{content:'\\276E  PREV';font-family:inherit;font-weight:600;font-size:.7rem;color:inherit;letter-spacing:.06em;white-space:nowrap}
+                html.glass #btn-next::before{content:'NEXT  \\276F';font-family:inherit;font-weight:600;font-size:.7rem;color:inherit;letter-spacing:.06em;white-space:nowrap}
+                html.glass #btn-prev:hover,html.glass #btn-next:hover{background:rgba(0,0,0,.5)!important;border-color:rgba(255,255,255,.15)!important}
+                html.glass #btn-reset{background:rgba(0,0,0,.3)!important;border:1px solid rgba(255,255,255,.08)!important;color:#94a3b8!important;border-radius:9999px!important}
+                html.glass #btn-reset:hover{background:rgba(0,0,0,.5)!important}
+                html.glass #big-timer-display .absolute{display:none!important}
+                html.glass #timetable-list{background:rgba(0,0,0,.15);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:1rem;padding:.5rem;border:1px solid rgba(255,255,255,.06)}
+                html.glass .period-card{border:none!important;border-radius:.75rem!important;padding:.6rem .8rem!important;box-shadow:0 2px 8px rgba(0,0,0,.15)!important;transition:all .15s ease!important}
+                html.glass .period-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.25)!important;transform:translateY(-1px)}
+                html.glass .period-card>.absolute.left-0{display:none!important}
+                html.glass .period-card [data-accent-text]{color:#fff!important;white-space:nowrap}
+                html.glass .period-card [data-accent-text] .font-bold{white-space:nowrap}
+                html.glass .period-card .font-bold.room-num{color:#fff!important;font-weight:700;white-space:nowrap}
+                html.glass .period-card .pl-3.flex.items-center.gap-4{justify-content:flex-end;flex-shrink:0}
+                html.glass .period-card .pl-3.font-medium{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+                html.glass .period-card .pl-3.flex.items-center.gap-4 span{white-space:nowrap}
+                html.glass .ring-2.ring-red-500,html.glass .ring-2{box-shadow:0 0 0 2px rgba(95,123,140,.4),0 4px 20px rgba(95,123,140,.15)!important;--tw-ring-color:transparent!important}
+                html.glass .ring-offset-2{--tw-ring-offset-color:rgba(30,36,46,.95)!important}
+                html.glass #quick-links-wrapper{border-color:rgba(255,255,255,.06)!important}
+                html.glass #quick-links-wrapper .quick-link-btn{background:rgba(0,0,0,.25)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-color:rgba(255,255,255,.08)!important;color:#94a3b8!important;border-radius:.75rem!important}
+                html.glass #quick-links-wrapper .quick-link-btn:hover{background:rgba(0,0,0,.4)!important;border-color:rgba(255,255,255,.15)!important;color:#fff!important}
+                html.glass .fixed.bg-black\/60{background:rgba(30,36,46,.8)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+                html.glass #class-modal-content{border:1px solid rgba(255,255,255,.1)!important;border-radius:1rem!important;background:rgba(30,36,46,.95)!important;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+                html.glass .bg-red-600{background:rgba(95,123,140,.3)!important;border:1px solid rgba(255,255,255,.1)}
+                html.glass .hover\:bg-red-600:hover{background:rgba(95,123,140,.45)!important}
+                html.glass .bg-red-500.text-white{background:rgba(95,123,140,.3)!important}
+                html.glass .dark\:bg-red-900\/10{background:rgba(95,123,140,.08)!important}
+                html.glass .sticky.top-0{background:rgba(30,36,46,.9)!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+                html.glass .dark\:bg-neutral-950\/30,html.glass .bg-gray-50.dark\:bg-neutral-950\/30{background:rgba(0,0,0,.2)!important}
+                html.glass table{border-color:rgba(255,255,255,.06)!important}
+                html.glass .text-\[10px\]{font-size:.65rem!important}
+                html.glass .animate-pulse{animation:none!important}
+                html.glass .bg-gray-700{background:rgba(0,0,0,.3)!important}
+                html.glass .flex.items-center>.text-right{color:#94a3b8!important}
+                html.glass .period-card.border-l-4{border-left:none!important}
+                html.glass .text-blue-500,html.glass .text-blue-400,html.glass .dark\:text-blue-400{color:#94a3b8!important}
+                html.glass .border-blue-500{border-color:rgba(95,123,140,.4)!important}
+            </style>
           </head>
       <body class="bg-background dark:bg-neutral-900 text-gray-800 dark:text-gray-200 font-sans min-h-screen flex flex-col transition-colors duration-300">
         <nav class="bg-primary dark:bg-neutral-950 text-white shadow-lg">
@@ -109,7 +328,10 @@ ${props.latex ? html`
                     <a href="/past-papers" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Past Papers</a>
                     <a href="/forum" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Q&A</a>
                     <a href="/essays" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Essays</a>
+                    <a href="/leaderboard" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Leaderboard</a>
+                    <a href="/atar" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">ATAR</a>
                     <a href="/feedback" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Hmmm..!</a>
+                    
                     <a href="/about" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">About</a>
                   </div>
                 </div>
@@ -188,6 +410,8 @@ ${props.latex ? html`
               <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Past Papers</a>
               <a href="/forum" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Q&A</a>
               <a href="/essays" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Essays</a>
+              <a href="/leaderboard" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Leaderboard</a>
+              <a href="/atar" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">ATAR</a>
               <a href="/feedback" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Hmmm..!</a>
               <a href="/about" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">About</a>
               <button id="mobile-theme-toggle" class="w-full text-left text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium flex items-center justify-between">
@@ -286,6 +510,8 @@ ${props.latex ? html`
                         document.documentElement.classList.remove('dark');
                         localStorage.setItem('theme', 'light');
                     }
+                    document.documentElement.classList.remove('night', 'paper', 'glass');
+                    localStorage.removeItem('timetableTheme');
                     updateIcons(newTheme);
                 };
 
@@ -465,6 +691,7 @@ ${props.latex ? html`
 
                 // timetable sync *important
                 (function() {
+                    if (!window.location.pathname.startsWith('/timetable')) return;
                     const raw = localStorage.getItem('studentData');
                     if (!raw) return;
                     try {

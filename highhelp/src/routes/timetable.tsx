@@ -11,6 +11,7 @@ import { TimetableConfig } from '../components/timetable/TimetableConfig'
 import { TimetableModal } from '../components/timetable/TimetableModal'
 import { TimetableNotices } from '../components/timetable/TimetableNotices'
 import { TimetableEvents } from '../components/timetable/TimetableEvents'
+import { TimetableCalendar } from '../components/timetable/TimetableCalendar'
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/', async (c) => {
@@ -30,8 +31,12 @@ app.get('/', async (c) => {
                 {TimetableModal}
                 {TimetableNotices}
                 {TimetableEvents}
+                {TimetableCalendar}
                 {/* Ticker Logic */}
                 {TimetableTicker}
+
+                {/* Hide nav on timetable unless hovered */}
+                <style dangerouslySetInnerHTML={{ __html: '.nav-hidden{transform:translateY(-100%);transition:transform .2s ease}.nav-hidden.visible{transform:translateY(0)}.nav-zone-active{pointer-events:none}' }} />
 
                 {/* Initialization Script */}
                 <script dangerouslySetInnerHTML={{
@@ -39,6 +44,69 @@ app.get('/', async (c) => {
                     window.currentUserPermission = ${user.permission_level || 0};
                     window.currentUserId = ${user.id};
                     (function() {
+                        function isNight() {
+                            return document.documentElement.classList.contains('night');
+                        }
+
+                        function isPaper() {
+                            return document.documentElement.classList.contains('paper');
+                        }
+
+                        function isGlass() {
+                            return document.documentElement.classList.contains('glass');
+                        }
+
+                        function getThemeAccent() {
+                            if (isNight()) return 'purple';
+                            if (isGlass()) return 'glass';
+                            return 'red';
+                        }
+
+                        function applyTimetableTheme(theme) {
+                            document.documentElement.classList.remove('night', 'paper', 'glass');
+                            if (theme === 'night') {
+                                document.documentElement.classList.add('night', 'dark');
+                                localStorage.setItem('theme', 'dark');
+                            } else if (theme === 'paper') {
+                                document.documentElement.classList.add('paper');
+                                document.documentElement.classList.remove('dark');
+                                localStorage.setItem('theme', 'light');
+                            } else if (theme === 'glass') {
+                                document.documentElement.classList.add('glass', 'dark');
+                                localStorage.setItem('theme', 'dark');
+                            } else {
+                                const saved = localStorage.getItem('theme') || 'light';
+                                if (saved === 'dark') {
+                                    document.documentElement.classList.add('dark');
+                                } else {
+                                    document.documentElement.classList.remove('dark');
+                                }
+                            }
+                            const themeToggleDark = document.getElementById('theme-toggle-dark-icon');
+                            const themeToggleLight = document.getElementById('theme-toggle-light-icon');
+                            const mobileThemeText = document.getElementById('mobile-theme-text');
+                            const isDark = document.documentElement.classList.contains('dark');
+                            if (isDark) {
+                                themeToggleDark?.classList.add('hidden');
+                                themeToggleLight?.classList.remove('hidden');
+                                if (mobileThemeText) mobileThemeText.textContent = 'Dark';
+                            } else {
+                                themeToggleLight?.classList.add('hidden');
+                                themeToggleDark?.classList.remove('hidden');
+                                if (mobileThemeText) mobileThemeText.textContent = 'Light';
+                            }
+                            if (window.render) window.render();
+                        }
+
+                        window.setTimetableTheme = function(theme) {
+                            localStorage.setItem('timetableTheme', theme);
+                            applyTimetableTheme(theme);
+                        };
+
+                        window.addEventListener('timetableThemeChanged', (e) => {
+                            applyTimetableTheme(e.detail.theme);
+                        });
+
                         function render() {
                             if (window.location.pathname !== '/timetable') return;
                             activeSubject = null;
@@ -48,6 +116,7 @@ app.get('/', async (c) => {
                             const tabCycle = document.getElementById('tab-cycle');
                             const tabNotices = document.getElementById('tab-notices');
                             const tabEvents = document.getElementById('tab-events');
+                            const tabCalendar = document.getElementById('tab-calendar');
                             const tabConfig = document.getElementById('tab-config');
                             const headerControls = document.querySelector('#content > .flex.items-center.gap-2.mb-6') || document.querySelector('#content > .flex.items-center.gap-2.mb-3');
                             const configContainer = document.getElementById('config-container');
@@ -56,28 +125,30 @@ app.get('/', async (c) => {
                             const quickLinksWrapper = document.getElementById('quick-links-wrapper');
                             
                             // Reset tabs
-                            [tabDay, tabCycle, tabNotices, tabEvents, tabConfig].forEach(t => {
+                            const themeAccent = getThemeAccent();
+                            const accentColors = themeAccent === 'purple' ? ['border-purple-500', 'text-purple-500'] : themeAccent === 'glass' ? ['border-[#5F7B8C]', 'text-[#5F7B8C]'] : ['border-red-500', 'text-red-500'];
+                            [tabDay, tabCycle, tabNotices, tabEvents, tabCalendar, tabConfig].forEach(t => {
                                 if(t) {
-                                    t.classList.remove('border-red-500', 'text-red-500');
+                                    t.classList.remove('border-red-500', 'text-red-500', 'border-purple-500', 'text-purple-500', 'border-[#5F7B8C]', 'text-[#5F7B8C]');
                                     t.classList.add('border-transparent', 'text-gray-500');
                                 }
                             });
 
                             // Show quick links only in day/notices/events views
-                            const showQuickLinks = ['day', 'notices', 'events'].includes(currentView);
+                            const showQuickLinks = ['day', 'notices', 'events', 'calendar'].includes(currentView);
                             if (quickLinksWrapper) {
                                 quickLinksWrapper.style.display = showQuickLinks ? '' : 'none';
                             }
 
                             if (currentView === 'day') {
-                                tabDay.classList.add('border-red-500', 'text-red-500');
+                                tabDay.classList.add(accentColors[0], accentColors[1]);
                                 tabDay.classList.remove('border-transparent', 'text-gray-500');
                                 if (headerControls) headerControls.classList.remove('hidden');
                                 if (configContainer) configContainer.classList.add('hidden');
                                 if (timetableList) timetableList.classList.remove('hidden');
                                 renderDay();
                             } else if (currentView === 'cycle') {
-                                tabCycle.classList.add('border-red-500', 'text-red-500');
+                                tabCycle.classList.add(accentColors[0], accentColors[1]);
                                 tabCycle.classList.remove('border-transparent', 'text-gray-500');
                                 if (headerControls) headerControls.classList.add('hidden');
                                 if (configContainer) configContainer.classList.add('hidden');
@@ -85,7 +156,7 @@ app.get('/', async (c) => {
                                 renderCycle();
                             } else if (currentView === 'notices') {
                                 if (tabNotices) {
-                                    tabNotices.classList.add('border-red-500', 'text-red-500');
+                                    tabNotices.classList.add(accentColors[0], accentColors[1]);
                                     tabNotices.classList.remove('border-transparent', 'text-gray-500');
                                 }
                                 if (headerControls) headerControls.classList.remove('hidden');
@@ -94,15 +165,24 @@ app.get('/', async (c) => {
                                 if (window.renderNotices) window.renderNotices();
                             } else if (currentView === 'events') {
                                 if (tabEvents) {
-                                    tabEvents.classList.add('border-red-500', 'text-red-500');
+                                    tabEvents.classList.add(accentColors[0], accentColors[1]);
                                     tabEvents.classList.remove('border-transparent', 'text-gray-500');
                                 }
                                 if (headerControls) headerControls.classList.remove('hidden');
                                 if (configContainer) configContainer.classList.add('hidden');
                                 if (timetableList) timetableList.classList.remove('hidden');
                                 if (window.renderEvents) window.renderEvents();
+                            } else if (currentView === 'calendar') {
+                                if (tabCalendar) {
+                                    tabCalendar.classList.add(accentColors[0], accentColors[1]);
+                                    tabCalendar.classList.remove('border-transparent', 'text-gray-500');
+                                }
+                                if (headerControls) headerControls.classList.remove('hidden');
+                                if (configContainer) configContainer.classList.add('hidden');
+                                if (timetableList) timetableList.classList.remove('hidden');
+                                if (window.renderCalendar) window.renderCalendar();
                             } else if (currentView === 'config') {
-                                tabConfig.classList.add('border-red-500', 'text-red-500');
+                                tabConfig.classList.add(accentColors[0], accentColors[1]);
                                 tabConfig.classList.remove('border-transparent', 'text-gray-500');
                                 if (headerControls) headerControls.classList.add('hidden');
                                 if (timetableList) timetableList.classList.add('hidden');
@@ -113,12 +193,19 @@ app.get('/', async (c) => {
                         function changeDate(delta) {
                             const [y, m, day] = currentDateStr.split('-').map(Number);
                             let d = new Date(y, m - 1, day);
-                            let count = 0;
-                            while(count < 7) {
-                                d.setDate(d.getDate() + delta);
-                                const dw = d.getDay();
-                                if (dw !== 0 && dw !== 6) break;
-                                count++;
+                            if (currentView === 'events') {
+                                d.setDate(d.getDate() + (delta * 7));
+                            } else if (currentView === 'calendar') {
+                                if (window.calendarPrevMonth && delta < 0) { window.calendarPrevMonth(); return; }
+                                if (window.calendarNextMonth && delta > 0) { window.calendarNextMonth(); return; }
+                            } else {
+                                let count = 0;
+                                while(count < 7) {
+                                    d.setDate(d.getDate() + delta);
+                                    const dw = d.getDay();
+                                    if (dw !== 0 && dw !== 6) break;
+                                    count++;
+                                }
                             }
                             const year = d.getFullYear();
                             const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -133,14 +220,20 @@ app.get('/', async (c) => {
 
                         document.getElementById('btn-prev').onclick = () => changeDate(-1);
                         document.getElementById('btn-next').onclick = () => changeDate(1);
-                        document.getElementById('btn-reset').onclick = () => { currentDateStr = getInitialDate(); render(); };
-                        document.getElementById('tab-day').onclick = () => { currentView = 'day'; render(); };
-                        document.getElementById('tab-cycle').onclick = () => { currentView = 'cycle'; render(); };
+                        document.getElementById('btn-reset').onclick = () => {
+                            currentDateStr = getInitialDate();
+                            if (currentView === 'calendar' && window.resetCalendarMonth) window.resetCalendarMonth();
+                            render();
+                        };
+                        document.getElementById('tab-day').onclick = () => { currentView = 'day'; window.location.hash = 'day'; render(); };
+                        document.getElementById('tab-cycle').onclick = () => { currentView = 'cycle'; window.location.hash = 'cycle'; render(); };
                         const noticesBtn = document.getElementById('tab-notices');
-                        if (noticesBtn) noticesBtn.onclick = () => { currentView = 'notices'; render(); };
+                        if (noticesBtn) noticesBtn.onclick = () => { currentView = 'notices'; window.location.hash = 'notices'; render(); };
                         const eventsBtn = document.getElementById('tab-events');
-                        if (eventsBtn) eventsBtn.onclick = () => { currentView = 'events'; render(); };
-                        document.getElementById('tab-config').onclick = () => { currentView = 'config'; render(); };
+                        if (eventsBtn) eventsBtn.onclick = () => { currentView = 'events'; window.location.hash = 'events'; render(); };
+                        const calendarBtn = document.getElementById('tab-calendar');
+                        if (calendarBtn) calendarBtn.onclick = () => { currentView = 'calendar'; window.location.hash = 'exams'; render(); };
+                        document.getElementById('tab-config').onclick = () => { currentView = 'config'; window.location.hash = 'config'; render(); };
 
                         document.addEventListener('click', (e) => {
                             if (activeSubject && !e.target.closest('.period-card')) {
@@ -201,6 +294,25 @@ app.get('/', async (c) => {
                         // Load quick links on init and listen for updates
                         loadQuickLinksUI();
                         window.addEventListener('quickLinksUpdated', loadQuickLinksUI);
+
+                        // Hide nav unless hovered
+                        const nav = document.querySelector('nav');
+                        if (nav) {
+                            const zone = document.createElement('div');
+                            zone.style.cssText = 'position:fixed;top:0;left:0;right:0;height:30px;z-index:51';
+                            document.body.prepend(zone);
+                            nav.classList.add('nav-hidden');
+                            nav.style.position = 'fixed';
+                            nav.style.top = '0';
+                            nav.style.left = '0';
+                            nav.style.right = '0';
+                            nav.style.zIndex = '50';
+                            const show = function() { nav.classList.add('visible'); zone.classList.add('nav-zone-active'); };
+                            const hide = function() { nav.classList.remove('visible'); zone.classList.remove('nav-zone-active'); };
+                            zone.addEventListener('mouseenter', show);
+                            nav.addEventListener('mouseenter', show);
+                            nav.addEventListener('mouseleave', hide);
+                        }
 
                         // Make render globally available for sub-components
                         window.render = render;

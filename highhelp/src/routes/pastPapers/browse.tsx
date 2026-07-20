@@ -201,7 +201,7 @@ app.get('/past-papers', async (c) => {
             c.env.DB.prepare('SELECT DISTINCT school_name FROM papers WHERE subject = ? ORDER BY school_name ASC').bind(subject)
         ]);
 
-        const totalQuestions = (countResult.results[0]?.total as number) || 0;
+        const totalQuestions = (countResult.results[0] as { total: number })?.total || 0;
         const totalPages = Math.ceil(totalQuestions / limit) || 1;
 
 
@@ -213,6 +213,7 @@ app.get('/past-papers', async (c) => {
                 <form action="/past-papers" method="get" class="bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-neutral-700 mb-6 space-y-4">
                     <input type="hidden" name="subject" value={subject} />
                     <input type="hidden" name="tab" value="practice" />
+                    {mode && <input type="hidden" name="mode" value={mode} />}
 
                     <div class="flex flex-wrap gap-4 items-end">
                         <div>
@@ -277,7 +278,8 @@ app.get('/past-papers', async (c) => {
                         </div>
                         <div class="flex gap-2">
                             <button class="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-blue-700">Filter</button>
-                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice`} class="px-4 py-2 border dark:border-neutral-700 rounded text-gray-600 dark:text-neutral-400 text-sm hover:bg-gray-50 dark:hover:bg-neutral-700">Reset</a>
+                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice${mode ? '&mode=' + mode : ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded text-gray-600 dark:text-neutral-400 text-sm hover:bg-gray-50 dark:hover:bg-neutral-700">Reset</a>
+                            <a href={`/past-papers/batch/view?source=practice&subject=${encodeURIComponent(subject)}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm hover:bg-emerald-700">Batch Mode</a>
                         </div>
                     </div>
                 </form>
@@ -287,7 +289,7 @@ app.get('/past-papers', async (c) => {
                 <div class="space-y-4">
                     {questions.results.length === 0 ? (
                         <div class="text-center py-12 text-gray-500">No questions found matching your filters.</div>
-                    ) : (
+                    ) : (<>
                         <form action="/past-papers/mock-exams/create-manual" method="post" id="manual-exam-form">
                             <input type="hidden" name="subject" value={subject} />
                             <div class="space-y-4">
@@ -345,16 +347,89 @@ app.get('/past-papers', async (c) => {
                                                 <input type="number" name="timer_minutes" placeholder="Timer (mins)" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm w-24" />
                                             </div>
                                         </div>
-                                        <button class="bg-blue-600 text-white px-8 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md">
-                                            Create Exam
-                                        </button>
+                                        <div class="flex gap-2">
+                                            <button type="submit" formaction="/past-papers/batch/export-pdf" class="bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-emerald-700 shadow-md">
+                                                Download PDF
+                                            </button>
+                                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md">
+                                                Create Exam
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
                         </form>
-                    )
-                    }
-                </div>
+                        {mode === 'select' && (
+                            <script dangerouslySetInnerHTML={{ __html: `
+                                (function() {
+                                    var key = 'mockSelect_' + document.querySelector('#manual-exam-form input[name=subject]').value;
+                                    var form = document.getElementById('manual-exam-form');
+
+                                    function saveToLS(ids) {
+                                        try { localStorage.setItem(key, JSON.stringify(Array.from(ids))); } catch(e) {}
+                                    }
+                                    function loadFromLS() {
+                                        try { var saved = localStorage.getItem(key); return saved ? new Set(JSON.parse(saved)) : new Set(); } catch(e) { return new Set(); }
+                                    }
+
+                                    function restore() {
+                                        var ids = loadFromLS();
+                                        form.querySelectorAll('input[name=question_ids]').forEach(function(cb) {
+                                            if (ids.has(String(cb.value))) cb.checked = true;
+                                        });
+                                    }
+
+                                    function persist(e) {
+                                        if (e.target.matches('input[name=question_ids]')) {
+                                            var ids = loadFromLS();
+                                            if (e.target.checked) ids.add(String(e.target.value));
+                                            else ids.delete(String(e.target.value));
+                                            saveToLS(ids);
+                                        }
+                                    }
+
+                                    function persistToggle(qid, cb) {
+                                        var ids = loadFromLS();
+                                        if (cb.checked) ids.add(String(qid));
+                                        else ids.delete(String(qid));
+                                        saveToLS(ids);
+                                    }
+
+                                    restore();
+                                    form.addEventListener('change', persist);
+
+                                    document.querySelectorAll('[onclick*="cb.checked = !cb.checked"]').forEach(function(el) {
+                                        var old = el.onclick;
+                                        el.onclick = function(e) {
+                                            old.call(this, e);
+                                            var m = this.getAttribute('onclick').match(/value="(\\d+)"/);
+                                            if (m) {
+                                                var cb = document.querySelector('input[name=question_ids][value="' + m[1] + '"]');
+                                                if (cb) persistToggle(m[1], cb);
+                                            }
+                                        };
+                                    });
+
+                                    form.addEventListener('submit', function() {
+                                        var ids = loadFromLS();
+                                        var visible = new Set();
+                                        form.querySelectorAll('input[name=question_ids]').forEach(function(cb) { visible.add(String(cb.value)); });
+                                        ids.forEach(function(id) {
+                                            if (!visible.has(id)) {
+                                                var h = document.createElement('input');
+                                                h.type = 'hidden';
+                                                h.name = 'question_ids';
+                                                h.value = id;
+                                                form.appendChild(h);
+                                            }
+                                        });
+                                    });
+                                })();
+                            `}} />
+                        )}
+                        </>
+                    )}
+                        </div>
 
                 <div class="mt-8 flex justify-between items-center gap-2">
                     <div class="text-sm text-gray-500 dark:text-neutral-400">
@@ -362,8 +437,8 @@ app.get('/past-papers', async (c) => {
                         <span class="ml-2 hidden sm:inline">({totalQuestions} questions)</span>
                     </div>
                     <div class="flex gap-2">
-                        {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Previous</a>}
-                        {page < totalPages && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Next</a>}
+                        {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}&mode=${mode || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Previous</a>}
+                        {page < totalPages && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}&mode=${mode || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Next</a>}
                     </div>
                 </div>
             </div>
@@ -399,7 +474,10 @@ app.get('/past-papers', async (c) => {
 
         content = (
             <div>
-                <h1 class="text-3xl font-bold mb-6 dark:text-white">Review Queue</h1>
+                <div class="flex items-center justify-between mb-6">
+                    <h1 class="text-3xl font-bold dark:text-white">Review Queue</h1>
+                    <a href={`/past-papers/batch/view?source=review&subject=${encodeURIComponent(subject)}&mode=review`} class="px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm hover:bg-emerald-700">Batch Review</a>
+                </div>
                 <p class="text-gray-600 dark:text-neutral-400 mb-8">Questions you didn't get full marks on. Review and retry them to master the content.</p>
 
                 <div class="space-y-4">

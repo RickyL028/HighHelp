@@ -106,7 +106,7 @@ app.get('/api/auth/callback', async (c) => {
                 path: '/api/auth', // Only send this cookie to auth endpoints
                 httpOnly: true,    // JavaScript cannot read this (prevents XSS theft)
                 secure: !c.req.url.includes('localhost'),
-                maxAge: 60 * 60 * 24 * 30, // 30 Days
+                maxAge: 60 * 60 * 24 * 90, // 90 Days
                 sameSite: 'Lax'
             });
         }

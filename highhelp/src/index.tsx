@@ -9,9 +9,12 @@ import announcementsRoutes from './routes/announcements'
 import forumRoutes from './routes/forum'
 import essaysRoutes from './routes/essays'
 import aboutRoutes from './routes/about'
+import leaderboardRoutes from './routes/leaderboard'
 import feedbackRoutes from './routes/feedback'
 import classesRoutes from './routes/timetable'
 import clipboardRoutes from './components/timetable/TimetableClipboard'
+import atarRoutes from './routes/atar'
+import atarExplainedRoutes from './routes/atar-explained'
 import { processAIImportJob, AIImportJob } from './routes/pastPapers/aiQueueWorker'
 import { getUser } from './utils'
 import { PermissionLevel } from './permissions'
@@ -110,6 +113,9 @@ app.route('/', essaysRoutes)
 app.route('/timetable', classesRoutes)
 app.route('/', feedbackRoutes)
 app.route('/', aboutRoutes)
+app.route('/', leaderboardRoutes)
+app.route('/', atarRoutes)
+app.route('/', atarExplainedRoutes)
 app.route('/api/clipboard', clipboardRoutes)
 
 export default {

@@ -2,77 +2,98 @@ import { html } from 'hono/html'
 
 export const TimetableConfig = html`
 <div id="config-container" class="hidden">
-    <div class="bg-white dark:bg-neutral-800 rounded-2xl p-6 border border-gray-200 dark:border-neutral-700 shadow-sm">
-        <h2 class="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-4">Calendar Linking</h2>
-        <div class="mb-4">
-            <label class="block text-gray-700 dark:text-neutral-300 text-sm font-bold mb-2" for="calendar-urls">
-                Calendar URLs (ICS - One per line)
-            </label>
-            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:text-white dark:bg-neutral-900 leading-tight focus:outline-none focus:shadow-outline transition-all duration-200 border-gray-300 dark:border-neutral-600 focus:border-red-500 focus:ring-1 focus:ring-red-500 resize-y" 
-                   id="calendar-urls" rows="3" placeholder="https://internal-api.clipboard.app/student-guardian-api/calendar/123456789...&#10;https://sydneyboyshigh.instructure.com/feeds/calendars/123456789...&#10;Apple/Outlook Calendar also accepted"></textarea>
-            <p class="text-gray-800 dark:text-neutral-300 text-ms mt-1">If including Clipboard:</p>
-            <ol class="text-gray-800 dark:text-neutral-300 text-ms mt-1">
-                <li>1. Go to <a href="https://portal.clipboard.app/sbhs/calendar" target="_blank" class="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300">Clipboard</a></li>
-                <li>2. On the upper right corner, click <a class="text-gray-900 dark:text-neutral-100 font-bold">"Add to Calendar"</a></li>
-                <li>3. Copy the Calendar URL and paste it above</li>
-            </ol>
-            <br></br>
-            <p class="text-gray-800 dark:text-neutral-300 text-ms mt-1">If including Canvas:</p>
-            <ol class="text-gray-800 dark:text-neutral-300 text-ms mt-1">
-                <li>1. Go to <a href="https://sydneyboyshigh.instructure.com/calendar" target="_blank" class="text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300">Canvas</a></li>
-                <li>2. On the right panel, click <a class="text-gray-900 dark:text-neutral-100 font-bold">"Calendar Feed"</a></li>
-                <li>3. Copy the Calendar URL and paste it above</li>
-            </ol>
+    <div class="divide-y divide-gray-100 dark:divide-neutral-800">
+        <!-- Appearance Theme -->
+        <div class="py-5">
+            <div class="flex items-start justify-between mb-3">
+                <div>
+                    <h2 class="text-sm font-bold text-gray-900 dark:text-neutral-100">Appearance</h2>
+                    <p class="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">Choose how the timetable looks.</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button class="timetable-theme-btn px-4 py-2 rounded-xl text-xs font-semibold transition-all border-2" data-theme="system">
+                    <svg class="w-4 h-4 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    System
+                </button>
+                <button class="timetable-theme-btn px-4 py-2 rounded-xl text-xs font-semibold transition-all border-2" data-theme="night">
+                    <svg class="w-4 h-4 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    Night
+                </button>
+                <button class="timetable-theme-btn px-4 py-2 rounded-xl text-xs font-semibold transition-all border-2" data-theme="paper">
+                    <svg class="w-4 h-4 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    Paper
+                </button>
+                <button class="timetable-theme-btn px-4 py-2 rounded-xl text-xs font-semibold transition-all border-2" data-theme="glass">
+                    <svg class="w-4 h-4 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    Glass
+                </button>
+            </div>
         </div>
 
-        <h2 class="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-4 border-t border-gray-200 dark:border-neutral-700 pt-4">Subject Customisation</h2>
-        <div class="mb-4">
-            <p class="text-gray-600 dark:text-neutral-400 text-sm mb-3">Customise colours and add links subjects (canvas).</p>
-            <div id="subject-config-list" class="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                <div class="text-center py-4">
-                    <div class="animate-pulse flex space-x-4">
-                        <div class="flex-1 space-y-4 py-1">
-                            <div class="h-4 bg-gray-200 dark:bg-neutral-700 rounded w-3/4"></div>
-                            <div class="space-y-2">
-                                <div class="h-4 bg-gray-200 dark:bg-neutral-700 rounded"></div>
-                            </div>
+        <!-- Calendar URLs -->
+        <div class="py-5">
+            <div class="flex items-start justify-between mb-3">
+                <div>
+                    <h2 class="text-sm font-bold text-gray-900 dark:text-neutral-100">Calendar Feeds</h2>
+                    <p class="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">ICS links from Clipboard, Canvas, etc.</p>
+                </div>
+            </div>
+            <textarea id="calendar-urls" rows="2"
+                class="w-full text-xs bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-gray-700 dark:text-neutral-300 placeholder-gray-400 dark:placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-red-400 focus:border-red-400 transition resize-y"
+                placeholder="https://internal-api.clipboard.app/..."></textarea>
+            <div class="flex gap-3 mt-2 text-[11px] text-gray-400 dark:text-neutral-500">
+                <a href="https://portal.clipboard.app/sbhs/calendar" target="_blank" class="hover:text-red-500 dark:hover:text-red-400 transition-colors">Clipboard →</a>
+                <a href="https://sydneyboyshigh.instructure.com/calendar" target="_blank" class="hover:text-red-500 dark:hover:text-red-400 transition-colors">Canvas →</a>
+            </div>
+        </div>
+
+        <!-- Subject Customisation -->
+        <div class="py-5">
+            <div class="flex items-start justify-between mb-3">
+                <div>
+                    <h2 class="text-sm font-bold text-gray-900 dark:text-neutral-100">Subject Colours & Links</h2>
+                    <p class="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">Customise colours and Canvas links per subject.</p>
+                </div>
+            </div>
+            <div id="subject-config-list" class="space-y-1 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
+                <div class="text-center py-6">
+                    <div class="animate-pulse flex space-x-3">
+                        <div class="flex-1 space-y-3 py-1">
+                            <div class="h-3 bg-gray-200 dark:bg-neutral-700 rounded w-3/4"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <h2 class="text-xl font-bold text-gray-800 dark:text-neutral-100 mb-4 border-t border-gray-200 dark:border-neutral-700 pt-4">Quick Links</h2>
-        <div class="mb-4">
-            <p class="text-gray-600 dark:text-neutral-400 text-sm mb-3">Add up to 4 quick links accessible from the timetable view. Use them to quickly open Canvas, Clipboard, email, or any other frequently used page.</p>
-            <div id="quick-links-config" class="space-y-3">
+        <!-- Quick Links -->
+        <div class="py-5">
+            <div class="flex items-start justify-between mb-3">
+                <div>
+                    <h2 class="text-sm font-bold text-gray-900 dark:text-neutral-100">Quick Links</h2>
+                    <p class="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">Up to 4 shortcuts shown on Day, Notices & Events views.</p>
+                </div>
+            </div>
+            <div id="quick-links-config" class="space-y-1.5">
                 ${[1, 2, 3, 4].map(i => html`
-                    <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-neutral-900/50 rounded-lg border border-gray-100 dark:border-neutral-700">
-                        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-500 dark:text-red-400 font-bold text-sm flex-shrink-0">${i}</div>
-                        <div class="flex flex-col gap-2 flex-grow">
-                            <div class="flex items-center gap-2">
-                                <label class="text-xs text-gray-600 dark:text-neutral-400 w-10">Title:</label>
-                                <input type="text" class="quick-link-title shadow appearance-none border dark:border-neutral-600 rounded w-full py-1 px-2 text-gray-700 dark:text-white dark:bg-neutral-800 text-xs leading-tight focus:outline-none focus:shadow-outline focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                                    data-index="${i - 1}"
-                                    placeholder="e.g. Canvas, Clipboard..."
-                                    maxlength="20">
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <label class="text-xs text-gray-600 dark:text-neutral-400 w-10">URL:</label>
-                                <input type="text" class="quick-link-url shadow appearance-none border dark:border-neutral-600 rounded w-full py-1 px-2 text-gray-700 dark:text-white dark:bg-neutral-800 text-xs leading-tight focus:outline-none focus:shadow-outline focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                                    data-index="${i - 1}"
-                                    placeholder="https://...">
-                            </div>
-                        </div>
+                    <div class="flex items-center gap-2.5 px-3 py-2 bg-gray-50 dark:bg-neutral-900/50 rounded-lg">
+                        <span class="text-[10px] font-bold text-gray-400 dark:text-neutral-500 w-4 text-right flex-shrink-0">${i}</span>
+                        <input type="text" class="quick-link-title flex-1 min-w-0 text-xs bg-transparent border-0 border-b border-transparent focus:border-red-400 focus:ring-0 py-0.5 text-gray-700 dark:text-neutral-300 placeholder-gray-400 dark:placeholder-neutral-600 transition"
+                            data-index="${i - 1}" placeholder="Title" maxlength="20">
+                        <input type="text" class="quick-link-url flex-[2] min-w-0 text-xs bg-transparent border-0 border-b border-transparent focus:border-red-400 focus:ring-0 py-0.5 text-gray-700 dark:text-neutral-300 placeholder-gray-400 dark:placeholder-neutral-600 transition"
+                            data-index="${i - 1}" placeholder="https://...">
                     </div>
                 `)}
             </div>
         </div>
+    </div>
 
-        <button id="save-config" class="bg-blue-500 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200">
-            Sync
+    <div class="flex items-center justify-between mt-5 pt-4 border-t border-gray-100 dark:border-neutral-800">
+        <button id="save-config" class="px-4 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors">
+            Save Changes
         </button>
-        <p id="config-status" class="text-green-500 text-sm mt-2 hidden opacity-0 transition-opacity duration-300">Configuration saved!</p>
+        <p id="config-status" class="text-green-600 dark:text-green-400 text-xs hidden opacity-0 transition-opacity duration-300">Saved!</p>
     </div>
 </div>
 <script>
@@ -82,12 +103,30 @@ export const TimetableConfig = html`
         const statusMsg = document.getElementById('config-status');
         const subjectConfigContainer = document.getElementById('subject-config-list');
 
+        function initThemeButtons() {
+            const currentTheme = localStorage.getItem('timetableTheme') || 'system';
+            document.querySelectorAll('.timetable-theme-btn[data-theme]').forEach(btn => {
+                const theme = btn.getAttribute('data-theme');
+                if (theme === currentTheme) {
+                    btn.classList.add('border-red-500', 'text-red-500', 'bg-red-50', 'dark:bg-red-500/10', 'dark:border-red-500/40', 'dark:text-red-400');
+                    btn.classList.remove('border-gray-200', 'dark:border-neutral-700', 'text-gray-500', 'dark:text-neutral-400');
+                } else {
+                    btn.classList.remove('border-red-500', 'text-red-500', 'bg-red-50', 'dark:bg-red-500/10', 'dark:border-red-500/40', 'dark:text-red-400');
+                    btn.classList.add('border-gray-200', 'dark:border-neutral-700', 'text-gray-500', 'dark:text-neutral-400');
+                }
+                btn.addEventListener('click', () => {
+                    if (btn.disabled) return;
+                    localStorage.setItem('timetableTheme', theme);
+                    window.dispatchEvent(new CustomEvent('timetableThemeChanged', { detail: { theme } }));
+                    initThemeButtons();
+                });
+            });
+        }
         function saveAll() {
             try {
-                // FIXED: Use \\n so the browser receives standard \n
                 const urls = urlInput.value.split('\\n').map(u => u.trim()).filter(u => u);
                 localStorage.setItem('calendarUrls', JSON.stringify(urls));
-                
+
                 const newConfig = {};
                 document.querySelectorAll('.subject-color').forEach(input => {
                     const subject = input.getAttribute('data-subject');
@@ -106,7 +145,6 @@ export const TimetableConfig = html`
                 localStorage.setItem('subjectConfig', JSON.stringify(newConfig));
                 window.dispatchEvent(new Event('subjectConfigUpdated'));
 
-                // Save quick links
                 const quickLinks = [];
                 document.querySelectorAll('.quick-link-title').forEach(input => {
                     const idx = parseInt(input.getAttribute('data-index'));
@@ -118,11 +156,11 @@ export const TimetableConfig = html`
                 localStorage.setItem('quickLinks', JSON.stringify(quickLinks));
                 window.dispatchEvent(new Event('quickLinksUpdated'));
 
-                statusMsg.textContent = 'Configuration saved!';
+                statusMsg.textContent = 'Saved!';
                 statusMsg.classList.remove('hidden');
-                void statusMsg.offsetWidth; 
+                void statusMsg.offsetWidth;
                 statusMsg.classList.remove('opacity-0');
-                
+
                 setTimeout(() => {
                     statusMsg.classList.add('opacity-0');
                     setTimeout(() => statusMsg.classList.add('hidden'), 300);
@@ -140,7 +178,6 @@ export const TimetableConfig = html`
                 const raw = localStorage.getItem('studentData');
                 if (raw) {
                     const studentData = JSON.parse(raw);
-                    // Safe access without using TypeScript 'as' keywords
                     subjects = (studentData && studentData.timetable && studentData.timetable.subjects) ? studentData.timetable.subjects : [];
                 }
             } catch(e) {}
@@ -154,7 +191,7 @@ export const TimetableConfig = html`
 
             subjectConfigContainer.innerHTML = '';
             if (subjects.length === 0) {
-                subjectConfigContainer.innerHTML = '<p class="text-gray-500 dark:text-neutral-500 italic">No subjects found to configure.</p>';
+                subjectConfigContainer.innerHTML = '<p class="text-xs text-gray-400 dark:text-neutral-600 italic text-center py-4">No subjects found.</p>';
                 return;
             }
 
@@ -162,28 +199,21 @@ export const TimetableConfig = html`
                 const subjectName = subject.title || subject.shortTitle || subject.subject || 'Unknown';
                 const currentVal = config[subjectName] || {};
                 const defaultColor = subject.colour || '#e5e7eb';
-                
+
                 const div = document.createElement('div');
-                div.className = 'flex items-center gap-4 p-3 bg-gray-50 dark:bg-neutral-900/50 rounded-lg border border-gray-100 dark:border-neutral-700';
-                
+                div.className = 'flex items-center gap-2.5 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-900/30 transition-colors';
+
                 div.innerHTML = \`
-                    <div class="flex-grow">
-                        <h4 class="font-bold text-gray-800 dark:text-neutral-100 text-sm">\${subjectName}</h4>
-                        <p class="text-xs text-gray-500 dark:text-neutral-400">\${subject.fullTeacher || subject.teacher || ''}</p>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs font-semibold text-gray-800 dark:text-neutral-200 truncate">\${subjectName}</div>
+                        <div class="text-[10px] text-gray-400 dark:text-neutral-500 truncate">\${subject.fullTeacher || subject.teacher || ''}</div>
                     </div>
-                    <div class="flex flex-col gap-2 w-1/2">
-                        <div class="flex items-center gap-2">
-                            <label class="text-xs text-gray-600 dark:text-neutral-400 w-12">Colour:</label>
-                            <input type="color" class="subject-color h-8 w-14 rounded cursor-pointer bg-transparent border-0" data-subject="\${subjectName}" value="\${currentVal.color ? '#' + currentVal.color : (defaultColor.startsWith('#') ? defaultColor : '#' + defaultColor)}">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <label class="text-xs text-gray-600 dark:text-neutral-400 w-12">Canvas:</label>
-                            <input type="text" class="subject-link shadow appearance-none border dark:border-neutral-600 rounded w-full py-1 px-2 text-gray-700 dark:text-white dark:bg-neutral-800 text-xs leading-tight focus:outline-none focus:shadow-outline"
-                                data-subject="\${subjectName}"
-                                placeholder="https://..."
-                                value="\${currentVal.link || ''}">
-                        </div>
-                    </div>\`;
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <input type="color" class="subject-color w-7 h-7 rounded cursor-pointer bg-transparent border-0 p-0" data-subject="\${subjectName}" value="\${currentVal.color ? '#' + currentVal.color : (defaultColor.startsWith('#') ? defaultColor : '#' + defaultColor)}">
+                        <input type="text" class="subject-link w-28 text-[10px] bg-transparent border-0 border-b border-transparent focus:border-red-400 focus:ring-0 py-0.5 text-gray-500 dark:text-neutral-400 placeholder-gray-400 dark:placeholder-neutral-600 transition"
+                            data-subject="\${subjectName}" placeholder="Canvas link" value="\${currentVal.link || ''}">
+                    </div>
+                \`;
                 subjectConfigContainer.appendChild(div);
             });
         }
@@ -231,7 +261,6 @@ export const TimetableConfig = html`
                         localStorage.removeItem('clipboardUrl');
                     }
                 }
-                // FIXED: Use \\n for the join method as well
                 urlInput.value = savedUrls.join('\\n');
             } catch (error) {}
 
@@ -253,6 +282,8 @@ export const TimetableConfig = html`
                 }
             });
         }
+
+        initThemeButtons();
     })();
 </script>
 `

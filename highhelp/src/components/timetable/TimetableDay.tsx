@@ -15,10 +15,13 @@ export const TimetableDay = html`
         const month = (d.getMonth() + 1).toString().padStart(2, '0');
         const year = d.getFullYear();
         const dateFormatted = \`\${dayName}, \${day}/\${month}/\${year}\`;
+        const isPaperTheme = document.documentElement.classList.contains('paper');
+        const paperDateStr = isPaperTheme ? paperDateFormat(currentDateStr) : dateFormatted;
+        const paperTermLabel = isPaperTheme ? getTermLabel(currentDateStr).replace('[ ', '/ ').replace(']', '').replace('Term ', 'Term ').replace(' Week ', ' \\u2022 Wk ') : getTermLabel(currentDateStr);
         
         document.getElementById('date-display').innerHTML = \`
             <div class="relative cursor-pointer group flex items-center gap-1.5 text-center leading-tight">
-                <span class="z-10 bg-transparent text-gray-800 dark:text-neutral-200 font-bold whitespace-nowrap">\${dateFormatted}\${dayInfo ? ' [' + dayInfo.dayName[dayInfo.dayName.length - 1] + ']' : ''}</span>
+                <span class="z-10 bg-transparent text-gray-800 dark:text-neutral-200 font-bold whitespace-nowrap">\${paperDateStr}\${dayInfo ? ' [' + dayInfo.dayName[dayInfo.dayName.length - 1] + ']' : ''}\${paperTermLabel}</span>
                 <svg class="w-4 h-4 flex-shrink-0 text-gray-400 dark:text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                 <input type="date" id="date-picker-input" 
                        class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
@@ -124,7 +127,7 @@ export const TimetableDay = html`
                     }
                     if (data) {
                         data.room = roomVar.roomTo;
-                        variationTags.push('Room Change');
+                        //variationTags.push('Room Change');
                     }
                 }
 
@@ -142,6 +145,43 @@ export const TimetableDay = html`
                 const isPast = isTimePast(currentDateStr, bell.endTime);
                 const opacityClass = isPast ? 'opacity-50 grayscale-[0.5]' : '';
 
+                const isGlassTheme = document.documentElement.classList.contains('glass');
+
+                function getGlassCardBg(hexColor) {
+                    const c = hexColor.toLowerCase();
+                    const map = {
+                        '#5F7B8C': 'rgba(95,123,140,.45)',
+                        '#896D73': 'rgba(137,109,115,.45)',
+                        '#597068': 'rgba(89,112,104,.45)',
+                        '#996830': 'rgba(153,104,48,.45)',
+                        '#8A7A28': 'rgba(138,122,40,.45)',
+                        '#726894': 'rgba(114,104,148,.45)',
+                        '#262E36': 'rgba(38,46,54,.65)',
+                        '#1F2937': 'rgba(31,41,55,.65)',
+                        '#4B4B4B': 'rgba(75,75,75,.45)',
+                        '#D4AF37': 'rgba(212,175,55,.4)',
+                        '#CBD5E1': 'rgba(203,213,225,.35)',
+                        '#2F4F4F': 'rgba(47,79,79,.45)',
+                        '#FFD700': 'rgba(255,215,0,.4)',
+                        '#6B7280': 'rgba(107,114,128,.45)',
+                        '#1E293B': 'rgba(30,41,59,.65)',
+                        '#27272A': 'rgba(39,39,42,.65)',
+                        '#374151': 'rgba(55,65,81,.5)',
+                        '#556B2F': 'rgba(85,107,47,.45)',
+                        '#4682B4': 'rgba(70,130,180,.45)',
+                        '#9B59B6': 'rgba(155,89,182,.45)',
+                        '#0E7490': 'rgba(14,116,144,.45)',
+                        '#0284C7': 'rgba(2,132,199,.45)',
+                        '#2563EB': 'rgba(37,99,235,.45)',
+                        '#9333EA': 'rgba(147,51,234,.45)',
+                        '#7C3AED': 'rgba(124,58,237,.45)',
+                    };
+                    if (map[c]) return map[c];
+                    const r = parseInt(c.slice(1,3),16), g = parseInt(c.slice(3,5),16), b = parseInt(c.slice(5,7),16);
+                    if (!isNaN(r) && !isNaN(g) && !isNaN(b)) return 'rgba('+r+','+g+','+b+',.35)';
+                    return 'rgba(95,123,140,.35)';
+                }
+
                 const periodNotes = data?.subjectCode ? dayNotes.filter(n => n.class_name === data.subjectCode) : [];
                 const notesCount = periodNotes.length;
                 const notesBadge = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[10px] font-bold rounded">\${notesCount}</span>\` : '';
@@ -158,23 +198,30 @@ export const TimetableDay = html`
                 if (hasContent) {
                     const nextTimeStr = getNextSubjectOccurrence(data.subjectCode, currentDateStr, bell.period);
                     const miniCycle = getMiniCycleHtml(data.subjectCode, stripColor);
-                    const borderClass = highlightChange ? 'ring-2 ring-red-500 ring-offset-2 dark:ring-offset-neutral-900' : '';
+                    const ringColorClass = isGlassTheme ? 'ring-[#5F7B8C]' : document.documentElement.classList.contains('night') ? 'ring-purple-500' : 'ring-red-500';
+                    const borderClass = highlightChange ? ('ring-2 ' + ringColorClass + ' ring-offset-2 dark:ring-offset-neutral-900') : '';
                     
                     let changedBadge = '';
                     if (variationTags.length > 0) {
-                        changedBadge = \`<span class="ml-2 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 text-[10px] font-bold rounded animate-pulse">\${variationTags[0]}</span>\`;
+                        const badgeClasses = isGlassTheme ? 'bg-[#5F7B8C]/20 text-[#7FA0B0]' : 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400';
+                        changedBadge = \`<span class="ml-2 px-1.5 py-0.5 \${badgeClasses} text-[10px] font-bold rounded animate-pulse">\${variationTags[0]}</span>\`;
                     }
 
-                    const roomColorClass = (highlightChange && (roomVar || (classVar && classVar.roomTo))) ? 'text-red-600 dark:text-red-400 font-extrabold' : 'text-gray-900 dark:text-white';
+                    const roomColorClass = isGlassTheme ? 'text-white font-extrabold' : (highlightChange && (roomVar || (classVar && classVar.roomTo))) ? 'text-red-600 dark:text-red-400 font-extrabold' : 'text-gray-900 dark:text-white';
                     
-                    const cardBgClass = isNoCover ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 line-through' : 'bg-gray-100 dark:bg-neutral-800';
-                    const titleColorClass = isNoCover ? 'text-red-700 dark:text-red-400' : 'text-gray-900 dark:text-white';
+                    const cardBgClass = isGlassTheme
+                        ? (isNoCover ? 'bg-[#896D73]/30 line-through' : 'bg-transparent')
+                        : (isNoCover ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 line-through' : 'bg-gray-100 dark:bg-neutral-800');
+                    const titleColorClass = isGlassTheme ? 'text-white' : (isNoCover ? 'text-red-700 dark:text-red-400' : 'text-gray-900 dark:text-white');
                     
-                    // Mark the substitute teacher in bold red, or just normal styling for standard periods
-                    const teacherColorClass = isNoCover ? 'text-red-700 dark:text-red-400' : (isSub ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-900 dark:text-gray-100');
+                    const teacherColorClass = isGlassTheme
+                        ? (isSub ? 'text-white font-bold' : 'text-white/80')
+                        : (isNoCover ? 'text-red-700 dark:text-red-400' : (isSub ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-900 dark:text-gray-100'));
+
+                    const glassCardStyle = isGlassTheme ? \` style="background:\${isNoCover ? 'rgba(137,109,115,.45)' : getGlassCardBg(stripColor)}"\` : '';
 
                     innerHtml = \`
-                        <div class="period-card relative flex items-center justify-between \${cardBgClass} rounded-lg p-2.5 shadow-sm hover:bg-opacity-80 transition-all cursor-default group \${borderClass}"
+                        <div class="period-card relative flex items-center justify-between \${cardBgClass} rounded-lg p-2.5 shadow-sm hover:bg-opacity-80 transition-all cursor-default group \${borderClass}"\${glassCardStyle}
                             data-subject="\${data.subjectCode}"
                             data-title="\${data.title || data.subject || ''}"
                             data-teacher="\${teacherDisplay}"
@@ -184,14 +231,14 @@ export const TimetableDay = html`
                             data-link="\${data.link || ''}"
                             data-color="\${stripColor}">
                                 <div class="absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg" style="background-color: \${stripColor};"></div>
-                                <div class="pl-3 font-medium \${titleColorClass} \${textSize} flex items-center">
+                                <div class="pl-3 font-medium \${titleColorClass} \${textSize} flex items-center" data-accent-text style="--strip-color: \${stripColor}">
                                     \${data.title || data.subject || 'Unknown'}
                                     \${changedBadge}
                                     \${notesBadge}
                                 </div>
                                 <div class="pl-3 flex items-center gap-4 \${textSize}">
                                     <span class="\${teacherColorClass}">\${teacherDisplay}</span>
-                                    \${data.room ? \`<span class="font-bold \${roomColorClass}">\${data.room}</span>\` : ''}
+                                    \${data.room ? \`<span class="font-bold \${roomColorClass}" data-accent-text style="--strip-color: \${stripColor}">\${data.room}</span>\` : ''}
                                 </div>
                                 <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-3 bg-gray-800 dark:bg-neutral-950 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
                                     <div class="flex justify-between items-center mb-2 border-b border-gray-600 dark:border-neutral-700 pb-2">
@@ -311,12 +358,16 @@ export const TimetableDay = html`
         const snapshotDate = currentDateStr;
         const snapshotView = currentView;
 
+        // Only force-fetch for today/future dates (past dates are static)
+        const todayStr = new Date().toISOString().split('T')[0];
+        const shouldForceFetch = currentDateStr >= todayStr;
+
         // --- 4. BACKGROUND PASS (Asynchronous Fetch & Update) ---
         // Fetch fresh data in the background and re-render quietly when they arrive
         try {
             const [apiData, clipboardEvents, notesRes] = await Promise.all([
-                fetchDayData(currentDateStr, true),
-                fetchCalendarData(currentDateStr, true),
+                fetchDayData(currentDateStr, shouldForceFetch),
+                fetchCalendarData(currentDateStr, shouldForceFetch),
                 fetch('/timetable/notes?date=' + currentDateStr).then(res => res.json()).catch(() => ({ notes: [] }))
             ]);
             
@@ -329,6 +380,27 @@ export const TimetableDay = html`
             
             // Final Render: Overwrite DOM structure seamlessly with real-time data
             buildUI(apiData, clipboardEvents || [], dayNotes);
+
+            // Pre-fetch next weekday in the background (no force — let cache work)
+            if (shouldForceFetch) {
+                const [y, m, d] = currentDateStr.split('-').map(Number);
+                const nextDay = new Date(y, m - 1, d);
+                let tries = 0;
+                while (tries < 7) {
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    const dw = nextDay.getDay();
+                    if (dw !== 0 && dw !== 6) break;
+                    tries++;
+                }
+                if (tries < 7) {
+                    const ny = nextDay.getFullYear();
+                    const nm = String(nextDay.getMonth() + 1).padStart(2, '0');
+                    const nd = String(nextDay.getDate()).padStart(2, '0');
+                    const nextStr = \`\${ny}-\${nm}-\${nd}\`;
+                    fetchDayData(nextStr, false);
+                    fetchCalendarData(nextStr, false);
+                }
+            }
             
         } catch (error) {
             console.error("Failed to fetch fresh data in the background:", error);

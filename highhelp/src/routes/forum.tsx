@@ -3,6 +3,7 @@ import { Layout } from '../layout'
 import { getUser, renderTags, updatePoints, logAction, formatDate } from '../utils'
 import { canPostGeneral, canViewDeleted, canCommentModeration } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
+import { SubjectBadge, SubjectIcon } from '../components/SubjectBadge'
 
 import { Bindings, User } from '../types'
 import { ANNOUNCEMENT_SUBJECTS } from '../constants'
@@ -58,31 +59,34 @@ if (!subject) {
                             <p class="text-gray-500 italic">No discussions yet. Be the first to ask!</p>
                         ) : (
                             recentPosts?.map((p: any) => (
-                                <div class={`bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-4 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors group block ${p.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}>
-                                    <a href={`/forum/post/${p.id}`} class="block">
-                                        <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors mb-1 leading-snug">{p.title}</h3>
-                                    </a>
+                                <a href={`/forum/post/${p.id}`} class={`block bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-5 hover:shadow-md hover:border-gray-400 dark:hover:border-neutral-500 transition-all group ${p.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}>
+                                    <div class="flex items-start gap-4">
+                                        <SubjectIcon subject={p.subject} tab="qa" />
+                                        <div class="flex-grow min-w-0">
+                                            <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors mb-1 leading-snug">{p.title}</h3>
 
-                                    <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
-                                        <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{p.subject}</span>
-                                        <span class="text-gray-300 dark:text-neutral-600">•</span>
-                                        <span class="local-date" data-timestamp={p.created_at}>{formatDate(p.created_at)}</span>
-                                        <span class="text-gray-300 dark:text-neutral-600">•</span>
-                                        <span class="flex items-center">
-                                            {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
-                                            <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(p.tags) }}></span>
-                                        </span>
-                                        {p.is_deleted ? <span class="font-bold text-red-600 uppercase ml-2">Deleted</span> : null}
+                                            <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
+                                                <SubjectBadge subject={p.subject} tab="qa" />
+                                                <span class="text-gray-300 dark:text-neutral-600">&middot;</span>
+                                                <span class="local-date" data-timestamp={p.created_at}>{formatDate(p.created_at)}</span>
+                                                {p.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
+                                            </div>
+
+                                            <p class="text-sm text-gray-600 dark:text-neutral-400 mb-3 line-clamp-2 leading-relaxed">{p.content}</p>
+
+                                            <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-neutral-400">
+                                                <span class="flex items-center gap-1.5 bg-gray-100 dark:bg-neutral-900 px-2 py-1 rounded">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                                                    {p.comment_count} {p.comment_count === 1 ? 'reply' : 'replies'}
+                                                </span>
+                                                <span class="flex items-center gap-1.5">
+                                                    {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
+                                                    <span dangerouslySetInnerHTML={{ __html: renderTags(p.tags) }}></span>
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-
-                                    <p class="text-sm text-gray-700 dark:text-neutral-300 mb-2 line-clamp-2">{p.content}</p>
-
-                                    <div class="flex items-center justify-between">
-                                        <span class="flex items-center gap-1 text-gray-500 dark:text-neutral-400 text-xs font-medium bg-gray-50 dark:bg-neutral-900 px-2 py-0.5 rounded">
-                                            💬 {p.comment_count} Comments
-                                        </span>
-                                    </div>
-                                </div>
+                                </a>
                             ))
                         )}
                     </div>
@@ -156,36 +160,34 @@ return c.html(
                     </div>
                 ) : (
                     results.map((p: any) => (
-                        <div
-                            class={`search-item bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-4 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors group block h-full flex flex-col justify-between ${p.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}
+                        <a
+                            href={`/forum/post/${p.id}`}
+                            class={`search-item block bg-white dark:bg-neutral-800 rounded border border-gray-300 dark:border-neutral-700 p-5 hover:shadow-md hover:border-gray-400 dark:hover:border-neutral-500 transition-all group h-full ${p.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}
                             data-search-text={`${p.title} ${p.content} ${p.subject} ${p.first_name || ''} ${p.last_name || ''}`}
                         >
-                            <div>
-                                <a href={`/forum/post/${p.id}`} class="block">
+                            <div class="flex items-start gap-4">
+                                <SubjectIcon subject={p.subject} tab="qa" />
+                                <div class="flex-grow min-w-0">
                                     <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors mb-1 leading-snug">{p.title}</h3>
-                                </a>
 
-                                <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
-                                    <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{p.subject}</span>
-                                    <span class="text-gray-300 dark:text-neutral-600">•</span>
-                                    <span class="local-date" data-timestamp={p.created_at}>{formatDate(p.created_at)}</span>
-                                    <span class="text-gray-300 dark:text-neutral-600">•</span>
-                                    <span class="flex items-center">
-                                        {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
-                                        <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(p.tags) }}></span>
-                                    </span>
-                                    {p.is_deleted ? <span class="font-bold text-red-600 uppercase ml-2">Deleted</span> : null}
+                                    <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
+                                        <SubjectBadge subject={p.subject} tab="qa" />
+                                        <span class="text-gray-300 dark:text-neutral-600">&middot;</span>
+                                        <span class="local-date" data-timestamp={p.created_at}>{formatDate(p.created_at)}</span>
+                                        {p.is_deleted && <span class="font-bold text-red-600 uppercase ml-2">Deleted</span>}
+                                    </div>
+
+                                    <p class="text-sm text-gray-600 dark:text-neutral-400 mb-3 line-clamp-2 leading-relaxed">{p.content}</p>
+
+                                    <div class="flex items-center gap-4 text-xs text-gray-500 dark:text-neutral-400">
+                                        <span class="flex items-center gap-1.5 bg-gray-100 dark:bg-neutral-900 px-2 py-1 rounded">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                                            {p.comment_count} {p.comment_count === 1 ? 'reply' : 'replies'}
+                                        </span>
+                                    </div>
                                 </div>
-
-                                <p class="text-sm text-gray-700 dark:text-neutral-300 mb-2 line-clamp-2">{p.content}</p>
                             </div>
-
-                            <div class="flex items-center justify-between mt-auto">
-                                <span class="flex items-center gap-1 text-gray-500 dark:text-neutral-400 text-xs font-medium bg-gray-50 dark:bg-neutral-900 px-2 py-0.5 rounded">
-                                    💬 {p.comment_count} Comments
-                                </span>
-                            </div>
-                        </div>
+                        </a>
                     ))
                 )}
             </div>
@@ -193,15 +195,15 @@ return c.html(
             {/* List View */}
             <div id="list-view-container" class="hidden overflow-x-auto bg-white dark:bg-neutral-800 rounded-lg shadow border border-gray-200 dark:border-neutral-700">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-neutral-700">
-                    <thead class="bg-gray-50 dark:bg-neutral-900">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Date</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Topic</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Snippet</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Author</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Replies</th>
-                        </tr>
-                    </thead>
+                        <thead class="bg-gray-50 dark:bg-neutral-900">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Topic</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Subject</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Snippet</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-neutral-400 uppercase tracking-wider">Replies</th>
+                            </tr>
+                        </thead>
                     <tbody class="bg-white dark:bg-neutral-800 divide-y divide-gray-200 dark:divide-neutral-700">
                         {results?.length === 0 ? (
                             <tr>
@@ -219,16 +221,16 @@ return c.html(
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
                                         {p.title}
-                                        {p.is_deleted ? <span class="ml-2 text-xs text-red-600 uppercase">Deleted</span> : null}
+                                        {p.is_deleted && <span class="ml-2 text-xs text-red-600 uppercase">Deleted</span>}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm truncate max-w-xs">
+                                        <SubjectBadge subject={p.subject} tab="qa" />
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-500 dark:text-neutral-400 truncate max-w-xs">
                                         {p.content}
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-neutral-400">
-                                        {p.first_name ? `${p.first_name} ${p.last_name}` : 'Unknown'}
-                                    </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-neutral-400">
-                                        {p.comment_count} 💬
+                                        {p.comment_count}
                                     </td>
                                 </tr>
                             ))
@@ -352,10 +354,9 @@ return c.html(
             {/* Main Post */}
             <div class={`bg-white dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm overflow-hidden mb-8 ${post.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : ''}`}>
                 <div class="p-6 border-b border-gray-100 dark:border-neutral-700">
-                    {post.is_deleted ? <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span> : null}
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">{post.type}</span>
-
+                    {post.is_deleted && <span class="text-xs font-bold text-red-600 uppercase mb-2 block">Deleted</span>}
+                    <div class="flex items-center gap-3 mb-3">
+                        <SubjectBadge subject={post.subject} tab="qa" />
                         <span class="text-gray-400 dark:text-neutral-500 text-sm local-date" data-timestamp={post.created_at} data-format="datetime">| {formatDate(post.created_at)}</span>
                     </div>
                     <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">{post.title}</h1>

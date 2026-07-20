@@ -1,0 +1,981 @@
+import { Hono } from 'hono'
+import { html } from 'hono/html'
+import { Bindings } from '../types'
+import { Layout } from '../layout'
+import { getUser } from '../utils'
+
+const app = new Hono<{ Bindings: Bindings }>()
+
+app.get('/atar', async (c) => {
+  const user = await getUser(c)
+
+  if (!user) return c.redirect('/login')
+  // Query submissions for the logged-in user
+  const userSubmissionsRes = await c.env.DB.prepare(
+      'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'
+  ).bind(user?.id || 0).all();
+  const userSubmissions = userSubmissionsRes.results || [];
+  const canSubmitMultiple = (user?.permission_level ?? 0) >= 2;
+  const hasSubmitted = userSubmissions.length > 0;
+
+  return c.html(
+    <Layout title="ATAR (Beta)" user={user}>
+      <div class="max-w-7xl mx-auto px-4 py-8 font-mono">
+        <header class="mb-12">
+            <h1 class="text-3xl font-bold uppercase tracking-tighter mb-2">ATAR Calculator</h1>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Left Column: Subject Selection, Inputs, and Submission Form */}
+          <div class="lg:col-span-2 space-y-6">
+          
+            <div class="flex flex-col sm:flex-row gap-3">
+              <select id="subject-dropdown" class="flex-grow border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none">
+                <option value="" disabled selected>CHOOSE A SUBJECT...</option>
+              </select>
+              <button id="add-subject-btn" class="bg-black text-white dark:bg-white dark:text-black font-bold uppercase text-sm px-6 py-2">
+                ADD SUBJECT
+              </button>
+            </div>
+            
+            <div class="overflow-x-auto border border-gray-300 dark:border-neutral-700 mt-6">
+              <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr class="bg-gray-100 dark:bg-neutral-800 border-b border-gray-300 dark:border-neutral-700">
+                    <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 uppercase">Subject</th>
+                    <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 uppercase w-24">Units</th>
+                    <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 uppercase w-32">Percentile</th>
+                    <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 uppercase w-24 text-right">HSC Mark</th>
+                    <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 uppercase w-24 text-right">Aggregated</th>
+                    <th class="px-3 py-2 uppercase w-12 text-center">X</th>
+                  </tr>
+                </thead>
+                <tbody id="selected-subjects-container">
+                  <tr id="empty-state">
+                    <td colspan="6" class="px-3 py-8 text-center text-gray-500 italic border-b border-gray-200 dark:border-neutral-800">No subjects selected.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Note: <u>Pecentile</u> refers to Your <u>Rank</u> in that subject. <br></br> Enter it as a fraction, e.g. 30/168 for Mathematics Advanced and Mathematics Extension. Select 12 Units.</p>
+            {/* Submission Form Section - Moved below the first table */}
+            {user && (
+                <div class="p-6 border border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-900 mt-6">
+                    <h3 class="font-bold mb-4 uppercase text-sm">Submit</h3>
+                    {hasSubmitted && !canSubmitMultiple && (
+                        <p class="text-xs text-red-600 mb-4">Submitting again will overwrite your previous entry.</p>
+                    )}
+                    <form action="/atar/submit" method="post" id="atar-submit-form" class="flex flex-col sm:flex-row gap-4 items-end">
+                        <div class="w-full sm:w-64">
+                            <label class="block text-xs uppercase font-bold text-gray-500 mb-1">Your Rank</label>
+                            <input type="number" name="rank" required min="1" max="216" class="w-full border border-gray-300 dark:border-neutral-700 bg-white dark:bg-black px-3 py-2 text-sm outline-none" placeholder="?/216 e.g. 42" />
+                        </div>
+                        <input type="hidden" name="aggregate" id="hidden-aggregate" />
+                        <input type="hidden" name="calculators_data" id="hidden-calculators-data" />
+                        <button type="submit" class="bg-black text-white dark:bg-white dark:text-black font-bold uppercase px-6 py-2 text-sm">
+                            Submit
+                        </button>
+                    </form>
+                    <div id="submit-error" class="hidden mt-2 text-sm text-red-600"></div>
+                    
+                    <script dangerouslySetInnerHTML={{__html: `
+                        const submitForm = document.getElementById('atar-submit-form');
+                        if (submitForm) {
+                            submitForm.addEventListener('submit', function(e) {
+                                const agg = localStorage.getItem('atar_last_aggregate');
+                                const data = localStorage.getItem('atar_last_results');
+                                if (!agg || !data || agg === '--.--') {
+                                    e.preventDefault();
+                                    const err = document.getElementById('submit-error');
+                                    err.textContent = 'You must calculate your ATAR on the ATAR Calculator page first before submitting.';
+                                    err.classList.remove('hidden');
+                                    return;
+                                }
+                                document.getElementById('hidden-aggregate').value = agg;
+                                document.getElementById('hidden-calculators-data').value = data;
+                            });
+                        }
+                    `}} />
+                </div>
+            )}
+          </div>
+
+          {/* Right Column: Results */}
+          <div class="space-y-6">
+            <div class="border border-gray-300 dark:border-neutral-700 p-6 flex flex-col items-center justify-center">
+              <h2 class="font-bold text-sm uppercase mb-4 bg-black text-white dark:bg-white dark:text-black px-2 py-1 self-start w-full text-center">Total Aggregate</h2>
+              
+              {/* Unit Selection Dropdown */}
+              <div class="mb-6 w-full">
+                <label for="target-units-select" class="block text-xs uppercase font-bold text-gray-500 dark:text-gray-400 mb-1">Best of</label>
+                <select id="target-units-select" class="w-full border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none">
+                  <option value="10">10 Units</option>
+                  <option value="12" selected>12 Units (moderated, y11)</option>
+                </select>
+              </div>
+
+              <div class="text-center mb-8 w-full">
+                <div class="text-5xl font-bold tracking-tighter mb-2" id="total-aggregate">
+                  --
+                </div>
+              </div>
+
+              <table class="w-full text-sm text-left border-collapse border-t border-gray-300 dark:border-neutral-700">
+                <tbody>
+                  <tr class="border-b border-gray-200 dark:border-neutral-800">
+                    <td class="py-2">Equivalent ATAR</td>
+                    <td class="py-2 text-right font-bold" id="final-atar">--.--</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2">Units Counted</td>
+                    <td class="py-2 text-right font-bold" id="units-counted">0 / 12</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Historical Rank Section */}
+            <div class="border border-gray-300 dark:border-neutral-700 p-6 flex flex-col items-center justify-center">
+              <h2 class="font-bold text-sm uppercase mb-4 bg-black text-white dark:bg-white dark:text-black px-2 py-1 self-start w-full text-center">A not accurate at all number</h2>
+
+              {/* Mode Selector */}
+              <div class="mb-4 w-full flex gap-2">
+                <button id="mode-pre-s1" onclick="setRankMode('pre-s1')" class="flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-black text-white dark:bg-white dark:text-black transition-colors">Pre-S1</button>
+                <button id="mode-y11s1" onclick="setRankMode('y11s1')" class="flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-white text-gray-500 dark:bg-neutral-900 dark:text-gray-400 transition-colors">Y11S1</button>
+              </div>
+              
+              <div class="text-center mb-4 w-full">
+                <div class="text-5xl font-bold tracking-tighter mb-4" id="estimated-rank">
+                  --
+                </div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">
+                  Range: <span id="estimated-rank-range" class="font-bold">--</span> / ~200
+                </div>
+              </div>
+              <div class="text-xs text-gray-500 mt-2 text-center leading-relaxed">
+                I made this up. Not accurate until real ATAR is mapped with report ATAR
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* ATAR Leaderboard Page Access */}
+        <div class="mt-16 border-t border-gray-300 dark:border-neutral-700 pt-12">
+            <h2 class="text-2xl font-mono font-bold uppercase tracking-tighter mb-4">ATAR Aggregate Leaderboard</h2>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 font-mono leading-relaxed">
+                View the compiled list of aggregate ranks. Note: You must submit your ATAR aggregate to view this list.
+            </p>
+            <a href="/atar/leaderboard" class="inline-block bg-black text-white dark:bg-white dark:text-black font-bold uppercase px-6 py-3 text-sm tracking-wider hover:opacity-80 transition duration-150">
+                View Rank Sheet →
+            </a>
+        </div>
+
+        <div class="text-xs text-gray-500 space-y-2 mt-8">
+          <p class="pt-2"><a href="/atar/how-it-works" class="text-blue-600 hover:underline">How does this work?</a></p>
+        </div>
+      </div>
+
+      <script dangerouslySetInnerHTML={{
+        __html: `
+        const subjectsData = {
+          "Ancient History": { ext: false, marks: [{p: 90, hsc: 89, atar: 74.8}, {p: 75, hsc: 83, atar: 61.8}, {p: 50, hsc: 75, atar: 44.8}] },
+          "Biology": { ext: false, marks: [{p: 90, hsc: 88, atar: 79.8}, {p: 75, hsc: 83, atar: 69.6}, {p: 50, hsc: 73.4, atar: 52.4}] },
+          "Business Studies": { ext: false, marks: [{p: 90, hsc: 90, atar: 78.4}, {p: 75, hsc: 84, atar: 65.2}, {p: 50, hsc: 75.8, atar: 47.8}] },
+          "Chemistry": { ext: false, marks: [{p: 90, hsc: 90, atar: 87.2}, {p: 75, hsc: 84, atar: 79.6}, {p: 50, hsc: 75.2, atar: 67.4}] },
+          "Economics": { ext: false, marks: [{p: 90, hsc: 91, atar: 86.0}, {p: 75, hsc: 87, atar: 77.8}, {p: 50, hsc: 78, atar: 62.8}] },
+          "Engineering Studies": { ext: false, marks: [{p: 90, hsc: 89, atar: 79.2}, {p: 75, hsc: 81, atar: 67.2}, {p: 50, hsc: 73.6, atar: 52.4}] },
+          "English Advanced": { ext: false, marks: [{p: 90, hsc: 91, atar: 85.2}, {p: 75, hsc: 87, atar: 77.8}, {p: 50, hsc: 82.2, atar: 63.6}] },
+          "English Extension 1": { ext: true, marks: [{p: 90, hsc: 94, atar: 87.8}, {p: 75, hsc: 92, atar: 81.8}, {p: 50, hsc: 88, atar: 73.8}] },
+          "English Extension 2": { ext: true, marks: [{p: 90, hsc: 96, atar: 88.0}, {p: 75, hsc: 92, atar: 81.0}, {p: 50, hsc: 83, atar: 71.6}] },
+          "Geography": { ext: false, marks: [{p: 90, hsc: 91, atar: 81.0}, {p: 75, hsc: 85, atar: 68.2}, {p: 50, hsc: 76, atar: 50.4}] },
+          "Legal Studies": { ext: false, marks: [{p: 90, hsc: 91, atar: 79.8}, {p: 75, hsc: 86, atar: 68.8}, {p: 50, hsc: 75.6, atar: 50.6}] },
+          "Mathematics Advanced": { ext: false, marks: [{p: 90, hsc: 94, atar: 85.8}, {p: 75, hsc: 89, atar: 77.8}, {p: 50, hsc: 79.2, atar: 63.8}] },
+          "Mathematics Extension 1": { ext: true, marks: [{p: 90, hsc: 96, atar: 94.4}, {p: 75, hsc: 92, atar: 89.8}, {p: 50, hsc: 91.4, atar: 79.4}] },
+          "Mathematics Extension 2": { ext: true, marks: [{p: 90, hsc: 94, atar: 95.8}, {p: 75, hsc: 92, atar: 93.2}, {p: 50, hsc: 87, atar: 89.4}] },
+          "Modern History": { ext: false, marks: [{p: 90, hsc: 90, atar: 78.4}, {p: 75, hsc: 83, atar: 67.4}, {p: 50, hsc: 74.2, atar: 50.0}] },
+          "History Extension": { ext: true, marks: [{p: 90, hsc: 94, atar: 83.6}, {p: 75, hsc: 90, atar: 76.8}, {p: 50, hsc: 84, atar: 67.2}] },
+          "Music 2": { ext: false, marks: [{p: 90, hsc: 96, atar: 89.8}, {p: 75, hsc: 92, atar: 81.6}, {p: 50, hsc: 87.4, atar: 68.2}] },
+          "Music Extension": { ext: true, marks: [{p: 90, hsc: 100, atar: 98.8}, {p: 75, hsc: 98, atar: 88.0}, {p: 50, hsc: 94, atar: 71.6}] },
+          "PDHPE": { ext: false, marks: [{p: 90, hsc: 89, atar: 74.6}, {p: 75, hsc: 83, atar: 62.6}, {p: 50, hsc: 74.6, atar: 45.6}] },
+          "Physics": { ext: false, marks: [{p: 90, hsc: 91, atar: 86.0}, {p: 75, hsc: 84, atar: 77.6}, {p: 50, hsc: 74, atar: 62.0}] },
+          "Software Engineering": { ext: false, marks: [{p: 90, hsc: 89, atar: 81.0}, {p: 75, hsc: 83, atar: 69.2}, {p: 50, hsc: 75.2, atar: 53.4}] },
+          "Studies of Religion 1-unit": { ext: true, marks: [{p: 90, hsc: 92, atar: 79.8}, {p: 75, hsc: 86, atar: 69.6}, {p: 50, hsc: 77.6, atar: 55.4}] },
+          "Studies of Religion 2-unit": { ext: false, marks: [{p: 90, hsc: 90, atar: 81.0}, {p: 75, hsc: 86, atar: 70.8}, {p: 50, hsc: 77.8, atar: 54.6}] },
+          "Visual Arts": { ext: false, marks: [{p: 90, hsc: 91, atar: 75.0}, {p: 75, hsc: 88, atar: 61.0}, {p: 50, hsc: 83, atar: 42.4}] },
+          "Chinese Continuers": { ext: false, marks: [{p: 90, hsc: 97, atar: 87.0}, {p: 75, hsc: 95, atar: 80.4}, {p: 50, hsc: 87, atar: 65.6}] },
+          "Chinese Extension": { ext: true, marks: [{p: 90, hsc: 96, atar: 88.8}, {p: 75, hsc: 94, atar: 82.4}, {p: 50, hsc: 89.2, atar: 74.6}] },
+        };
+
+        const atarMapping = [
+          { atar: 99.95, agg: 478.7 },
+          { atar: 99.50, agg: 458.64 },
+          { atar: 99.00, agg: 448.0 },
+          { atar: 98.00, agg: 433.56 },
+          { atar: 95.00, agg: 404.6 },
+          { atar: 90.00, agg: 369.72 },
+          { atar: 85.00, agg: 340.22 },
+          { atar: 80.00, agg: 312.76 },
+          { atar: 75.00, agg: 286.86 },
+          { atar: 70.00, agg: 261.54 },
+          { atar: 65.00, font: 236.72 },
+          { atar: 60.00, agg: 212.62 },
+          { atar: 55.00, agg: 189.06 },
+          { atar: 50.00, agg: 165.24 },
+        ];
+
+        let selectedSubjects = [];
+        let targetUnits = 12;
+        let rankMode = 'y11s1';
+
+        function saveToStorage() {
+          try {
+            localStorage.setItem('atar_selected_subjects', JSON.stringify(selectedSubjects));
+            localStorage.setItem('atar_target_units', targetUnits.toString());
+          } catch (e) {
+            console.error('Failed to save configuration to storage:', e);
+          }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+          const dropdown = document.getElementById('subject-dropdown');
+          const targetUnitsSelect = document.getElementById('target-units-select');
+
+          Object.keys(subjectsData).sort().forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub;
+            opt.textContent = sub;
+            dropdown.appendChild(opt);
+          });
+
+          // Load from localStorage
+          try {
+            const saved = localStorage.getItem('atar_selected_subjects');
+            if (saved) {
+              selectedSubjects = JSON.parse(saved);
+            }
+            
+            const savedUnits = localStorage.getItem('atar_target_units');
+            if (savedUnits) {
+              const parsedUnits = parseInt(savedUnits, 10);
+              if (parsedUnits === 10 || parsedUnits === 12) {
+                targetUnits = parsedUnits;
+              }
+            }
+
+            const savedMode = localStorage.getItem('atar_rank_mode');
+            if (savedMode === 'pre-s1' || savedMode === 'y11s1') {
+              rankMode = savedMode;
+            }
+          } catch (e) {
+            console.error('Failed to load selected configuration from storage:', e);
+          }
+
+          targetUnitsSelect.value = targetUnits.toString();
+
+          // Apply saved rank mode UI
+          updateRankModeButtons();
+
+          // Listen for target units change
+          targetUnitsSelect.addEventListener('change', (e) => {
+            targetUnits = parseInt(e.target.value, 10);
+            saveToStorage();
+            renderSubjects();
+          });
+
+          renderSubjects();
+
+          document.getElementById('add-subject-btn').addEventListener('click', () => {
+            const val = dropdown.value;
+            if (!val || selectedSubjects.find(s => s.name === val)) return;
+            
+            selectedSubjects.push({
+              id: Date.now(),
+              name: val,
+              percentile: 90
+            });
+            saveToStorage();
+            renderSubjects();
+          });
+        });
+
+        function updateRankModeButtons() {
+          const preBtn = document.getElementById('mode-pre-s1');
+          const y11Btn = document.getElementById('mode-y11s1');
+          if (rankMode === 'y11s1') {
+            y11Btn.className = 'flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-black text-white dark:bg-white dark:text-black transition-colors';
+            preBtn.className = 'flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-white text-gray-500 dark:bg-neutral-900 dark:text-gray-400 transition-colors';
+          } else {
+            preBtn.className = 'flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-black text-white dark:bg-white dark:text-black transition-colors';
+            y11Btn.className = 'flex-1 px-3 py-1.5 text-xs font-bold uppercase border border-gray-300 dark:border-neutral-700 bg-white text-gray-500 dark:bg-neutral-900 dark:text-gray-400 transition-colors';
+          }
+        }
+
+        window.setRankMode = (mode) => {
+          rankMode = mode;
+          try { localStorage.setItem('atar_rank_mode', mode); } catch(e) {}
+          updateRankModeButtons();
+          renderSubjects();
+        };
+
+        function interpolate(x, points) {
+          const fullPoints = [
+            {p: 100, hsc: 100, atar: 100},
+            ...points,
+            {p: 0, hsc: 50, atar: 50}
+          ];
+
+          if (x >= 100) return { hsc: 100, atar: 100 };
+          if (x <= 0) return { hsc: 50, atar: 50 };
+
+          for (let i = 0; i < fullPoints.length - 1; i++) {
+            const p1 = fullPoints[i];
+            const p2 = fullPoints[i+1];
+            if (x <= p1.p && x >= p2.p) {
+              const ratio = (x - p2.p) / (p1.p - p2.p);
+              const hsc = p2.hsc + ratio * (p1.hsc - p2.hsc);
+              const atar = p2.atar + ratio * (p1.atar - p2.atar);
+              return { hsc, atar };
+            }
+          }
+          return { hsc: 50, atar: 50 };
+        }
+
+        function calculateATAR() {
+          let hasExt2 = selectedSubjects.some(s => s.name === "Mathematics Extension 2");
+
+          let results = selectedSubjects.map(sub => {
+            const data = subjectsData[sub.name];
+            let isExt = data.ext;
+            let units = isExt ? 1 : 2;
+            let exclude = false;
+
+            if (hasExt2) {
+              if (sub.name === "Mathematics Advanced") {
+                exclude = true;
+              } else if (sub.name === "Mathematics Extension 1" || sub.name === "Mathematics Extension 2") {
+                isExt = false;
+                units = 2;
+              }
+            }
+
+            const metrics = interpolate(sub.percentile, data.marks);
+            const aggregateContribution = isExt ? metrics.atar / 2 : metrics.atar;
+            return { ...sub, hsc: metrics.hsc, atar: metrics.atar, units, aggregateContribution, exclude };
+          });
+
+          results.forEach(res => {
+            if (res.exclude) {
+              res.units = 0;
+              res.aggregateContribution = 0;
+            }
+          });
+
+          results.sort((a, b) => b.atar - a.atar);
+
+          let totalAggregate = 0;
+          let unitsCounted = 0;
+
+          results.forEach(res => {
+            res.countedUnits = 0;
+            if (res.units > 0 && unitsCounted < targetUnits) {
+              const unitsAvailable = targetUnits - unitsCounted;
+              if (res.units <= unitsAvailable) {
+                res.countedUnits = res.units;
+              } else {
+                res.countedUnits = unitsAvailable;
+              }
+              
+              const proportion = res.countedUnits / res.units;
+              totalAggregate += res.aggregateContribution * proportion;
+              unitsCounted += res.countedUnits;
+            }
+          });
+
+          document.getElementById('total-aggregate').textContent = totalAggregate.toFixed(1);
+          document.getElementById('units-counted').textContent = \`\${unitsCounted} / \${targetUnits}\`;
+
+          if (unitsCounted < targetUnits) {
+            document.getElementById('final-atar').textContent = '--.--';
+            document.getElementById('estimated-rank').textContent = '--';
+            document.getElementById('estimated-rank-range').textContent = '--';
+            localStorage.setItem('atar_last_aggregate', totalAggregate.toString());
+            localStorage.setItem('atar_last_results', JSON.stringify(results));
+            return results;
+          }
+
+          
+          const scalingFactor = targetUnits === 12 ? 1.13 : 1;
+
+          let finalAtar = '< 50.00';
+          if (totalAggregate >= atarMapping[0].agg * scalingFactor) {
+            finalAtar = '99.95';
+          } else {
+            for (let i = 0; i < atarMapping.length - 1; i++) {
+              const currentAgg = atarMapping[i].agg * scalingFactor;
+              const nextAgg = atarMapping[i+1].agg * scalingFactor;
+              if (totalAggregate <= currentAgg && totalAggregate > nextAgg) {
+                const ratio = (totalAggregate - nextAgg) / (currentAgg - nextAgg);
+                const atar = atarMapping[i+1].atar + ratio * (atarMapping[i].atar - atarMapping[i+1].atar);
+                finalAtar = atar.toFixed(2);
+                break;
+              }
+            }
+          }
+
+          document.getElementById('final-atar').textContent = finalAtar;
+          
+          // Rank estimation logic
+          let numericAtar = parseFloat(finalAtar);
+          if (!isNaN(numericAtar)) {
+            let estRank = '--';
+            let estRange = '--';
+
+            if (rankMode === 'y11s1') {
+              // Y11S1 mode: f(x) = 70.1853 * ln(197.3383 / (x - 329.6269))
+              const aggScaled = totalAggregate;
+              const denominator = aggScaled - 329.6269;
+              if (denominator > 0) {
+                const rawRank = 70.1853 * Math.log(197.3383 / denominator);
+                estRank = Math.max(1, Math.round(rawRank));
+                estRange = "±10";
+              } else {
+                estRank = "> 200";
+                estRange = "±20";
+              }
+            } else {
+              // Pre-S1 mode: original interpolation logic
+              if (numericAtar >= 99.0) {
+                const ratio = (numericAtar - 99.0) / (99.7 - 99.0);
+                estRank = Math.max(Math.round(39 - ratio * 38), 1);
+                estRange = "±5";
+              } else if (numericAtar >= 95.0) {
+                const ratio = (numericAtar - 95.0) / (98.95 - 95.0);
+                estRank = Math.round(112 - ratio * (112 - 40));
+                estRange = "±10";
+              } else if (numericAtar >= 90.0) {
+                const ratio = (numericAtar - 90.0) / (94.95 - 90.0);
+                estRank = Math.round(154 - ratio * (154 - 113));
+                estRange = "±20";
+              } else if (numericAtar >= 85.0) {
+                const ratio = (numericAtar - 85.0) / (89.95 - 85.0);
+                estRank = Math.round(173 - ratio * (173 - 155));
+                estRange = "±25";
+              } else if (numericAtar >= 80.0) {
+                const ratio = (numericAtar - 80.0) / (84.95 - 80.0);
+                estRank = Math.round(184 - ratio * (184 - 174));
+                estRange = "±30";
+              } else if (numericAtar >= 75.0) {
+                const ratio = (numericAtar - 75.0) / (79.95 - 75.0);
+                estRank = Math.round(191 - ratio * (191 - 185));
+                estRange = "±30";
+              } else if (numericAtar >= 70.0) {
+                const ratio = (numericAtar - 70.0) / (74.95 - 70.0);
+                estRank = Math.round(195 - ratio * (195 - 192));
+                estRange = "±30";
+              } else {
+                estRank = "> 195";
+                estRange = "±30";
+              }
+              
+              estRank = Math.round(estRank / 2);
+            }
+            
+            document.getElementById('estimated-rank').textContent = estRank.toString();
+            document.getElementById('estimated-rank-range').textContent = estRange;
+          } else if (finalAtar === '< 50.00') {
+            document.getElementById('estimated-rank').textContent = "> 200";
+            document.getElementById('estimated-rank-range').textContent = "200+";
+          }
+
+          localStorage.setItem('atar_last_aggregate', totalAggregate.toString());
+          localStorage.setItem('atar_last_results', JSON.stringify(results));
+          return results;
+        }
+
+        window.updatePercentile = (id, value) => {
+          const sub = selectedSubjects.find(s => s.id === id);
+          if (sub) {
+            let parsed = parseFloat(value);
+            
+            // Check if string contains fraction notation like "a/b"
+            if (typeof value === 'string' && value.includes('/')) {
+              const parts = value.split('/');
+              if (parts.length === 2) {
+                const num = parseFloat(parts[0]);
+                const den = parseFloat(parts[1]);
+                if (!isNaN(num) && !isNaN(den) && den !== 0) {
+                  parsed = (1-num / den) * 100;
+                }
+              }
+            }
+            
+            sub.percentile = Math.max(0, Math.min(100, isNaN(parsed) ? 0 : parsed));
+            saveToStorage();
+            renderSubjects();
+          }
+        };
+
+        window.removeSubject = (id) => {
+          selectedSubjects = selectedSubjects.filter(s => s.id !== id);
+          saveToStorage();
+          renderSubjects();
+        };
+
+        function renderSubjects() {
+          const container = document.getElementById('selected-subjects-container');
+          const emptyState = document.getElementById('empty-state');
+          
+          if (selectedSubjects.length === 0) {
+            emptyState.style.display = 'table-row';
+            document.querySelectorAll('.subject-row').forEach(e => e.remove());
+            calculateATAR();
+            return;
+          }
+          
+          emptyState.style.display = 'none';
+          
+          const results = calculateATAR();
+          
+          // Clear old rows
+          document.querySelectorAll('.subject-row').forEach(e => e.remove());
+
+          results.forEach(res => {
+            const isCounted = res.countedUnits > 0;
+            const isExcluded = res.exclude;
+            
+            let unitsDisplay = \`\${res.units} U\`;
+            if (isExcluded) {
+                unitsDisplay = 'Ignored';
+            } else if (res.countedUnits > 0 && res.countedUnits < res.units) {
+                unitsDisplay += \` (\${res.countedUnits} counted)\`;
+            }
+
+            const row = document.createElement('tr');
+            row.className = \`subject-row border-b border-gray-200 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-900 \${!isCounted ? 'opacity-50' : ''}\`;
+            
+            // The output decimal string is parsed clean to handle decimal points nicely
+            const displayedPercentile = Math.round(res.percentile * 100) / 100;
+
+            row.innerHTML = \`
+              <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 uppercase font-bold text-gray-900 dark:text-white">
+                \${res.name}
+              </td>
+              <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 text-gray-600 dark:text-gray-400 text-xs">
+                \${unitsDisplay}
+              </td>
+              <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700">
+                <input type="text" value="\${displayedPercentile}" 
+                  onchange="updatePercentile(\\ \${res.id} \\, this.value)"
+                  class="w-full bg-transparent border-b border-gray-400 dark:border-gray-600 px-1 py-1 text-gray-900 dark:text-white focus:border-black dark:focus:border-white outline-none" />
+              </td>
+              <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 text-right">
+                \${isExcluded ? '-' : res.hsc.toFixed(1)}
+              </td>
+              <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 text-right font-bold text-blue-600 dark:text-blue-400">
+                \${isExcluded ? '-' : (res.aggregateContribution * (res.countedUnits / res.units || 0)).toFixed(1)}
+              </td>
+              <td class="px-3 py-2 text-center">
+                <button onclick="removeSubject(\${res.id})" class="text-gray-400 hover:text-red-600 font-bold px-2 py-1 uppercase text-xs">
+                  DEL
+                </button>
+              </td>
+            \`;
+            
+            container.appendChild(row);
+          });
+        }
+        `
+      }} />
+    </Layout>
+  )
+})
+
+// Leaderboard route page presenting all ranks 1 to 216
+// ... (keep previous imports and app setup)
+app.get('/atar/leaderboard', async (c) => {
+  const user = await getUser(c)
+  if (!user) return c.redirect('/login')
+
+  const userSubmissionsRes = await c.env.DB.prepare(
+      'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'
+  ).bind(user?.id || 0).all();
+  const userSubmissions = userSubmissionsRes.results || [];
+  
+  const hasSubmitted = userSubmissions.length > 0;
+  const isAuthorized = hasSubmitted && (user);
+
+  let ranksList: { rank: number; entries: { aggregate: number; is_deleted: boolean }[] }[] = [];
+  let graphPoints: { x: number, y: number, rank: number }[] = [];
+  
+  if (isAuthorized) {
+      const { results } = await c.env.DB.prepare(
+          'SELECT rank, aggregate, is_deleted FROM atar_submissions ORDER BY rank ASC'
+      ).all();
+      
+      const submissionsMap = new Map<number, { aggregate: number; is_deleted: boolean }[]>();
+      (results || []).forEach((row: any) => {
+          const r = row.rank;
+          if (!submissionsMap.has(r)) {
+              submissionsMap.set(r, []);
+          }
+          submissionsMap.get(r)!.push({
+              aggregate: row.aggregate,
+              is_deleted: row.is_deleted === 1 || row.is_deleted === true
+          });
+      });
+
+      const TOTAL_STUDENTS = 216;
+
+      for (let r = 1; r <= TOTAL_STUDENTS; r++) {
+          const entries = submissionsMap.get(r) || [];
+          entries.sort((a, b) => b.aggregate - a.aggregate);
+          ranksList.push({ rank: r, entries: entries });
+
+          const validAggregates = entries
+            .filter(e => !e.is_deleted)
+            .map(e => e.aggregate);
+
+          if (validAggregates.length > 0) {
+            const lowestAgg = Math.min(...validAggregates);
+            const percentile = ((TOTAL_STUDENTS - (r - 1)) / TOTAL_STUDENTS) * 100;
+            graphPoints.push({ 
+                x: Math.round(percentile * 100) / 100, 
+                y: lowestAgg,
+                rank: r 
+            });
+          }
+      }
+  }
+
+  return c.html(
+    <Layout title="Rank to aggregate mapping" user={user}>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+      <div class="max-w-7xl mx-auto px-4 py-8 font-mono">
+        <header class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold uppercase tracking-tighter mb-2">ATAR Aggregate Mapping</h1>
+                
+            </div>
+        </header>
+
+        {!isAuthorized ? (
+            <div class="text-center py-12 border border-dashed border-gray-300 dark:border-neutral-700">
+                <p class="text-gray-500 italic mb-4">You must submit your ATAR aggregate to view the list.</p>
+                <a href="/atar" class="inline-block bg-black text-white dark:bg-white dark:text-black font-bold uppercase px-6 py-2 text-sm">
+                    Go to Calculator & Submit
+                </a>
+            </div>
+        ) : (
+            <div class="space-y-8">
+                
+                {/* GRAPH SECTION */}
+                <div class="border border-gray-300 dark:border-neutral-700 p-6 bg-white dark:bg-neutral-900">
+                    <h3 class="text-xs font-bold uppercase mb-4 text-gray-500 tracking-widest">Aggregate Trend (Rank 1 @ 100%)</h3>
+                    <div class="h-80 w-full">
+                        <canvas id="atarChart"></canvas>
+                    </div>
+                    
+                </div>
+
+                <script dangerouslySetInnerHTML={{
+                    __html: `
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const ctx = document.getElementById('atarChart').getContext('2d');
+                        const dataPoints = ${JSON.stringify(graphPoints)};
+                        
+                        // Linear Regression (y = mx + c) fallback
+                        function solveLinear(points) {
+                            const n = points.length;
+                            if (n < 2) return null;
+                            let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+                            for (let p of points) {
+                                sumX += p.x;
+                                sumY += p.y;
+                                sumXY += p.x * p.y;
+                                sumX2 += p.x * p.x;
+                            }
+                            const denom = n * sumX2 - sumX * sumX;
+                            if (Math.abs(denom) < 1e-8) return null;
+                            const m = (n * sumXY - sumX * sumY) / denom;
+                            const c = (sumY - m * sumX) / n;
+                            return { m, c };
+                        }
+
+                        // Quadratic Regression (y = ax^2 + bx + c) using Gaussian elimination
+                        function solveQuadratic(points) {
+                            let sumX = 0, sumX2 = 0, sumX3 = 0, sumX4 = 0;
+                            let sumY = 0, sumXY = 0, sumX2Y = 0;
+                            const n = points.length;
+
+                            for (let p of points) {
+                                const x = p.x;
+                                const y = p.y;
+                                sumX += x;
+                                sumX2 += x * x;
+                                sumX3 += x * x * x;
+                                sumX4 += x * x * x * x;
+                                sumY += y;
+                                sumXY += x * y;
+                                sumX2Y += x * x * y;
+                            }
+
+                            const A = [
+                                [sumX4, sumX3, sumX2, sumX2Y],
+                                [sumX3, sumX2, sumX,  sumXY],
+                                [sumX2, sumX,  n,     sumY]
+                            ];
+
+                            // Gaussian elimination on the 3x4 system matrix
+                            for (let i = 0; i < 3; i++) {
+                                let maxRow = i;
+                                for (let k = i + 1; k < 3; k++) {
+                                    if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) {
+                                        maxRow = k;
+                                    }
+                                }
+                                const temp = A[i];
+                                A[i] = A[maxRow];
+                                A[maxRow] = temp;
+
+                                if (Math.abs(A[i][i]) < 1e-8) return null;
+
+                                for (let k = i + 1; k < 3; k++) {
+                                    const factor = A[k][i] / A[i][i];
+                                    for (let j = i; j < 4; j++) {
+                                        A[k][j] -= factor * A[i][j];
+                                    }
+                                }
+                            }
+
+                            const c = A[2][3] / A[2][2];
+                            const b = (A[1][3] - A[1][2] * c) / A[1][1];
+                            const a = (A[0][3] - A[0][2] * c - A[0][1] * b) / A[0][0];
+
+                            return { a, b, c };
+                        }
+
+                        // Generates evenly-spaced points along the calculated regression line
+                        function getBestFitPoints(points) {
+                            if (points.length === 0) return [];
+                            
+                            const xs = points.map(p => p.x);
+                            const minX = Math.min(...xs);
+                            const maxX = Math.max(...xs);
+                            
+                            let coefs = null;
+                            if (points.length >= 3) {
+                                coefs = solveQuadratic(points);
+                            }
+                            
+                            const fitPoints = [];
+                            const steps = 100; // Resolution of the curve line
+                            
+                            if (coefs) {
+                                for (let i = 0; i <= steps; i++) {
+                                    const x = minX + (maxX - minX) * (i / steps);
+                                    const y = coefs.a * x * x + coefs.b * x + coefs.c;
+                                    fitPoints.push({ x, y });
+                                }
+                            } else {
+                                // Fallback to a linear fit if not enough points for quadratic
+                                const linCoefs = solveLinear(points);
+                                if (linCoefs) {
+                                    for (let i = 0; i <= steps; i++) {
+                                        const x = minX + (maxX - minX) * (i / steps);
+                                        const y = linCoefs.m * x + linCoefs.c;
+                                        fitPoints.push({ x, y });
+                                    }
+                                } else {
+                                    // Fallback to original points if it is too small to fit
+                                    return points.slice().sort((a,b) => a.x - b.x);
+                                }
+                            }
+                            return fitPoints;
+                        }
+
+                        const sortedPoints = dataPoints.sort((a,b) => a.x - b.x);
+                        const bestFitPoints = getBestFitPoints(sortedPoints);
+
+                        new Chart(ctx, {
+                            data: {
+                                datasets: [
+                                    {
+                                        type: 'line',
+                                        label: 'Curve of Best Fit',
+                                        data: bestFitPoints, // Use the smooth mathematically generated trendline
+                                        borderColor: '#3b82f6',
+                                        borderWidth: 3,
+                                        pointRadius: 0,
+                                        tension: 0.1, // Set to low tension as the points are already perfectly spaced
+                                        fill: false,
+                                        order: 1
+                                    },
+                                    {
+                                        type: 'scatter',
+                                        label: 'Raw Submissions',
+                                        data: sortedPoints,
+                                        backgroundColor: '#ef4444',
+                                        pointRadius: 4,
+                                        order: 2
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    x: {
+                                        type: 'linear',
+                                        title: { display: true, text: 'Percentile (100 = Rank 1)', font: { family: 'monospace', size: 10 } },
+                                        min: 0,
+                                        max: 100,
+                                        grid: { color: 'rgba(150, 150, 150, 0.05)' }
+                                    },
+                                    y: {
+                                        min: 250,
+                                        max: 600,
+                                        title: { display: true, text: 'Aggregate', font: { family: 'monospace', size: 10 } },
+                                        grid: { color: 'rgba(150, 150, 150, 0.05)' }
+                                    }
+                                },
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        mode: 'nearest',
+                                        intersect: false,
+                                        filter: function(tooltipItem) {
+                                            // Only show tooltips for the "Raw Submissions" scatter dataset (index 1)
+                                            return tooltipItem.datasetIndex === 1;
+                                        },
+                                        callbacks: {
+                                            label: function(context) {
+                                                const p = context.raw;
+                                                return [
+                                                    ' Rank: ' + p.rank,
+                                                    ' Percentile: ' + p.x + '%',
+                                                    ' Aggregate: ' + p.y.toFixed(2)
+                                                ];
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    });
+                    `
+                }} />
+
+                {/* Leaderboard Table */}
+                <div class="overflow-x-auto border border-gray-300 dark:border-neutral-700">
+                    <table class="w-full text-left border-collapse font-mono text-sm">
+                        <thead>
+                            <tr class="bg-gray-100 dark:bg-neutral-800 border-b border-gray-300 dark:border-neutral-700">
+                                <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 w-24 text-center">RANK</th>
+                                <th class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 w-32 text-center">PERCENTILE</th>
+                                <th class="px-3 py-2">AGGREGATE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {ranksList.map((entry) => {
+                                const percentile = ((217 - entry.rank) / 216) * 100;
+                                return (
+                                    <tr class="border-b border-gray-200 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-900 last:border-0">
+                                        <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 text-center font-bold text-amber-600">
+                                            {entry.rank.toString().padStart(3, '0')}
+                                        </td>
+                                        <td class="px-3 py-2 border-r border-gray-300 dark:border-neutral-700 text-center text-gray-500 text-xs">
+                                            {percentile.toFixed(1)}%
+                                        </td>
+                                        <td class="px-3 py-2 font-bold">
+                                            {entry.entries.length > 0 ? (
+                                                entry.entries.map((subEntry, idx) => {
+                                                    const isLast = idx === entry.entries.length - 1;
+                                                    return (
+                                                        <span class={subEntry.is_deleted ? 'text-gray-400 dark:text-neutral-600 font-normal italic' : 'text-gray-900 dark:text-white'}>
+                                                            {subEntry.aggregate.toFixed(2)}
+                                                            {subEntry.is_deleted && <span class="text-[10px] ml-1">(Del)</span>}
+                                                            {!isLast && <span class="mx-2 font-normal">,</span>}
+                                                        </span>
+                                                    );
+                                                })
+                                            ) : (
+                                                <span class="text-gray-300 dark:text-neutral-700">--</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        )}
+      </div>
+    </Layout>
+  )
+})
+app.post('/atar/submit', async (c) => {
+    const user = await getUser(c);
+    
+    const body = await c.req.parseBody();
+    const rank = parseInt(body.rank as string, 10);
+    const aggregate = parseFloat(body.aggregate as string);
+    const calculators_data = body.calculators_data as string;
+
+    if (isNaN(rank) || isNaN(aggregate) || !calculators_data) {
+        return c.text('Invalid data', 400);
+    }
+
+    // Safely bind user.id to handle edge cases if user is not fully populated
+    const userId = user?.id || 0;
+
+    const { results: existing } = await c.env.DB.prepare(
+        'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0'
+    ).bind(userId).all();
+
+    // Determine if user can submit multiple entries
+    const canSubmitMultiple = (user?.permission_level ?? 0) >= 2;
+
+    // Only overwrite if the user already has submissions AND they do not have the permission to submit multiple
+    if (user && existing && existing.length > 0 && !canSubmitMultiple) {
+        const oldId = existing[0].id;
+        await c.env.DB.prepare('UPDATE atar_submissions SET is_deleted = 1 WHERE id = ?').bind(oldId).run();
+        
+        const newIdRes = await c.env.DB.prepare(
+            'INSERT INTO atar_submissions (user_id, rank, aggregate, calculators_data) VALUES (?, ?, ?, ?) RETURNING id'
+        ).bind(userId, rank, aggregate, calculators_data).first('id');
+        
+        await c.env.DB.prepare(
+            'INSERT INTO atar_submission_logs (user_id, submission_id, action, details) VALUES (?, ?, ?, ?)'
+        ).bind(userId, newIdRes, 'OVERRIDE', JSON.stringify({ oldId })).run();
+    } else {
+        const newIdRes = await c.env.DB.prepare(
+            'INSERT INTO atar_submissions (user_id, rank, aggregate, calculators_data) VALUES (?, ?, ?, ?) RETURNING id'
+        ).bind(userId, rank, aggregate, calculators_data).first('id');
+        
+        await c.env.DB.prepare(
+            'INSERT INTO atar_submission_logs (user_id, submission_id, action, details) VALUES (?, ?, ?, ?)'
+        ).bind(userId, newIdRes, 'CREATE', '{}').run();
+    }
+
+    return c.redirect('/atar/leaderboard');
+});
+
+app.post('/atar/:id/delete', async (c) => {
+    const user = await getUser(c);
+    
+
+    const id = c.req.param('id');
+    await c.env.DB.prepare('UPDATE atar_submissions SET is_deleted = 1 WHERE id = ?').bind(id).run();
+    
+    await c.env.DB.prepare(
+        'INSERT INTO atar_submission_logs (user_id, submission_id, action, details) VALUES (?, ?, ?, ?)'
+    ).bind(user.id, id, 'DELETE', '{}').run();
+
+    return c.redirect('/atar/leaderboard');
+});
+
+export default app
