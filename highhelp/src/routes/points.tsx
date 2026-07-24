@@ -23,6 +23,7 @@ app.get('/points', async (c) => {
 				<div class="flex gap-0 border-b border-gray-200 dark:border-neutral-700 mb-6 justify-start" id="main-tabs">
 					<button data-tab="my-awards" class="px-4 py-2 -mb-px border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 text-sm font-medium transition-colors">My Awards</button>
 					<button data-tab="all-awards" class="px-4 py-2 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">All Awards</button>
+					<button data-tab="blazer" class="px-4 py-2 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">Blazer</button>
 				</div>
 
 				<div id="tab-my-awards">
@@ -39,6 +40,15 @@ app.get('/points', async (c) => {
 						<div class="flex items-center justify-center py-12">
 							<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
 							<span class="ml-3 text-sm text-gray-500 dark:text-neutral-400">Loading all awards...</span>
+						</div>
+					</div>
+				</div>
+
+				<div id="tab-blazer" class="hidden">
+					<div id="blazer-root">
+						<div class="flex items-center justify-center py-12">
+							<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+							<span class="ml-3 text-sm text-gray-500 dark:text-neutral-400">Loading blazer badges...</span>
 						</div>
 					</div>
 				</div>
@@ -80,9 +90,14 @@ app.get('/points', async (c) => {
 							btn.classList.remove('border-transparent','text-gray-500','dark:text-neutral-400');
 							document.getElementById('tab-my-awards').classList.toggle('hidden', btn.dataset.tab !== 'my-awards');
 							document.getElementById('tab-all-awards').classList.toggle('hidden', btn.dataset.tab !== 'all-awards');
+							document.getElementById('tab-blazer').classList.toggle('hidden', btn.dataset.tab !== 'blazer');
 							if (btn.dataset.tab === 'all-awards' && !window._allAwardsLoaded) {
 								window._allAwardsLoaded = true;
 								loadAllAwards();
+							}
+							if (btn.dataset.tab === 'blazer' && !window._blazerLoaded) {
+								window._blazerLoaded = true;
+								loadBlazer();
 							}
 						});
 					});
@@ -100,9 +115,15 @@ app.get('/points', async (c) => {
 						}
 
 						try {
-							var res = await fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), {
-								headers: { 'Authorization': 'Bearer ' + token }
-							});
+							var prizesUrl = '/api/proxy/all-awards?url=' + encodeURIComponent('https://api.sbhs.net.au/api/core/award-scheme/prizes');
+							var [res, prizesRes] = await Promise.all([
+								fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), {
+									headers: { 'Authorization': 'Bearer ' + token }
+								}),
+								fetch(prizesUrl, {
+									headers: { 'Authorization': 'Bearer ' + token }
+								})
+							]);
 
 							if (res.status === 401 || res.status === 403) {
 								var refreshRes = await fetch('/api/auth/refresh');
@@ -110,11 +131,16 @@ app.get('/points', async (c) => {
 								if (refreshData.success && refreshData.accessToken) {
 									studentData.accessToken = refreshData.accessToken;
 									localStorage.setItem('studentData', JSON.stringify(studentData));
-									var retryRes = await fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), {
-										headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
-									});
+									var [retryRes, retryPrizesRes] = await Promise.all([
+										fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), {
+											headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
+										}),
+										fetch(prizesUrl, {
+											headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
+										})
+									]);
 									if (!retryRes.ok) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load awards. (HTTP ' + retryRes.status + ')</p></div>'; return; }
-									renderMyAwards(await retryRes.json());
+									renderMyAwards(await retryRes.json(), await retryPrizesRes.json());
 									return;
 								}
 								root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Session expired. Please <a href="/login" class="underline">log in</a> again.</p></div>';
@@ -122,14 +148,14 @@ app.get('/points', async (c) => {
 							}
 
 							if (!res.ok) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load awards (HTTP ' + res.status + ')</p></div>'; return; }
-							renderMyAwards(await res.json());
+							renderMyAwards(await res.json(), await prizesRes.json());
 						} catch (e) {
 							console.error('Failed to fetch awards:', e);
 							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Network error loading awards.</p></div>';
 						}
 					})();
 
-					function renderMyAwards(data) {
+					function renderMyAwards(data, prizesData) {
 						var root = document.getElementById('points-root');
 						var items = data.member || [];
 						var allAwards = items.map(function(item) {
@@ -144,13 +170,24 @@ app.get('/points', async (c) => {
 
 						var totalPoints = awards.reduce(function(s,a){return s+a.points;},0);
 						var totalHouse = awards.reduce(function(s,a){return s+a.housePoints;},0);
-						var tiers = awards.map(function(a){return a.tier;}).filter(function(t){return t!==0;});
-						var currentTier = tiers.length > 0 ? Math.min.apply(null,tiers) : 0;
-						var tierNames = {'-10':'Gold','-5':'Silver','-1':'Bronze'};
-						var tierOrder = ['-1','-5','-10'];
-						var currentTierName = tierNames[String(currentTier)] || ('Tier '+currentTier);
-						var currentTierIdx = tierOrder.indexOf(String(currentTier));
-						var nextTierName = currentTierIdx >= 0 && currentTierIdx < tierOrder.length-1 ? (tierNames[tierOrder[currentTierIdx+1]]||'Next') : 'Max';
+
+						// --- Prize Tier logic (from /award-scheme/prizes) ---
+						var prizes = (prizesData && prizesData.member) || [];
+						var nomCount = nominations.length;
+						var tierMap = {};
+						prizes.forEach(function(p) { tierMap[p.tier] = p.name; });
+						var sortedPrizes = prizes.slice().sort(function(a,b) { return a.tier - b.tier; });
+						var currentPrize = null;
+						var nextPrize = null;
+						for (var i = 0; i < sortedPrizes.length; i++) {
+							if (nomCount >= sortedPrizes[i].nominationsRequired) {
+								currentPrize = sortedPrizes[i];
+								nextPrize = i < sortedPrizes.length - 1 ? sortedPrizes[i + 1] : null;
+							}
+						}
+						var currentTierName = currentPrize ? currentPrize.name : 'None';
+						var nextTierName = nextPrize ? nextPrize.name : 'Max';
+						var nextTierRequired = nextPrize ? nextPrize.nominationsRequired : null;
 
 						// Points Progress: 7 fixed categories
 						var nomByCategory = {};
@@ -181,20 +218,45 @@ app.get('/points', async (c) => {
 						var nomYears = Object.keys(nomYearMap).sort().reverse();
 
 						// --- Prize Tier card ---
+						var tierProgressHtml = '';
+						if (nextPrize && currentPrize) {
+							var prevReq = currentPrize.nominationsRequired;
+							var nextReq = nextPrize.nominationsRequired;
+							var range = nextReq - prevReq;
+							var progress = nomCount - prevReq;
+							var pct = range > 0 ? Math.min(100, Math.round((progress / range) * 100)) : 100;
+							tierProgressHtml =
+								'<div class="mt-4 pt-4 border-t border-gray-200 dark:border-neutral-700">' +
+									'<div class="flex justify-between items-center mb-1">' +
+										'<span class="text-xs text-gray-500 dark:text-neutral-400">Next: ' + esc(nextPrize.name) + '</span>' +
+										'<span class="text-xs font-semibold dark:text-white">' + nomCount + ' / ' + nextReq + '</span>' +
+									'</div>' +
+									'<div class="w-full h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden">' +
+										'<div class="h-full bg-amber-500 dark:bg-amber-400 rounded-full transition-all" style="width:' + pct + '%"></div>' +
+									'</div>' +
+									
+								'</div>';
+						} else if (!nextPrize && currentPrize) {
+							tierProgressHtml =
+								'<div class="mt-4 pt-4 border-t border-gray-200 dark:border-neutral-700">' +
+									'<p class="text-xs text-green-600 dark:text-green-400 font-semibold">Maximum tier reached!</p>' +
+								'</div>';
+						}
+
 						var tierCard =
 							'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900">' +
 								'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-4">Prize Tier</h2>' +
-								'<div class="flex flex-col items-center mb-6">' +
+								'<div class="flex flex-col items-center mb-4">' +
 									'<div class="w-20 h-20 rounded-full border-4 border-amber-500 dark:border-amber-400 flex items-center justify-center mb-3"><span class="text-2xl font-bold text-amber-600 dark:text-amber-400">'+esc(currentTierName.charAt(0))+'</span></div>' +
 									'<span class="text-sm font-semibold text-amber-600 dark:text-amber-400">'+esc(currentTierName)+'</span>' +
 								'</div>' +
 								'<div class="space-y-2 text-sm">' +
-									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Next Tier</span><span class="font-semibold dark:text-white">'+esc(nextTierName)+'</span></div>' +
 									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Awards Received</span><span class="font-semibold dark:text-white">'+awards.length+'</span></div>' +
-									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Nominations</span><span class="font-semibold dark:text-white">'+nominations.length+'</span></div>' +
+									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Nominations</span><span class="font-semibold dark:text-white">'+nomCount+'</span></div>' +
 									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Total Points</span><span class="font-semibold dark:text-white">'+totalPoints+'</span></div>' +
 									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">House Points</span><span class="font-semibold dark:text-white">'+totalHouse+'</span></div>' +
 								'</div>' +
+								tierProgressHtml +
 							'</div>';
 
 						// --- Points Progress card ---
@@ -414,6 +476,99 @@ app.get('/points', async (c) => {
 						document.getElementById('all-awards-search').addEventListener('input', applyFilters);
 						document.getElementById('all-awards-cat-filter').addEventListener('change', applyFilters);
 						applyFilters();
+					}
+
+					// --- Blazer ---
+function loadBlazer() {
+    var root = document.getElementById('blazer-root');
+    var studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
+    var token = studentData.accessToken;
+    var studentId = studentData.studentId;
+    if (!token || !studentId) { 
+        root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token found. Please log in again.</p></div>'; 
+        return; 
+    }
+
+    var badgesUrl = '/api/proxy/all-awards?url=' + encodeURIComponent('https://api.sbhs.net.au/api/core/students/' + encodeURIComponent(studentId) + '/award-scheme/badges');
+    fetch(badgesUrl, { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function(res) {
+            if (res.status === 401 || res.status === 403) {
+                return fetch('/api/auth/refresh').then(function(r) { return r.json(); }).then(function(refreshData) {
+                    if (refreshData.success && refreshData.accessToken) {
+                        studentData.accessToken = refreshData.accessToken;
+                        localStorage.setItem('studentData', JSON.stringify(studentData));
+                        return fetch(badgesUrl, { headers: { 'Authorization': 'Bearer ' + refreshData.accessToken } });
+                    }
+                    throw new Error('Session expired');
+                });
+            }
+            return res;
+        })
+        .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
+        .then(function(data) { renderBlazer(root, data); })
+        .catch(function(e) {
+            console.error('Failed to fetch blazer badges:', e);
+            root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load blazer badges.</p></div>';
+        });
+}
+
+function renderBlazer(root, data) {
+    var items = data.member || [];
+    if (items.length === 0) {
+        root.innerHTML = '<div class="text-center py-12"><p class="text-gray-400 dark:text-neutral-500 text-sm">No blazer badges earned yet.</p></div>';
+        return;
+    }
+
+    // Helper for HTML escaping if not defined globally
+    var safeEsc = typeof esc === 'function' ? esc : function(str) {
+        return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    var rows = items.map(function(item) {
+        var award = item.award || {};
+        var nomination = item.nomination || {};
+        var cat = award.category || {};
+        var date = item.date || '';
+        var dateLabel = '';
+
+        if (date) {
+            var dp = date.split('T')[0].split('-');
+            var month = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            dateLabel = parseInt(dp[2], 10) + ' ' + (month[parseInt(dp[1], 10)] || '') + ' ' + dp[0];
+        }
+
+        var activityName = safeEsc(award.name || 'Unnamed Activity');
+        var lineOrBadge = safeEsc((cat.name || '').toUpperCase());
+        var additional = safeEsc(nomination.name || '');
+
+        return '<tr class="hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors">' +
+            '<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-neutral-400 font-mono">' + dateLabel + '</td>' +
+            '<td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">' + activityName + '</td>' +
+            
+            '<td class="px-4 py-3 text-sm text-gray-500 dark:text-neutral-400">' + additional + '</td>' +
+        '</tr>';
+    }).join('');
+
+    root.innerHTML =
+        '<div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-neutral-700">' +
+            '<table class="min-w-full divide-y divide-gray-200 dark:divide-neutral-700 text-left ">' +
+                '<thead class="bg-gray-50 dark:bg-neutral-800 text-xs font-semibold text-gray-700 dark:text-neutral-300 uppercase tracking-wider">' +
+                    '<tr>' +
+                        '<th scope="col" class="px-4 py-3">Date</th>' +
+                        '<th scope="col" class="px-4 py-3">Line</th>' +
+                        
+                        '<th scope="col" class="px-4 py-3">Additional</th>' +
+                    '</tr>' +
+                '</thead>' +
+                '<tbody class="divide-y divide-gray-200 dark:divide-neutral-700 bg-white dark:bg-neutral-900">' +
+                    rows +
+                '</tbody>' +
+            '</table>' +
+        '</div>';
+
 					}
 				})();
 				`
