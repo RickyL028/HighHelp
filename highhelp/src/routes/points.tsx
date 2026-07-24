@@ -15,14 +15,11 @@ app.get('/points', async (c) => {
 	return c.html(
 		<Layout title="Points" user={user}>
 			<div class="max-w-5xl mx-auto px-4 py-8">
-				<header class="mb-6">
-					<h1 class="text-2xl font-bold mb-1">Student Award Scheme</h1>
-					<p class="text-gray-500 dark:text-neutral-400 text-sm">Your school award points from the student portal.</p>
-				</header>
+
 
 				<div class="flex gap-0 border-b border-gray-200 dark:border-neutral-700 mb-6 justify-start" id="main-tabs">
-					<button data-tab="my-awards" class="px-4 py-2 -mb-px border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 text-sm font-medium transition-colors">My Awards</button>
-					<button data-tab="all-awards" class="px-4 py-2 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">All Awards</button>
+					<button data-tab="my-awards" class="px-4 py-2 -mb-px border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 text-sm font-medium transition-colors">Me</button>
+					<button data-tab="all-awards" class="px-4 py-2 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">All</button>
 					<button data-tab="blazer" class="px-4 py-2 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">Blazer</button>
 				</div>
 
@@ -328,9 +325,9 @@ app.get('/points', async (c) => {
 								var dp=a.date.split('-');
 								var dateLabel=parseInt(dp[2],10)+' '+(month[parseInt(dp[1],10)]||'');
 								var isLast=i===sorted.length-1;
-								var ptsClass=a.points>0?'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700':'bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-300 dark:border-neutral-600';
+								var ptsClass=a.points>0?'bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700':'bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-300 dark:border-neutral-600';
 								var connector=isLast?'':'<div class="absolute left-[11px] top-8 w-0.5 h-full bg-gray-200 dark:bg-neutral-700"></div>';
-								return '<div class="relative flex gap-4 pb-6">'+connector+'<div class="relative z-10 shrink-0 w-6 h-6 rounded-full bg-gray-300 dark:bg-neutral-600 border-2 border-white dark:border-neutral-900 mt-0.5"></div><div class="flex-1 flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-xs text-gray-400 dark:text-neutral-500 mb-1">'+esc(dateLabel)+'</div><div class="text-sm font-medium dark:text-white">'+esc(a.name)+'</div><span class="inline-block mt-1 px-2 py-0.5 rounded text-xs bg-gray-200 dark:bg-neutral-700 text-gray-600 dark:text-neutral-300">'+esc(a.category)+'</span></div><div class="shrink-0 w-10 h-10 rounded-lg border flex items-center justify-center text-sm font-bold font-mono '+ptsClass+'">'+(a.points>0?'+':'')+a.points+'</div></div></div>';
+								return '<div class="relative flex gap-4 pb-6">'+connector+'<div class="relative z-10 shrink-0 w-6 h-6 rounded-full bg-gray-300 dark:bg-neutral-600 border-2 border-white dark:border-neutral-900 mt-0.5"></div><div class="flex-1 flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-xs text-gray-400 dark:text-neutral-500 mb-1">'+esc(dateLabel)+'</div><div class="text-sm font-medium dark:text-white">'+esc(a.name)+'</div><span class="inline-block mt-1 px-2 py-0.5 rounded text-xs bg-gray-200 dark:bg-neutral-700 text-gray-600 dark:text-neutral-300">'+esc(a.category)+'</span></div><div class="shrink-0 w-10 h-10 rounded-lg border flex items-center justify-center text-sm font-bold font-mono '+ptsClass+'">'+(a.points>0?'':'')+a.points+'</div></div></div>';
 							}).join('');
 							el.innerHTML='<div class="pl-2">'+rows+'</div>';
 						}
@@ -404,9 +401,6 @@ app.get('/points', async (c) => {
 							if (list.length === 0) { el.innerHTML = '<div class="text-center py-8 text-gray-400 dark:text-neutral-500 text-sm">No awards match your search.</div>'; return; }
 
 							var rows = list.map(function(a) {
-								var tierBadge = a.tier !== 0 ? '<span class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 rounded">Tier ' + a.tier + '</span>' : '';
-								var ptsClass = a.points > 0 ? 'text-green-600 dark:text-green-400' : a.points < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-neutral-400';
-								var ptsPrefix = a.points > 0 ? '+' : '';
 								var houseClass = a.housePoints > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-neutral-400';
 								var archBadge = a.archived ? '<span class="ml-2 text-xs text-gray-400 dark:text-neutral-500">(archived)</span>' : '';
 
@@ -414,11 +408,10 @@ app.get('/points', async (c) => {
 									'<td class="px-4 py-3">' +
 										'<div class="flex items-center">' +
 											'<span class="text-sm font-medium dark:text-white">' + esc(a.name) + '</span>' +
-											tierBadge + archBadge +
+											archBadge +
 										'</div>' +
 										'<div class="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">' + esc(a.category) + '</div>' +
 									'</td>' +
-									'<td class="px-4 py-3 text-right"><span class="text-sm font-bold font-mono ' + ptsClass + '">' + ptsPrefix + a.points + '</span></td>' +
 									'<td class="px-4 py-3 text-right"><span class="text-sm font-mono ' + houseClass + '">' + a.housePoints + '</span></td>' +
 								'</tr>';
 							}).join('');
@@ -428,7 +421,6 @@ app.get('/points', async (c) => {
 									'<table class="w-full text-left border-collapse text-sm">' +
 										'<thead><tr class="bg-gray-100 dark:bg-neutral-800 border-b border-gray-300 dark:border-neutral-700">' +
 											'<th class="px-4 py-3 border-r border-gray-300 dark:border-neutral-700">AWARD</th>' +
-											'<th class="px-4 py-3 border-r border-gray-300 dark:border-neutral-700 text-right w-24">POINTS</th>' +
 											'<th class="px-4 py-3 text-right w-24">HOUSE</th>' +
 										'</tr></thead>' +
 										'<tbody>' + rows + '</tbody>' +
