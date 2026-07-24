@@ -117,6 +117,22 @@ app.get('/api/proxy/awards', async (c) => {
         return c.json({ error: 'Proxy error' }, 500)
     }
 })
+
+app.get('/api/proxy/all-awards', async (c) => {
+    const authHeader = c.req.header('Authorization')
+    const url = c.req.query('url')
+    if (!authHeader) return c.json({ error: 'Invalid request' }, 400)
+    const target = url || 'https://api.sbhs.net.au/api/core/award-scheme/awards'
+    try {
+        const response = await fetch(target, {
+            headers: { 'Authorization': authHeader }
+        })
+        const data = await response.json()
+        return c.json(data, response.status as any)
+    } catch (e) {
+        return c.json({ error: 'Proxy error' }, 500)
+    }
+})
 app.route('/', homeRoutes)
 app.route('/home', homeRoutes)
 app.route('/', authRoutes)
