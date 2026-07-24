@@ -38,7 +38,7 @@ app.get('/api/auth/login', (c) => {
         client_id: clientId,
         redirect_uri: redirectUri,
         response_type: 'code',
-        scope: 'all-ro',
+        scope: 'all-ro ns.sbhs.au/r/student_app',
         state: state
     });
 
@@ -156,7 +156,8 @@ app.get('/api/auth/callback', async (c) => {
 
         const studentData = {
             timetable: timetableData,
-            calendar: calendarData
+            calendar: calendarData,
+            studentId: userData.studentId
         };
 
         // Set Cookie

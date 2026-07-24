@@ -10,6 +10,7 @@ import forumRoutes from './routes/forum'
 import essaysRoutes from './routes/essays'
 import aboutRoutes from './routes/about'
 import leaderboardRoutes from './routes/leaderboard'
+import pointsRoutes from './routes/points'
 import feedbackRoutes from './routes/feedback'
 import classesRoutes from './routes/timetable'
 import clipboardRoutes from './components/timetable/TimetableClipboard'
@@ -101,6 +102,21 @@ app.get('/api/proxy/events', async (c) => {
         return c.json({ error: 'Proxy error' }, 500)
     }
 })
+
+app.get('/api/proxy/awards', async (c) => {
+    const authHeader = c.req.header('Authorization')
+    const studentId = c.req.query('studentId')
+    if (!authHeader || !studentId) return c.json({ error: 'Invalid request' }, 400)
+    try {
+        const response = await fetch(`https://api.sbhs.net.au/api/core/students/${studentId}/award-scheme/awards`, {
+            headers: { 'Authorization': authHeader }
+        })
+        const data = await response.json()
+        return c.json(data, response.status as any)
+    } catch (e) {
+        return c.json({ error: 'Proxy error' }, 500)
+    }
+})
 app.route('/', homeRoutes)
 app.route('/home', homeRoutes)
 app.route('/', authRoutes)
@@ -114,6 +130,7 @@ app.route('/timetable', classesRoutes)
 app.route('/', feedbackRoutes)
 app.route('/', aboutRoutes)
 app.route('/', leaderboardRoutes)
+app.route('/', pointsRoutes)
 app.route('/', atarRoutes)
 app.route('/', atarExplainedRoutes)
 app.route('/api/clipboard', clipboardRoutes)

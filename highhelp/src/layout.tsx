@@ -321,17 +321,28 @@ ${props.latex ? html`
               <div class="flex items-center">
                 <a href="/home" class="font-bold text-xl tracking-tight">HighHelp</a>
                 <div class="hidden md:block">
-                  <div class="ml-6 lg:ml-10 flex items-center gap-1 lg:gap-2 whitespace-nowrap overflow-x-auto">
+                    <div class="ml-6 lg:ml-10 flex items-center gap-1 lg:gap-2 whitespace-nowrap">
                     <a href="/timetable" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Timetable</a>
                     <a href="/resources" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Resources</a>
-                    <a href="/announcements" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Announcements</a>
                     <a href="/past-papers" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Past Papers</a>
-                    <a href="/forum" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Q&A</a>
-                    <a href="/essays" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Essays</a>
                     <a href="/leaderboard" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Leaderboard</a>
                     <a href="/atar" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">ATAR</a>
+                    <a href="/points" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Points</a>
                     <a href="/feedback" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Hmmm..!</a>
-                    <a href="/about" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">About</a>
+                    <div class="relative" id="more-dropdown">
+                      <button class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1">
+                        More
+                        <svg class="h-3 w-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                      </button>
+                      <div class="absolute left-0 top-full pt-1 w-44 hidden z-50" id="more-menu">
+                        <div class="bg-white dark:bg-neutral-800 rounded-md shadow-lg py-1 border border-gray-200 dark:border-neutral-700">
+                          <a href="/announcements" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">Announcements</a>
+                          <a href="/forum" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">Q&A</a>
+                          <a href="/essays" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">Essays</a>
+                          <a href="/about" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">About</a>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -405,14 +416,23 @@ ${props.latex ? html`
             <div class="px-3 pt-3 pb-3 space-y-1 sm:px-4 bg-[#4E342E] dark:bg-neutral-900">
               <a href="/timetable" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Timetable</a>
               <a href="/resources" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Resources</a>
-              <a href="/announcements" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Announcements</a>
               <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Past Papers</a>
-              <a href="/forum" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Q&A</a>
-              <a href="/essays" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Essays</a>
               <a href="/leaderboard" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Leaderboard</a>
               <a href="/atar" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">ATAR</a>
+              <a href="/points" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Points</a>
               <a href="/feedback" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Hmmm..!</a>
-              <a href="/about" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">About</a>
+              <details class="group">
+                <summary class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap cursor-pointer list-none flex items-center justify-between">
+                  More
+                  <svg class="h-4 w-4 fill-current transition-transform group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </summary>
+                <div class="pl-4 space-y-1">
+                  <a href="/announcements" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Announcements</a>
+                  <a href="/forum" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Q&A</a>
+                  <a href="/essays" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Essays</a>
+                  <a href="/about" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">About</a>
+                </div>
+              </details>
               <button id="mobile-theme-toggle" class="w-full text-left text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium flex items-center justify-between">
                 <span>Theme</span>
                 <span id="mobile-theme-text">Light</span>
@@ -516,6 +536,21 @@ ${props.latex ? html`
 
                 themeToggleBtn?.addEventListener('click', toggleTheme);
                 mobileThemeToggle?.addEventListener('click', toggleTheme);
+
+                // More dropdown click toggle
+                const moreDropdown = document.getElementById('more-dropdown');
+                const moreMenu = document.getElementById('more-menu');
+                if (moreDropdown && moreMenu) {
+                    moreDropdown.querySelector('button').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        moreMenu.classList.toggle('hidden');
+                    });
+                    document.addEventListener('click', (e) => {
+                        if (!moreDropdown.contains(e.target)) {
+                            moreMenu.classList.add('hidden');
+                        }
+                    });
+                }
             });
         </script>
 
