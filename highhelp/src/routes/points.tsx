@@ -16,20 +16,20 @@ app.get('/points', async (c) => {
 		<Layout title="Points" user={user}>
 			<div class="max-w-5xl mx-auto px-4 py-8">
 				<header class="mb-6">
-					<h1 class="text-3xl font-mono font-bold uppercase tracking-tighter mb-2">Student Award Scheme</h1>
-					<p class="text-gray-500 dark:text-neutral-400 font-mono text-sm">Your school award points from the student portal.</p>
+					<h1 class="text-3xl font-bold uppercase tracking-tighter mb-2">Student Award Scheme</h1>
+					<p class="text-gray-500 dark:text-neutral-400 text-sm">Your school award points from the student portal.</p>
 				</header>
 
 				<div class="flex gap-0 border-b border-gray-200 dark:border-neutral-700 mb-6" id="main-tabs">
-					<button data-tab="my-awards" class="px-5 py-2.5 -mb-px border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 font-mono text-sm font-bold transition-colors">My Awards</button>
-					<button data-tab="all-awards" class="px-5 py-2.5 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 font-mono text-sm transition-colors">All Awards</button>
+					<button data-tab="my-awards" class="px-5 py-2.5 -mb-px border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 text-sm font-bold transition-colors">My Awards</button>
+					<button data-tab="all-awards" class="px-5 py-2.5 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">All Awards</button>
 				</div>
 
 				<div id="tab-my-awards">
 					<div id="points-root">
 						<div class="flex items-center justify-center py-12">
 							<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
-							<span class="ml-3 font-mono text-sm text-gray-500 dark:text-neutral-400">Loading awards...</span>
+							<span class="ml-3 text-sm text-gray-500 dark:text-neutral-400">Loading awards...</span>
 						</div>
 					</div>
 				</div>
@@ -38,7 +38,7 @@ app.get('/points', async (c) => {
 					<div id="all-awards-root">
 						<div class="flex items-center justify-center py-12">
 							<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
-							<span class="ml-3 font-mono text-sm text-gray-500 dark:text-neutral-400">Loading all awards...</span>
+							<span class="ml-3 text-sm text-gray-500 dark:text-neutral-400">Loading all awards...</span>
 						</div>
 					</div>
 				</div>
@@ -76,7 +76,7 @@ app.get('/points', async (c) => {
 						var studentId = studentData.studentId;
 
 						if (!token || !studentId) {
-							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 font-mono text-sm">No access token found. Please log in again.</p></div>';
+							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token found. Please log in again.</p></div>';
 							return;
 						}
 
@@ -94,30 +94,34 @@ app.get('/points', async (c) => {
 									var retryRes = await fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), {
 										headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
 									});
-									if (!retryRes.ok) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 font-mono text-sm">Failed to load awards. (HTTP ' + retryRes.status + ')</p></div>'; return; }
+									if (!retryRes.ok) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load awards. (HTTP ' + retryRes.status + ')</p></div>'; return; }
 									renderMyAwards(await retryRes.json());
 									return;
 								}
-								root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 font-mono text-sm">Session expired. Please <a href="/login" class="underline">log in</a> again.</p></div>';
+								root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Session expired. Please <a href="/login" class="underline">log in</a> again.</p></div>';
 								return;
 							}
 
-							if (!res.ok) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 font-mono text-sm">Failed to load awards (HTTP ' + res.status + ')</p></div>'; return; }
+							if (!res.ok) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load awards (HTTP ' + res.status + ')</p></div>'; return; }
 							renderMyAwards(await res.json());
 						} catch (e) {
 							console.error('Failed to fetch awards:', e);
-							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 font-mono text-sm">Network error loading awards.</p></div>';
+							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Network error loading awards.</p></div>';
 						}
 					})();
 
 					function renderMyAwards(data) {
 						var root = document.getElementById('points-root');
 						var items = data.member || [];
-						var awards = items.map(function(item) {
+						var allAwards = items.map(function(item) {
 							var aw = item.award || {};
 							var cat = aw.category || {};
 							return { name: aw.name||'Unnamed Award', points: aw.points||0, housePoints: aw.housePoints||0, category: cat.name||'Uncategorised', tier: aw.tier||0, date: item.date||'' };
 						});
+
+						var isNomination = function(a) { return a.category.toUpperCase().indexOf('NOMINATION') !== -1; };
+						var nominations = allAwards.filter(isNomination);
+						var awards = allAwards.filter(function(a) { return !isNomination(a); });
 
 						var totalPoints = awards.reduce(function(s,a){return s+a.points;},0);
 						var totalHouse = awards.reduce(function(s,a){return s+a.housePoints;},0);
@@ -139,47 +143,55 @@ app.get('/points', async (c) => {
 						var years = Object.keys(yearMap).sort().reverse();
 
 						var nomYearMap = {};
-						awards.forEach(function(a){var yr=a.date?a.date.substring(0,4):'Unknown';if(!nomYearMap[yr])nomYearMap[yr]={};if(!nomYearMap[yr][a.category])nomYearMap[yr][a.category]=0;nomYearMap[yr][a.category]++;});
+						nominations.forEach(function(a){var yr=a.date?a.date.substring(0,4):'Unknown';if(!nomYearMap[yr])nomYearMap[yr]={};var key=a.name;if(!nomYearMap[yr][key])nomYearMap[yr][key]=0;nomYearMap[yr][key]++;});
+						var nomYears = Object.keys(nomYearMap).sort().reverse();
 
 						var topRow =
 							'<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">' +
 							'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900">' +
-								'<h2 class="font-mono font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Prize Tier</h2>' +
+								'<h2 class="font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Prize Tier</h2>' +
 								'<div class="flex flex-col items-center mb-6">' +
-									'<div class="w-20 h-20 rounded-full border-4 border-amber-500 dark:border-amber-400 flex items-center justify-center mb-3"><span class="font-mono text-2xl font-bold text-amber-600 dark:text-amber-400">'+esc(currentTierName.charAt(0))+'</span></div>' +
-									'<span class="font-mono text-sm font-bold text-amber-600 dark:text-amber-400">'+esc(currentTierName)+'</span>' +
+									'<div class="w-20 h-20 rounded-full border-4 border-amber-500 dark:border-amber-400 flex items-center justify-center mb-3"><span class="text-2xl font-bold text-amber-600 dark:text-amber-400">'+esc(currentTierName.charAt(0))+'</span></div>' +
+									'<span class="text-sm font-bold text-amber-600 dark:text-amber-400">'+esc(currentTierName)+'</span>' +
 								'</div>' +
-								'<div class="space-y-2 font-mono text-sm">' +
+								'<div class="space-y-2 text-sm">' +
 									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Next Tier</span><span class="font-bold dark:text-white">'+esc(nextTierName)+'</span></div>' +
 									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Awards Received</span><span class="font-bold dark:text-white">'+awards.length+'</span></div>' +
+									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Nominations</span><span class="font-bold dark:text-white">'+nominations.length+'</span></div>' +
 									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Total Points</span><span class="font-bold dark:text-white">'+totalPoints+'</span></div>' +
 									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">House Points</span><span class="font-bold dark:text-white">'+totalHouse+'</span></div>' +
 								'</div>' +
 							'</div>' +
 							'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900">' +
-								'<h2 class="font-mono font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Points Progress</h2>' +
+								'<h2 class="font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Points Progress</h2>' +
 								'<div class="space-y-3">';
 
 						catNames.forEach(function(cat){
 							var info=catMap[cat];
 							var pct=maxCatPts>0?Math.round((info.points/maxCatPts)*100):0;
 							var barColor=info.points>0?'bg-blue-500 dark:bg-blue-400':'bg-gray-300 dark:bg-neutral-600';
-							topRow+='<div><div class="flex justify-between mb-1"><span class="font-mono text-xs font-medium dark:text-white">'+esc(cat)+'</span><span class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-700 dark:text-white">'+info.points+'</span></div><div class="w-full h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden"><div class="h-full '+barColor+' rounded-full transition-all" style="width:'+pct+'%"></div></div></div>';
+							topRow+='<div><div class="flex justify-between mb-1"><span class="text-xs font-medium dark:text-white">'+esc(cat)+'</span><span class="text-xs font-bold px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-700 dark:text-white">'+info.points+'</span></div><div class="w-full h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden"><div class="h-full '+barColor+' rounded-full transition-all" style="width:'+pct+'%"></div></div></div>';
 						});
 						topRow += '</div></div></div>';
 
-						var nomCard = '<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900 mb-6"><h2 class="font-mono font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Nominations</h2><div class="space-y-4">';
-						years.forEach(function(yr){
-							var cats=nomYearMap[yr];var catEntries=Object.keys(cats).sort();
-							var pills=catEntries.map(function(cat){return '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-mono font-medium bg-gray-200 dark:bg-neutral-700 text-gray-700 dark:text-gray-300">'+esc(cat)+' '+cats[cat]+'</span>';}).join('');
-							nomCard+='<div class="flex flex-col sm:flex-row sm:items-start gap-2"><span class="font-mono text-sm font-bold dark:text-white shrink-0 w-16">'+esc(yr)+'</span><div class="flex flex-wrap gap-2">'+pills+'</div></div>';
-						});
-						nomCard += '</div></div>';
+						var nomCard = '<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900 mb-6"><h2 class="font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Nominations</h2>';
+						if (nomYears.length === 0) {
+							nomCard += '<p class="text-gray-400 dark:text-neutral-500 text-sm">No nominations yet.</p>';
+						} else {
+						nomCard += '<div class="space-y-4">';
+						nomYears.forEach(function(yr){
+							var names=nomYearMap[yr];var nameEntries=Object.keys(names).sort();
+							var pills=nameEntries.map(function(name){return '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-neutral-700 text-gray-700 dark:text-gray-300">'+esc(name)+(names[name]>1?' \u00d7'+names[name]:'')+'</span>';}).join('');
+							nomCard+='<div class="flex flex-col sm:flex-row sm:items-start gap-2"><span class="text-sm font-bold dark:text-white shrink-0 w-16">'+esc(yr)+'</span><div class="flex flex-wrap gap-2">'+pills+'</div></div>';
+							});
+							nomCard += '</div>';
+						}
+						nomCard += '</div>';
 
-						var awardsCard = '<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900 mb-6"><h2 class="font-mono font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Latest Awards Points</h2><div class="flex gap-0 border-b border-gray-200 dark:border-neutral-700 mb-4" id="year-tabs">';
+						var awardsCard = '<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900 mb-6"><h2 class="font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Latest Awards Points</h2><div class="flex gap-0 border-b border-gray-200 dark:border-neutral-700 mb-4" id="year-tabs">';
 						years.forEach(function(yr,i){
 							var active=i===0?'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 font-bold':'border-transparent text-gray-500 dark:text-neutral-400';
-							awardsCard+='<button data-year="'+esc(yr)+'" class="px-4 py-2 -mb-px border-b-2 text-sm font-mono transition-colors '+active+'">'+esc(yr)+'</button>';
+							awardsCard+='<button data-year="'+esc(yr)+'" class="px-4 py-2 -mb-px border-b-2 text-sm transition-colors '+active+'">'+esc(yr)+'</button>';
 						});
 						awardsCard += '</div><div id="awards-timeline"></div></div>';
 
@@ -190,7 +202,7 @@ app.get('/points', async (c) => {
 							var sorted=list.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
 							var el=document.getElementById('awards-timeline');
 							if(!el)return;
-							if(sorted.length===0){el.innerHTML='<div class="text-center py-8 text-gray-400 dark:text-neutral-500 font-mono text-sm">No awards for this year.</div>';return;}
+							if(sorted.length===0){el.innerHTML='<div class="text-center py-8 text-gray-400 dark:text-neutral-500 text-sm">No awards for this year.</div>';return;}
 							var month=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 							var rows=sorted.map(function(a,i){
 								var dp=a.date.split('-');
@@ -198,7 +210,7 @@ app.get('/points', async (c) => {
 								var isLast=i===sorted.length-1;
 								var ptsClass=a.points>0?'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-300 dark:border-green-700':'bg-gray-100 dark:bg-neutral-800 text-gray-500 dark:text-neutral-400 border-gray-300 dark:border-neutral-600';
 								var connector=isLast?'':'<div class="absolute left-[11px] top-8 w-0.5 h-full bg-gray-200 dark:bg-neutral-700"></div>';
-								return '<div class="relative flex gap-4 pb-6">'+connector+'<div class="relative z-10 shrink-0 w-6 h-6 rounded-full bg-gray-300 dark:bg-neutral-600 border-2 border-white dark:border-neutral-900 mt-0.5"></div><div class="flex-1 flex items-start justify-between gap-3"><div class="min-w-0"><div class="font-mono text-xs text-gray-400 dark:text-neutral-500 mb-1">'+esc(dateLabel)+'</div><div class="font-mono text-sm font-medium dark:text-white">'+esc(a.name)+'</div><span class="inline-block mt-1 px-2 py-0.5 rounded text-xs font-mono bg-gray-200 dark:bg-neutral-700 text-gray-600 dark:text-neutral-300">'+esc(a.category)+'</span></div><div class="shrink-0 w-10 h-10 rounded-lg border flex items-center justify-center font-mono text-sm font-bold '+ptsClass+'">'+(a.points>0?'+':'')+a.points+'</div></div></div>';
+								return '<div class="relative flex gap-4 pb-6">'+connector+'<div class="relative z-10 shrink-0 w-6 h-6 rounded-full bg-gray-300 dark:bg-neutral-600 border-2 border-white dark:border-neutral-900 mt-0.5"></div><div class="flex-1 flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-xs text-gray-400 dark:text-neutral-500 mb-1">'+esc(dateLabel)+'</div><div class="text-sm font-medium dark:text-white">'+esc(a.name)+'</div><span class="inline-block mt-1 px-2 py-0.5 rounded text-xs bg-gray-200 dark:bg-neutral-700 text-gray-600 dark:text-neutral-300">'+esc(a.category)+'</span></div><div class="shrink-0 w-10 h-10 rounded-lg border flex items-center justify-center text-sm font-bold font-mono '+ptsClass+'">'+(a.points>0?'+':'')+a.points+'</div></div></div>';
 							}).join('');
 							el.innerHTML='<div class="pl-2">'+rows+'</div>';
 						}
@@ -217,7 +229,7 @@ app.get('/points', async (c) => {
 						var root = document.getElementById('all-awards-root');
 						var studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
 						var token = studentData.accessToken;
-						if (!token) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 font-mono text-sm">No access token.</p></div>'; return; }
+						if (!token) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token.</p></div>'; return; }
 
 						var fetchUrl = url || '/api/proxy/all-awards';
 						fetch(fetchUrl, { headers: { 'Authorization': 'Bearer ' + token } })
@@ -226,7 +238,7 @@ app.get('/points', async (c) => {
 								return res.json();
 							})
 							.then(function(data) { renderAllAwards(root, data); })
-							.catch(function(e) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 font-mono text-sm">Failed to load all awards.</p></div>'; });
+							.catch(function(e) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load all awards.</p></div>'; });
 					}
 
 					function renderAllAwards(root, data) {
@@ -246,14 +258,14 @@ app.get('/points', async (c) => {
 						root.innerHTML =
 							'<div class="mb-4 flex flex-col sm:flex-row gap-4">' +
 								'<div class="flex-1">' +
-									'<input type="text" id="all-awards-search" placeholder="Search awards..." class="w-full px-4 py-3 border border-gray-300 dark:border-neutral-600 rounded-lg font-mono text-sm bg-white dark:bg-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />' +
+									'<input type="text" id="all-awards-search" placeholder="Search awards..." class="w-full px-4 py-3 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />' +
 								'</div>' +
-								'<select id="all-awards-cat-filter" class="px-4 py-3 border border-gray-300 dark:border-neutral-600 rounded-lg font-mono text-sm bg-white dark:bg-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">' +
+								'<select id="all-awards-cat-filter" class="px-4 py-3 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">' +
 									'<option value="">All Categories</option>' +
 									catNames.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('') +
 								'</select>' +
 							'</div>' +
-							'<div class="mb-3 font-mono text-xs text-gray-400 dark:text-neutral-500">' + totalItems + ' total awards available</div>' +
+							'<div class="mb-3 text-xs text-gray-400 dark:text-neutral-500">' + totalItems + ' total awards available</div>' +
 							'<div id="all-awards-list"></div>' +
 							'<div id="all-awards-nav" class="mt-4 flex justify-between items-center"></div>';
 
@@ -271,31 +283,31 @@ app.get('/points', async (c) => {
 						function renderTable(list) {
 							var el = document.getElementById('all-awards-list');
 							if (!el) return;
-							if (list.length === 0) { el.innerHTML = '<div class="text-center py-8 text-gray-400 dark:text-neutral-500 font-mono text-sm">No awards match your search.</div>'; return; }
+							if (list.length === 0) { el.innerHTML = '<div class="text-center py-8 text-gray-400 dark:text-neutral-500 text-sm">No awards match your search.</div>'; return; }
 
 							var rows = list.map(function(a) {
-								var tierBadge = a.tier !== 0 ? '<span class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-mono font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 rounded">Tier ' + a.tier + '</span>' : '';
+								var tierBadge = a.tier !== 0 ? '<span class="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 rounded">Tier ' + a.tier + '</span>' : '';
 								var ptsClass = a.points > 0 ? 'text-green-600 dark:text-green-400' : a.points < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-neutral-400';
 								var ptsPrefix = a.points > 0 ? '+' : '';
 								var houseClass = a.housePoints > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-neutral-400';
-								var archBadge = a.archived ? '<span class="ml-2 text-xs font-mono text-gray-400 dark:text-neutral-500">(archived)</span>' : '';
+								var archBadge = a.archived ? '<span class="ml-2 text-xs text-gray-400 dark:text-neutral-500">(archived)</span>' : '';
 
 								return '<tr class="border-b border-gray-200 dark:border-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-900 last:border-0">' +
 									'<td class="px-4 py-3">' +
 										'<div class="flex items-center">' +
-											'<span class="font-mono text-sm font-medium dark:text-white">' + esc(a.name) + '</span>' +
+											'<span class="text-sm font-medium dark:text-white">' + esc(a.name) + '</span>' +
 											tierBadge + archBadge +
 										'</div>' +
-										'<div class="font-mono text-xs text-gray-500 dark:text-neutral-400 mt-0.5">' + esc(a.category) + '</div>' +
+										'<div class="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">' + esc(a.category) + '</div>' +
 									'</td>' +
-									'<td class="px-4 py-3 text-right"><span class="font-mono text-sm font-bold ' + ptsClass + '">' + ptsPrefix + a.points + '</span></td>' +
-									'<td class="px-4 py-3 text-right"><span class="font-mono text-sm ' + houseClass + '">' + a.housePoints + '</span></td>' +
+									'<td class="px-4 py-3 text-right"><span class="text-sm font-bold font-mono ' + ptsClass + '">' + ptsPrefix + a.points + '</span></td>' +
+									'<td class="px-4 py-3 text-right"><span class="text-sm font-mono ' + houseClass + '">' + a.housePoints + '</span></td>' +
 								'</tr>';
 							}).join('');
 
 							el.innerHTML =
 								'<div class="overflow-x-auto border border-gray-200 dark:border-neutral-700 rounded-lg">' +
-									'<table class="w-full text-left border-collapse font-mono text-sm">' +
+									'<table class="w-full text-left border-collapse text-sm">' +
 										'<thead><tr class="bg-gray-100 dark:bg-neutral-800 border-b border-gray-300 dark:border-neutral-700">' +
 											'<th class="px-4 py-3 border-r border-gray-300 dark:border-neutral-700">AWARD</th>' +
 											'<th class="px-4 py-3 border-r border-gray-300 dark:border-neutral-700 text-right w-24">POINTS</th>' +
@@ -321,13 +333,13 @@ app.get('/points', async (c) => {
 						var navEl = document.getElementById('all-awards-nav');
 						var navHtml = '';
 						if (view.previous) {
-							navHtml += '<button id="all-awards-prev" class="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg font-mono text-sm hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors dark:text-white">&larr; Previous</button>';
+							navHtml += '<button id="all-awards-prev" class="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors dark:text-white">&larr; Previous</button>';
 						} else {
 							navHtml += '<div></div>';
 						}
-						navHtml += '<span class="font-mono text-xs text-gray-400 dark:text-neutral-500">' + allItems.length + ' of ' + totalItems + '</span>';
+						navHtml += '<span class="text-xs text-gray-400 dark:text-neutral-500">' + allItems.length + ' of ' + totalItems + '</span>';
 						if (view.next) {
-							navHtml += '<button id="all-awards-next" class="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg font-mono text-sm hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors dark:text-white">Next &rarr;</button>';
+							navHtml += '<button id="all-awards-next" class="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors dark:text-white">Next &rarr;</button>';
 						} else {
 							navHtml += '<div></div>';
 						}
