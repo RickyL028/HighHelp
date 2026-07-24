@@ -321,18 +321,17 @@ ${props.latex ? html`
               <div class="flex items-center">
                 <a href="/home" class="font-bold text-xl tracking-tight">HighHelp</a>
                 <div class="hidden md:block">
-                  <div class="ml-10 flex items-baseline space-x-4">
-                    <a href="/timetable" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Timetable</a>
-                    <a href="/resources" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Resources</a>
-                    <a href="/announcements" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Announcements</a>
-                    <a href="/past-papers" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Past Papers</a>
-                    <a href="/forum" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Q&A</a>
-                    <a href="/essays" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Essays</a>
-                    <a href="/leaderboard" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Leaderboard</a>
-                    <a href="/atar" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">ATAR</a>
-                    <a href="/feedback" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">Hmmm..!</a>
-                    
-                    <a href="/about" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-3 py-2 rounded-md text-sm font-medium transition-colors">About</a>
+                  <div class="ml-6 lg:ml-10 flex items-center gap-1 lg:gap-2 whitespace-nowrap overflow-x-auto">
+                    <a href="/timetable" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Timetable</a>
+                    <a href="/resources" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Resources</a>
+                    <a href="/announcements" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Announcements</a>
+                    <a href="/past-papers" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Past Papers</a>
+                    <a href="/forum" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Q&A</a>
+                    <a href="/essays" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Essays</a>
+                    <a href="/leaderboard" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Leaderboard</a>
+                    <a href="/atar" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">ATAR</a>
+                    <a href="/feedback" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Hmmm..!</a>
+                    <a href="/about" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">About</a>
                   </div>
                 </div>
               </div>
@@ -403,17 +402,17 @@ ${props.latex ? html`
 
 
           <div class="hidden md:hidden" id="mobile-menu">
-            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-[#4E342E] dark:bg-neutral-900">
-              <a href="/timetable" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Timetable</a>
-              <a href="/resources" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Resources</a>
-              <a href="/announcements" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Announcements</a>
-              <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Past Papers</a>
-              <a href="/forum" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Q&A</a>
-              <a href="/essays" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Essays</a>
-              <a href="/leaderboard" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Leaderboard</a>
-              <a href="/atar" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">ATAR</a>
-              <a href="/feedback" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">Hmmm..!</a>
-              <a href="/about" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium">About</a>
+            <div class="px-3 pt-3 pb-3 space-y-1 sm:px-4 bg-[#4E342E] dark:bg-neutral-900">
+              <a href="/timetable" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Timetable</a>
+              <a href="/resources" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Resources</a>
+              <a href="/announcements" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Announcements</a>
+              <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Past Papers</a>
+              <a href="/forum" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Q&A</a>
+              <a href="/essays" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Essays</a>
+              <a href="/leaderboard" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Leaderboard</a>
+              <a href="/atar" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">ATAR</a>
+              <a href="/feedback" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Hmmm..!</a>
+              <a href="/about" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">About</a>
               <button id="mobile-theme-toggle" class="w-full text-left text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-3 py-2 rounded-md text-base font-medium flex items-center justify-between">
                 <span>Theme</span>
                 <span id="mobile-theme-text">Light</span>
