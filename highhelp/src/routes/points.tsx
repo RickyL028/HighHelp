@@ -16,13 +16,13 @@ app.get('/points', async (c) => {
 		<Layout title="Points" user={user}>
 			<div class="max-w-5xl mx-auto px-4 py-8">
 				<header class="mb-6">
-					<h1 class="text-3xl font-bold uppercase tracking-tighter mb-2">Student Award Scheme</h1>
+					<h1 class="text-2xl font-bold mb-1">Student Award Scheme</h1>
 					<p class="text-gray-500 dark:text-neutral-400 text-sm">Your school award points from the student portal.</p>
 				</header>
 
-				<div class="flex gap-0 border-b border-gray-200 dark:border-neutral-700 mb-6" id="main-tabs">
-					<button data-tab="my-awards" class="px-5 py-2.5 -mb-px border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 text-sm font-bold transition-colors">My Awards</button>
-					<button data-tab="all-awards" class="px-5 py-2.5 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">All Awards</button>
+				<div class="flex gap-0 border-b border-gray-200 dark:border-neutral-700 mb-6 justify-start" id="main-tabs">
+					<button data-tab="my-awards" class="px-4 py-2 -mb-px border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 text-sm font-medium transition-colors">My Awards</button>
+					<button data-tab="all-awards" class="px-4 py-2 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">All Awards</button>
 				</div>
 
 				<div id="tab-my-awards">
@@ -48,6 +48,25 @@ app.get('/points', async (c) => {
 				__html: `
 				(function() {
 					function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+					var PROGRESS_CATEGORIES = [
+						'Academic',
+						'Sports',
+						'Co-Curricular Teams',
+						'Co-Curricular Performing Arts',
+						'High Spirit',
+						'School & Community Service, Clubs and Societies',
+						'Leadership'
+					];
+
+					function matchProgressCategory(nomName) {
+						var upper = nomName.toUpperCase().replace(/\\s+\\d+$/, '');
+						for (var i = 0; i < PROGRESS_CATEGORIES.length; i++) {
+							var cat = PROGRESS_CATEGORIES[i].toUpperCase();
+							if (cat.indexOf(upper) === 0 || upper.indexOf(cat) === 0) return PROGRESS_CATEGORIES[i];
+						}
+						return null;
+					}
 
 					// --- Tab switching ---
 					var tabBtns = document.querySelectorAll('#main-tabs button');
@@ -133,10 +152,25 @@ app.get('/points', async (c) => {
 						var currentTierIdx = tierOrder.indexOf(String(currentTier));
 						var nextTierName = currentTierIdx >= 0 && currentTierIdx < tierOrder.length-1 ? (tierNames[tierOrder[currentTierIdx+1]]||'Next') : 'Max';
 
-						var catMap = {};
-						awards.forEach(function(a){if(!catMap[a.category])catMap[a.category]={points:0,house:0,count:0};catMap[a.category].points+=a.points;catMap[a.category].house+=a.housePoints;catMap[a.category].count++;});
-						var catNames = Object.keys(catMap).sort(function(x,y){return catMap[y].points-catMap[x].points;});
-						var maxCatPts = catNames.length>0?catMap[catNames[0]].points:1;
+						// Points Progress: 7 fixed categories
+						var nomByCategory = {};
+						nominations.forEach(function(n) {
+							var matched = matchProgressCategory(n.name);
+							if (matched) {
+								if (!nomByCategory[matched]) nomByCategory[matched] = { count: 0 };
+								nomByCategory[matched].count++;
+							}
+						});
+
+						var awardByCategory = {};
+						awards.forEach(function(a) {
+							// FIX 1: Match against the actual category of the award, not the award's name
+							var matched = matchProgressCategory(a.category); 
+							if (matched) {
+								if (!awardByCategory[matched]) awardByCategory[matched] = { points: 0 };
+								awardByCategory[matched].points += a.points;
+							}
+						});
 
 						var yearMap = {};
 						awards.forEach(function(a){var yr=a.date?a.date.substring(0,4):'Unknown';if(!yearMap[yr])yearMap[yr]=[];yearMap[yr].push(a);});
@@ -146,49 +180,73 @@ app.get('/points', async (c) => {
 						nominations.forEach(function(a){var yr=a.date?a.date.substring(0,4):'Unknown';if(!nomYearMap[yr])nomYearMap[yr]={};var key=a.name;if(!nomYearMap[yr][key])nomYearMap[yr][key]=0;nomYearMap[yr][key]++;});
 						var nomYears = Object.keys(nomYearMap).sort().reverse();
 
-						var topRow =
-							'<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">' +
+						// --- Prize Tier card ---
+						var tierCard =
 							'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900">' +
-								'<h2 class="font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Prize Tier</h2>' +
+								'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-4">Prize Tier</h2>' +
 								'<div class="flex flex-col items-center mb-6">' +
 									'<div class="w-20 h-20 rounded-full border-4 border-amber-500 dark:border-amber-400 flex items-center justify-center mb-3"><span class="text-2xl font-bold text-amber-600 dark:text-amber-400">'+esc(currentTierName.charAt(0))+'</span></div>' +
-									'<span class="text-sm font-bold text-amber-600 dark:text-amber-400">'+esc(currentTierName)+'</span>' +
+									'<span class="text-sm font-semibold text-amber-600 dark:text-amber-400">'+esc(currentTierName)+'</span>' +
 								'</div>' +
 								'<div class="space-y-2 text-sm">' +
-									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Next Tier</span><span class="font-bold dark:text-white">'+esc(nextTierName)+'</span></div>' +
-									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Awards Received</span><span class="font-bold dark:text-white">'+awards.length+'</span></div>' +
-									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Nominations</span><span class="font-bold dark:text-white">'+nominations.length+'</span></div>' +
-									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Total Points</span><span class="font-bold dark:text-white">'+totalPoints+'</span></div>' +
-									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">House Points</span><span class="font-bold dark:text-white">'+totalHouse+'</span></div>' +
+									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Next Tier</span><span class="font-semibold dark:text-white">'+esc(nextTierName)+'</span></div>' +
+									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Awards Received</span><span class="font-semibold dark:text-white">'+awards.length+'</span></div>' +
+									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Nominations</span><span class="font-semibold dark:text-white">'+nominations.length+'</span></div>' +
+									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Total Points</span><span class="font-semibold dark:text-white">'+totalPoints+'</span></div>' +
+									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">House Points</span><span class="font-semibold dark:text-white">'+totalHouse+'</span></div>' +
 								'</div>' +
-							'</div>' +
+							'</div>';
+
+						// --- Points Progress card ---
+						var progressCard =
 							'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900">' +
-								'<h2 class="font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Points Progress</h2>' +
+								'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-4">Points Progress</h2>' +
 								'<div class="space-y-3">';
 
-						catNames.forEach(function(cat){
-							var info=catMap[cat];
-							var pct=maxCatPts>0?Math.round((info.points/maxCatPts)*100):0;
-							var barColor=info.points>0?'bg-blue-500 dark:bg-blue-400':'bg-gray-300 dark:bg-neutral-600';
-							topRow+='<div><div class="flex justify-between mb-1"><span class="text-xs font-medium dark:text-white">'+esc(cat)+'</span><span class="text-xs font-bold px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-700 dark:text-white">'+info.points+'</span></div><div class="w-full h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden"><div class="h-full '+barColor+' rounded-full transition-all" style="width:'+pct+'%"></div></div></div>';
+						PROGRESS_CATEGORIES.forEach(function(cat) {
+							var pts = (awardByCategory[cat] && awardByCategory[cat].points) || 0;
+							var nomCount = (nomByCategory[cat] && nomByCategory[cat].count) || 0;
+							var adjusted = Math.max(0, pts - (nomCount * 30));
+							
+							// FIX 2: Calculate percentage based on 30 points (next nomination), not a relative max
+							var pct = Math.min(100, Math.round((adjusted / 30) * 100)); 
+							
+							var barColor = adjusted > 0 ? 'bg-blue-500 dark:bg-blue-400' : 'bg-gray-300 dark:bg-neutral-600';
+							var nomLabel = '<span class="text-xs text-gray-400 dark:text-neutral-500 ml-2">x'+nomCount+'</span>'
+							var tpts = '<span class="text-xs text-gray-400 dark:text-neutral-500 ml-2">'+pts+' total</span>'
+							progressCard +=
+								'<div>' +
+									'<div class="flex justify-between items-center mb-1">' +
+										'<span class="text-xs font-medium dark:text-white">' + esc(cat)  + nomLabel + tpts + '</span>' +
+										'<span class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-700 dark:text-white font-mono">' + adjusted + '</span>' +
+									'</div>' +
+									'<div class="w-full h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden">' +
+										'<div class="h-full '+barColor+' rounded-full transition-all" style="width:'+pct+'%"></div>' +
+									'</div>' +
+								'</div>';
 						});
-						topRow += '</div></div></div>';
 
-						var nomCard = '<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900 mb-6"><h2 class="font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Nominations</h2>';
+						progressCard += '</div></div>';
+
+						var topRow = '<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">' + tierCard + progressCard + '</div>';
+
+						// --- Nominations card ---
+						var nomCard = '<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900 mb-6"><h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-4">Nominations</h2>';
 						if (nomYears.length === 0) {
 							nomCard += '<p class="text-gray-400 dark:text-neutral-500 text-sm">No nominations yet.</p>';
 						} else {
-						nomCard += '<div class="space-y-4">';
-						nomYears.forEach(function(yr){
-							var names=nomYearMap[yr];var nameEntries=Object.keys(names).sort();
-							var pills=nameEntries.map(function(name){return '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-neutral-700 text-gray-700 dark:text-gray-300">'+esc(name)+(names[name]>1?' \u00d7'+names[name]:'')+'</span>';}).join('');
-							nomCard+='<div class="flex flex-col sm:flex-row sm:items-start gap-2"><span class="text-sm font-bold dark:text-white shrink-0 w-16">'+esc(yr)+'</span><div class="flex flex-wrap gap-2">'+pills+'</div></div>';
+							nomCard += '<div class="space-y-4">';
+							nomYears.forEach(function(yr){
+								var names=nomYearMap[yr];var nameEntries=Object.keys(names).sort();
+								var pills=nameEntries.map(function(name){return '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-neutral-700 text-gray-700 dark:text-gray-300">'+esc(name)+(names[name]>1?' \\u00d7'+names[name]:'')+'</span>';}).join('');
+								nomCard+='<div class="flex flex-col sm:flex-row sm:items-start gap-2"><span class="text-sm font-semibold dark:text-white shrink-0 w-16">'+esc(yr)+'</span><div class="flex flex-wrap gap-2">'+pills+'</div></div>';
 							});
 							nomCard += '</div>';
 						}
 						nomCard += '</div>';
 
-						var awardsCard = '<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900 mb-6"><h2 class="font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-4">Latest Awards Points</h2><div class="flex gap-0 border-b border-gray-200 dark:border-neutral-700 mb-4" id="year-tabs">';
+						// --- Latest Awards Points card ---
+						var awardsCard = '<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900 mb-6"><h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-4">Latest Awards Points</h2><div class="flex gap-0 border-b border-gray-200 dark:border-neutral-700 mb-4" id="year-tabs">';
 						years.forEach(function(yr,i){
 							var active=i===0?'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 font-bold':'border-transparent text-gray-500 dark:text-neutral-400';
 							awardsCard+='<button data-year="'+esc(yr)+'" class="px-4 py-2 -mb-px border-b-2 text-sm transition-colors '+active+'">'+esc(yr)+'</button>';
@@ -246,7 +304,6 @@ app.get('/points', async (c) => {
 						var totalItems = data.totalItems || allItems.length;
 						var view = data.view || {};
 
-						// Extract categories for filter
 						var catSet = {};
 						allItems.forEach(function(item) {
 							var cat = (item.category && item.category.name) || 'Uncategorised';
@@ -254,7 +311,6 @@ app.get('/points', async (c) => {
 						});
 						var catNames = Object.keys(catSet).sort();
 
-						// Build shell
 						root.innerHTML =
 							'<div class="mb-4 flex flex-col sm:flex-row gap-4">' +
 								'<div class="flex-1">' +
@@ -329,17 +385,16 @@ app.get('/points', async (c) => {
 							renderTable(filtered);
 						}
 
-						// Pagination nav
 						var navEl = document.getElementById('all-awards-nav');
 						var navHtml = '';
 						if (view.previous) {
-							navHtml += '<button id="all-awards-prev" class="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors dark:text-white">&larr; Previous</button>';
+							navHtml += '<button id="all-awards-prev" class="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors dark:text-white">\\u2190 Previous</button>';
 						} else {
 							navHtml += '<div></div>';
 						}
 						navHtml += '<span class="text-xs text-gray-400 dark:text-neutral-500">' + allItems.length + ' of ' + totalItems + '</span>';
 						if (view.next) {
-							navHtml += '<button id="all-awards-next" class="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors dark:text-white">Next &rarr;</button>';
+							navHtml += '<button id="all-awards-next" class="px-4 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors dark:text-white">Next \\u2192</button>';
 						} else {
 							navHtml += '<div></div>';
 						}
