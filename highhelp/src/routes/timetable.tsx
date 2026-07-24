@@ -317,6 +317,8 @@ app.get('/', async (c) => {
                         // Make render globally available for sub-components
                         window.render = render;
 
+                        document.body.style.overflow = 'hidden';
+
                         document.getElementById('loader').classList.add('hidden');
                         document.getElementById('content').classList.remove('hidden');
                         render();
