@@ -153,9 +153,21 @@ app.get('/api/proxy/clipboard-sessions', async (c) => {
     if (!authHeader || !studentId) return c.json({ error: 'Invalid request' }, 400)
     try {
         const context = c.req.query('context') || new Date().getFullYear().toString()
-        const response = await fetch(`https://api.sbhs.net.au/api/core/students/${studentId}/clipboard/sessions?_page=1&_itemsPerPage=200&context=${context}`, {
-            headers: { 'Authorization': authHeader }
+        const dateBefore = c.req.query('date[before]')
+        const dateAfter = c.req.query('date[after]')
+
+        const params = new URLSearchParams({
+            _page: '1',
+            _itemsPerPage: '200',
+            context
         })
+        if (dateBefore) params.set('date[before]', dateBefore)
+        if (dateAfter) params.set('date[after]', dateAfter)
+
+        const response = await fetch(
+            `https://api.sbhs.net.au/api/core/students/${studentId}/clipboard/sessions?${params.toString()}`,
+            { headers: { 'Authorization': authHeader } }
+        )
         const data = await response.json()
         return c.json(data, response.status as any)
     } catch (e) {

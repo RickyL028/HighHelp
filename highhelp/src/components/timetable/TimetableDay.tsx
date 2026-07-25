@@ -572,11 +572,18 @@ export const TimetableDay = html`
         // Render immediately using local/cached base timetable arrays
         buildUI(null, [], []);
 
+        // Compute date window for clipboard sessions (7 days before, 14 days after)
+        const [_y, _m, _d] = currentDateStr.split('-').map(Number);
+        const _dAfter = new Date(_y, _m - 1, _d); _dAfter.setDate(_dAfter.getDate() - 7);
+        const _dBefore = new Date(_y, _m - 1, _d); _dBefore.setDate(_dBefore.getDate() + 14);
+        const sessionsDateAfter = _dAfter.toISOString().split('T')[0];
+        const sessionsDateBefore = _dBefore.toISOString().split('T')[0];
+
         // --- 3. STALE PASS (Cached Render) ---
         // If we have any cached data from previous sessions, show it immediately
         const cachedApi = getCachedDayData(currentDateStr);
         const cachedCal = getCachedCalendarData(currentDateStr);
-        const cachedSessions = getCachedClipboardSessions();
+        const cachedSessions = getCachedClipboardSessions(sessionsDateAfter, sessionsDateBefore);
         const cachedSessionsForDate = getClipboardSessionsForDate(cachedSessions, currentDateStr);
         if (cachedApi || (cachedCal && cachedCal.length > 0) || cachedSessionsForDate.length > 0) {
             buildUI(cachedApi, [...cachedSessionsForDate, ...(cachedCal || [])], []);
@@ -607,7 +614,7 @@ export const TimetableDay = html`
             const [apiData, clipboardEvents, clipboardSessions, notesRes] = await Promise.all([
                 fetchDayData(currentDateStr, shouldForceFetch),
                 fetchCalendarData(currentDateStr, shouldForceFetch),
-                fetchClipboardSessions(shouldForceFetch),
+                fetchClipboardSessions(shouldForceFetch, sessionsDateAfter, sessionsDateBefore),
                 fetch('/timetable/notes?date=' + currentDateStr).then(res => res.json()).catch(() => ({ notes: [] }))
             ]);
             

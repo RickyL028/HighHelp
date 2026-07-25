@@ -246,149 +246,189 @@ export const TimetableCore = html`
         try { return await fetchPromise; } finally { if (!forceFetch) delete pendingFetches[date]; }
     }
 
-    function getCachedCalendarRange(date) {
-        const prefix = 'calendarRange_';
-        const now = new Date().getTime();
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith(prefix)) {
-                try {
-                    const cached = JSON.parse(localStorage.getItem(key));
-                    if (cached && cached.from && cached.to && cached.timestamp && (now - cached.timestamp < CACHE_TTL)) {
-                        if (date >= cached.from && date <= cached.to) {
-                            return cached.events.filter(e => {
-                                const d = new Date(e.start);
-                                const ed = d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
-                                return ed === date;
-                            });
-                        }
-                    } else if (cached && cached.timestamp && (now - cached.timestamp >= CACHE_TTL)) {
-                        // Expired — clean up
-                        localStorage.removeItem(key);
-                    }
-                } catch(e) {}
-            }
+    let _calendarWeekCache = {};
+    let _calendarFetchPromises = {};
+
+    function getWeekRange(dateStr) {
+        const d = new Date(dateStr + 'T12:00:00');
+        const day = d.getDay();
+        const diffToMonday = (day === 0 ? -6 : 1 - day);
+        const monday = new Date(d);
+        monday.setDate(d.getDate() + diffToMonday);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        const fmt = (dt) => \`\${dt.getFullYear()}-\${String(dt.getMonth() + 1).padStart(2, '0')}-\${String(dt.getDate()).padStart(2, '0')}\`;
+        return { from: fmt(monday), to: fmt(sunday), key: fmt(monday) };
+    }
+
+    function getCachedCalendarWeek(key) {
+        if (_calendarWeekCache[key]) {
+            const cached = _calendarWeekCache[key];
+            if (Date.now() - cached.timestamp < CACHE_TTL) return cached.events;
+            delete _calendarWeekCache[key];
         }
+        try {
+            const raw = localStorage.getItem('calendarWeek_' + key);
+            if (raw) {
+                const cached = JSON.parse(raw);
+                if (cached.timestamp && (Date.now() - cached.timestamp < CACHE_TTL)) {
+                    _calendarWeekCache[key] = cached;
+                    return cached.events;
+                }
+                localStorage.removeItem('calendarWeek_' + key);
+            }
+        } catch(e) {}
         return null;
     }
 
+    function writeCalendarWeeks(events, now) {
+        const buckets = {};
+        events.forEach(e => {
+            const d = new Date(e.start || e.startDateTime);
+            if (isNaN(d)) return;
+            const dateStr = d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
+            const { key } = getWeekRange(dateStr);
+            if (!buckets[key]) buckets[key] = [];
+            buckets[key].push(e);
+        });
+        Object.keys(buckets).forEach(key => {
+            const entry = { timestamp: now, events: buckets[key] };
+            _calendarWeekCache[key] = entry;
+            try { localStorage.setItem('calendarWeek_' + key, JSON.stringify(entry)); } catch(e) {}
+        });
+    }
+
     function getCachedCalendarData(date) {
-        const cachedRaw = localStorage.getItem('calendarData_' + date);
-        if (cachedRaw) {
-            try {
-                const cachedObj = JSON.parse(cachedRaw);
-                return cachedObj.events || [];
-            } catch(e) {}
+        const { key } = getWeekRange(date);
+        const weekEvents = getCachedCalendarWeek(key);
+        if (weekEvents) {
+            return weekEvents.filter(e => {
+                const d = new Date(e.start || e.startDateTime);
+                return d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) === date;
+            });
         }
-        return getCachedCalendarRange(date);
+        try {
+            const raw = localStorage.getItem('calendarData_' + date);
+            if (raw) {
+                const cachedObj = JSON.parse(raw);
+                return cachedObj.events || [];
+            }
+        } catch(e) {}
+        return null;
+    }
+
+    function getCachedCalendarRange(date) {
+        return getCachedCalendarData(date);
     }
 
     async function fetchCalendarData(date, forceFetch = false) {
+        const { key: weekKey } = getWeekRange(date);
+
         if (!forceFetch) {
-            const cachedRaw = localStorage.getItem('calendarData_' + date);
-            if (cachedRaw) {
+            const cached = getCachedCalendarWeek(weekKey);
+            if (cached) {
+                return cached.filter(e => {
+                    const d = new Date(e.start || e.startDateTime);
+                    return d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) === date;
+                });
+            }
+            if (_calendarFetchPromises[weekKey]) return _calendarFetchPromises[weekKey];
+        }
+
+        const fetchPromise = (async () => {
+            let urls = [];
+            const rawUrls = localStorage.getItem('calendarUrls');
+            if (rawUrls) {
+                try { urls = JSON.parse(rawUrls); } catch(e) {}
+            } else {
+                const oldUrl = localStorage.getItem('clipboardUrl');
+                if (oldUrl) {
+                    urls = [oldUrl];
+                    localStorage.setItem('calendarUrls', JSON.stringify(urls));
+                    localStorage.removeItem('clipboardUrl');
+                }
+            }
+            if (!urls || urls.length === 0) return [];
+
+            // Compute a range: 7 days before to 14 days after the requested date
+            const d = new Date(date + 'T12:00:00');
+            const fromDate = new Date(d);
+            fromDate.setDate(fromDate.getDate() - 7);
+            const toDate = new Date(d);
+            toDate.setDate(toDate.getDate() + 14);
+            const fromStr = fromDate.toISOString().split('T')[0];
+            const toStr = toDate.toISOString().split('T')[0];
+            
+            try {
+                showLoadingBar();
+                const results = await Promise.all(urls.map(async (url) => {
+                    try {
+                        const res = await fetch('/api/clipboard/events?url=' + encodeURIComponent(url) + '&from=' + fromStr + '&to=' + toStr + '&date=' + date);
+                        if (res.ok) {
+                            const data = await res.json();
+                            return data.events || [];
+                        }
+                    } catch (e) { console.error('Failed for url', url, e); }
+                    return [];
+                }));
+
+                const allEvents = results.flat();
+                const now = Date.now();
+                // Cache per-day (backward compat)
                 try {
-                    const cachedObj = JSON.parse(cachedRaw);
-                    const now = new Date().getTime();
-                    if (cachedObj.timestamp && (now - cachedObj.timestamp < CACHE_TTL)) {
-                        return cachedObj.events || [];
-                    }
+                    localStorage.setItem('calendarData_' + date, JSON.stringify({
+                        timestamp: now,
+                        events: allEvents.filter(e => {
+                            const d = new Date(e.start || e.startDateTime);
+                            return d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) === date;
+                        })
+                    }));
                 } catch(e) {}
+                // Index all events into Mon–Sun week buckets (main cache)
+                writeCalendarWeeks(allEvents, now);
+                // Filter to just the requested date for return
+                return allEvents.filter(e => {
+                    const d = new Date(e.start || e.startDateTime);
+                    return d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) === date;
+                });
+            } catch (e) {
+                console.error('All calendar fetches failed', e);
+                return getCachedCalendarData(date) || [];
+            } finally {
+                hideLoadingBar();
             }
-            // Check range cache
-            const rangeEvents = getCachedCalendarRange(date);
-            if (rangeEvents) return rangeEvents;
-        }
+        })();
 
-        let urls = [];
-        const rawUrls = localStorage.getItem('calendarUrls');
-        if (rawUrls) {
-            try { urls = JSON.parse(rawUrls); } catch(e) {}
-        } else {
-            const oldUrl = localStorage.getItem('clipboardUrl');
-            if (oldUrl) {
-                urls = [oldUrl];
-                localStorage.setItem('calendarUrls', JSON.stringify(urls));
-                localStorage.removeItem('clipboardUrl');
-            }
-        }
-        if (!urls || urls.length === 0) return [];
-
-        // Compute a range: 7 days before to 14 days after the requested date
-        const d = new Date(date + 'T12:00:00');
-        const fromDate = new Date(d);
-        fromDate.setDate(fromDate.getDate() - 7);
-        const toDate = new Date(d);
-        toDate.setDate(toDate.getDate() + 14);
-        const fromStr = fromDate.toISOString().split('T')[0];
-        const toStr = toDate.toISOString().split('T')[0];
-        
-        try {
-            showLoadingBar();
-            const results = await Promise.all(urls.map(async (url) => {
-                try {
-                    const res = await fetch('/api/clipboard/events?url=' + encodeURIComponent(url) + '&from=' + fromStr + '&to=' + toStr + '&date=' + date);
-                    if (res.ok) {
-                        const data = await res.json();
-                        return data.events || [];
-                    }
-                } catch (e) { console.error('Failed for url', url, e); }
-                return [];
-            }));
-
-            const allEvents = results.flat();
-            // Cache per-day (backward compat)
-            localStorage.setItem('calendarData_' + date, JSON.stringify({
-                timestamp: new Date().getTime(),
-                events: allEvents.filter(e => {
-                    const d = new Date(e.start);
-                    const ed = d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
-                    return ed === date;
-                })
-            }));
-            // Cache the full range for adjacent day lookups
-            const rangeKey = 'calendarRange_' + fromStr + '_' + toStr;
-            localStorage.setItem(rangeKey, JSON.stringify({
-                timestamp: new Date().getTime(),
-                from: fromStr,
-                to: toStr,
-                events: allEvents
-            }));
-            // Filter to just the requested date for return
-            return allEvents.filter(e => {
-                const d = new Date(e.start);
-                const ed = d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
-                return ed === date;
-            });
-        } catch (e) {
-            console.error('All calendar fetches failed', e);
-            return getCachedCalendarData(date) || [];
-        } finally {
-            hideLoadingBar();
-        }
+        if (!forceFetch) _calendarFetchPromises[weekKey] = fetchPromise;
+        try { return await fetchPromise; } finally { if (!forceFetch) delete _calendarFetchPromises[weekKey]; }
     }
 
-    let _clipboardSessionsCache = null;
-    let _clipboardSessionsTimestamp = 0;
+    let _clipboardSessionsCache = {};       // keyed by "dateAfter_dateBefore" or "global"
+    let _clipboardSessionsTimestamps = {};  // keyed the same way
     const CLIPBOARD_SESSIONS_TTL = 3600000; // 1 hour
 
-    async function fetchClipboardSessions(forceFetch = false) {
+    function _clipboardCacheKey(dateAfter, dateBefore) {
+        return (dateAfter || '') + '_' + (dateBefore || '');
+    }
+
+    async function fetchClipboardSessions(forceFetch = false, dateAfter = undefined, dateBefore = undefined) {
         if (!studentData?.accessToken || !studentData?.studentId) return null;
 
+        const cacheKey = _clipboardCacheKey(dateAfter, dateBefore);
         const now = Date.now();
-        if (!forceFetch && _clipboardSessionsCache && (now - _clipboardSessionsTimestamp < CLIPBOARD_SESSIONS_TTL)) {
-            return _clipboardSessionsCache;
+        if (!forceFetch && _clipboardSessionsCache[cacheKey] && (now - _clipboardSessionsTimestamps[cacheKey] < CLIPBOARD_SESSIONS_TTL)) {
+            return _clipboardSessionsCache[cacheKey];
         }
 
         // Check localStorage cache
         if (!forceFetch) {
             try {
-                const raw = localStorage.getItem('clipboardSessionsCache');
+                const raw = localStorage.getItem('clipboardSessionsCache_' + cacheKey);
                 if (raw) {
                     const cached = JSON.parse(raw);
                     if (cached.timestamp && (now - cached.timestamp < CLIPBOARD_SESSIONS_TTL) && cached.data) {
-                        _clipboardSessionsCache = cached.data;
-                        _clipboardSessionsTimestamp = cached.timestamp;
+                        _clipboardSessionsCache[cacheKey] = cached.data;
+                        _clipboardSessionsTimestamps[cacheKey] = cached.timestamp;
                         return cached.data;
                     }
                 }
@@ -398,7 +438,11 @@ export const TimetableCore = html`
         try {
             showLoadingBar();
             const context = new Date().getFullYear().toString();
-            let res = await fetch('/api/proxy/clipboard-sessions?studentId=' + encodeURIComponent(studentData.studentId) + '&context=' + context, {
+            const params = new URLSearchParams({ studentId: studentData.studentId, context });
+            if (dateAfter) params.set('date[after]', dateAfter);
+            if (dateBefore) params.set('date[before]', dateBefore);
+
+            let res = await fetch('/api/proxy/clipboard-sessions?' + params.toString(), {
                 headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
             });
 
@@ -408,7 +452,7 @@ export const TimetableCore = html`
                 if (refreshData.success && refreshData.accessToken) {
                     studentData.accessToken = refreshData.accessToken;
                     localStorage.setItem('studentData', JSON.stringify(studentData));
-                    res = await fetch('/api/proxy/clipboard-sessions?studentId=' + encodeURIComponent(studentData.studentId) + '&context=' + context, {
+                    res = await fetch('/api/proxy/clipboard-sessions?' + params.toString(), {
                         headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
                     });
                 } else {
@@ -419,10 +463,10 @@ export const TimetableCore = html`
             if (!res.ok) return null;
 
             const data = await res.json();
-            _clipboardSessionsCache = data;
-            _clipboardSessionsTimestamp = now;
+            _clipboardSessionsCache[cacheKey] = data;
+            _clipboardSessionsTimestamps[cacheKey] = now;
             try {
-                localStorage.setItem('clipboardSessionsCache', JSON.stringify({ timestamp: now, data }));
+                localStorage.setItem('clipboardSessionsCache_' + cacheKey, JSON.stringify({ timestamp: now, data }));
             } catch(e) {}
             return data;
         } catch (e) {
@@ -433,16 +477,17 @@ export const TimetableCore = html`
         }
     }
 
-    function getCachedClipboardSessions() {
-        if (_clipboardSessionsCache) return _clipboardSessionsCache;
+    function getCachedClipboardSessions(dateAfter = undefined, dateBefore = undefined) {
+        const cacheKey = _clipboardCacheKey(dateAfter, dateBefore);
+        if (_clipboardSessionsCache[cacheKey]) return _clipboardSessionsCache[cacheKey];
         try {
-            const raw = localStorage.getItem('clipboardSessionsCache');
+            const raw = localStorage.getItem('clipboardSessionsCache_' + cacheKey);
             if (raw) {
                 const cached = JSON.parse(raw);
                 const now = Date.now();
                 if (cached.timestamp && (now - cached.timestamp < CLIPBOARD_SESSIONS_TTL) && cached.data) {
-                    _clipboardSessionsCache = cached.data;
-                    _clipboardSessionsTimestamp = cached.timestamp;
+                    _clipboardSessionsCache[cacheKey] = cached.data;
+                    _clipboardSessionsTimestamps[cacheKey] = cached.timestamp;
                     return cached.data;
                 }
             }
