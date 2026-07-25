@@ -119,11 +119,10 @@ export const TimetableDay = html`
         if (!weekData) return '';
 
         const scanIn = getScanInForDate(weekData, currentDateStr);
-        const todayStr = getLocalDateStr();
         const isSchoolDay = !!calendarMap[currentDateStr];
 
         if (!scanIn) {
-            if (currentDateStr <= todayStr && isSchoolDay) {
+            if (isSchoolDay) {
                 return \`<span id="scan-in-badge" class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full text-xs font-semibold ml-2 flex-shrink-0" data-time="" data-location="" data-response="Not scanned in" data-output=""><span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>Not scanned in</span>\`;
             }
             return '';
