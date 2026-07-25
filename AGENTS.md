@@ -24,7 +24,7 @@ HighHelp is a **Cloudflare Workers** app (Hono + JSX) that serves a school commu
 
 ## Key conventions
 
-- **JSX**: Uses `hono/jsx` with import source `"hono/jsx"` (tsconfig.json). No React.
+- **JSX**: Uses `hono/html` with template literals (backtick strings). Not React components. Use `html` tagged template from `hono/html` for layouts.
 - **Tabs** for indentation (`.editorconfig`, `.prettierrc`). Prettier with `printWidth: 140`, `singleQuote: true`, `semi: true`, `useTabs: true`.
 - **All routes return `c.html()`** wrapping a `<Layout>` component. The `user` object (from `getUser(c)`) is always passed.
 - **Auth**: Cookie-based via `getCookie(c, 'user_id')` set by the auth routes. No session middleware — user is re-fetched from DB on each request.
@@ -38,6 +38,12 @@ See `worker-configuration.d.ts` and `wrangler.jsonc` for the full list. Key ones
 - **`AI_QUEUE`**: Queue for async past-paper AI processing.
 - Secrets (`GEMINI_API_KEY`, `PORTAL_API_CLIENT_SECRET`, etc.) are in `.dev.vars` for local dev.
 
+## Database migrations
+
+- Numbered SQL files in `migrations/` (e.g., `001_add_past_paper_bank.sql`, `020_add_atar_leaderboard.sql`)
+- Run with `wrangler d1 migrations apply highhelp-db`
+- Schema in `schema.sql` is the current state after all migrations
+
 ## Testing
 
 - Tests use `@cloudflare/vitest-pool-workers`. No test files currently exist in the repo (`test/` dir missing, tsconfig excludes `test/`).
@@ -49,3 +55,5 @@ See `worker-configuration.d.ts` and `wrangler.jsonc` for the full list. Key ones
 - **AI past-paper import** uses Cloudflare Queues. Workers exports a `queue()` handler in `src/index.tsx` that calls `processAIImportJob`. Jobs are serialized (`max_batch_size: 1`).
 - **PWA**: Service worker at `public/sw.js`, manifest at `public/manifest.json`. The layout includes install-to-dock logic.
 - **No CSS framework bundling** — Tailwind is loaded via CDN `<script>` tag. Styles are inline utility classes only.
+- **Theme system**: Supports `light`, `dark`, `night`, `paper`, `glass` modes via `localStorage`. Tailwind configured with `darkMode: 'class'`.
+- **Proxy routes** in `src/index.tsx` forward requests to SBHS APIs with auth headers.

@@ -377,6 +377,39 @@ app.get('/points', async (c) => {
 						var catColors = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899'];
 						var trendChart = null, pieChart = null;
 
+						var prizeLineColors = { 'Bronze': '#cd7f32', 'Silver': '#a8a8a8', 'Gold': '#ffd700' };
+						var defaultPrizeColor = '#9ca3af';
+
+						function prizeLinesPlugin() {
+							return {
+								id: 'prizeLines',
+								afterDraw: function(chart) {
+									var lines = chart.options.plugins.prizeLines;
+									if (!lines || !lines.length) return;
+									var yAxis = chart.scales.y;
+									var ctx = chart.ctx;
+									var chartArea = chart.chartArea;
+									lines.forEach(function(line) {
+										var y = yAxis.getPixelForValue(line.value);
+										if (y < chartArea.top || y > chartArea.bottom) return;
+										ctx.save();
+										ctx.beginPath();
+										ctx.setLineDash(line.dashed ? [6, 4] : []);
+										ctx.strokeStyle = line.color;
+										ctx.lineWidth = 1.5;
+										ctx.moveTo(chartArea.left, y);
+										ctx.lineTo(chartArea.right, y);
+										ctx.stroke();
+										ctx.fillStyle = line.color;
+										ctx.font = '10px sans-serif';
+										ctx.textAlign = 'right';
+										ctx.fillText(line.label, chartArea.right - 4, y - 4);
+										ctx.restore();
+									});
+								}
+							};
+						}
+
 						function getMonthKey(dateStr) {
 							if (!dateStr || dateStr.length < 7) return null;
 							return dateStr.substring(0, 7);
@@ -415,6 +448,18 @@ app.get('/points', async (c) => {
 								return { label: c, data: data, borderColor: catColors[i % catColors.length], backgroundColor: catColors[i % catColors.length] + '20', tension: 0.3, pointRadius: 2, fill: false };
 							});
 
+							// Total line
+							if (months.length > 0) {
+								var totalCum = 0;
+								var totalData = months.map(function(m) {
+									var monthTotal = 0;
+									PROGRESS_CATEGORIES.forEach(function(c) { monthTotal += (byCat[c][m] || 0); });
+									totalCum += monthTotal;
+									return totalCum;
+								});
+								datasets.unshift({ label: 'Total', data: totalData, borderColor: '#1f2937', borderWidth: 2.5, tension: 0.3, pointRadius: 3, fill: false, borderDash: [] });
+							}
+
 							return { labels: months, datasets: datasets };
 						}
 
@@ -448,18 +493,49 @@ app.get('/points', async (c) => {
 						function renderCharts(mode) {
 							var trendData = buildChartData(mode);
 							var pieData = buildPieData(mode);
-							var pieTotal = pieData.datasets[0].data.reduce(function(s,v){return s+v;},0);
 
 							if (trendChart) trendChart.destroy();
 							if (pieChart) pieChart.destroy();
 
+							// Prize lines for trend chart (nominations only)
+							var prizeLines = [];
+							var yMax = null;
+							if (mode === 'nominations') {
+								var sortedP = prizes.slice().sort(function(a,b){ return a.tier - b.tier; });
+								var nomCount = nominations.length;
+								for (var i = 0; i < sortedP.length; i++) {
+									var p = sortedP[i];
+									var achieved = nomCount >= p.nominationsRequired;
+									var color = prizeLineColors[p.name] || defaultPrizeColor;
+									prizeLines.push({
+										value: p.nominationsRequired,
+										label: p.name + ' (' + p.nominationsRequired + ')',
+										color: color,
+										dashed: !achieved
+									});
+									if (!achieved && yMax === null) {
+										yMax = p.nominationsRequired;
+									}
+								}
+								if (yMax === null && sortedP.length > 0) {
+									yMax = sortedP[sortedP.length - 1].nominationsRequired;
+								}
+							}
+
 							trendChart = new Chart(document.getElementById('stats-trend'), {
 								type: 'line',
 								data: trendData,
+								plugins: [prizeLinesPlugin()],
 								options: {
 									responsive: true, maintainAspectRatio: false,
-									plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
-									scales: { x: { ticks: { font: { size: 10 }, maxRotation: 45 } }, y: { beginAtZero: true, ticks: { font: { size: 10 } } } }
+									plugins: {
+										legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } },
+										prizeLines: prizeLines
+									},
+									scales: {
+										x: { ticks: { font: { size: 10 }, maxRotation: 45 } },
+										y: { beginAtZero: true, suggestedMax: yMax || undefined, ticks: { font: { size: 10 } } }
+									}
 								}
 							});
 
@@ -468,7 +544,7 @@ app.get('/points', async (c) => {
 								data: pieData,
 								options: {
 									responsive: true, maintainAspectRatio: false,
-									plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+									plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } }
 								}
 							});
 						}
