@@ -119,7 +119,15 @@ export const TimetableDay = html`
         if (!weekData) return '';
 
         const scanIn = getScanInForDate(weekData, currentDateStr);
-        if (!scanIn) return '';
+        const todayStr = getLocalDateStr();
+        const isSchoolDay = !!calendarMap[currentDateStr];
+
+        if (!scanIn) {
+            if (currentDateStr <= todayStr && isSchoolDay) {
+                return \`<span id="scan-in-badge" class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full text-xs font-semibold ml-2 flex-shrink-0" data-time="" data-location="" data-response="Not scanned in" data-output=""><span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>Not scanned in</span>\`;
+            }
+            return '';
+        }
 
         const timeStr = formatScanInTime(scanIn.timestamp);
         const timeFull = formatScanInTimeFull(scanIn.timestamp);
@@ -141,14 +149,17 @@ export const TimetableDay = html`
             if (popup) { popup.remove(); return; }
             popup = document.createElement('div');
             popup.id = 'scan-in-popup';
-            popup.className = 'absolute z-50 p-3 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-xl max-w-xs right-0 top-full mt-2';
+            popup.className = 'z-50 p-3 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-xl max-w-xs';
             const time = badge.dataset.time || '';
             const loc = badge.dataset.location || '';
             const resp = badge.dataset.response || '';
             const out = badge.dataset.output || '';
             popup.innerHTML = \`<div class="text-[10px] uppercase tracking-wider text-gray-400 dark:text-neutral-500 font-bold mb-2">Scan-in Details</div><div class="space-y-1.5 text-sm"><div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Time</span><span class="text-gray-900 dark:text-white font-medium">\${time}</span></div>\${loc ? \`<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Location</span><span class="text-gray-900 dark:text-white font-medium">\${loc}</span></div>\` : ''}\${resp ? \`<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Response</span><span class="text-gray-900 dark:text-white font-medium">\${resp}</span></div>\` : ''}\${out ? \`<div class="pt-1.5 mt-1.5 border-t border-gray-100 dark:border-neutral-700"><span class="text-gray-500 dark:text-neutral-400 text-xs">\${out}</span></div>\` : ''}</div>\`;
-            badge.parentElement.style.position = 'relative';
-            badge.parentElement.appendChild(popup);
+            const rect = badge.getBoundingClientRect();
+            popup.style.position = 'fixed';
+            popup.style.top = (rect.bottom + 8) + 'px';
+            popup.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
+            document.body.appendChild(popup);
             const close = (ev) => { if (!popup.contains(ev.target) && ev.target !== badge) { popup.remove(); document.removeEventListener('click', close); } };
             setTimeout(() => document.addEventListener('click', close), 0);
         });
