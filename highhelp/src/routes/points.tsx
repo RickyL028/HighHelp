@@ -14,6 +14,7 @@ app.get('/points', async (c) => {
 
 	return c.html(
 		<Layout title="Points" user={user}>
+			<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 			<div class="max-w-5xl mx-auto px-4 py-8">
 
 
@@ -328,7 +329,23 @@ app.get('/points', async (c) => {
 						});
 						awardsCard += '</div><div id="awards-timeline"></div></div>';
 
-						root.innerHTML = topRow + nomCard + awardsCard;
+						// --- Statistics card ---
+						var statsCard =
+							'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900 mb-6">' +
+								'<div class="flex items-center justify-between mb-4">' +
+									'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300">Statistics</h2>' +
+									'<div class="flex gap-0 border-b border-gray-200 dark:border-neutral-700" id="stats-tabs">' +
+										'<button data-stat="nominations" class="px-3 py-1 -mb-px border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 text-xs font-medium transition-colors">Nominations</button>' +
+										'<button data-stat="points" class="px-3 py-1 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-xs transition-colors">Points</button>' +
+									'</div>' +
+								'</div>' +
+								'<div class="grid grid-cols-1 md:grid-cols-2 gap-6">' +
+									'<div><h3 class="text-xs font-medium text-gray-500 dark:text-neutral-400 mb-2">Trend</h3><div style="position:relative;height:220px"><canvas id="stats-trend"></canvas></div></div>' +
+									'<div><h3 class="text-xs font-medium text-gray-500 dark:text-neutral-400 mb-2">Distribution</h3><div style="position:relative;height:220px"><canvas id="stats-pie"></canvas></div></div>' +
+								'</div>' +
+							'</div>';
+
+						root.innerHTML = topRow + nomCard + awardsCard + statsCard;
 
 						function renderYear(yr){
 							var list=yearMap[yr]||[];
@@ -355,6 +372,121 @@ app.get('/points', async (c) => {
 							renderYear(btn.dataset.year);
 						});});
 						if(years.length>0)renderYear(years[0]);
+
+						// --- Statistics charts ---
+						var catColors = ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899'];
+						var trendChart = null, pieChart = null;
+
+						function getMonthKey(dateStr) {
+							if (!dateStr || dateStr.length < 7) return null;
+							return dateStr.substring(0, 7);
+						}
+
+						function buildChartData(mode) {
+							var source = mode === 'nominations' ? nominations : awards;
+							var byCat = {};
+							PROGRESS_CATEGORIES.forEach(function(c) { byCat[c] = {}; });
+
+							source.forEach(function(item) {
+								var matched = matchProgressCategory(mode === 'nominations' ? item.name : item.category);
+								if (!matched) return;
+								var mk = getMonthKey(item.date);
+								if (!mk) return;
+								if (!byCat[matched][mk]) byCat[matched][mk] = 0;
+								if (mode === 'nominations') {
+									byCat[matched][mk]++;
+								} else {
+									byCat[matched][mk] += item.points || 0;
+								}
+							});
+
+							var allMonths = {};
+							PROGRESS_CATEGORIES.forEach(function(c) {
+								Object.keys(byCat[c]).forEach(function(m) { allMonths[m] = true; });
+							});
+							var months = Object.keys(allMonths).sort();
+
+							var datasets = PROGRESS_CATEGORIES.filter(function(c) { return Object.keys(byCat[c]).length > 0; }).map(function(c, i) {
+								var cum = 0;
+								var data = months.map(function(m) {
+									cum += (byCat[c][m] || 0);
+									return cum;
+								});
+								return { label: c, data: data, borderColor: catColors[i % catColors.length], backgroundColor: catColors[i % catColors.length] + '20', tension: 0.3, pointRadius: 2, fill: false };
+							});
+
+							return { labels: months, datasets: datasets };
+						}
+
+						function buildPieData(mode) {
+							var source = mode === 'nominations' ? nominations : awards;
+							var totals = {};
+							PROGRESS_CATEGORIES.forEach(function(c) { totals[c] = 0; });
+
+							source.forEach(function(item) {
+								var matched = matchProgressCategory(mode === 'nominations' ? item.name : item.category);
+								if (!matched) return;
+								if (mode === 'nominations') {
+									totals[matched]++;
+								} else {
+									totals[matched] += item.points || 0;
+								}
+							});
+
+							var labels = [], data = [], colors = [];
+							PROGRESS_CATEGORIES.forEach(function(c, i) {
+								if (totals[c] > 0) {
+									labels.push(c);
+									data.push(totals[c]);
+									colors.push(catColors[i % catColors.length]);
+								}
+							});
+
+							return { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderWidth: 0 }] };
+						}
+
+						function renderCharts(mode) {
+							var trendData = buildChartData(mode);
+							var pieData = buildPieData(mode);
+							var pieTotal = pieData.datasets[0].data.reduce(function(s,v){return s+v;},0);
+
+							if (trendChart) trendChart.destroy();
+							if (pieChart) pieChart.destroy();
+
+							trendChart = new Chart(document.getElementById('stats-trend'), {
+								type: 'line',
+								data: trendData,
+								options: {
+									responsive: true, maintainAspectRatio: false,
+									plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+									scales: { x: { ticks: { font: { size: 10 }, maxRotation: 45 } }, y: { beginAtZero: true, ticks: { font: { size: 10 } } } }
+								}
+							});
+
+							pieChart = new Chart(document.getElementById('stats-pie'), {
+								type: 'doughnut',
+								data: pieData,
+								options: {
+									responsive: true, maintainAspectRatio: false,
+									plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+								}
+							});
+						}
+
+						renderCharts('nominations');
+
+						var statBtns = document.querySelectorAll('#stats-tabs button');
+						statBtns.forEach(function(btn) {
+							btn.addEventListener('click', function() {
+								statBtns.forEach(function(b) {
+									b.classList.remove('border-blue-500','dark:border-blue-400','text-blue-600','dark:text-blue-400','font-bold');
+									b.classList.add('border-transparent','text-gray-500','dark:text-neutral-400');
+								});
+								btn.classList.add('border-blue-500','dark:border-blue-400','text-blue-600','dark:text-blue-400','font-bold');
+								btn.classList.remove('border-transparent','text-gray-500','dark:text-neutral-400');
+								renderCharts(btn.dataset.stat);
+							});
+						});
 					}
 
 					// --- All Awards ---
