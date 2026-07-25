@@ -21,7 +21,8 @@ app.get('/points', async (c) => {
 				<div class="flex gap-0 border-b border-gray-200 dark:border-neutral-700 mb-6 justify-start" id="main-tabs">
 					<button data-tab="my-awards" class="px-4 py-2 -mb-px border-b-2 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 text-sm font-medium transition-colors">Me</button>
 					<button data-tab="all-awards" class="px-4 py-2 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">All</button>
-					<button data-tab="blazer" class="px-4 py-2 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">Blazer</button>
+				<button data-tab="blazer" class="px-4 py-2 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">Blazer</button>
+					<button data-tab="plan" class="px-4 py-2 -mb-px border-b-2 border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300 text-sm transition-colors">Plan</button>
 				</div>
 
 				<div id="tab-my-awards">
@@ -42,14 +43,23 @@ app.get('/points', async (c) => {
 					</div>
 				</div>
 
-				<div id="tab-blazer" class="hidden">
-					<div id="blazer-root">
-						<div class="flex items-center justify-center py-12">
-							<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
-							<span class="ml-3 text-sm text-gray-500 dark:text-neutral-400">Loading blazer badges...</span>
-						</div>
+			<div id="tab-blazer" class="hidden">
+				<div id="blazer-root">
+					<div class="flex items-center justify-center py-12">
+						<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+						<span class="ml-3 text-sm text-gray-500 dark:text-neutral-400">Loading blazer badges...</span>
 					</div>
 				</div>
+			</div>
+
+			<div id="tab-plan" class="hidden">
+				<div id="plan-root">
+					<div class="flex items-center justify-center py-12">
+						<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+						<span class="ml-3 text-sm text-gray-500 dark:text-neutral-400">Loading plan...</span>
+					</div>
+				</div>
+			</div>
 			</div>
 
 			<script dangerouslySetInnerHTML={{
@@ -86,17 +96,22 @@ app.get('/points', async (c) => {
 							});
 							btn.classList.add('border-blue-500','dark:border-blue-400','text-blue-600','dark:text-blue-400','font-bold');
 							btn.classList.remove('border-transparent','text-gray-500','dark:text-neutral-400');
-							document.getElementById('tab-my-awards').classList.toggle('hidden', btn.dataset.tab !== 'my-awards');
-							document.getElementById('tab-all-awards').classList.toggle('hidden', btn.dataset.tab !== 'all-awards');
-							document.getElementById('tab-blazer').classList.toggle('hidden', btn.dataset.tab !== 'blazer');
-							if (btn.dataset.tab === 'all-awards' && !window._allAwardsLoaded) {
-								window._allAwardsLoaded = true;
-								loadAllAwards();
-							}
-							if (btn.dataset.tab === 'blazer' && !window._blazerLoaded) {
-								window._blazerLoaded = true;
-								loadBlazer();
-							}
+						document.getElementById('tab-my-awards').classList.toggle('hidden', btn.dataset.tab !== 'my-awards');
+						document.getElementById('tab-all-awards').classList.toggle('hidden', btn.dataset.tab !== 'all-awards');
+						document.getElementById('tab-blazer').classList.toggle('hidden', btn.dataset.tab !== 'blazer');
+						document.getElementById('tab-plan').classList.toggle('hidden', btn.dataset.tab !== 'plan');
+						if (btn.dataset.tab === 'all-awards' && !window._allAwardsLoaded) {
+							window._allAwardsLoaded = true;
+							loadAllAwards();
+						}
+						if (btn.dataset.tab === 'blazer' && !window._blazerLoaded) {
+							window._blazerLoaded = true;
+							loadBlazer();
+						}
+						if (btn.dataset.tab === 'plan' && !window._planLoaded) {
+							window._planLoaded = true;
+							loadPlanAwards();
+						}
 						});
 					});
 
@@ -811,6 +826,497 @@ function renderBlazer(root, data) {
             '</table>' +
         '</div>';
 
+					}
+
+					// --- Plan Tab ---
+					var planState = {
+						planned: [],
+						allAwards: [],
+						prizesData: null,
+						currentNominations: 0,
+						currentCatPoints: {}
+					};
+
+					function loadPlanAwards() {
+						var root = document.getElementById('plan-root');
+						var studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
+						var token = studentData.accessToken;
+						var studentId = studentData.studentId;
+						if (!token) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token.</p></div>'; return; }
+
+						// Load saved plan
+						var planCacheKey = 'planAwards_' + studentId;
+						try { planState.planned = JSON.parse(localStorage.getItem(planCacheKey) || '[]'); } catch(e) { planState.planned = []; }
+
+						// Fetch current nominations + prizes + all awards in parallel
+						var prizesUrl = '/api/proxy/all-awards?url=' + encodeURIComponent('https://api.sbhs.net.au/api/core/award-scheme/prizes');
+						Promise.all([
+							fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), { headers: { 'Authorization': 'Bearer ' + token } }),
+							fetch(prizesUrl, { headers: { 'Authorization': 'Bearer ' + token } }),
+							fetch('/api/proxy/all-awards', { headers: { 'Authorization': 'Bearer ' + token } })
+						]).then(function(results) {
+							var awardsRes = results[0], prizesRes = results[1], allAwardsRes = results[2];
+
+							if (awardsRes.status === 401 || awardsRes.status === 403) {
+								return fetch('/api/auth/refresh').then(function(r){return r.json();}).then(function(rd) {
+									if (!rd.success || !rd.accessToken) throw new Error('Session expired');
+									studentData.accessToken = rd.accessToken;
+									localStorage.setItem('studentData', JSON.stringify(studentData));
+									return Promise.all([
+										fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), { headers: { 'Authorization': 'Bearer ' + rd.accessToken } }),
+										fetch(prizesUrl, { headers: { 'Authorization': 'Bearer ' + rd.accessToken } }),
+										fetch('/api/proxy/all-awards', { headers: { 'Authorization': 'Bearer ' + rd.accessToken } })
+									]);
+								});
+							}
+							return results;
+						}).then(function(resolved) {
+							if (!resolved) throw new Error('Session expired');
+							return Promise.all(resolved.map(function(r) { return r.json(); }));
+						}).then(function(datas) {
+							// Count current nominations
+							var items = (datas[0].member || []);
+							var noms = items.filter(function(item) {
+								var aw = item.award || {};
+								return (aw.category && aw.category.name || '').toUpperCase().indexOf('NOMINATION') !== -1;
+							});
+							planState.currentNominations = noms.length;
+							planState.prizesData = datas[1];
+
+							// Current points per category
+							var currentCatPoints = {};
+							PROGRESS_CATEGORIES.forEach(function(c) { currentCatPoints[c] = 0; });
+							var realAwards = items.filter(function(item) {
+								var aw = item.award || {};
+								return (aw.category && aw.category.name || '').toUpperCase().indexOf('NOMINATION') === -1;
+							});
+							realAwards.forEach(function(item) {
+								var aw = item.award || {};
+								var catName = (aw.category && aw.category.name) || '';
+								var matched = matchProgressCategory(catName);
+								if (matched) currentCatPoints[matched] += (aw.points || 0);
+							});
+							planState.currentCatPoints = currentCatPoints;
+
+							// All awards for catalog
+							var allItems = datas[2].member || [];
+							planState.allAwards = allItems.map(function(item) {
+								return {
+									name: item.name || 'Unnamed Award',
+									points: item.points || 0,
+									housePoints: item.housePoints || 0,
+									category: (item.category && item.category.name) || 'Uncategorised',
+									tier: item.tier || 0,
+									archived: item.archived || false
+								};
+							});
+
+							renderPlanTab();
+						}).catch(function(e) {
+							console.error('Failed to load plan data:', e);
+							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load plan data.</p></div>';
+						});
+					}
+
+					function savePlan() {
+						var studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
+						var studentId = studentData.studentId;
+						if (!studentId) return;
+						try { localStorage.setItem('planAwards_' + studentId, JSON.stringify(planState.planned)); } catch(e) {}
+					}
+
+					function resetPlan() {
+						planState.planned = [];
+						savePlan();
+						updatePlanProjection();
+					}
+
+					function addToPlan(award, cat) {
+						planState.planned.push({
+							name: award.name,
+							points: award.points,
+							housePoints: award.housePoints,
+							category: award.category,
+							matchedCategory: cat,
+							_id: Date.now() + '_' + Math.random().toString(36).substr(2, 5)
+						});
+						savePlan();
+						updatePlanProjection();
+					}
+
+					function removeFromPlan(id) {
+						planState.planned = planState.planned.filter(function(p) { return p._id !== id; });
+						savePlan();
+						updatePlanProjection();
+					}
+
+					function getPlanProjection() {
+						var catData = {};
+						PROGRESS_CATEGORIES.forEach(function(c) {
+							catData[c] = { points: (planState.currentCatPoints[c] || 0), plannedPoints: 0, noms: 0 };
+						});
+
+						planState.planned.forEach(function(p) {
+							if (p.matchedCategory && catData[p.matchedCategory]) {
+								catData[p.matchedCategory].plannedPoints += p.points;
+							}
+						});
+
+						// Also count current nominations per category from the existing data
+						// We need to fetch this from My Awards or calculate from the student data
+						// For now, we just track planned points per category
+
+						// Calculate planned nominations per category
+						PROGRESS_CATEGORIES.forEach(function(c) {
+							var totalPts = catData[c].points + catData[c].plannedPoints;
+							catData[c].totalPoints = totalPts;
+							catData[c].noms = Math.floor(totalPts / 30);
+						});
+
+						// Projected nominations: total points (current + planned) per category, floor divided by 30
+						var projectedTotal = 0;
+						PROGRESS_CATEGORIES.forEach(function(c) {
+							projectedTotal += Math.floor(catData[c].totalPoints / 30);
+						});
+
+						var totalPlannedNoms = Math.max(0, projectedTotal - planState.currentNominations);
+
+						// Find projected prize
+						var prizes = (planState.prizesData && planState.prizesData.member) || [];
+						var sortedPrizes = prizes.slice().sort(function(a,b) { return a.tier - b.tier; });
+						var currentPrize = null, nextPrize = null;
+						for (var i = 0; i < sortedPrizes.length; i++) {
+							if (planState.currentNominations >= sortedPrizes[i].nominationsRequired) {
+								currentPrize = sortedPrizes[i];
+							}
+						}
+						var projectedPrize = null, projectedNextPrize = null;
+						for (var i = 0; i < sortedPrizes.length; i++) {
+							if (projectedTotal >= sortedPrizes[i].nominationsRequired) {
+								projectedPrize = sortedPrizes[i];
+								projectedNextPrize = i < sortedPrizes.length - 1 ? sortedPrizes[i + 1] : null;
+							}
+						}
+
+						return {
+							catData: catData,
+							currentNoms: planState.currentNominations,
+							plannedNoms: totalPlannedNoms,
+							projectedTotal: projectedTotal,
+							currentPrize: currentPrize,
+							projectedPrize: projectedPrize,
+							projectedNextPrize: projectedNextPrize,
+							sortedPrizes: sortedPrizes
+						};
+					}
+
+					function updatePlanProjection() {
+						var proj = getPlanProjection();
+
+						// Update projection panel
+						var projEl = document.getElementById('plan-projection');
+						if (projEl) {
+							var currentTierName = proj.currentPrize ? proj.currentPrize.name : 'None';
+							var projectedTierName = proj.projectedPrize ? proj.projectedPrize.name : 'None';
+
+							var progressHtml = '';
+							if (proj.projectedNextPrize && proj.projectedPrize) {
+								var prevReq = proj.projectedPrize.nominationsRequired;
+								var nextReq = proj.projectedNextPrize.nominationsRequired;
+								var range = nextReq - prevReq;
+								var progress = proj.projectedTotal - prevReq;
+								var pct = range > 0 ? Math.min(100, Math.round((progress / range) * 100)) : 100;
+								var needed = nextReq - proj.projectedTotal;
+								progressHtml =
+									'<div class="mt-4 pt-4 border-t border-gray-200 dark:border-neutral-700">' +
+										'<div class="flex justify-between items-center mb-1">' +
+											'<span class="text-xs text-gray-500 dark:text-neutral-400">Next: ' + esc(proj.projectedNextPrize.name) + '</span>' +
+											'<span class="text-xs font-semibold dark:text-white">' + proj.projectedTotal + ' / ' + nextReq + '</span>' +
+										'</div>' +
+										'<div class="w-full h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden">' +
+											'<div class="h-full bg-amber-500 dark:bg-amber-400 rounded-full transition-all" style="width:' + pct + '%"></div>' +
+										'</div>' +
+										'<p class="text-xs text-gray-500 dark:text-neutral-400 mt-1">' + needed + ' more nomination' + (needed !== 1 ? 's' : '') + ' needed</p>' +
+									'</div>';
+							} else if (!proj.projectedNextPrize && proj.projectedPrize) {
+								progressHtml =
+									'<div class="mt-4 pt-4 border-t border-gray-200 dark:border-neutral-700">' +
+										'<p class="text-xs text-green-600 dark:text-green-400 font-semibold">Maximum tier reached!</p>' +
+									'</div>';
+							}
+
+							var deltaHtml = '';
+							if (proj.plannedNoms > 0 && proj.projectedPrize && proj.currentPrize && proj.projectedPrize.tier > proj.currentPrize.tier) {
+								deltaHtml = '<p class="text-xs text-green-600 dark:text-green-400 font-semibold mt-2">+' + (proj.projectedPrize.tier - proj.currentPrize.tier) + ' tier' + ((proj.projectedPrize.tier - proj.currentPrize.tier) !== 1 ? 's' : '') + ' from planning!</p>';
+							}
+
+							projEl.innerHTML =
+								'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900">' +
+									'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-4">Prize Projection</h2>' +
+									'<div class="space-y-2 text-sm">' +
+										'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Current</span><span class="font-semibold dark:text-white">' + esc(currentTierName) + ' (' + proj.currentNoms + ' noms)</span></div>' +
+										'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Planned</span><span class="font-semibold text-blue-600 dark:text-blue-400">+' + proj.plannedNoms + ' noms</span></div>' +
+										'<div class="flex justify-between border-t border-gray-200 dark:border-neutral-700 pt-2"><span class="text-gray-500 dark:text-neutral-400">Projected</span><span class="font-bold dark:text-white">' + esc(projectedTierName) + ' (' + proj.projectedTotal + ' noms)</span></div>' +
+									'</div>' +
+									progressHtml +
+									deltaHtml +
+								'</div>';
+						}
+
+						// Update category panels
+						PROGRESS_CATEGORIES.forEach(function(cat) {
+						var panel = document.getElementById('plan-cat-' + cat.replace(/[^a-zA-Z]/g, ''));
+						if (!panel) return;
+						var cd = proj.catData[cat];
+						var pct = Math.min(100, Math.round((cd.totalPoints % 30) / 30 * 100));
+						var barColor = (cd.totalPoints % 30) >= 30 ? 'bg-green-500 dark:bg-green-400' : 'bg-blue-500 dark:bg-blue-400';
+
+						var chips = planState.planned.filter(function(p) { return p.matchedCategory === cat; });
+						var chipsHtml = chips.map(function(p) {
+							return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">' +
+								esc(p.name) + ' (+' + p.points + ')' +
+								'<button data-plan-id="' + p._id + '" class="plan-remove ml-0.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200">&times;</button>' +
+							'</span>';
+						}).join('');
+
+						var nomsLabel = cd.noms > 0 ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 ml-2">x' + cd.noms + '</span>' : '';
+						var ptsLabel = cd.plannedPoints > 0
+							? '<span class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-700 dark:text-white font-mono">' + cd.points + ' + <span class="text-blue-500 dark:text-blue-400">' + cd.plannedPoints + '</span> = ' + cd.totalPoints + '</span>'
+							: '<span class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-700 dark:text-white font-mono">' + cd.points + '</span>';
+
+						panel.innerHTML =
+							'<div class="flex justify-between items-center mb-1">' +
+								'<span class="text-xs font-medium dark:text-white">' + esc(cat) + nomsLabel + '</span>' +
+								ptsLabel +
+							'</div>' +
+							'<div class="relative w-full h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden mb-2">' +
+								(pct > 0 ? '<div class="absolute inset-y-0 left-0 ' + barColor + ' rounded-full transition-all" style="width:' + pct + '%"></div>' : '') +
+							'</div>' +
+							(chipsHtml ? '<div class="flex flex-wrap gap-1 mb-2">' + chipsHtml + '</div>' : '<div class="text-xs text-gray-400 dark:text-neutral-500 mb-2">Drop awards here or tap to add</div>') +
+							'<div class="plan-drop-zone" data-category="' + esc(cat) + '" style="min-height:32px;border:1px dashed #9ca3af;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all 0.15s">' +
+								'<span class="text-xs text-gray-400 dark:text-neutral-500 plan-drop-hint">+ Drop or click</span>' +
+							'</div>';
+						});
+
+						// Re-bind remove buttons
+						document.querySelectorAll('.plan-remove').forEach(function(btn) {
+							btn.addEventListener('click', function(e) {
+								e.stopPropagation();
+								removeFromPlan(btn.dataset.planId);
+							});
+						});
+
+						// Re-bind drop zones
+						bindPlanDropZones();
+
+						// Update catalog highlight
+						updateCatalogCount();
+					}
+
+					function updateCatalogCount() {
+						var countEl = document.getElementById('plan-catalog-count');
+						if (countEl) {
+							countEl.textContent = planState.planned.length + ' award' + (planState.planned.length !== 1 ? 's' : '') + ' planned';
+						}
+					}
+
+					function bindPlanDropZones() {
+						document.querySelectorAll('.plan-drop-zone').forEach(function(zone) {
+							zone.addEventListener('dragover', function(e) {
+								e.preventDefault();
+								e.dataTransfer.dropEffect = 'copy';
+								zone.style.borderColor = '#3b82f6';
+								zone.style.background = '#eff6ff';
+							});
+							zone.addEventListener('dragleave', function(e) {
+								zone.style.borderColor = '#9ca3af';
+								zone.style.background = '';
+							});
+							zone.addEventListener('drop', function(e) {
+								e.preventDefault();
+								zone.style.borderColor = '#9ca3af';
+								zone.style.background = '';
+								var awardIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+								if (!isNaN(awardIdx) && planState.allAwards[awardIdx]) {
+									var award = planState.allAwards[awardIdx];
+									var cat = zone.dataset.category;
+									addToPlan(award, cat);
+								}
+							});
+							// Click to add from catalog search
+							zone.addEventListener('click', function() {
+								var cat = zone.dataset.category;
+								showPlanPicker(cat);
+							});
+						});
+					}
+
+					function showPlanPicker(targetCat) {
+						var overlay = document.createElement('div');
+						overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50';
+						overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)';
+
+						var modal = document.createElement('div');
+						modal.className = 'bg-white dark:bg-neutral-900 rounded-lg shadow-xl max-h-[80vh] w-full max-w-md mx-4 flex flex-col';
+						modal.style.cssText = 'background:white;border-radius:12px;max-height:80vh;width:100%;max-width:400px;margin:0 16px;display:flex;flex-direction:column';
+
+						var filteredAwards = planState.allAwards.filter(function(a) {
+							return matchProgressCategory(a.category) === targetCat;
+						});
+
+						function renderPickerList(search) {
+							var s = (search || '').toLowerCase();
+							var matched = filteredAwards.filter(function(a) {
+								return !s || a.name.toLowerCase().indexOf(s) !== -1;
+							});
+
+							var listHtml = matched.length === 0
+								? '<div class="p-4 text-center text-gray-400 dark:text-neutral-500 text-sm">No awards found</div>'
+								: matched.map(function(a, i) {
+									var origIdx = planState.allAwards.indexOf(a);
+									return '<div class="picker-item px-4 py-3 hover:bg-gray-50 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-100 dark:border-neutral-800 last:border-0 flex justify-between items-center" data-idx="' + origIdx + '">' +
+										'<div><div class="text-sm font-medium dark:text-white">' + esc(a.name) + '</div>' +
+										'<div class="text-xs text-gray-500 dark:text-neutral-400">' + esc(a.category) + (a.archived ? ' (archived)' : '') + '</div></div>' +
+										'<span class="text-sm font-mono text-blue-600 dark:text-blue-400">+' + a.points + '</span>' +
+									'</div>';
+								}).join('');
+
+							var listEl = overlay.querySelector('.picker-list');
+							if (listEl) listEl.innerHTML = listHtml;
+
+							overlay.querySelectorAll('.picker-item').forEach(function(el) {
+								el.addEventListener('click', function() {
+									var idx = parseInt(el.dataset.idx, 10);
+									addToPlan(planState.allAwards[idx], targetCat);
+									overlay.remove();
+								});
+							});
+						}
+
+						modal.innerHTML =
+							'<div class="px-4 py-3 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center">' +
+								'<h3 class="text-sm font-semibold dark:text-white">Add to ' + esc(targetCat) + '</h3>' +
+								'<button class="picker-close text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300 text-lg">&times;</button>' +
+							'</div>' +
+							'<div class="px-4 py-2 border-b border-gray-200 dark:border-neutral-700">' +
+								'<input type="text" class="picker-search w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Search awards..." />' +
+							'</div>' +
+							'<div class="picker-list overflow-y-auto flex-1" style="max-height:60vh"></div>';
+
+						overlay.appendChild(modal);
+						document.body.appendChild(overlay);
+
+						renderPickerList('');
+
+						modal.querySelector('.picker-search').addEventListener('input', function(e) {
+							renderPickerList(e.target.value);
+						});
+						modal.querySelector('.picker-close').addEventListener('click', function() { overlay.remove(); });
+						overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+					}
+
+					function renderPlanTab() {
+						var root = document.getElementById('plan-root');
+						var proj = getPlanProjection();
+
+						// Build category panels
+						var catPanels = PROGRESS_CATEGORIES.map(function(cat) {
+							var catId = 'plan-cat-' + cat.replace(/[^a-zA-Z]/g, '');
+							return '<div id="' + catId + '" class="border border-gray-200 dark:border-neutral-700 rounded-lg p-4 bg-gray-50 dark:bg-neutral-900 plan-cat-panel" data-category="' + esc(cat) + '"></div>';
+						}).join('');
+
+						root.innerHTML =
+							'<div class="flex flex-col lg:flex-row gap-6">' +
+								// Left: Awards Catalog
+								'<div class="lg:w-1/3">' +
+									'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg bg-gray-50 dark:bg-neutral-900">' +
+										'<div class="px-4 py-3 border-b border-gray-200 dark:border-neutral-700">' +
+											'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-2">Awards Catalog</h2>' +
+											'<input type="text" id="plan-search" placeholder="Search awards..." class="w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2" />' +
+											'<select id="plan-cat-filter" class="w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">' +
+												'<option value="">All Categories</option>' +
+												PROGRESS_CATEGORIES.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('') +
+											'</select>' +
+											'<p id="plan-catalog-count" class="text-xs text-gray-400 dark:text-neutral-500 mt-2">' + planState.planned.length + ' award' + (planState.planned.length !== 1 ? 's' : '') + ' planned</p>' +
+										'</div>' +
+										'<div id="plan-catalog-list" class="max-h-[50vh] overflow-y-auto"></div>' +
+									'</div>' +
+								'</div>' +
+								// Center: Category Drop Zones
+								'<div class="lg:w-1/3">' +
+									'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-3">Your Plan</h2>' +
+									(planState.planned.length > 0 ? '<button id="plan-reset" class="mb-3 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Reset Plan</button>' : '') +
+									'<div class="space-y-3">' + catPanels + '</div>' +
+								'</div>' +
+								// Right: Prize Projection
+								'<div class="lg:w-1/3">' +
+									'<div id="plan-projection"></div>' +
+								'</div>' +
+							'</div>';
+
+						// Render catalog list
+						function renderCatalog(search, catFilter) {
+							var s = (search || '').toLowerCase();
+							var cat = catFilter || '';
+							var filtered = planState.allAwards.filter(function(a) {
+								var matchSearch = !s || a.name.toLowerCase().indexOf(s) !== -1 || a.category.toLowerCase().indexOf(s) !== -1;
+								var matchCat = !cat || matchProgressCategory(a.category) === cat;
+								return matchSearch && matchCat;
+							});
+
+							var el = document.getElementById('plan-catalog-list');
+							if (!el) return;
+
+							if (filtered.length === 0) {
+								el.innerHTML = '<div class="p-4 text-center text-gray-400 dark:text-neutral-500 text-sm">No awards found</div>';
+								return;
+							}
+
+							el.innerHTML = filtered.map(function(a, i) {
+								var origIdx = planState.allAwards.indexOf(a);
+								var archBadge = a.archived ? '<span class="ml-1 text-xs text-gray-400 dark:text-neutral-500">(archived)</span>' : '';
+								return '<div class="plan-catalog-item px-4 py-3 hover:bg-gray-100 dark:hover:bg-neutral-800 cursor-grab border-b border-gray-100 dark:border-neutral-800 last:border-0 active:cursor-grabbing" draggable="true" data-award-idx="' + origIdx + '">' +
+									'<div class="flex items-start justify-between gap-2">' +
+										'<div class="min-w-0">' +
+											'<div class="text-sm font-medium dark:text-white truncate">' + esc(a.name) + archBadge + '</div>' +
+											'<div class="text-xs text-gray-500 dark:text-neutral-400">' + esc(a.category) + '</div>' +
+										'</div>' +
+										'<div class="shrink-0 text-right">' +
+											'<div class="text-sm font-mono text-blue-600 dark:text-blue-400">+' + a.points + '</div>' +
+											'<div class="text-xs text-gray-400 dark:text-neutral-500">' + a.housePoints + ' HP</div>' +
+										'</div>' +
+									'</div>' +
+								'</div>';
+							}).join('');
+
+							// Bind drag events on catalog items
+							el.querySelectorAll('.plan-catalog-item').forEach(function(item) {
+								item.addEventListener('dragstart', function(e) {
+									e.dataTransfer.setData('text/plain', item.dataset.awardIdx);
+									e.dataTransfer.effectAllowed = 'copy';
+									item.style.opacity = '0.5';
+								});
+								item.addEventListener('dragend', function(e) {
+									item.style.opacity = '1';
+								});
+							});
+						}
+
+						// Bind catalog search and filter
+						var searchInput = document.getElementById('plan-search');
+						var catFilter = document.getElementById('plan-cat-filter');
+						if (searchInput) searchInput.addEventListener('input', function() {
+							renderCatalog(searchInput.value, catFilter.value);
+						});
+						if (catFilter) catFilter.addEventListener('change', function() {
+							renderCatalog(searchInput.value, catFilter.value);
+						});
+
+						renderCatalog('', '');
+						updatePlanProjection();
+
+						var resetBtn = document.getElementById('plan-reset');
+						if (resetBtn) resetBtn.addEventListener('click', function() { resetPlan(); renderPlanTab(); });
 					}
 				})();
 				`
