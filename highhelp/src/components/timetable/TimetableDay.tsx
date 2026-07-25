@@ -41,6 +41,7 @@ export const TimetableDay = html`
         console.log('[scan-in] fetching', { from, to, key, forceFetch });
         const fetchPromise = (async () => {
             try {
+                await ensureFreshToken();
                 const url = '/api/proxy/scan-ins?studentId=' + encodeURIComponent(studentData.studentId)
                     + '&from=' + from + '&to=' + to;
                 let res = await fetch(url, {
@@ -56,6 +57,7 @@ export const TimetableDay = html`
                     if (refreshData.success && refreshData.accessToken) {
                         studentData.accessToken = refreshData.accessToken;
                         localStorage.setItem('studentData', JSON.stringify(studentData));
+                        clearReauthBanner();
                         res = await fetch(url, {
                             headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
                         });

@@ -62,25 +62,35 @@ export const TimetableCore = html`
         })();
     }
 
-    // Validate token works with new API — force re-login if not
+    // Proactive token refresh — refresh if older than 30 minutes so api.sbhs.net.au never sees an expired token
+    async function ensureFreshToken() {
+        if (!studentData?.accessToken) return false;
+        try {
+            var lastRefresh = parseInt(localStorage.getItem('tokenRefreshedAt') || '0', 10);
+            var age = Date.now() - lastRefresh;
+            if (age < 30 * 60 * 1000) return true; // still fresh
+            console.log('[auth] proactive refresh — token age', Math.round(age / 60000), 'min');
+            var refreshRes = await fetch('/api/auth/refresh');
+            var refreshData = await refreshRes.json();
+            if (refreshData.success && refreshData.accessToken) {
+                studentData.accessToken = refreshData.accessToken;
+                localStorage.setItem('studentData', JSON.stringify(studentData));
+                localStorage.setItem('tokenRefreshedAt', String(Date.now()));
+                console.log('[auth] proactive refresh succeeded');
+                clearReauthBanner();
+                return true;
+            }
+            console.warn('[auth] proactive refresh failed — showing reauth banner');
+            showReauthBanner();
+            return false;
+        } catch(e) {
+            console.error('[auth] proactive refresh network error', e);
+            return true; // network error — continue, will retry on next fetch
+        }
+    }
+
     if (studentData?.accessToken && studentData?.studentId) {
-        (async () => {
-            try {
-                const testRes = await fetch('/api/proxy/scan-ins?studentId=' + encodeURIComponent(studentData.studentId), {
-                    headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
-                });
-                if (testRes.status === 401 || testRes.status === 403) {
-                    const refreshRes = await fetch('/api/auth/refresh');
-                    const refreshData = await refreshRes.json();
-                    if (refreshData.success && refreshData.accessToken) {
-                        studentData.accessToken = refreshData.accessToken;
-                        localStorage.setItem('studentData', JSON.stringify(studentData));
-                    } else {
-                        window.location.href = '/logout';
-                    }
-                }
-            } catch(e) { /* network error — continue, will retry later */ }
-        })();
+        ensureFreshToken();
     }
 
     const calendarMap = studentData?.calendar || {}; 
@@ -134,19 +144,28 @@ export const TimetableCore = html`
     }
 
     let _reauthBannerShown = false;
+    let _reauthBannerTimer = null;
     function showReauthBanner() {
         if (_reauthBannerShown) return;
-        _reauthBannerShown = true;
-        const container = document.getElementById('content') || document.getElementById('app-container');
-        if (!container) return;
-        const banner = document.createElement('div');
-        banner.id = 'reauth-banner';
-        banner.className = 'mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm flex items-center gap-3';
-        banner.innerHTML = '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
-            + '<span class="flex-1">Your session has expired. Please re-login to sync timetable data.</span>'
-            + '<a href="/api/auth/login" class="flex-shrink-0 px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs transition-colors">Re-login</a>'
-            + '<button onclick="this.parentElement.remove()" class="flex-shrink-0 p-1 rounded hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>';
-        container.insertBefore(banner, container.firstChild);
+        if (_reauthBannerTimer) return; // already waiting
+        _reauthBannerTimer = setTimeout(() => {
+            _reauthBannerTimer = null;
+            if (_reauthBannerShown) return;
+            _reauthBannerShown = true;
+            const container = document.getElementById('content') || document.getElementById('app-container');
+            if (!container) return;
+            const banner = document.createElement('div');
+            banner.id = 'reauth-banner';
+            banner.className = 'mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm flex items-center gap-3';
+            banner.innerHTML = '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+                + '<span class="flex-1">Your session has expired. Please re-login to sync timetable data.</span>'
+                + '<a href="/api/auth/login" class="flex-shrink-0 px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs transition-colors">Re-login</a>'
+                + '<button onclick="this.parentElement.remove()" class="flex-shrink-0 p-1 rounded hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>';
+            container.insertBefore(banner, container.firstChild);
+        }, 5000);
+    }
+    function clearReauthBanner() {
+        if (_reauthBannerTimer) { clearTimeout(_reauthBannerTimer); _reauthBannerTimer = null; }
     }
 
     let subjectConfig = {};
@@ -242,6 +261,7 @@ export const TimetableCore = html`
 
             let data = null;
             try {
+                await ensureFreshToken();
                 showLoadingBar();
                 let res = await fetch('/api/proxy/day-data?date=' + date + '&_=' + new Date().getTime(), {
                     headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
@@ -253,6 +273,7 @@ export const TimetableCore = html`
                     if (refreshData.success && refreshData.accessToken) {
                         studentData.accessToken = refreshData.accessToken;
                         localStorage.setItem('studentData', JSON.stringify(studentData));
+                        clearReauthBanner();
                         res = await fetch('/api/proxy/day-data?date=' + date + '&_=' + new Date().getTime(), {
                             headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
                         });
@@ -504,6 +525,7 @@ export const TimetableCore = html`
             params.set('date[before]', dateBefore);
 
             console.log('[clipboard-sessions] fetching', { dateAfter, dateBefore, context, studentId: studentData.studentId });
+            await ensureFreshToken();
             let res = await fetch('/api/proxy/clipboard-sessions?' + params.toString(), {
                 headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
             });
@@ -517,6 +539,7 @@ export const TimetableCore = html`
                 if (refreshData.success && refreshData.accessToken) {
                     studentData.accessToken = refreshData.accessToken;
                     localStorage.setItem('studentData', JSON.stringify(studentData));
+                    clearReauthBanner();
                     res = await fetch('/api/proxy/clipboard-sessions?' + params.toString(), {
                         headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
                     });

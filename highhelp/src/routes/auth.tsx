@@ -195,6 +195,7 @@ app.get('/api/auth/callback', async (c) => {
                             accessToken: "${accessToken}"
                         };
                         localStorage.setItem('studentData', JSON.stringify(studentData));
+                        localStorage.setItem('tokenRefreshedAt', String(Date.now()));
                         window.location.href = '/';
                     } catch (e) {
                         console.error('Error saving data', e);
@@ -322,7 +323,7 @@ app.get('/api/auth/refresh', async (c) => {
                     path: '/api/auth',
                     httpOnly: true,
                     secure: !c.req.url.includes('localhost'),
-                    maxAge: 60 * 60 * 24 * 30,
+                    maxAge: 60 * 60 * 24 * 90,
                     sameSite: 'Lax'
                 });
             }

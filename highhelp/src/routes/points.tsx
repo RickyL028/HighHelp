@@ -62,10 +62,54 @@ app.get('/points', async (c) => {
 			</div>
 			</div>
 
-			<script dangerouslySetInnerHTML={{
+				<script dangerouslySetInnerHTML={{
 				__html: `
 				(function() {
 					function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+					var _reauthBannerTimer = null;
+					function showReauthBanner(target) {
+						if (_reauthBannerTimer) return;
+						_reauthBannerTimer = setTimeout(function() {
+							_reauthBannerTimer = null;
+							if (document.getElementById('reauth-banner')) return;
+							var el = target || document.getElementById('content') || document.getElementById('app-container') || document.body;
+							var banner = document.createElement('div');
+							banner.id = 'reauth-banner';
+							banner.className = 'mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm flex items-center gap-3';
+							banner.innerHTML = '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+								+ '<span class="flex-1">Your session has expired. Please re-login to continue.</span>'
+								+ '<a href="/api/auth/login" class="flex-shrink-0 px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs transition-colors">Re-login</a>'
+								+ '<button onclick="this.parentElement.remove()" class="flex-shrink-0 p-1 rounded hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>';
+							el.insertBefore(banner, el.firstChild);
+						}, 5000);
+					}
+					function clearReauthBanner() {
+						if (_reauthBannerTimer) { clearTimeout(_reauthBannerTimer); _reauthBannerTimer = null; }
+					}
+
+					async function ensureFreshToken() {
+						var sd = JSON.parse(localStorage.getItem('studentData') || '{}');
+						if (!sd.accessToken) return false;
+						try {
+							var lastRefresh = parseInt(localStorage.getItem('tokenRefreshedAt') || '0', 10);
+							var age = Date.now() - lastRefresh;
+							if (age < 30 * 60 * 1000) return true;
+							var refreshRes = await fetch('/api/auth/refresh');
+							var refreshData = await refreshRes.json();
+							if (refreshData.success && refreshData.accessToken) {
+								sd.accessToken = refreshData.accessToken;
+								localStorage.setItem('studentData', JSON.stringify(sd));
+								localStorage.setItem('tokenRefreshedAt', String(Date.now()));
+								clearReauthBanner();
+								return true;
+							}
+							showReauthBanner();
+							return false;
+						} catch(e) {
+							return true;
+						}
+					}
 
 					var PROGRESS_CATEGORIES = [
 						'Academic',
@@ -135,6 +179,9 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 						}
 
 						try {
+							await ensureFreshToken();
+							studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
+							token = studentData.accessToken;
 							var prizesUrl = '/api/proxy/all-awards?url=' + encodeURIComponent('https://api.sbhs.net.au/api/core/award-scheme/prizes');
 							var [res, prizesRes] = await Promise.all([
 								fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), {
@@ -151,6 +198,7 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 								if (refreshData.success && refreshData.accessToken) {
 									studentData.accessToken = refreshData.accessToken;
 									localStorage.setItem('studentData', JSON.stringify(studentData));
+									clearReauthBanner();
 									var [retryRes, retryPrizesRes] = await Promise.all([
 										fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), {
 											headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
@@ -159,14 +207,14 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 											headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
 										})
 									]);
-									if (!retryRes.ok) { if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load awards. (HTTP ' + retryRes.status + ') <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>'; return; }
+									if (!retryRes.ok) { if (!cached) { root.innerHTML = ''; showReauthBanner(root); } return; }
 									var awardsData = await retryRes.json();
 									var prizesData = await retryPrizesRes.json();
 									try { localStorage.setItem(cacheKey, JSON.stringify({ awards: awardsData, prizes: prizesData })); } catch(e) {}
 									renderMyAwards(awardsData, prizesData);
 									return;
 								}
-								if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Session expired. Please <a href="/login" class="underline">log in</a> again.</p></div>';
+								if (!cached) { root.innerHTML = ''; showReauthBanner(root); }
 								return;
 							}
 
@@ -177,7 +225,7 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 							renderMyAwards(awardsData, prizesData);
 						} catch (e) {
 							console.error('Failed to fetch awards:', e);
-							if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Network error loading awards. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>';
+							if (!cached) { root.innerHTML = ''; showReauthBanner(root); }
 						}
 					})();
 
@@ -634,7 +682,7 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 					}
 
 					// --- All Awards ---
-					function loadAllAwards(url) {
+					async function loadAllAwards(url) {
 						var root = document.getElementById('all-awards-root');
 						var studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
 						var token = studentData.accessToken;
@@ -647,25 +695,26 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 							if (cached) renderAllAwards(root, cached);
 						}
 
-						var fetchUrl = url || '/api/proxy/all-awards';
-						fetch(fetchUrl, { headers: { 'Authorization': 'Bearer ' + token } })
-							.then(function(res) {
-								if (!res.ok) throw new Error('HTTP ' + res.status);
-								return res.json();
-							})
-							.then(function(data) {
-								if (!url) try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
-								renderAllAwards(root, data);
-							})
-							.catch(function(e) {
-								if (!url) {
-									var cached = null;
-									try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch(ex) {}
-									if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load all awards. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>';
-								} else {
-									root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load all awards. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>';
-								}
-							});
+						try {
+							await ensureFreshToken();
+							studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
+							token = studentData.accessToken;
+							var fetchUrl = url || '/api/proxy/all-awards';
+							var res = await fetch(fetchUrl, { headers: { 'Authorization': 'Bearer ' + token } });
+							if (!res.ok) throw new Error('HTTP ' + res.status);
+							var data = await res.json();
+							if (!url) try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
+							renderAllAwards(root, data);
+						} catch(e) {
+							console.error('Failed to load all awards:', e);
+							if (!url) {
+								var cached = null;
+								try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch(ex) {}
+								if (!cached) { root.innerHTML = ''; showReauthBanner(root); }
+							} else {
+								root.innerHTML = ''; showReauthBanner(root);
+							}
+						}
 					}
 
 					function renderAllAwards(root, data) {
@@ -781,7 +830,7 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 					}
 
 					// --- Blazer ---
-					function loadBlazer() {
+					async function loadBlazer() {
 						var root = document.getElementById('blazer-root');
 						var studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
 						var token = studentData.accessToken;
@@ -796,33 +845,35 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 						try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch(e) {}
 						if (cached) renderBlazer(root, cached);
 
-						var badgesUrl = '/api/proxy/all-awards?url=' + encodeURIComponent('https://api.sbhs.net.au/api/core/students/' + encodeURIComponent(studentId) + '/award-scheme/badges');
-						fetch(badgesUrl, { headers: { 'Authorization': 'Bearer ' + token } })
-							.then(function(res) {
-								if (res.status === 401 || res.status === 403) {
-									return fetch('/api/auth/refresh').then(function(r) { return r.json(); }).then(function(refreshData) {
-										if (refreshData.success && refreshData.accessToken) {
-											studentData.accessToken = refreshData.accessToken;
-											localStorage.setItem('studentData', JSON.stringify(studentData));
-											return fetch(badgesUrl, { headers: { 'Authorization': 'Bearer ' + refreshData.accessToken } });
-										}
-										throw new Error('Session expired');
-									});
+						try {
+							await ensureFreshToken();
+							studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
+							token = studentData.accessToken;
+							var badgesUrl = '/api/proxy/all-awards?url=' + encodeURIComponent('https://api.sbhs.net.au/api/core/students/' + encodeURIComponent(studentId) + '/award-scheme/badges');
+							var res = await fetch(badgesUrl, { headers: { 'Authorization': 'Bearer ' + token } });
+
+							if (res.status === 401 || res.status === 403) {
+								var refreshRes = await fetch('/api/auth/refresh');
+								var refreshData = await refreshRes.json();
+								if (refreshData.success && refreshData.accessToken) {
+									studentData.accessToken = refreshData.accessToken;
+									localStorage.setItem('studentData', JSON.stringify(studentData));
+									clearReauthBanner();
+									res = await fetch(badgesUrl, { headers: { 'Authorization': 'Bearer ' + refreshData.accessToken } });
+								} else {
+									if (!cached) { root.innerHTML = ''; showReauthBanner(root); }
+									return;
 								}
-								return res;
-							})
-							.then(function(res) {
-								if (!res.ok) throw new Error('HTTP ' + res.status);
-								return res.json();
-							})
-							.then(function(data) {
-								try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
-								renderBlazer(root, data);
-							})
-							.catch(function(e) {
-								console.error('Failed to fetch blazer badges:', e);
-								if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load blazer badges. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>';
-							});
+							}
+
+							if (!res.ok) throw new Error('HTTP ' + res.status);
+							var data = await res.json();
+							try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
+							renderBlazer(root, data);
+						} catch(e) {
+							console.error('Failed to fetch blazer badges:', e);
+							if (!cached) { root.innerHTML = ''; showReauthBanner(root); }
+						}
 					}
 
 function renderBlazer(root, data) {
@@ -891,7 +942,7 @@ function renderBlazer(root, data) {
 						currentCatPoints: {}
 					};
 
-					function loadPlanAwards() {
+					async function loadPlanAwards() {
 						var root = document.getElementById('plan-root');
 						var studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
 						var token = studentData.accessToken;
@@ -902,32 +953,37 @@ function renderBlazer(root, data) {
 						var planCacheKey = 'planAwards_' + studentId;
 						try { planState.planned = JSON.parse(localStorage.getItem(planCacheKey) || '[]'); } catch(e) { planState.planned = []; }
 
-						// Fetch current nominations + prizes + all awards in parallel
-						var prizesUrl = '/api/proxy/all-awards?url=' + encodeURIComponent('https://api.sbhs.net.au/api/core/award-scheme/prizes');
-						Promise.all([
-							fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), { headers: { 'Authorization': 'Bearer ' + token } }),
-							fetch(prizesUrl, { headers: { 'Authorization': 'Bearer ' + token } }),
-							fetch('/api/proxy/all-awards', { headers: { 'Authorization': 'Bearer ' + token } })
-						]).then(function(results) {
-							var awardsRes = results[0], prizesRes = results[1], allAwardsRes = results[2];
+						try {
+							await ensureFreshToken();
+							studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
+							token = studentData.accessToken;
+							// Fetch current nominations + prizes + all awards in parallel
+							var prizesUrl = '/api/proxy/all-awards?url=' + encodeURIComponent('https://api.sbhs.net.au/api/core/award-scheme/prizes');
+							var results = await Promise.all([
+								fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), { headers: { 'Authorization': 'Bearer ' + token } }),
+								fetch(prizesUrl, { headers: { 'Authorization': 'Bearer ' + token } }),
+								fetch('/api/proxy/all-awards', { headers: { 'Authorization': 'Bearer ' + token } })
+							]);
+							var awardsRes = results[0];
 
 							if (awardsRes.status === 401 || awardsRes.status === 403) {
-								return fetch('/api/auth/refresh').then(function(r){return r.json();}).then(function(rd) {
-									if (!rd.success || !rd.accessToken) throw new Error('Session expired');
-									studentData.accessToken = rd.accessToken;
-									localStorage.setItem('studentData', JSON.stringify(studentData));
-									return Promise.all([
-										fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), { headers: { 'Authorization': 'Bearer ' + rd.accessToken } }),
-										fetch(prizesUrl, { headers: { 'Authorization': 'Bearer ' + rd.accessToken } }),
-										fetch('/api/proxy/all-awards', { headers: { 'Authorization': 'Bearer ' + rd.accessToken } })
-									]);
-								});
+								var refreshRes = await fetch('/api/auth/refresh');
+								var rd = await refreshRes.json();
+								if (!rd.success || !rd.accessToken) {
+									root.innerHTML = ''; showReauthBanner(root);
+									return;
+								}
+								studentData.accessToken = rd.accessToken;
+								localStorage.setItem('studentData', JSON.stringify(studentData));
+								clearReauthBanner();
+								results = await Promise.all([
+									fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), { headers: { 'Authorization': 'Bearer ' + rd.accessToken } }),
+									fetch(prizesUrl, { headers: { 'Authorization': 'Bearer ' + rd.accessToken } }),
+									fetch('/api/proxy/all-awards', { headers: { 'Authorization': 'Bearer ' + rd.accessToken } })
+								]);
 							}
-							return results;
-						}).then(function(resolved) {
-							if (!resolved) throw new Error('Session expired');
-							return Promise.all(resolved.map(function(r) { return r.json(); }));
-						}).then(function(datas) {
+
+							var datas = await Promise.all(results.map(function(r) { return r.json(); }));
 							// Count current nominations (including rollover)
 							var items = (datas[0].member || []);
 							var allNoms = items.filter(function(item) {
@@ -979,10 +1035,10 @@ function renderBlazer(root, data) {
 							});
 
 							renderPlanTab();
-						}).catch(function(e) {
+						} catch(e) {
 							console.error('Failed to load plan data:', e);
-							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load plan data. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>';
-						});
+							root.innerHTML = ''; showReauthBanner(root);
+						}
 					}
 
 					function savePlan() {
