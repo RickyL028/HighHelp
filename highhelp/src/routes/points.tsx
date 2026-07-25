@@ -168,6 +168,11 @@ app.get('/points', async (c) => {
 						var totalPoints = awards.reduce(function(s,a){return s+a.points;},0);
 						var totalHouse = awards.reduce(function(s,a){return s+a.housePoints;},0);
 
+						var thisYear = new Date().getFullYear().toString();
+						var thisYearAwards = awards.filter(function(a){return a.date && a.date.substring(0,4) === thisYear;});
+						var thisYearPoints = thisYearAwards.reduce(function(s,a){return s+a.points;},0);
+						var thisYearHouse = thisYearAwards.reduce(function(s,a){return s+a.housePoints;},0);
+
 						// --- Prize Tier logic (from /award-scheme/prizes) ---
 						var prizes = (prizesData && prizesData.member) || [];
 						var nomCount = nominations.length;
@@ -248,10 +253,10 @@ app.get('/points', async (c) => {
 									'<span class="text-sm font-semibold text-amber-600 dark:text-amber-400">'+esc(currentTierName)+'</span>' +
 								'</div>' +
 								'<div class="space-y-2 text-sm">' +
-									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Awards Received</span><span class="font-semibold dark:text-white">'+awards.length+'</span></div>' +
 									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Nominations</span><span class="font-semibold dark:text-white">'+nomCount+'</span></div>' +
-									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Total Points</span><span class="font-semibold dark:text-white">'+totalPoints+'</span></div>' +
-									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">House Points</span><span class="font-semibold dark:text-white">'+totalHouse+'</span></div>' +
+									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Points</span><span class="font-semibold dark:text-white">'+thisYearPoints+' <span class="text-gray-400 dark:text-neutral-500 font-normal">('+totalPoints+')</span></span></div>' +
+									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">House Points</span><span class="font-semibold dark:text-white">'+thisYearHouse+' <span class="text-gray-400 dark:text-neutral-500 font-normal">('+totalHouse+')</span></span></div>' +
+									'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Awards</span><span class="font-semibold dark:text-white">'+thisYearAwards.length+' <span class="text-gray-400 dark:text-neutral-500 font-normal">('+awards.length+')</span></span></div>' +
 								'</div>' +
 								tierProgressHtml +
 							'</div>';
@@ -373,14 +378,14 @@ app.get('/points', async (c) => {
 						root.innerHTML =
 							'<div class="mb-4 flex flex-col sm:flex-row gap-4">' +
 								'<div class="flex-1">' +
-									'<input type="text" id="all-awards-search" placeholder="Search awards..." class="w-full px-4 py-3 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />' +
+									'<input type="text" id="all-awards-search" placeholder="Search items..." class="w-full px-4 py-3 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />' +
 								'</div>' +
 								'<select id="all-awards-cat-filter" class="px-4 py-3 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">' +
 									'<option value="">All Categories</option>' +
 									catNames.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('') +
 								'</select>' +
 							'</div>' +
-							'<div class="mb-3 text-xs text-gray-400 dark:text-neutral-500">' + totalItems + ' total awards available</div>' +
+							'<div class="mb-3 text-xs text-gray-400 dark:text-neutral-500">' + totalItems + ' total items</div>' +
 							'<div id="all-awards-list"></div>' +
 							'<div id="all-awards-nav" class="mt-4 flex justify-between items-center"></div>';
 
