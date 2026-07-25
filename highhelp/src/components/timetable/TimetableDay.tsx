@@ -120,7 +120,7 @@ export const TimetableDay = html`
 
     function formatResponseType(type) {
         if (!type) return '';
-        if (type.toLowerCase().includes('authorised')) return 'Authorised';
+        if (type.toLowerCase().includes('authorised') && !type.toLowerCase().includes('unauthorised')) return 'Authorised';
         return type.charAt(0).toUpperCase() + type.slice(1);
     }
 
