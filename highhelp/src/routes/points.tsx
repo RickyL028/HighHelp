@@ -285,20 +285,18 @@ app.get('/points', async (c) => {
 							var nomCount = (nomByCategory[cat] && nomByCategory[cat].count) || 0;
 							var adjusted = Math.max(0, pts - (nomCount * 30));
 							
-							// FIX 2: Calculate percentage based on 30 points (next nomination), not a relative max
-							var pct = Math.min(100, Math.round((adjusted / 30) * 100)); 
+							var pct = Math.min(100, Math.round((adjusted / 30) * 100));
 							
-							var barColor = adjusted > 0 ? 'bg-blue-500 dark:bg-blue-400' : 'bg-gray-300 dark:bg-neutral-600';
-							var nomLabel = '<span class="text-xs text-gray-400 dark:text-neutral-500 ml-2">x'+nomCount+'</span>'
-							var tpts = '<span class="text-xs text-gray-400 dark:text-neutral-500 ml-2">'+pts+' total</span>'
+							var barColor = adjusted >= 30 ? 'bg-green-500 dark:bg-green-400' : 'bg-blue-500 dark:bg-blue-400';
+							var nomLabel = nomCount > 0 ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 ml-2">x' + nomCount + '</span>' : '';
 							progressCard +=
 								'<div>' +
 									'<div class="flex justify-between items-center mb-1">' +
-										'<span class="text-xs font-medium dark:text-white">' + esc(cat)  + nomLabel + tpts + '</span>' +
+										'<span class="text-xs font-medium dark:text-white">' + esc(cat) + nomLabel + '</span>' +
 										'<span class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-700 dark:text-white font-mono">' + adjusted + '</span>' +
 									'</div>' +
-									'<div class="w-full h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden">' +
-										'<div class="h-full '+barColor+' rounded-full transition-all" style="width:'+pct+'%"></div>' +
+									'<div class="relative w-full h-2.5 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden">' +
+										(pct > 0 ? '<div class="absolute inset-y-0 left-0 ' + barColor + ' rounded-full transition-all" style="width:' + pct + '%"></div>' : '') +
 									'</div>' +
 								'</div>';
 						});
