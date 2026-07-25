@@ -327,7 +327,7 @@ ${props.latex ? html`
                     <a href="/past-papers" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Past Papers</a>
                     <a href="/leaderboard" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Leaderboard</a>
                     <a href="/atar" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">ATAR</a>
-                    
+                    <a href="/points" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Points</a>
                     <a href="/feedback" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Hmmm..!</a>
                     <div class="relative" id="more-dropdown">
                       <button class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1">
@@ -419,7 +419,7 @@ ${props.latex ? html`
               <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Past Papers</a>
               <a href="/leaderboard" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Leaderboard</a>
               <a href="/atar" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">ATAR</a>
-              
+              <a href="/points" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Points</a>
               <a href="/feedback" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Hmmm..!</a>
               <details class="group">
                 <summary class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap cursor-pointer list-none flex items-center justify-between">

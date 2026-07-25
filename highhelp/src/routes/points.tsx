@@ -123,11 +123,11 @@ app.get('/points', async (c) => {
 						var studentId = studentData.studentId;
 
 						if (!token || !studentId) {
-							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token found. Please log in again.</p></div>';
-							return;
-						}
+root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token found. Please <a href="/login" class="underline text-blue-500 dark:text-blue-400">log in</a> again.</p></div>';
+						return;
+					}
 
-						var cacheKey = 'awardsCache_' + studentId;
+					var cacheKey = 'awardsCache_' + studentId;
 						var cached = null;
 						try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch(e) {}
 						if (cached && cached.awards && cached.prizes) {
@@ -159,7 +159,7 @@ app.get('/points', async (c) => {
 											headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
 										})
 									]);
-									if (!retryRes.ok) { if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load awards. (HTTP ' + retryRes.status + ')</p></div>'; return; }
+									if (!retryRes.ok) { if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load awards. (HTTP ' + retryRes.status + ') <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>'; return; }
 									var awardsData = await retryRes.json();
 									var prizesData = await retryPrizesRes.json();
 									try { localStorage.setItem(cacheKey, JSON.stringify({ awards: awardsData, prizes: prizesData })); } catch(e) {}
@@ -170,14 +170,14 @@ app.get('/points', async (c) => {
 								return;
 							}
 
-							if (!res.ok) { if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load awards (HTTP ' + res.status + ')</p></div>'; return; }
+							if (!res.ok) { if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load awards (HTTP ' + res.status + ') <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>'; return; }
 							var awardsData = await res.json();
 							var prizesData = await prizesRes.json();
 							try { localStorage.setItem(cacheKey, JSON.stringify({ awards: awardsData, prizes: prizesData })); } catch(e) {}
 							renderMyAwards(awardsData, prizesData);
 						} catch (e) {
 							console.error('Failed to fetch awards:', e);
-							if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Network error loading awards.</p></div>';
+							if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Network error loading awards. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>';
 						}
 					})();
 
@@ -621,7 +621,7 @@ app.get('/points', async (c) => {
 						var root = document.getElementById('all-awards-root');
 						var studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
 						var token = studentData.accessToken;
-						if (!token) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token.</p></div>'; return; }
+						if (!token) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Log in</a></p></div>'; return; }
 
 						var cacheKey = 'allAwardsCache';
 						if (!url) {
@@ -644,9 +644,9 @@ app.get('/points', async (c) => {
 								if (!url) {
 									var cached = null;
 									try { cached = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch(ex) {}
-									if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load all awards.</p></div>';
+									if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load all awards. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>';
 								} else {
-									root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load all awards.</p></div>';
+									root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load all awards. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>';
 								}
 							});
 					}
@@ -770,7 +770,7 @@ app.get('/points', async (c) => {
 						var token = studentData.accessToken;
 						var studentId = studentData.studentId;
 						if (!token || !studentId) {
-							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token found. Please log in again.</p></div>';
+							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token found. Please <a href="/login" class="underline text-blue-500 dark:text-blue-400">log in</a> again.</p></div>';
 							return;
 						}
 
@@ -804,7 +804,7 @@ app.get('/points', async (c) => {
 							})
 							.catch(function(e) {
 								console.error('Failed to fetch blazer badges:', e);
-								if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load blazer badges.</p></div>';
+								if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load blazer badges. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>';
 							});
 					}
 
@@ -879,7 +879,7 @@ function renderBlazer(root, data) {
 						var studentData = JSON.parse(localStorage.getItem('studentData') || '{}');
 						var token = studentData.accessToken;
 						var studentId = studentData.studentId;
-						if (!token) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token.</p></div>'; return; }
+						if (!token) { root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">No access token. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Log in</a></p></div>'; return; }
 
 						// Load saved plan
 						var planCacheKey = 'planAwards_' + studentId;
@@ -956,7 +956,7 @@ function renderBlazer(root, data) {
 							renderPlanTab();
 						}).catch(function(e) {
 							console.error('Failed to load plan data:', e);
-							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load plan data.</p></div>';
+							root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load plan data. <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>';
 						});
 					}
 
