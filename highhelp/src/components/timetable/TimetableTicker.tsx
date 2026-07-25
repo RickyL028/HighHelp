@@ -152,19 +152,22 @@ export const TimetableTicker = html`
                         targetTime = new Date(ry, rm-1, rd);
                         targetTime.setHours(h, m, 0, 0);
                         mainText = hoveredPeriodData.title || "Selected Class";
-                        subText = \`<span class="font-bold text-black dark:text-white" > \${ hoveredPeriodData.room || '' }</span > \${ hoveredPeriodData.room && hoveredPeriodData.teacher ? ' • ' : '' }\${ hoveredPeriodData.teacher || '' } \`;
+                        const scanBadge = (typeof getScanInHtml === 'function') ? getScanInHtml() : '';
+                        subText = \`<span class="font-bold text-black dark:text-white" > \${ hoveredPeriodData.room || '' }</span > \${ hoveredPeriodData.room && hoveredPeriodData.teacher ? ' • ' : '' }\${ hoveredPeriodData.teacher || '' }\${scanBadge}\`;
                         timerLabel = "Until Start";
-                        if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) subText = \`<span class="font-bold text-black dark:text-white" > Selected Period</span > \`;
+                        if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) subText = \`<span class="font-bold text-black dark:text-white" > Selected Period</span >\${scanBadge}\`;
                 } else {
                     const next = await findNextPeriod(now);
                     if (next) {
                         targetTime = next.date;
                         mainText = next.subject;
-                        subText = \`<span class="font-bold text-black dark:text-white" >\${ next.dayLabel }</span > • \${ next.period } \${ next.room ? ' • ' + next.room : '' } \`;
+                        const scanBadge = (typeof getScanInHtml === 'function') ? getScanInHtml() : '';
+                        subText = \`<span class="font-bold text-black dark:text-white" >\${ next.dayLabel }</span > • \${ next.period } \${ next.room ? ' • ' + next.room : '' }\${scanBadge}\`;
                         timerLabel = next.isCurrent ? "Remaining" : "Until Start";
                     } else {
                         mainText = "No Upcoming Classes";
-                        subText = "Relax!";
+                        const scanBadge = (typeof getScanInHtml === 'function') ? getScanInHtml() : '';
+                        subText = "Relax!" + scanBadge;
                         btTimer.textContent = "--:--:--";
                     }
                 }
@@ -185,6 +188,8 @@ export const TimetableTicker = html`
                     btLabel.textContent = "";
                     btTimer.textContent = "--:--:--";
                 }
+                // Bind scan-in badge click handler after rendering
+                if (typeof attachScanInBadge === 'function') attachScanInBadge();
             }
         } catch(e) {
             console.error('Ticker error', e); 

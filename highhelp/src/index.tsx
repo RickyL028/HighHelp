@@ -133,6 +133,21 @@ app.get('/api/proxy/all-awards', async (c) => {
         return c.json({ error: 'Proxy error' }, 500)
     }
 })
+app.get('/api/proxy/scan-ins', async (c) => {
+    const authHeader = c.req.header('Authorization')
+    const studentId = c.req.query('studentId')
+    if (!authHeader || !studentId) return c.json({ error: 'Invalid request' }, 400)
+    try {
+        const response = await fetch(`https://api.sbhs.net.au/api/core/students/${studentId}/attendance/scan-ins`, {
+            headers: { 'Authorization': authHeader }
+        })
+        const data = await response.json()
+        return c.json(data, response.status as any)
+    } catch (e) {
+        return c.json({ error: 'Proxy error' }, 500)
+    }
+})
+
 app.route('/', homeRoutes)
 app.route('/home', homeRoutes)
 app.route('/', authRoutes)

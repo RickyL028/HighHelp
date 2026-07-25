@@ -2,6 +2,158 @@ import { html } from 'hono/html'
 
 export const TimetableDay = html`
 <script>
+    // Cache of scan-in data keyed by week-start (Monday) date string, e.g. { "2026-07-20": { timestamp, data } }
+    let _scanInWeekCache = {};
+    let _scanInFetchPromises = {};
+
+    // Returns { from, to, key } for the Mon-Sun week containing dateStr. key = Monday's date string.
+    function getWeekRange(dateStr) {
+        const d = new Date(dateStr + 'T12:00:00');
+        const day = d.getDay(); // 0 = Sunday .. 6 = Saturday
+        const diffToMonday = (day === 0 ? -6 : 1 - day);
+        const monday = new Date(d);
+        monday.setDate(d.getDate() + diffToMonday);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        const fmt = (dt) => \`\${dt.getFullYear()}-\${String(dt.getMonth() + 1).padStart(2, '0')}-\${String(dt.getDate()).padStart(2, '0')}\`;
+        return { from: fmt(monday), to: fmt(sunday), key: fmt(monday) };
+    }
+
+    // Fetches (and caches, per-week) scan-in data covering the week containing dateStr.
+    async function fetchScanIns(dateStr, forceFetch = false) {
+        if (!studentData?.accessToken || !studentData?.studentId) return null;
+
+        const { from, to, key } = getWeekRange(dateStr);
+
+        if (!forceFetch) {
+            const cached = _scanInWeekCache[key];
+            if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+                return cached.data;
+            }
+            if (_scanInFetchPromises[key]) return _scanInFetchPromises[key];
+        }
+
+        const fetchPromise = (async () => {
+            try {
+                const url = '/api/proxy/scan-ins?studentId=' + encodeURIComponent(studentData.studentId)
+                    + '&from=' + from + '&to=' + to;
+                let res = await fetch(url, {
+                    headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    const refreshRes = await fetch('/api/auth/refresh');
+                    const refreshData = await refreshRes.json();
+                    if (refreshData.success && refreshData.accessToken) {
+                        studentData.accessToken = refreshData.accessToken;
+                        localStorage.setItem('studentData', JSON.stringify(studentData));
+                        res = await fetch(url, {
+                            headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
+                        });
+                    } else {
+                        window.location.href = '/logout';
+                        return null;
+                    }
+                }
+
+                if (!res.ok) {
+                    console.warn('[scan-in] fetch failed', res.status);
+                    return null;
+                }
+
+                const data = await res.json();
+                _scanInWeekCache[key] = { timestamp: Date.now(), data };
+                return data;
+            } catch (e) {
+                console.error('[scan-in] fetch threw', e);
+                return null;
+            }
+        })();
+
+        if (!forceFetch) _scanInFetchPromises[key] = fetchPromise;
+        try {
+            return await fetchPromise;
+        } finally {
+            if (!forceFetch) delete _scanInFetchPromises[key];
+        }
+    }
+
+    // Finds the scan-in record for a specific date within a fetched week's data.
+    function getScanInForDate(scanData, dateStr) {
+        if (!scanData?.member) return null;
+        return scanData.member.find(m => m.date === dateStr) || null;
+    }
+
+    function formatScanInTime(timestamp) {
+        if (!timestamp) return '';
+        const d = new Date(timestamp);
+        const h = d.getHours();
+        const m = d.getMinutes();
+        const suffix = h >= 12 ? 'pm' : 'am';
+        const h12 = h % 12 || 12;
+        return h12 + ':' + String(m).padStart(2, '0') + suffix;
+    }
+
+    function formatScanInTimeFull(timestamp) {
+        if (!timestamp) return '';
+        const d = new Date(timestamp);
+        const h = d.getHours();
+        const m = d.getMinutes();
+        const s = d.getSeconds();
+        const suffix = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12;
+        return h12 + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + ' ' + suffix;
+    }
+
+    function formatResponseType(type) {
+        if (!type) return '';
+        if (type.toLowerCase().includes('authorised')) return 'Authorised';
+        return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+
+    // Renders the badge for whatever date is currently being viewed (currentDateStr),
+    // using whatever week-cache data has been loaded for that date.
+    function getScanInHtml() {
+        const { key } = getWeekRange(currentDateStr);
+        const weekData = _scanInWeekCache[key]?.data;
+        if (!weekData) return '';
+
+        const scanIn = getScanInForDate(weekData, currentDateStr);
+        if (!scanIn) return '';
+
+        const timeStr = formatScanInTime(scanIn.timestamp);
+        const timeFull = formatScanInTimeFull(scanIn.timestamp);
+        const location = scanIn.kiosk?.location || scanIn.kioskName || '';
+        const responseType = formatResponseType(scanIn.response?.type);
+        const responseOutput = scanIn.response?.output || '';
+        return \`<span id="scan-in-badge" class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-semibold cursor-pointer ml-2 flex-shrink-0" data-time="\${timeFull}" data-location="\${esc(location)}" data-response="\${esc(responseType)}" data-output="\${esc(responseOutput)}"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>\${timeStr}</span>\`;
+    }
+
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    function attachScanInBadge() {
+        const badge = document.getElementById('scan-in-badge');
+        if (!badge || badge._bound) return;
+        badge._bound = true;
+        badge.addEventListener('click', (e) => {
+            e.stopPropagation();
+            let popup = document.getElementById('scan-in-popup');
+            if (popup) { popup.remove(); return; }
+            popup = document.createElement('div');
+            popup.id = 'scan-in-popup';
+            popup.className = 'absolute z-50 p-3 bg-white dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-xl shadow-xl max-w-xs right-0 top-full mt-2';
+            const time = badge.dataset.time || '';
+            const loc = badge.dataset.location || '';
+            const resp = badge.dataset.response || '';
+            const out = badge.dataset.output || '';
+            popup.innerHTML = \`<div class="text-[10px] uppercase tracking-wider text-gray-400 dark:text-neutral-500 font-bold mb-2">Scan-in Details</div><div class="space-y-1.5 text-sm"><div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Time</span><span class="text-gray-900 dark:text-white font-medium">\${time}</span></div>\${loc ? \`<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Location</span><span class="text-gray-900 dark:text-white font-medium">\${loc}</span></div>\` : ''}\${resp ? \`<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Response</span><span class="text-gray-900 dark:text-white font-medium">\${resp}</span></div>\` : ''}\${out ? \`<div class="pt-1.5 mt-1.5 border-t border-gray-100 dark:border-neutral-700"><span class="text-gray-500 dark:text-neutral-400 text-xs">\${out}</span></div>\` : ''}</div>\`;
+            badge.parentElement.style.position = 'relative';
+            badge.parentElement.appendChild(popup);
+            const close = (ev) => { if (!popup.contains(ev.target) && ev.target !== badge) { popup.remove(); document.removeEventListener('click', close); } };
+            setTimeout(() => document.addEventListener('click', close), 0);
+        });
+    }
+
     async function renderDay() {
         const url = new URL(window.location);
         url.searchParams.set('date', currentDateStr);
@@ -339,6 +491,10 @@ export const TimetableDay = html`
             }
 
             attachHoverEffects();
+
+            // Attach scan-in badge click handler (badge is rendered by ticker in bt-details)
+            attachScanInBadge();
+
             startTicker();
         }
 
@@ -354,12 +510,23 @@ export const TimetableDay = html`
             buildUI(cachedApi, cachedCal || [], []);
         }
 
+        // Fetch scan-in data for the week containing the *viewed* date (not just "today").
+        // Cheap no-op if that week is already cached and fresh.
+        const scanInSnapshotDate = currentDateStr;
+        fetchScanIns(currentDateStr).then(() => {
+            // Only refresh the ticker if we're still looking at the date this fetch was for
+            if (currentDateStr === scanInSnapshotDate && window.updateTicker) {
+                window.updateTicker();
+                attachScanInBadge();
+            }
+        }).catch(() => {});
+
         // Capture snapshot to prevent overwriting if user has navigated away or changed date
         const snapshotDate = currentDateStr;
         const snapshotView = currentView;
 
         // Only force-fetch for today/future dates (past dates are static)
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getLocalDateStr();
         const shouldForceFetch = currentDateStr >= todayStr;
 
         // --- 4. BACKGROUND PASS (Asynchronous Fetch & Update) ---

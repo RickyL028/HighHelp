@@ -32,6 +32,27 @@ export const TimetableCore = html`
         }
     }
 
+    // Validate token works with new API — force re-login if not
+    if (studentData?.accessToken && studentData?.studentId) {
+        (async () => {
+            try {
+                const testRes = await fetch('/api/proxy/scan-ins?studentId=' + encodeURIComponent(studentData.studentId), {
+                    headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
+                });
+                if (testRes.status === 401 || testRes.status === 403) {
+                    const refreshRes = await fetch('/api/auth/refresh');
+                    const refreshData = await refreshRes.json();
+                    if (refreshData.success && refreshData.accessToken) {
+                        studentData.accessToken = refreshData.accessToken;
+                        localStorage.setItem('studentData', JSON.stringify(studentData));
+                    } else {
+                        window.location.href = '/logout';
+                    }
+                }
+            } catch(e) { /* network error — continue, will retry later */ }
+        })();
+    }
+
     const calendarMap = studentData?.calendar || {}; 
     const daysData = studentData?.timetable?.days || {};
     const subjectsData = studentData?.timetable?.subjects || [];
@@ -57,6 +78,7 @@ export const TimetableCore = html`
         const key = s.shortTitle || s.title || s.subject || '';
         if (key) subjectMap[key] = s;
     });
+    
 
     function showLoadingBar() {
         loadingCounter++;
@@ -353,6 +375,9 @@ export const TimetableCore = html`
         const h12 = h % 12 || 12;
         return \`\${h12}:\${m.toString().padStart(2, '0')} \${suffix}\`;
     }
+        function getLocalDateStr(d = new Date()) {
+    return \`\${d.getFullYear()}-\${String(d.getMonth() + 1).padStart(2, '0')}-\${String(d.getDate()).padStart(2, '0')}\`;
+}
 
     function paperDateFormat(dateStr) {
         const d = new Date(dateStr + 'T12:00:00');
