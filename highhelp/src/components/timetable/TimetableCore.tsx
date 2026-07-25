@@ -172,7 +172,6 @@ export const TimetableCore = html`
         }
         
         if (now.getDay() === 0) now.setDate(now.getDate() + 1);
-        if (now.getDay() === 6) now.setDate(now.getDate() + 2);
 
          const year = now.getFullYear();
          const month = String(now.getMonth() + 1).padStart(2, '0');

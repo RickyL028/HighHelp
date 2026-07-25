@@ -136,7 +136,7 @@ export const TimetableDay = html`
 
         if (!scanIn) {
             if (isSchoolDay) {
-                return \`<span id="scan-in-badge" class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full text-xs font-semibold ml-2 flex-shrink-0" data-time="" data-location="" data-response="Not scanned in" data-output=""><span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>Not scanned in</span>\`;
+                return \`<span id="scan-in-badge" class="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full text-xs font-semibold mr-2 flex-shrink-0" data-time="" data-location="" data-response="Not scanned in" data-output=""><span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>Not scanned in</span>\`;
             }
             return '';
         }
@@ -146,7 +146,7 @@ export const TimetableDay = html`
         const location = scanIn.kiosk?.location || scanIn.kioskName || '';
         const responseType = formatResponseType(scanIn.response?.type);
         const responseOutput = scanIn.response?.output || '';
-        return \`<span id="scan-in-badge" class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-semibold cursor-pointer ml-2 flex-shrink-0" data-time="\${timeFull}" data-location="\${esc(location)}" data-response="\${esc(responseType)}" data-output="\${esc(responseOutput)}"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>\${timeStr}</span>\`;
+        return \`<span id="scan-in-badge" class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-semibold cursor-pointer mr-2 flex-shrink-0" data-time="\${timeFull}" data-location="\${esc(location)}" data-response="\${esc(responseType)}" data-output="\${esc(responseOutput)}"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>\${timeStr}</span>\`;
     }
 
     function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -652,7 +652,7 @@ export const TimetableDay = html`
                 while (tries < 7) {
                     nextDay.setDate(nextDay.getDate() + 1);
                     const dw = nextDay.getDay();
-                    if (dw !== 0 && dw !== 6) break;
+                    if (dw !== 0) break;
                     tries++;
                 }
                 if (tries < 7) {

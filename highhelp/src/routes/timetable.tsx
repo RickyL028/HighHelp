@@ -203,7 +203,7 @@ app.get('/', async (c) => {
                                 while(count < 7) {
                                     d.setDate(d.getDate() + delta);
                                     const dw = d.getDay();
-                                    if (dw !== 0 && dw !== 6) break;
+                                    if (dw !== 0) break;
                                     count++;
                                 }
                             }

@@ -153,21 +153,21 @@ export const TimetableTicker = html`
                         targetTime.setHours(h, m, 0, 0);
                         mainText = hoveredPeriodData.title || "Selected Class";
                         const scanBadge = (typeof getScanInHtml === 'function') ? getScanInHtml() : '';
-                        subText = \`<span class="font-bold text-black dark:text-white" > \${ hoveredPeriodData.room || '' }</span > \${ hoveredPeriodData.room && hoveredPeriodData.teacher ? ' • ' : '' }\${ hoveredPeriodData.teacher || '' }\${scanBadge}\`;
+                        subText = \`\${scanBadge}<span class="font-bold text-black dark:text-white" > \${ hoveredPeriodData.room || '' }</span > \${ hoveredPeriodData.room && hoveredPeriodData.teacher ? ' • ' : '' }\${ hoveredPeriodData.teacher || '' }\`;
                         timerLabel = "Until Start";
-                        if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) subText = \`<span class="font-bold text-black dark:text-white" > Selected Period</span >\${scanBadge}\`;
+                        if (!hoveredPeriodData.room && !hoveredPeriodData.teacher) subText = \`\${scanBadge}<span class="font-bold text-black dark:text-white" > Selected Period</span >\`;
                 } else {
                     const next = await findNextPeriod(now);
                     if (next) {
                         targetTime = next.date;
                         mainText = next.subject;
                         const scanBadge = (typeof getScanInHtml === 'function') ? getScanInHtml() : '';
-                        subText = \`<span class="font-bold text-black dark:text-white" >\${ next.dayLabel }</span > • \${ next.period } \${ next.room ? ' • ' + next.room : '' }\${scanBadge}\`;
+                        subText = \`\${scanBadge}<span class="font-bold text-black dark:text-white" >\${ next.dayLabel }</span > • \${ next.period } \${ next.room ? ' • ' + next.room : '' }\`;
                         timerLabel = next.isCurrent ? "Remaining" : "Until Start";
                     } else {
                         mainText = "No Upcoming Classes";
                         const scanBadge = (typeof getScanInHtml === 'function') ? getScanInHtml() : '';
-                        subText = "Relax!" + scanBadge;
+                        subText = scanBadge + "Relax!";
                         btTimer.textContent = "--:--:--";
                     }
                 }
