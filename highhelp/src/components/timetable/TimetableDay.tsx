@@ -21,18 +21,24 @@ export const TimetableDay = html`
 
     // Fetches (and caches, per-week) scan-in data covering the week containing dateStr.
     async function fetchScanIns(dateStr, forceFetch = false) {
-        if (!studentData?.accessToken || !studentData?.studentId) return null;
+        if (!studentData?.accessToken || !studentData?.studentId) {
+            console.warn('[scan-in] skipped: missing accessToken or studentId', { accessToken: !!studentData?.accessToken, studentId: !!studentData?.studentId });
+            if (!studentData?.studentId) showReauthBanner();
+            return null;
+        }
 
         const { from, to, key } = getWeekRange(dateStr);
 
         if (!forceFetch) {
             const cached = _scanInWeekCache[key];
             if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+                console.log('[scan-in] serving from memory cache', key);
                 return cached.data;
             }
             if (_scanInFetchPromises[key]) return _scanInFetchPromises[key];
         }
 
+        console.log('[scan-in] fetching', { from, to, key, forceFetch });
         const fetchPromise = (async () => {
             try {
                 const url = '/api/proxy/scan-ins?studentId=' + encodeURIComponent(studentData.studentId)
@@ -40,24 +46,30 @@ export const TimetableDay = html`
                 let res = await fetch(url, {
                     headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
                 });
+                console.log('[scan-in] response', { status: res.status, ok: res.ok });
 
                 if (res.status === 401 || res.status === 403) {
+                    console.log('[scan-in] got', res.status, '— attempting refresh');
                     const refreshRes = await fetch('/api/auth/refresh');
                     const refreshData = await refreshRes.json();
+                    console.log('[scan-in] refresh result', { success: refreshData.success, hasToken: !!refreshData.accessToken });
                     if (refreshData.success && refreshData.accessToken) {
                         studentData.accessToken = refreshData.accessToken;
                         localStorage.setItem('studentData', JSON.stringify(studentData));
                         res = await fetch(url, {
                             headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
                         });
+                        console.log('[scan-in] retry after refresh', { status: res.status, ok: res.ok });
                     } else {
-                        window.location.href = '/logout';
+                        console.warn('[scan-in] refresh failed — showing reauth banner');
+                        showReauthBanner();
                         return null;
                     }
                 }
 
                 if (!res.ok) {
                     console.warn('[scan-in] fetch failed', res.status);
+                    showReauthBanner();
                     return null;
                 }
 
@@ -66,6 +78,7 @@ export const TimetableDay = html`
                 return data;
             } catch (e) {
                 console.error('[scan-in] fetch threw', e);
+                showReauthBanner();
                 return null;
             }
         })();

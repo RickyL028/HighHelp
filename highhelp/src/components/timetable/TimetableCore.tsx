@@ -32,6 +32,36 @@ export const TimetableCore = html`
         }
     }
 
+    // Recover studentId for old logins that predate the API change
+    // Must run before any fetch functions that depend on studentId
+    if (studentData?.accessToken && !studentData?.studentId) {
+        (async () => {
+            try {
+                console.log('[auth] studentId missing — attempting recovery from userinfo');
+                const res = await fetch('https://student.sbhs.net.au/api/details/userinfo.json', {
+                    headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
+                });
+                if (res.ok) {
+                    const userData = await res.json();
+                    if (userData.studentId) {
+                        console.log('[auth] recovered studentId', userData.studentId);
+                        studentData.studentId = userData.studentId;
+                        localStorage.setItem('studentData', JSON.stringify(studentData));
+                    } else {
+                        console.warn('[auth] userinfo returned no studentId', userData);
+                        showReauthBanner();
+                    }
+                } else {
+                    console.warn('[auth] userinfo request failed', res.status);
+                    showReauthBanner();
+                }
+            } catch(e) {
+                console.error('[auth] studentId recovery failed', e);
+                showReauthBanner();
+            }
+        })();
+    }
+
     // Validate token works with new API — force re-login if not
     if (studentData?.accessToken && studentData?.studentId) {
         (async () => {
@@ -101,6 +131,22 @@ export const TimetableCore = html`
                 }, 200);
             }
         }
+    }
+
+    let _reauthBannerShown = false;
+    function showReauthBanner() {
+        if (_reauthBannerShown) return;
+        _reauthBannerShown = true;
+        const container = document.getElementById('content') || document.getElementById('app-container');
+        if (!container) return;
+        const banner = document.createElement('div');
+        banner.id = 'reauth-banner';
+        banner.className = 'mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm flex items-center gap-3';
+        banner.innerHTML = '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+            + '<span class="flex-1">Your session has expired. Please re-login to sync timetable data.</span>'
+            + '<a href="/api/auth/login" class="flex-shrink-0 px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs transition-colors">Re-login</a>'
+            + '<button onclick="this.parentElement.remove()" class="flex-shrink-0 p-1 rounded hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>';
+        container.insertBefore(banner, container.firstChild);
     }
 
     let subjectConfig = {};
@@ -412,11 +458,16 @@ export const TimetableCore = html`
     }
 
     async function fetchClipboardSessions(forceFetch = false, dateAfter = undefined, dateBefore = undefined) {
-        if (!studentData?.accessToken || !studentData?.studentId) return null;
+        if (!studentData?.accessToken || !studentData?.studentId) {
+            console.warn('[clipboard-sessions] skipped: missing accessToken or studentId', { accessToken: !!studentData?.accessToken, studentId: !!studentData?.studentId });
+            if (!studentData?.studentId) showReauthBanner();
+            return null;
+        }
 
         const cacheKey = _clipboardCacheKey(dateAfter, dateBefore);
         const now = Date.now();
         if (!forceFetch && _clipboardSessionsCache[cacheKey] && (now - _clipboardSessionsTimestamps[cacheKey] < CLIPBOARD_SESSIONS_TTL)) {
+            console.log('[clipboard-sessions] serving from memory cache', cacheKey);
             return _clipboardSessionsCache[cacheKey];
         }
 
@@ -427,6 +478,7 @@ export const TimetableCore = html`
                 if (raw) {
                     const cached = JSON.parse(raw);
                     if (cached.timestamp && (now - cached.timestamp < CLIPBOARD_SESSIONS_TTL) && cached.data) {
+                        console.log('[clipboard-sessions] serving from localStorage', cacheKey);
                         _clipboardSessionsCache[cacheKey] = cached.data;
                         _clipboardSessionsTimestamps[cacheKey] = cached.timestamp;
                         return cached.data;
@@ -452,25 +504,36 @@ export const TimetableCore = html`
             params.set('date[after]', dateAfter);
             params.set('date[before]', dateBefore);
 
+            console.log('[clipboard-sessions] fetching', { dateAfter, dateBefore, context, studentId: studentData.studentId });
             let res = await fetch('/api/proxy/clipboard-sessions?' + params.toString(), {
                 headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
             });
+            console.log('[clipboard-sessions] response', { status: res.status, ok: res.ok });
 
             if (res.status === 401 || res.status === 403) {
+                console.log('[clipboard-sessions] got', res.status, '— attempting refresh');
                 const refreshRes = await fetch('/api/auth/refresh');
                 const refreshData = await refreshRes.json();
+                console.log('[clipboard-sessions] refresh result', { success: refreshData.success, hasToken: !!refreshData.accessToken });
                 if (refreshData.success && refreshData.accessToken) {
                     studentData.accessToken = refreshData.accessToken;
                     localStorage.setItem('studentData', JSON.stringify(studentData));
                     res = await fetch('/api/proxy/clipboard-sessions?' + params.toString(), {
                         headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
                     });
+                    console.log('[clipboard-sessions] retry after refresh', { status: res.status, ok: res.ok });
                 } else {
+                    console.warn('[clipboard-sessions] refresh failed — showing reauth banner');
+                    showReauthBanner();
                     return null;
                 }
             }
 
-            if (!res.ok) return null;
+            if (!res.ok) {
+                console.warn('[clipboard-sessions] fetch failed', res.status);
+                showReauthBanner();
+                return null;
+            }
 
             const data = await res.json();
             _clipboardSessionsCache[cacheKey] = data;
@@ -480,7 +543,8 @@ export const TimetableCore = html`
             } catch(e) {}
             return data;
         } catch (e) {
-            console.error('[clipboard-sessions] fetch failed', e);
+            console.error('[clipboard-sessions] fetch threw', e);
+            showReauthBanner();
             return null;
         } finally {
             hideLoadingBar();
