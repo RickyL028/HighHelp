@@ -368,6 +368,97 @@ export const TimetableCore = html`
         }
     }
 
+    let _clipboardSessionsCache = null;
+    let _clipboardSessionsTimestamp = 0;
+    const CLIPBOARD_SESSIONS_TTL = 3600000; // 1 hour
+
+    async function fetchClipboardSessions(forceFetch = false) {
+        if (!studentData?.accessToken || !studentData?.studentId) return null;
+
+        const now = Date.now();
+        if (!forceFetch && _clipboardSessionsCache && (now - _clipboardSessionsTimestamp < CLIPBOARD_SESSIONS_TTL)) {
+            return _clipboardSessionsCache;
+        }
+
+        // Check localStorage cache
+        if (!forceFetch) {
+            try {
+                const raw = localStorage.getItem('clipboardSessionsCache');
+                if (raw) {
+                    const cached = JSON.parse(raw);
+                    if (cached.timestamp && (now - cached.timestamp < CLIPBOARD_SESSIONS_TTL) && cached.data) {
+                        _clipboardSessionsCache = cached.data;
+                        _clipboardSessionsTimestamp = cached.timestamp;
+                        return cached.data;
+                    }
+                }
+            } catch(e) {}
+        }
+
+        try {
+            showLoadingBar();
+            const context = new Date().getFullYear().toString();
+            let res = await fetch('/api/proxy/clipboard-sessions?studentId=' + encodeURIComponent(studentData.studentId) + '&context=' + context, {
+                headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
+            });
+
+            if (res.status === 401 || res.status === 403) {
+                const refreshRes = await fetch('/api/auth/refresh');
+                const refreshData = await refreshRes.json();
+                if (refreshData.success && refreshData.accessToken) {
+                    studentData.accessToken = refreshData.accessToken;
+                    localStorage.setItem('studentData', JSON.stringify(studentData));
+                    res = await fetch('/api/proxy/clipboard-sessions?studentId=' + encodeURIComponent(studentData.studentId) + '&context=' + context, {
+                        headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
+                    });
+                } else {
+                    return null;
+                }
+            }
+
+            if (!res.ok) return null;
+
+            const data = await res.json();
+            _clipboardSessionsCache = data;
+            _clipboardSessionsTimestamp = now;
+            try {
+                localStorage.setItem('clipboardSessionsCache', JSON.stringify({ timestamp: now, data }));
+            } catch(e) {}
+            return data;
+        } catch (e) {
+            console.error('[clipboard-sessions] fetch failed', e);
+            return null;
+        } finally {
+            hideLoadingBar();
+        }
+    }
+
+    function getCachedClipboardSessions() {
+        if (_clipboardSessionsCache) return _clipboardSessionsCache;
+        try {
+            const raw = localStorage.getItem('clipboardSessionsCache');
+            if (raw) {
+                const cached = JSON.parse(raw);
+                const now = Date.now();
+                if (cached.timestamp && (now - cached.timestamp < CLIPBOARD_SESSIONS_TTL) && cached.data) {
+                    _clipboardSessionsCache = cached.data;
+                    _clipboardSessionsTimestamp = cached.timestamp;
+                    return cached.data;
+                }
+            }
+        } catch(e) {}
+        return null;
+    }
+
+    function getClipboardSessionsForDate(sessions, dateStr) {
+        if (!sessions?.member) return [];
+        return sessions.member.filter(s => {
+            const d = new Date(s.startDateTime);
+            const ed = d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' });
+            return ed === dateStr;
+        });
+    }
+
     function formatTime(t) {
         if (!t) return '';
         const [h, m] = t.split(':').map(Number);

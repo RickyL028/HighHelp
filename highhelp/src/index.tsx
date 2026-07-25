@@ -147,6 +147,21 @@ app.get('/api/proxy/scan-ins', async (c) => {
         return c.json({ error: 'Proxy error' }, 500)
     }
 })
+app.get('/api/proxy/clipboard-sessions', async (c) => {
+    const authHeader = c.req.header('Authorization')
+    const studentId = c.req.query('studentId')
+    if (!authHeader || !studentId) return c.json({ error: 'Invalid request' }, 400)
+    try {
+        const context = c.req.query('context') || new Date().getFullYear().toString()
+        const response = await fetch(`https://api.sbhs.net.au/api/core/students/${studentId}/clipboard/sessions?_page=1&_itemsPerPage=200&context=${context}`, {
+            headers: { 'Authorization': authHeader }
+        })
+        const data = await response.json()
+        return c.json(data, response.status as any)
+    } catch (e) {
+        return c.json({ error: 'Proxy error' }, 500)
+    }
+})
 
 app.route('/', homeRoutes)
 app.route('/home', homeRoutes)

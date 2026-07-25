@@ -36,12 +36,12 @@ export const TimetableConfig = html`
             <div class="flex items-start justify-between mb-3">
                 <div>
                     <h2 class="text-sm font-bold text-gray-900 dark:text-neutral-100">Calendar Feeds</h2>
-                    <p class="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">ICS links from Clipboard, Canvas, etc.</p>
+                    <p class="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">Clipboard auto-syncs when logged in. Add other ICS links below (Canvas, etc.).</p>
                 </div>
             </div>
             <textarea id="calendar-urls" rows="2"
                 class="w-full text-xs bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 text-gray-700 dark:text-neutral-300 placeholder-gray-400 dark:placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-red-400 focus:border-red-400 transition resize-y"
-                placeholder="https://internal-api.clipboard.app/..."></textarea>
+                placeholder="https://canvas.instructure.com/calendar/..."></textarea>
             <div class="flex gap-3 mt-2 text-[11px] text-gray-400 dark:text-neutral-500">
                 <a href="https://portal.clipboard.app/sbhs/calendar" target="_blank" class="hover:text-red-500 dark:hover:text-red-400 transition-colors">Clipboard →</a>
                 <a href="https://sydneyboyshigh.instructure.com/calendar" target="_blank" class="hover:text-red-500 dark:hover:text-red-400 transition-colors">Canvas →</a>

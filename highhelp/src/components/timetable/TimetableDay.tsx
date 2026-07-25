@@ -433,59 +433,119 @@ export const TimetableDay = html`
                 
             });
             
-            // Split clipboard events
+            // Split clipboard events (handle both new "startDateTime" format and old "start" format)
+            function getEventStart(e) {
+                return new Date(e.startDateTime || e.start);
+            }
             const morningEvents = clipboardEvents.filter(e => {
-                const d = new Date(e.start);
-                return d.getHours() < 12;
+                const d = getEventStart(e);
+                return !isNaN(d) && d.getHours() < 12;
             });
             const afternoonEvents = clipboardEvents.filter(e => {
-                const d = new Date(e.start);
-                return d.getHours() >= 12;
+                const d = getEventStart(e);
+                return !isNaN(d) && d.getHours() >= 12;
             });
 
             function renderClipboardEvent(event) {
-                const start = new Date(event.start);
-                const end = new Date(event.end);
+                const isNewFormat = !!event.startDateTime;
+                const start = isNewFormat ? new Date(event.startDateTime) : new Date(event.start);
+                const end = isNewFormat ? new Date(event.endDateTime) : new Date(event.end);
                 const timeStr = formatTime(start.toTimeString().slice(0, 5));
                 const endTimeStr = formatTime(end.toTimeString().slice(0, 5));
-                
-                const eventNotes = dayNotes.filter(n => n.class_name === event.summary);
+
+                const title = isNewFormat ? (event.title || event.activity?.name || '') : (event.summary || '');
+                const hexColour = isNewFormat ? (event.activity?.hexColour || '3b82f6') : '3b82f6';
+                const color = '#' + hexColour;
+                const activityName = isNewFormat ? (event.activity?.name || title) : title;
+                const locationName = isNewFormat ? (event.location?.name || '') : '';
+                const locationLat = event.location?.latitude;
+                const locationLng = event.location?.longitude;
+                const locationAddr = event.location?.address || '';
+
+                let mapsUrl = '';
+                if (locationLat && locationLng) {
+                    mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(locationLat + ',' + locationLng);
+                } else if (locationAddr) {
+                    mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(locationAddr);
+                }
+
+                const eventNotes = dayNotes.filter(n => n.class_name === title);
                 const notesCount = eventNotes.length;
-                const notesBadgeHtml = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded">\${notesCount}</span>\` : '';
+                const notesBadgeHtml = notesCount > 0 ? \`<span class="ml-2 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[10px] font-bold rounded">\${notesCount}</span>\` : '';
 
                 let eventNotesPreviewHtml = '';
                 if (notesCount > 0) {
                     const firstNote = eventNotes[0];
                     const previewText = firstNote.content.length > 40 ? firstNote.content.substring(0, 40) + '...' : firstNote.content;
-                    eventNotesPreviewHtml = \`<div class="mt-2 text-xs bg-gray-700 p-2 rounded italic text-gray-300 break-words">\${previewText}</div>\`;
+                    eventNotesPreviewHtml = \`<div class="mt-2 text-xs bg-gray-700 dark:bg-neutral-900/50 p-2 rounded italic text-gray-300 dark:text-neutral-400 break-words">\${previewText}</div>\`;
                 }
 
+                let tagsHtml = '';
+                if (isNewFormat) {
+                    const tags = [];
+                    if (event.cancelled) tags.push('<span class="px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[10px] font-bold rounded">Cancelled</span>');
+                    if (event.scored) tags.push('<span class="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[10px] font-bold rounded">Scored</span>');
+                    if (event.optional) tags.push('<span class="px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[10px] font-bold rounded">Optional</span>');
+                    if (event.bye) tags.push('<span class="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-[10px] font-bold rounded">Bye</span>');
+                    if (event.status && event.status !== 'confirmed') tags.push('<span class="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-bold rounded">' + esc(event.status) + '</span>');
+                    if (tags.length > 0) tagsHtml = '<span class="ml-2 flex items-center gap-1 flex-shrink-0">' + tags.join('') + '</span>';
+                }
+
+                let locationHtml = '';
+                if (mapsUrl) {
+                    locationHtml = '<a href="' + esc(mapsUrl) + '" target="_blank" rel="noopener" class="mt-1.5 text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1"><svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>' + esc(locationName || locationAddr) + '</a>';
+                } else if (locationName) {
+                    locationHtml = '<div class="mt-1.5 text-[10px] text-gray-400 dark:text-neutral-500">' + esc(locationName) + '</div>';
+                }
+
+                let detailsHtml = '';
+                if (isNewFormat) {
+                    const detailLines = [];
+                    if (event.opponent) detailLines.push('<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Opponent</span><span class="text-gray-900 dark:text-white font-medium">' + esc(event.opponent) + '</span></div>');
+                    if (event.roundName) detailLines.push('<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Round</span><span class="text-gray-900 dark:text-white font-medium">' + esc(event.roundName) + '</span></div>');
+                    if (event.organisationScore !== null || event.opponentScore !== null) detailLines.push('<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Score</span><span class="text-gray-900 dark:text-white font-medium">' + (event.organisationScore ?? 0) + ' - ' + (event.opponentScore ?? 0) + '</span></div>');
+                    if (event.result) detailLines.push('<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Result</span><span class="text-gray-900 dark:text-white font-medium">' + esc(event.result) + '</span></div>');
+                    if (event.notes) detailLines.push('<div class="mt-1.5 text-[10px] text-gray-400 dark:text-neutral-500 italic">' + esc(event.notes) + '</div>');
+                    if (event.studentParentNotes) detailLines.push('<div class="mt-1 text-[10px] text-gray-400 dark:text-neutral-500 italic">' + esc(event.studentParentNotes) + '</div>');
+                    if (event.resultNotes) detailLines.push('<div class="mt-1 text-[10px] text-gray-400 dark:text-neutral-500 italic">' + esc(event.resultNotes) + '</div>');
+                    if (detailLines.length > 0) detailsHtml = '<div class="space-y-1 mt-2 pt-2 border-t border-gray-600 dark:border-neutral-700">' + detailLines.join('') + '</div>';
+                } else {
+                    const locText = event.location || '';
+                    const descText = event.description || '';
+                    if (locText) detailsHtml += '<div class="mt-1.5 text-[10px] text-gray-400 dark:text-neutral-500">' + esc(locText) + '</div>';
+                    if (descText) detailsHtml += '<div class="mt-1 text-[10px] text-gray-400 dark:text-neutral-500 italic">' + esc(descText) + '</div>';
+                }
+
+                const cardBorderClass = event.cancelled ? 'opacity-60' : '';
+                const cardLineClass = event.cancelled ? 'line-through' : '';
+                const titleSizeClass = title.length > 30 ? 'text-xs' : 'text-sm';
+
                 return \`
-                        <div class="flex items-center min-h-[2rem] opacity-90 transition-opacity duration-500 hover:opacity-100 mb-2">
-                        <div class="w-24 text-right pr-4 text-blue-500 dark:text-blue-400 font-bold text-sm">\${timeStr}</div>
+                    <div class="flex items-center min-h-[2rem] opacity-90 transition-opacity duration-500 hover:opacity-100 mb-2">
+                        <div class="w-24 text-right pr-4 font-bold text-sm" style="color: \${color};">\${timeStr}</div>
                         <div class="flex-grow">
-                            <div class="period-card relative flex items-center justify-between bg-blue-50 dark:bg-neutral-800 rounded-lg p-2.5 shadow-sm hover:bg-blue-100 dark:hover:bg-neutral-700 transition-all cursor-default group border-l-4 border-blue-500"
-                                data-subject="\${event.summary}"
-                                data-title="\${event.summary}"
+                            <div class="period-card relative flex items-center justify-between rounded-lg p-2.5 shadow-sm hover:bg-opacity-80 transition-all cursor-default group border-l-4 \${cardBorderClass}"
+                                style="background-color: \${color}15; border-color: \${color};"
+                                data-subject="\${esc(activityName)}"
+                                data-title="\${esc(title)}"
                                 data-start="\${timeStr}"
                                 data-end="\${endTimeStr}">
-                                <div class="pl-2 font-medium text-gray-900 dark:text-white flex items-center \${event.summary.length > 30 ? 'text-xs' : 'text-sm'}">
-                                    \${event.summary}
+                                <div class="pl-2 font-medium text-gray-900 dark:text-white flex items-center \${titleSizeClass}">
+                                    <span class="\${cardLineClass}">\${esc(title)}</span>
+                                    \${tagsHtml}
                                     \${notesBadgeHtml}
                                 </div>
-                                <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[200px] p-2.5 bg-gray-800 dark:bg-neutral-950 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
-                                    <div class="font-bold mb-1 text-sm border-b border-gray-600 dark:border-neutral-700 pb-1">\${event.summary}</div>
+                                <div class="tooltip-content absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-30 min-w-[220px] p-3 bg-gray-800 dark:bg-neutral-950 text-white text-xs rounded-lg shadow-xl pointer-events-none transform -translate-y-1">
+                                    <div class="font-bold mb-1 text-sm border-b border-gray-600 dark:border-neutral-700 pb-1">\${esc(title)}</div>
                                     <div class="mb-1 text-gray-300 dark:text-neutral-400 font-mono">\${timeStr} - \${endTimeStr}</div>
-                                    <div class="pl-3 flex items-center gap-4 text-sm text-gray-600 dark:text-neutral-400">
-                                        \${event.location || ''}
-                                    </div>
-                                    <div class="text-gray-400 dark:text-neutral-500 italic">\${event.description || 'No description'}</div>
+                                    \${locationHtml}
+                                    \${detailsHtml}
                                     \${eventNotesPreviewHtml}
                                 </div>
                             </div>
                         </div>
                     </div>
-        \`;
+                \`;
             }
 
             // Prepend morning events
@@ -516,8 +576,10 @@ export const TimetableDay = html`
         // If we have any cached data from previous sessions, show it immediately
         const cachedApi = getCachedDayData(currentDateStr);
         const cachedCal = getCachedCalendarData(currentDateStr);
-        if (cachedApi || (cachedCal && cachedCal.length > 0)) {
-            buildUI(cachedApi, cachedCal || [], []);
+        const cachedSessions = getCachedClipboardSessions();
+        const cachedSessionsForDate = getClipboardSessionsForDate(cachedSessions, currentDateStr);
+        if (cachedApi || (cachedCal && cachedCal.length > 0) || cachedSessionsForDate.length > 0) {
+            buildUI(cachedApi, [...cachedSessionsForDate, ...(cachedCal || [])], []);
         }
 
         // Fetch scan-in data for the week containing the *viewed* date (not just "today").
@@ -542,9 +604,10 @@ export const TimetableDay = html`
         // --- 4. BACKGROUND PASS (Asynchronous Fetch & Update) ---
         // Fetch fresh data in the background and re-render quietly when they arrive
         try {
-            const [apiData, clipboardEvents, notesRes] = await Promise.all([
+            const [apiData, clipboardEvents, clipboardSessions, notesRes] = await Promise.all([
                 fetchDayData(currentDateStr, shouldForceFetch),
                 fetchCalendarData(currentDateStr, shouldForceFetch),
+                fetchClipboardSessions(shouldForceFetch),
                 fetch('/timetable/notes?date=' + currentDateStr).then(res => res.json()).catch(() => ({ notes: [] }))
             ]);
             
@@ -555,8 +618,11 @@ export const TimetableDay = html`
 
             const dayNotes = notesRes?.notes || [];
             
+            const sessionsForDate = getClipboardSessionsForDate(clipboardSessions, currentDateStr);
+            const mergedClipboard = [...sessionsForDate, ...(clipboardEvents || [])];
+            
             // Final Render: Overwrite DOM structure seamlessly with real-time data
-            buildUI(apiData, clipboardEvents || [], dayNotes);
+            buildUI(apiData, mergedClipboard, dayNotes);
 
             // Pre-fetch next weekday in the background (no force — let cache work)
             if (shouldForceFetch) {
