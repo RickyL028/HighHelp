@@ -187,10 +187,10 @@ app.get('/points', async (c) => {
 						var allAwards = items.map(function(item) {
 							var aw = item.award || {};
 							var cat = aw.category || {};
-							return { name: aw.name||'Unnamed Award', points: aw.points||0, housePoints: aw.housePoints||0, category: cat.name||'Uncategorised', tier: aw.tier||0, date: item.date||'' };
+							return { name: aw.name||'Unnamed Award', points: aw.points||0, housePoints: aw.housePoints||0, category: cat.name||'Uncategorised', categoryType: cat.type||'', tier: aw.tier||0, date: item.date||'' };
 						});
 
-						var isNomination = function(a) { return a.category.toUpperCase().indexOf('NOMINATION') !== -1; };
+						var isNomination = function(a) { return a.categoryType === 'nominatable'; };
 						var nominations = allAwards.filter(isNomination);
 						var awards = allAwards.filter(function(a) { return !isNomination(a); });
 
@@ -834,6 +834,7 @@ function renderBlazer(root, data) {
 						allAwards: [],
 						prizesData: null,
 						currentNominations: 0,
+						rolloverNoms: 0,
 						currentCatPoints: {}
 					};
 
@@ -874,13 +875,17 @@ function renderBlazer(root, data) {
 							if (!resolved) throw new Error('Session expired');
 							return Promise.all(resolved.map(function(r) { return r.json(); }));
 						}).then(function(datas) {
-							// Count current nominations
+							// Count current nominations (including rollover)
 							var items = (datas[0].member || []);
-							var noms = items.filter(function(item) {
+							var allNoms = items.filter(function(item) {
 								var aw = item.award || {};
 								return (aw.category && aw.category.name || '').toUpperCase().indexOf('NOMINATION') !== -1;
 							});
-							planState.currentNominations = noms.length;
+							var rolloverNoms = allNoms.filter(function(n) {
+								return (n.award && n.award.name || '').toLowerCase().indexOf('rollover') !== -1;
+							});
+							planState.currentNominations = allNoms.length;
+							planState.rolloverNoms = rolloverNoms.length;
 							planState.prizesData = datas[1];
 
 							// Current points per category
