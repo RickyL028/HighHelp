@@ -360,7 +360,21 @@ app.get('/points', async (c) => {
 								'</div>' +
 							'</div>';
 
-						root.innerHTML = topRow + nomCard + awardsCard + statsCard;
+						root.innerHTML = topRow + nomCard + awardsCard + statsCard +
+							'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg bg-gray-50 dark:bg-neutral-900 mb-6">' +
+								'<button id="debug-toggle" class="w-full px-4 py-3 flex items-center justify-between text-sm font-medium text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-300">' +
+									'<span>Debug</span>' +
+									'<svg class="w-4 h-4 transition-transform" id="debug-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>' +
+								'</button>' +
+								'<div id="debug-panel" class="hidden px-4 pb-4">' +
+									'<div class="flex gap-2 mb-2">' +
+										'<button id="debug-copy-awards" class="px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">Copy Awards JSON</button>' +
+										'<button id="debug-copy-prizes" class="px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">Copy Prizes JSON</button>' +
+										'<span id="debug-copied" class="text-xs text-green-600 dark:text-green-400 self-center hidden">Copied!</span>' +
+									'</div>' +
+									'<pre id="debug-json" class="text-xs font-mono bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded p-3 max-h-64 overflow-auto dark:text-neutral-300 whitespace-pre-wrap break-all"></pre>' +
+								'</div>' +
+							'</div>';
 
 						function renderYear(yr){
 							var list=yearMap[yr]||[];
@@ -379,6 +393,28 @@ app.get('/points', async (c) => {
 							}).join('');
 							el.innerHTML='<div class="pl-2">'+rows+'</div>';
 						}
+
+						// Debug panel
+						var debugToggle = document.getElementById('debug-toggle');
+						var debugPanel = document.getElementById('debug-panel');
+						var debugArrow = document.getElementById('debug-arrow');
+						var debugJson = document.getElementById('debug-json');
+						var debugRaw = { awards: data, prizes: prizesData };
+						if (debugJson) debugJson.textContent = JSON.stringify(debugRaw, null, 2);
+						if (debugToggle) debugToggle.addEventListener('click', function() {
+							debugPanel.classList.toggle('hidden');
+							debugArrow.style.transform = debugPanel.classList.contains('hidden') ? '' : 'rotate(180deg)';
+						});
+						function debugCopy(key) {
+							navigator.clipboard.writeText(JSON.stringify(debugRaw[key], null, 2));
+							var el = document.getElementById('debug-copied');
+							el.classList.remove('hidden');
+							setTimeout(function() { el.classList.add('hidden'); }, 1500);
+						}
+						var copyAwards = document.getElementById('debug-copy-awards');
+						var copyPrizes = document.getElementById('debug-copy-prizes');
+						if (copyAwards) copyAwards.addEventListener('click', function() { debugCopy('awards'); });
+						if (copyPrizes) copyPrizes.addEventListener('click', function() { debugCopy('prizes'); });
 
 						var tabBtns=document.querySelectorAll('#year-tabs button');
 						tabBtns.forEach(function(btn){btn.addEventListener('click',function(){
@@ -879,7 +915,8 @@ function renderBlazer(root, data) {
 							var items = (datas[0].member || []);
 							var allNoms = items.filter(function(item) {
 								var aw = item.award || {};
-								return (aw.category && aw.category.name || '').toUpperCase().indexOf('NOMINATION') !== -1;
+								var cat = aw.category || {};
+								return cat.type === 'nominatable';
 							});
 							var rolloverNoms = allNoms.filter(function(n) {
 								return (n.award && n.award.name || '').toLowerCase().indexOf('rollover') !== -1;
@@ -979,7 +1016,7 @@ function renderBlazer(root, data) {
 						});
 
 						// Projected nominations: total points (current + planned) per category, floor divided by 30
-						var projectedTotal = 0;
+						var projectedTotal = planState.rolloverNoms;
 						PROGRESS_CATEGORIES.forEach(function(c) {
 							projectedTotal += Math.floor(catData[c].totalPoints / 30);
 						});
