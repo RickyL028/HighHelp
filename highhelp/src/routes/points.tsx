@@ -1025,9 +1025,8 @@ function renderBlazer(root, data) {
 								var nextReq = proj.projectedNextPrize.nominationsRequired;
 								var range = nextReq - prevReq;
 								var progress = proj.projectedTotal - prevReq;
-								var pct = range > 0 ? Math.min(100, Math.round((progress / range) * 100)) : 100;
-								var needed = nextReq - proj.projectedTotal;
-								progressHtml =
+							var pct = range > 0 ? Math.min(100, Math.round((progress / range) * 100)) : 100;
+							progressHtml =
 									'<div class="mt-4 pt-4 border-t border-gray-200 dark:border-neutral-700">' +
 										'<div class="flex justify-between items-center mb-1">' +
 											'<span class="text-xs text-gray-500 dark:text-neutral-400">Next: ' + esc(proj.projectedNextPrize.name) + '</span>' +
@@ -1036,7 +1035,6 @@ function renderBlazer(root, data) {
 										'<div class="w-full h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden">' +
 											'<div class="h-full bg-amber-500 dark:bg-amber-400 rounded-full transition-all" style="width:' + pct + '%"></div>' +
 										'</div>' +
-										'<p class="text-xs text-gray-500 dark:text-neutral-400 mt-1">' + needed + ' more nomination' + (needed !== 1 ? 's' : '') + ' needed</p>' +
 									'</div>';
 							} else if (!proj.projectedNextPrize && proj.projectedPrize) {
 								progressHtml =
@@ -1045,22 +1043,16 @@ function renderBlazer(root, data) {
 									'</div>';
 							}
 
-							var deltaHtml = '';
-							if (proj.plannedNoms > 0 && proj.projectedPrize && proj.currentPrize && proj.projectedPrize.tier > proj.currentPrize.tier) {
-								deltaHtml = '<p class="text-xs text-green-600 dark:text-green-400 font-semibold mt-2">+' + (proj.projectedPrize.tier - proj.currentPrize.tier) + ' tier' + ((proj.projectedPrize.tier - proj.currentPrize.tier) !== 1 ? 's' : '') + ' from planning!</p>';
-							}
-
-							projEl.innerHTML =
+						projEl.innerHTML =
 								'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900">' +
 									'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-4">Prize Projection</h2>' +
 									'<div class="space-y-2 text-sm">' +
-										'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Current</span><span class="font-semibold dark:text-white">' + esc(currentTierName) + ' (' + proj.currentNoms + ' noms)</span></div>' +
-										'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Planned</span><span class="font-semibold text-blue-600 dark:text-blue-400">+' + proj.plannedNoms + ' noms</span></div>' +
-										'<div class="flex justify-between border-t border-gray-200 dark:border-neutral-700 pt-2"><span class="text-gray-500 dark:text-neutral-400">Projected</span><span class="font-bold dark:text-white">' + esc(projectedTierName) + ' (' + proj.projectedTotal + ' noms)</span></div>' +
-									'</div>' +
-									progressHtml +
-									deltaHtml +
-								'</div>';
+										'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Current</span><span class="font-semibold dark:text-white">' + esc(currentTierName) + ' (' + proj.currentNoms + ')</span></div>' +
+										'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Planned</span><span class="font-semibold text-blue-600 dark:text-blue-400">+' + proj.plannedNoms + '</span></div>' +
+										'<div class="flex justify-between border-t border-gray-200 dark:border-neutral-700 pt-2"><span class="text-gray-500 dark:text-neutral-400">Projected</span><span class="font-bold dark:text-white">' + esc(projectedTierName) + ' (' + proj.projectedTotal + ')</span></div>' +
+								'</div>' +
+								progressHtml +
+							'</div>';
 						}
 
 						// Update category panels
@@ -1092,9 +1084,9 @@ function renderBlazer(root, data) {
 							'<div class="relative w-full h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden mb-2">' +
 								(pct > 0 ? '<div class="absolute inset-y-0 left-0 ' + barColor + ' rounded-full transition-all" style="width:' + pct + '%"></div>' : '') +
 							'</div>' +
-							(chipsHtml ? '<div class="flex flex-wrap gap-1 mb-2">' + chipsHtml + '</div>' : '<div class="text-xs text-gray-400 dark:text-neutral-500 mb-2">Drop awards here or tap to add</div>') +
-							'<div class="plan-drop-zone" data-category="' + esc(cat) + '" style="min-height:32px;border:1px dashed #9ca3af;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all 0.15s">' +
-								'<span class="text-xs text-gray-400 dark:text-neutral-500 plan-drop-hint">+ Drop or click</span>' +
+							(chipsHtml ? '<div class="flex flex-wrap gap-1 mb-2">' + chipsHtml + '</div>' : '') +
+							'<div class="plan-drop-zone" data-category="' + esc(cat) + '" style="min-height:32px;border:1px dashed #d1d5db;dark:border:#404040;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all 0.15s">' +
+								'<span class="text-xs text-gray-400 dark:text-neutral-500 plan-drop-hint">+</span>' +
 							'</div>';
 						});
 
@@ -1116,25 +1108,25 @@ function renderBlazer(root, data) {
 					function updateCatalogCount() {
 						var countEl = document.getElementById('plan-catalog-count');
 						if (countEl) {
-							countEl.textContent = planState.planned.length + ' award' + (planState.planned.length !== 1 ? 's' : '') + ' planned';
+							countEl.textContent = planState.planned.length + ' selected';
 						}
 					}
 
 					function bindPlanDropZones() {
 						document.querySelectorAll('.plan-drop-zone').forEach(function(zone) {
-							zone.addEventListener('dragover', function(e) {
-								e.preventDefault();
-								e.dataTransfer.dropEffect = 'copy';
-								zone.style.borderColor = '#3b82f6';
-								zone.style.background = '#eff6ff';
-							});
-							zone.addEventListener('dragleave', function(e) {
-								zone.style.borderColor = '#9ca3af';
-								zone.style.background = '';
-							});
-							zone.addEventListener('drop', function(e) {
-								e.preventDefault();
-								zone.style.borderColor = '#9ca3af';
+						zone.addEventListener('dragover', function(e) {
+							e.preventDefault();
+							e.dataTransfer.dropEffect = 'copy';
+							zone.style.borderColor = '#3b82f6';
+							zone.style.background = '#eff6ff';
+						});
+						zone.addEventListener('dragleave', function(e) {
+							zone.style.borderColor = '#d1d5db';
+							zone.style.background = '';
+						});
+						zone.addEventListener('drop', function(e) {
+							e.preventDefault();
+							zone.style.borderColor = '#d1d5db';
 								zone.style.background = '';
 								var awardIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
 								if (!isNaN(awardIdx) && planState.allAwards[awardIdx]) {
@@ -1226,30 +1218,34 @@ function renderBlazer(root, data) {
 						}).join('');
 
 						root.innerHTML =
-							'<div class="flex flex-col lg:flex-row gap-6">' +
-								// Left: Awards Catalog
-								'<div class="lg:w-1/3">' +
+							'<div class="space-y-6">' +
+								// Top: Awards Catalog
+								'<div>' +
 									'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg bg-gray-50 dark:bg-neutral-900">' +
 										'<div class="px-4 py-3 border-b border-gray-200 dark:border-neutral-700">' +
 											'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-2">Awards Catalog</h2>' +
-											'<input type="text" id="plan-search" placeholder="Search awards..." class="w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2" />' +
-											'<select id="plan-cat-filter" class="w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">' +
-												'<option value="">All Categories</option>' +
-												PROGRESS_CATEGORIES.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('') +
-											'</select>' +
-											'<p id="plan-catalog-count" class="text-xs text-gray-400 dark:text-neutral-500 mt-2">' + planState.planned.length + ' award' + (planState.planned.length !== 1 ? 's' : '') + ' planned</p>' +
+											'<div class="flex gap-2">' +
+												'<input type="text" id="plan-search" placeholder="Search awards..." class="flex-1 px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />' +
+												'<select id="plan-cat-filter" class="px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">' +
+													'<option value="">All Categories</option>' +
+													PROGRESS_CATEGORIES.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('') +
+												'</select>' +
+											'</div>' +
+											'<p id="plan-catalog-count" class="text-xs text-gray-400 dark:text-neutral-500 mt-2">' + planState.planned.length + ' selected</p>' +
 										'</div>' +
-										'<div id="plan-catalog-list" class="max-h-[50vh] overflow-y-auto"></div>' +
+										'<div id="plan-catalog-list" class="max-h-[40vh] overflow-y-auto"></div>' +
 									'</div>' +
 								'</div>' +
-								// Center: Category Drop Zones
-								'<div class="lg:w-1/3">' +
-									'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-3">Your Plan</h2>' +
-									(planState.planned.length > 0 ? '<button id="plan-reset" class="mb-3 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Reset Plan</button>' : '') +
-									'<div class="space-y-3">' + catPanels + '</div>' +
+								// Middle: Category Drop Zones
+								'<div>' +
+									'<div class="flex items-center justify-between mb-3">' +
+										'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300">Your Plan</h2>' +
+										(planState.planned.length > 0 ? '<button id="plan-reset" class="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Reset</button>' : '') +
+									'</div>' +
+									'<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">' + catPanels + '</div>' +
 								'</div>' +
-								// Right: Prize Projection
-								'<div class="lg:w-1/3">' +
+								// Bottom: Prize Projection
+								'<div>' +
 									'<div id="plan-projection"></div>' +
 								'</div>' +
 							'</div>';
@@ -1283,7 +1279,6 @@ function renderBlazer(root, data) {
 										'</div>' +
 										'<div class="shrink-0 text-right">' +
 											'<div class="text-sm font-mono text-blue-600 dark:text-blue-400">+' + a.points + '</div>' +
-											'<div class="text-xs text-gray-400 dark:text-neutral-500">' + a.housePoints + ' HP</div>' +
 										'</div>' +
 									'</div>' +
 								'</div>';
