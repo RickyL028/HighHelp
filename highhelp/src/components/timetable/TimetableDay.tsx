@@ -572,9 +572,9 @@ export const TimetableDay = html`
         // Render immediately using local/cached base timetable arrays
         buildUI(null, [], []);
 
-        // Compute date window for clipboard sessions (7 days before, 14 days after)
+        // Compute date window for clipboard sessions (±14 days centered on currentDateStr)
         const [_y, _m, _d] = currentDateStr.split('-').map(Number);
-        const _dAfter = new Date(_y, _m - 1, _d); _dAfter.setDate(_dAfter.getDate() - 7);
+        const _dAfter = new Date(_y, _m - 1, _d); _dAfter.setDate(_dAfter.getDate() - 14);
         const _dBefore = new Date(_y, _m - 1, _d); _dBefore.setDate(_dBefore.getDate() + 14);
         const sessionsDateAfter = _dAfter.toISOString().split('T')[0];
         const sessionsDateBefore = _dBefore.toISOString().split('T')[0];

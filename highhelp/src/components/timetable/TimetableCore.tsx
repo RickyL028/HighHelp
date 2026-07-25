@@ -438,9 +438,19 @@ export const TimetableCore = html`
         try {
             showLoadingBar();
             const context = new Date().getFullYear().toString();
+            // Defensive default: always send a bounded window to avoid unbounded page-1 truncation
+            if (!dateAfter || !dateBefore) {
+                const now = new Date();
+                const fallback = new Date(now);
+                fallback.setDate(fallback.getDate() - 14);
+                const fallback2 = new Date(now);
+                fallback2.setDate(fallback2.getDate() + 14);
+                if (!dateAfter) dateAfter = fallback.toISOString().split('T')[0];
+                if (!dateBefore) dateBefore = fallback2.toISOString().split('T')[0];
+            }
             const params = new URLSearchParams({ studentId: studentData.studentId, context });
-            if (dateAfter) params.set('date[after]', dateAfter);
-            if (dateBefore) params.set('date[before]', dateBefore);
+            params.set('date[after]', dateAfter);
+            params.set('date[before]', dateBefore);
 
             let res = await fetch('/api/proxy/clipboard-sessions?' + params.toString(), {
                 headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
