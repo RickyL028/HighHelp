@@ -194,6 +194,23 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 						var nominations = allAwards.filter(isNomination);
 						var awards = allAwards.filter(function(a) { return !isNomination(a); });
 
+						// Tier -3 rollover: each tier -3 item contributes award.points extra nominations
+						var tierMinus3Items = allAwards.filter(function(a) { return a.tier === -3; });
+						tierMinus3Items.forEach(function(item) {
+							for (var i = 0; i < item.points; i++) {
+								nominations.push({
+									name: item.name,
+									points: 0,
+									housePoints: 0,
+									category: item.category,
+									categoryType: 'nominatable',
+									tier: item.tier,
+									date: item.date
+								});
+							}
+						});
+						awards = awards.filter(function(a) { return a.tier !== -3; });
+
 						var totalPoints = awards.reduce(function(s,a){return s+a.points;},0);
 						var totalHouse = awards.reduce(function(s,a){return s+a.housePoints;},0);
 
@@ -921,8 +938,16 @@ function renderBlazer(root, data) {
 							var rolloverNoms = allNoms.filter(function(n) {
 								return (n.award && n.award.name || '').toLowerCase().indexOf('rollover') !== -1;
 							});
-							planState.currentNominations = allNoms.length;
-							planState.rolloverNoms = rolloverNoms.length;
+							// Tier -3 rollover: each tier -3 item contributes award.points extra nominations
+							var tierMinus3Count = 0;
+							items.forEach(function(item) {
+								var aw = item.award || {};
+								if (aw.tier === -3) {
+									tierMinus3Count += aw.points || 0;
+								}
+							});
+							planState.currentNominations = allNoms.length + tierMinus3Count;
+							planState.rolloverNoms = rolloverNoms.length + tierMinus3Count;
 							planState.prizesData = datas[1];
 
 							// Current points per category
@@ -930,7 +955,7 @@ function renderBlazer(root, data) {
 							PROGRESS_CATEGORIES.forEach(function(c) { currentCatPoints[c] = 0; });
 							var realAwards = items.filter(function(item) {
 								var aw = item.award || {};
-								return (aw.category && aw.category.name || '').toUpperCase().indexOf('NOMINATION') === -1;
+								return (aw.category && aw.category.name || '').toUpperCase().indexOf('NOMINATION') === -1 && aw.tier !== -3;
 							});
 							realAwards.forEach(function(item) {
 								var aw = item.award || {};
