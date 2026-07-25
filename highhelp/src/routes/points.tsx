@@ -1045,7 +1045,7 @@ function renderBlazer(root, data) {
 
 						projEl.innerHTML =
 								'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg p-6 bg-gray-50 dark:bg-neutral-900">' +
-									'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-4">Prize Projection</h2>' +
+									'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-4">Projection</h2>' +
 									'<div class="space-y-2 text-sm">' +
 										'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Current</span><span class="font-semibold dark:text-white">' + esc(currentTierName) + ' (' + proj.currentNoms + ')</span></div>' +
 										'<div class="flex justify-between"><span class="text-gray-500 dark:text-neutral-400">Planned</span><span class="font-semibold text-blue-600 dark:text-blue-400">+' + proj.plannedNoms + '</span></div>' +
@@ -1064,30 +1064,29 @@ function renderBlazer(root, data) {
 						var barColor = (cd.totalPoints % 30) >= 30 ? 'bg-green-500 dark:bg-green-400' : 'bg-blue-500 dark:bg-blue-400';
 
 						var chips = planState.planned.filter(function(p) { return p.matchedCategory === cat; });
+						var nomsLabel = cd.noms > 0 ? '<span class="text-xs font-medium text-blue-600 dark:text-blue-400 ml-1">x' + cd.noms + '</span>' : '';
+						var ptsLabel = cd.plannedPoints > 0
+							? '<span class="text-xs font-mono dark:text-white">' + cd.points + ' + <span class="text-blue-500 dark:text-blue-400">' + cd.plannedPoints + '</span> = ' + cd.totalPoints + '</span>'
+							: '<span class="text-xs font-mono dark:text-white">' + cd.points + '</span>';
+
 						var chipsHtml = chips.map(function(p) {
-							return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">' +
+							return '<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">' +
 								esc(p.name) + ' (+' + p.points + ')' +
 								'<button data-plan-id="' + p._id + '" class="plan-remove ml-0.5 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200">&times;</button>' +
 							'</span>';
-						}).join('');
-
-						var nomsLabel = cd.noms > 0 ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 ml-2">x' + cd.noms + '</span>' : '';
-						var ptsLabel = cd.plannedPoints > 0
-							? '<span class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-700 dark:text-white font-mono">' + cd.points + ' + <span class="text-blue-500 dark:text-blue-400">' + cd.plannedPoints + '</span> = ' + cd.totalPoints + '</span>'
-							: '<span class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-700 dark:text-white font-mono">' + cd.points + '</span>';
+						}).join(' ');
 
 						panel.innerHTML =
-							'<div class="flex justify-between items-center mb-1">' +
+							'<div class="w-44 shrink-0">' +
 								'<span class="text-xs font-medium dark:text-white">' + esc(cat) + nomsLabel + '</span>' +
-								ptsLabel +
 							'</div>' +
-							'<div class="relative w-full h-2 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden mb-2">' +
-								(pct > 0 ? '<div class="absolute inset-y-0 left-0 ' + barColor + ' rounded-full transition-all" style="width:' + pct + '%"></div>' : '') +
+							'<div class="flex-1 min-w-0">' +
+								'<div class="relative w-full h-1.5 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden">' +
+									(pct > 0 ? '<div class="absolute inset-y-0 left-0 ' + barColor + ' rounded-full transition-all" style="width:' + pct + '%"></div>' : '') +
+								'</div>' +
+								(chipsHtml ? '<div class="flex flex-wrap gap-1 mt-1.5">' + chipsHtml + '</div>' : '') +
 							'</div>' +
-							(chipsHtml ? '<div class="flex flex-wrap gap-1 mb-2">' + chipsHtml + '</div>' : '') +
-							'<div class="plan-drop-zone" data-category="' + esc(cat) + '" style="min-height:32px;border:1px dashed #d1d5db;dark:border:#404040;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all 0.15s">' +
-								'<span class="text-xs text-gray-400 dark:text-neutral-500 plan-drop-hint">+</span>' +
-							'</div>';
+							'<div class="w-28 shrink-0 text-right">' + ptsLabel + '</div>';
 						});
 
 						// Re-bind remove buttons
@@ -1097,9 +1096,6 @@ function renderBlazer(root, data) {
 								removeFromPlan(btn.dataset.planId);
 							});
 						});
-
-						// Re-bind drop zones
-						bindPlanDropZones();
 
 						// Update catalog highlight
 						updateCatalogCount();
@@ -1112,101 +1108,6 @@ function renderBlazer(root, data) {
 						}
 					}
 
-					function bindPlanDropZones() {
-						document.querySelectorAll('.plan-drop-zone').forEach(function(zone) {
-						zone.addEventListener('dragover', function(e) {
-							e.preventDefault();
-							e.dataTransfer.dropEffect = 'copy';
-							zone.style.borderColor = '#3b82f6';
-							zone.style.background = '#eff6ff';
-						});
-						zone.addEventListener('dragleave', function(e) {
-							zone.style.borderColor = '#d1d5db';
-							zone.style.background = '';
-						});
-						zone.addEventListener('drop', function(e) {
-							e.preventDefault();
-							zone.style.borderColor = '#d1d5db';
-								zone.style.background = '';
-								var awardIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
-								if (!isNaN(awardIdx) && planState.allAwards[awardIdx]) {
-									var award = planState.allAwards[awardIdx];
-									var cat = zone.dataset.category;
-									addToPlan(award, cat);
-								}
-							});
-							// Click to add from catalog search
-							zone.addEventListener('click', function() {
-								var cat = zone.dataset.category;
-								showPlanPicker(cat);
-							});
-						});
-					}
-
-					function showPlanPicker(targetCat) {
-						var overlay = document.createElement('div');
-						overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50';
-						overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)';
-
-						var modal = document.createElement('div');
-						modal.className = 'bg-white dark:bg-neutral-900 rounded-lg shadow-xl max-h-[80vh] w-full max-w-md mx-4 flex flex-col';
-						modal.style.cssText = 'background:white;border-radius:12px;max-height:80vh;width:100%;max-width:400px;margin:0 16px;display:flex;flex-direction:column';
-
-						var filteredAwards = planState.allAwards.filter(function(a) {
-							return matchProgressCategory(a.category) === targetCat;
-						});
-
-						function renderPickerList(search) {
-							var s = (search || '').toLowerCase();
-							var matched = filteredAwards.filter(function(a) {
-								return !s || a.name.toLowerCase().indexOf(s) !== -1;
-							});
-
-							var listHtml = matched.length === 0
-								? '<div class="p-4 text-center text-gray-400 dark:text-neutral-500 text-sm">No awards found</div>'
-								: matched.map(function(a, i) {
-									var origIdx = planState.allAwards.indexOf(a);
-									return '<div class="picker-item px-4 py-3 hover:bg-gray-50 dark:hover:bg-neutral-800 cursor-pointer border-b border-gray-100 dark:border-neutral-800 last:border-0 flex justify-between items-center" data-idx="' + origIdx + '">' +
-										'<div><div class="text-sm font-medium dark:text-white">' + esc(a.name) + '</div>' +
-										'<div class="text-xs text-gray-500 dark:text-neutral-400">' + esc(a.category) + (a.archived ? ' (archived)' : '') + '</div></div>' +
-										'<span class="text-sm font-mono text-blue-600 dark:text-blue-400">+' + a.points + '</span>' +
-									'</div>';
-								}).join('');
-
-							var listEl = overlay.querySelector('.picker-list');
-							if (listEl) listEl.innerHTML = listHtml;
-
-							overlay.querySelectorAll('.picker-item').forEach(function(el) {
-								el.addEventListener('click', function() {
-									var idx = parseInt(el.dataset.idx, 10);
-									addToPlan(planState.allAwards[idx], targetCat);
-									overlay.remove();
-								});
-							});
-						}
-
-						modal.innerHTML =
-							'<div class="px-4 py-3 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center">' +
-								'<h3 class="text-sm font-semibold dark:text-white">Add to ' + esc(targetCat) + '</h3>' +
-								'<button class="picker-close text-gray-400 hover:text-gray-600 dark:hover:text-neutral-300 text-lg">&times;</button>' +
-							'</div>' +
-							'<div class="px-4 py-2 border-b border-gray-200 dark:border-neutral-700">' +
-								'<input type="text" class="picker-search w-full px-3 py-2 border border-gray-300 dark:border-neutral-600 rounded-lg text-sm bg-white dark:bg-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Search awards..." />' +
-							'</div>' +
-							'<div class="picker-list overflow-y-auto flex-1" style="max-height:60vh"></div>';
-
-						overlay.appendChild(modal);
-						document.body.appendChild(overlay);
-
-						renderPickerList('');
-
-						modal.querySelector('.picker-search').addEventListener('input', function(e) {
-							renderPickerList(e.target.value);
-						});
-						modal.querySelector('.picker-close').addEventListener('click', function() { overlay.remove(); });
-						overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
-					}
-
 					function renderPlanTab() {
 						var root = document.getElementById('plan-root');
 						var proj = getPlanProjection();
@@ -1214,7 +1115,7 @@ function renderBlazer(root, data) {
 						// Build category panels
 						var catPanels = PROGRESS_CATEGORIES.map(function(cat) {
 							var catId = 'plan-cat-' + cat.replace(/[^a-zA-Z]/g, '');
-							return '<div id="' + catId + '" class="border border-gray-200 dark:border-neutral-700 rounded-lg p-4 bg-gray-50 dark:bg-neutral-900 plan-cat-panel" data-category="' + esc(cat) + '"></div>';
+							return '<div id="' + catId + '" class="flex items-center gap-3 py-2 border-b border-gray-100 dark:border-neutral-800 last:border-0" data-category="' + esc(cat) + '"></div>';
 						}).join('');
 
 						root.innerHTML =
@@ -1242,7 +1143,7 @@ function renderBlazer(root, data) {
 										'<h2 class="text-sm font-semibold text-gray-700 dark:text-neutral-300">Your Plan</h2>' +
 										(planState.planned.length > 0 ? '<button id="plan-reset" class="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">Reset</button>' : '') +
 									'</div>' +
-									'<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">' + catPanels + '</div>' +
+									'<div class="border border-gray-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900">' + catPanels + '</div>' +
 								'</div>' +
 								// Bottom: Prize Projection
 								'<div>' +
@@ -1284,7 +1185,7 @@ function renderBlazer(root, data) {
 								'</div>';
 							}).join('');
 
-							// Bind drag events on catalog items
+							// Bind drag + click events on catalog items
 							el.querySelectorAll('.plan-catalog-item').forEach(function(item) {
 								item.addEventListener('dragstart', function(e) {
 									e.dataTransfer.setData('text/plain', item.dataset.awardIdx);
@@ -1293,6 +1194,13 @@ function renderBlazer(root, data) {
 								});
 								item.addEventListener('dragend', function(e) {
 									item.style.opacity = '1';
+								});
+								item.addEventListener('click', function() {
+									var idx = parseInt(item.dataset.awardIdx, 10);
+									var award = planState.allAwards[idx];
+									if (!award) return;
+									var cat = matchProgressCategory(award.category);
+									if (cat) addToPlan(award, cat);
 								});
 							});
 						}
@@ -1309,6 +1217,19 @@ function renderBlazer(root, data) {
 
 						renderCatalog('', '');
 						updatePlanProjection();
+
+						// Drop anywhere on plan area auto-categorizes
+						var planRoot = document.getElementById('plan-root');
+						planRoot.addEventListener('dragover', function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+						planRoot.addEventListener('drop', function(e) {
+							e.preventDefault();
+							var awardIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+							if (!isNaN(awardIdx) && planState.allAwards[awardIdx]) {
+								var award = planState.allAwards[awardIdx];
+								var cat = matchProgressCategory(award.category);
+								if (cat) addToPlan(award, cat);
+							}
+						});
 
 						var resetBtn = document.getElementById('plan-reset');
 						if (resetBtn) resetBtn.addEventListener('click', function() { resetPlan(); renderPlanTab(); });
