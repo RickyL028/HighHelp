@@ -51,15 +51,11 @@ export const TimetableDay = html`
 
                 if (res.status === 401 || res.status === 403) {
                     console.log('[scan-in] got', res.status, '— attempting refresh');
-                    const refreshRes = await fetch('/api/auth/refresh');
-                    const refreshData = await refreshRes.json();
-                    console.log('[scan-in] refresh result', { success: refreshData.success, hasToken: !!refreshData.accessToken });
-                    if (refreshData.success && refreshData.accessToken) {
-                        studentData.accessToken = refreshData.accessToken;
-                        localStorage.setItem('studentData', JSON.stringify(studentData));
-                        clearReauthBanner();
+                    const newToken = await doRefresh();
+                    console.log('[scan-in] refresh result', { hasToken: !!newToken });
+                    if (newToken) {
                         res = await fetch(url, {
-                            headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
+                            headers: { 'Authorization': 'Bearer ' + newToken }
                         });
                         console.log('[scan-in] retry after refresh', { status: res.status, ok: res.ok });
                     } else {
@@ -70,7 +66,13 @@ export const TimetableDay = html`
                 }
 
                 if (!res.ok) {
-                    console.warn('[scan-in] fetch failed', res.status);
+                    console.warn('[scan-in] fetch failed', res.status, '— retrying once');
+                    await new Promise(r => setTimeout(r, 1000));
+                    res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + studentData.accessToken } });
+                }
+
+                if (!res.ok) {
+                    console.warn('[scan-in] retry also failed', res.status);
                     showReauthBanner();
                     return null;
                 }

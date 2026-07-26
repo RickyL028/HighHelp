@@ -88,6 +88,31 @@ app.get('/points', async (c) => {
 						if (_reauthBannerTimer) { clearTimeout(_reauthBannerTimer); _reauthBannerTimer = null; }
 					}
 
+					var _refreshPromise = null;
+					function doRefresh() {
+						if (_refreshPromise) return _refreshPromise;
+						_refreshPromise = (async () => {
+							try {
+								var refreshRes = await fetch('/api/auth/refresh');
+								var refreshData = await refreshRes.json();
+								if (refreshData.success && refreshData.accessToken) {
+									var sd = JSON.parse(localStorage.getItem('studentData') || '{}');
+									sd.accessToken = refreshData.accessToken;
+									localStorage.setItem('studentData', JSON.stringify(sd));
+									localStorage.setItem('tokenRefreshedAt', String(Date.now()));
+									clearReauthBanner();
+									return refreshData.accessToken;
+								}
+								return null;
+							} catch(e) {
+								return null;
+							} finally {
+								_refreshPromise = null;
+							}
+						})();
+						return _refreshPromise;
+					}
+
 					async function ensureFreshToken() {
 						var sd = JSON.parse(localStorage.getItem('studentData') || '{}');
 						if (!sd.accessToken) return false;
@@ -95,15 +120,8 @@ app.get('/points', async (c) => {
 							var lastRefresh = parseInt(localStorage.getItem('tokenRefreshedAt') || '0', 10);
 							var age = Date.now() - lastRefresh;
 							if (age < 30 * 60 * 1000) return true;
-							var refreshRes = await fetch('/api/auth/refresh');
-							var refreshData = await refreshRes.json();
-							if (refreshData.success && refreshData.accessToken) {
-								sd.accessToken = refreshData.accessToken;
-								localStorage.setItem('studentData', JSON.stringify(sd));
-								localStorage.setItem('tokenRefreshedAt', String(Date.now()));
-								clearReauthBanner();
-								return true;
-							}
+							var newToken = await doRefresh();
+							if (newToken) return true;
 							showReauthBanner();
 							return false;
 						} catch(e) {
@@ -193,18 +211,14 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 							]);
 
 							if (res.status === 401 || res.status === 403) {
-								var refreshRes = await fetch('/api/auth/refresh');
-								var refreshData = await refreshRes.json();
-								if (refreshData.success && refreshData.accessToken) {
-									studentData.accessToken = refreshData.accessToken;
-									localStorage.setItem('studentData', JSON.stringify(studentData));
-									clearReauthBanner();
+								var newToken = await doRefresh();
+								if (newToken) {
 									var [retryRes, retryPrizesRes] = await Promise.all([
 										fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), {
-											headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
+											headers: { 'Authorization': 'Bearer ' + newToken }
 										}),
 										fetch(prizesUrl, {
-											headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
+											headers: { 'Authorization': 'Bearer ' + newToken }
 										})
 									]);
 									if (!retryRes.ok) { if (!cached) { root.innerHTML = ''; showReauthBanner(root); } return; }
@@ -218,7 +232,19 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 								return;
 							}
 
-							if (!res.ok) { if (!cached) root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:text-neutral-400 text-sm">Failed to load awards (HTTP ' + res.status + ') <a href="/login" class="underline text-blue-500 dark:text-blue-400">Re-login</a></p></div>'; return; }
+							if (!res.ok) {
+								await new Promise(function(r) { setTimeout(r, 1000); });
+								var [retryRes2, retryPrizesRes2] = await Promise.all([
+									fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), { headers: { 'Authorization': 'Bearer ' + token } }),
+									fetch(prizesUrl, { headers: { 'Authorization': 'Bearer ' + token } })
+								]);
+								if (!retryRes2.ok) { if (!cached) { root.innerHTML = ''; showReauthBanner(root); } return; }
+								var awardsData = await retryRes2.json();
+								var prizesData = await retryPrizesRes2.json();
+								try { localStorage.setItem(cacheKey, JSON.stringify({ awards: awardsData, prizes: prizesData })); } catch(e) {}
+								renderMyAwards(awardsData, prizesData);
+								return;
+							}
 							var awardsData = await res.json();
 							var prizesData = await prizesRes.json();
 							try { localStorage.setItem(cacheKey, JSON.stringify({ awards: awardsData, prizes: prizesData })); } catch(e) {}
@@ -701,6 +727,10 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 							token = studentData.accessToken;
 							var fetchUrl = url || '/api/proxy/all-awards';
 							var res = await fetch(fetchUrl, { headers: { 'Authorization': 'Bearer ' + token } });
+							if (!res.ok) {
+								await new Promise(function(r) { setTimeout(r, 1000); });
+								res = await fetch(fetchUrl, { headers: { 'Authorization': 'Bearer ' + token } });
+							}
 							if (!res.ok) throw new Error('HTTP ' + res.status);
 							var data = await res.json();
 							if (!url) try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
@@ -853,19 +883,19 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 							var res = await fetch(badgesUrl, { headers: { 'Authorization': 'Bearer ' + token } });
 
 							if (res.status === 401 || res.status === 403) {
-								var refreshRes = await fetch('/api/auth/refresh');
-								var refreshData = await refreshRes.json();
-								if (refreshData.success && refreshData.accessToken) {
-									studentData.accessToken = refreshData.accessToken;
-									localStorage.setItem('studentData', JSON.stringify(studentData));
-									clearReauthBanner();
-									res = await fetch(badgesUrl, { headers: { 'Authorization': 'Bearer ' + refreshData.accessToken } });
+								var newToken = await doRefresh();
+								if (newToken) {
+									res = await fetch(badgesUrl, { headers: { 'Authorization': 'Bearer ' + newToken } });
 								} else {
 									if (!cached) { root.innerHTML = ''; showReauthBanner(root); }
 									return;
 								}
 							}
 
+							if (!res.ok) {
+								await new Promise(function(r) { setTimeout(r, 1000); });
+								res = await fetch(badgesUrl, { headers: { 'Authorization': 'Bearer ' + token } });
+							}
 							if (!res.ok) throw new Error('HTTP ' + res.status);
 							var data = await res.json();
 							try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
@@ -967,19 +997,22 @@ function renderBlazer(root, data) {
 							var awardsRes = results[0];
 
 							if (awardsRes.status === 401 || awardsRes.status === 403) {
-								var refreshRes = await fetch('/api/auth/refresh');
-								var rd = await refreshRes.json();
-								if (!rd.success || !rd.accessToken) {
+								var newToken = await doRefresh();
+								if (!newToken) {
 									root.innerHTML = ''; showReauthBanner(root);
 									return;
 								}
-								studentData.accessToken = rd.accessToken;
-								localStorage.setItem('studentData', JSON.stringify(studentData));
-								clearReauthBanner();
 								results = await Promise.all([
-									fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), { headers: { 'Authorization': 'Bearer ' + rd.accessToken } }),
-									fetch(prizesUrl, { headers: { 'Authorization': 'Bearer ' + rd.accessToken } }),
-									fetch('/api/proxy/all-awards', { headers: { 'Authorization': 'Bearer ' + rd.accessToken } })
+									fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), { headers: { 'Authorization': 'Bearer ' + newToken } }),
+									fetch(prizesUrl, { headers: { 'Authorization': 'Bearer ' + newToken } }),
+									fetch('/api/proxy/all-awards', { headers: { 'Authorization': 'Bearer ' + newToken } })
+								]);
+							} else if (!results[0].ok) {
+								await new Promise(function(r) { setTimeout(r, 1000); });
+								results = await Promise.all([
+									fetch('/api/proxy/awards?studentId=' + encodeURIComponent(studentId), { headers: { 'Authorization': 'Bearer ' + token } }),
+									fetch(prizesUrl, { headers: { 'Authorization': 'Bearer ' + token } }),
+									fetch('/api/proxy/all-awards', { headers: { 'Authorization': 'Bearer ' + token } })
 								]);
 							}
 

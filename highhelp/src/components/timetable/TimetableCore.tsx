@@ -62,6 +62,32 @@ export const TimetableCore = html`
         })();
     }
 
+    // Shared refresh — only one in-flight at a time so concurrent callers don't race and consume the refresh token
+    let _refreshPromise = null;
+    function doRefresh() {
+        if (_refreshPromise) return _refreshPromise;
+        _refreshPromise = (async () => {
+            try {
+                var refreshRes = await fetch('/api/auth/refresh');
+                var refreshData = await refreshRes.json();
+                if (refreshData.success && refreshData.accessToken) {
+                    studentData.accessToken = refreshData.accessToken;
+                    localStorage.setItem('studentData', JSON.stringify(studentData));
+                    localStorage.setItem('tokenRefreshedAt', String(Date.now()));
+                    clearReauthBanner();
+                    return refreshData.accessToken;
+                }
+                return null;
+            } catch(e) {
+                console.error('[auth] refresh network error', e);
+                return null;
+            } finally {
+                _refreshPromise = null;
+            }
+        })();
+        return _refreshPromise;
+    }
+
     // Proactive token refresh — refresh if older than 30 minutes so api.sbhs.net.au never sees an expired token
     async function ensureFreshToken() {
         if (!studentData?.accessToken) return false;
@@ -70,14 +96,9 @@ export const TimetableCore = html`
             var age = Date.now() - lastRefresh;
             if (age < 30 * 60 * 1000) return true; // still fresh
             console.log('[auth] proactive refresh — token age', Math.round(age / 60000), 'min');
-            var refreshRes = await fetch('/api/auth/refresh');
-            var refreshData = await refreshRes.json();
-            if (refreshData.success && refreshData.accessToken) {
-                studentData.accessToken = refreshData.accessToken;
-                localStorage.setItem('studentData', JSON.stringify(studentData));
-                localStorage.setItem('tokenRefreshedAt', String(Date.now()));
+            var newToken = await doRefresh();
+            if (newToken) {
                 console.log('[auth] proactive refresh succeeded');
-                clearReauthBanner();
                 return true;
             }
             console.warn('[auth] proactive refresh failed — showing reauth banner');
@@ -85,7 +106,7 @@ export const TimetableCore = html`
             return false;
         } catch(e) {
             console.error('[auth] proactive refresh network error', e);
-            return true; // network error — continue, will retry on next fetch
+            return true;
         }
     }
 
@@ -268,14 +289,10 @@ export const TimetableCore = html`
                 });
                 
                 if (res.status === 401 || res.status === 403) {
-                    const refreshRes = await fetch('/api/auth/refresh');
-                    const refreshData = await refreshRes.json();
-                    if (refreshData.success && refreshData.accessToken) {
-                        studentData.accessToken = refreshData.accessToken;
-                        localStorage.setItem('studentData', JSON.stringify(studentData));
-                        clearReauthBanner();
+                    const newToken = await doRefresh();
+                    if (newToken) {
                         res = await fetch('/api/proxy/day-data?date=' + date + '&_=' + new Date().getTime(), {
-                            headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
+                            headers: { 'Authorization': 'Bearer ' + newToken }
                         });
                     } else {
                         throw new Error('AUTH_EXPIRED');
@@ -491,7 +508,7 @@ export const TimetableCore = html`
             return _clipboardSessionsCache[cacheKey];
         }
 
-        // Check localStorage cache
+        let cachedData = null;
         if (!forceFetch) {
             try {
                 const raw = localStorage.getItem('clipboardSessionsCache_' + cacheKey);
@@ -501,7 +518,7 @@ export const TimetableCore = html`
                         console.log('[clipboard-sessions] serving from localStorage', cacheKey);
                         _clipboardSessionsCache[cacheKey] = cached.data;
                         _clipboardSessionsTimestamps[cacheKey] = cached.timestamp;
-                        return cached.data;
+                        cachedData = cached.data;
                     }
                 }
             } catch(e) {}
@@ -533,28 +550,32 @@ export const TimetableCore = html`
 
             if (res.status === 401 || res.status === 403) {
                 console.log('[clipboard-sessions] got', res.status, '— attempting refresh');
-                const refreshRes = await fetch('/api/auth/refresh');
-                const refreshData = await refreshRes.json();
-                console.log('[clipboard-sessions] refresh result', { success: refreshData.success, hasToken: !!refreshData.accessToken });
-                if (refreshData.success && refreshData.accessToken) {
-                    studentData.accessToken = refreshData.accessToken;
-                    localStorage.setItem('studentData', JSON.stringify(studentData));
-                    clearReauthBanner();
+                const newToken = await doRefresh();
+                console.log('[clipboard-sessions] refresh result', { hasToken: !!newToken });
+                if (newToken) {
                     res = await fetch('/api/proxy/clipboard-sessions?' + params.toString(), {
-                        headers: { 'Authorization': 'Bearer ' + refreshData.accessToken }
+                        headers: { 'Authorization': 'Bearer ' + newToken }
                     });
                     console.log('[clipboard-sessions] retry after refresh', { status: res.status, ok: res.ok });
                 } else {
                     console.warn('[clipboard-sessions] refresh failed — showing reauth banner');
                     showReauthBanner();
-                    return null;
+                    return cachedData;
                 }
             }
 
             if (!res.ok) {
-                console.warn('[clipboard-sessions] fetch failed', res.status);
+                console.warn('[clipboard-sessions] fetch failed', res.status, '— retrying once');
+                await new Promise(r => setTimeout(r, 1000));
+                res = await fetch('/api/proxy/clipboard-sessions?' + params.toString(), {
+                    headers: { 'Authorization': 'Bearer ' + studentData.accessToken }
+                });
+            }
+
+            if (!res.ok) {
+                console.warn('[clipboard-sessions] retry also failed', res.status);
                 showReauthBanner();
-                return null;
+                return cachedData;
             }
 
             const data = await res.json();
@@ -563,11 +584,11 @@ export const TimetableCore = html`
             try {
                 localStorage.setItem('clipboardSessionsCache_' + cacheKey, JSON.stringify({ timestamp: now, data }));
             } catch(e) {}
-            return data;
+            return data || cachedData;
         } catch (e) {
             console.error('[clipboard-sessions] fetch threw', e);
             showReauthBanner();
-            return null;
+            return cachedData;
         } finally {
             hideLoadingBar();
         }
