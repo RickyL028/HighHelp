@@ -19,7 +19,7 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="HighHelp" />
-        <link rel="apple-touch-icon" href="/icon-512.png" />
+        <link rel="apple-touch-icon" href="/icon-2.png" />
 
         <title>${props.title} - HighHelp</title>
         <script src="https://cdn.tailwindcss.com"></script>

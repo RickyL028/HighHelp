@@ -57,6 +57,9 @@
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
+	"assets": {
+		"directory": "./public"
+	},
 	"vars": {
 		"PORTAL_API_CLIENT_ID": "01kdpqeyf5eeb8nbpvwj1bp22w", // actual one
 		"PORTAL_API_CLIENT_ID_full":"01khd5yr82f56trpdz32s0zm8p",
