@@ -433,6 +433,10 @@ export const TimetableCore = html`
             }
             if (!urls || urls.length === 0) return [];
 
+            urls = urls.filter(u => !u.includes('internal-api.clipboard.app/'));
+
+            if (urls.length === 0) return [];
+
             // Compute a range: 7 days before to 14 days after the requested date
             const d = new Date(date + 'T12:00:00');
             const fromDate = new Date(d);
@@ -488,7 +492,7 @@ export const TimetableCore = html`
 
     let _clipboardSessionsCache = {};       // keyed by "dateAfter_dateBefore" or "global"
     let _clipboardSessionsTimestamps = {};  // keyed the same way
-    const CLIPBOARD_SESSIONS_TTL = 3600000; // 1 hour
+    const CLIPBOARD_SESSIONS_TTL = 604800000; // 7 days
 
     function _clipboardCacheKey(dateAfter, dateBefore) {
         return (dateAfter || '') + '_' + (dateBefore || '');

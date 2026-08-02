@@ -643,6 +643,7 @@ export const TimetableDay = html`
             const dayNotes = notesRes?.notes || [];
             
             const sessionsForDate = getClipboardSessionsForDate(clipboardSessions, currentDateStr);
+            // clipboardEvents from fetchCalendarData already excludes internal-api.clipboard.app/ feeds (filtered in TimetableCore fetchCalendarData)
             const mergedClipboard = [...sessionsForDate, ...(clipboardEvents || [])];
             
             // Final Render: Overwrite DOM structure seamlessly with real-time data
