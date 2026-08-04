@@ -59,7 +59,7 @@ app.get('/', async (c) => {
         `).all()
     ]);
 
-    const HALF_YEARLY_DATE = "2026-08-11T08:00:00";
+    const HALF_YEARLY_DATE = "2026-08-12T08:00:00";
 
     return c.html(
         <Layout title="Home" user={user}>

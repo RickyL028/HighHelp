@@ -1,3 +1,5 @@
+
+
 # Logs
 
 logs
@@ -165,3 +167,6 @@ dist
 .env*
 !.env.example
 .wrangler/
+
+# PDFs uploaded to public/ (served as static assets, never committed)
+public/*.pdf
