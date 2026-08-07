@@ -23,7 +23,7 @@ function buildPrompt(subject: string, existingTopics: string[]): string {
 
     return `You are a specialist in analysing NSW HSC exam papers. You will be given a PDF of a past paper for the subject "${subject}". Your job is not to solve any questions, as solutions are provided at the end, but to categorise questions.
 
-Your task is to extract EVERY question from the paper and return them in a structured, valid JSON format. No code fences, no explanation outside the JSON. Start your response with { and end with }. You MUST include a "_thinking" field at the very beginning of your JSON output to write out your detailed step-by-step thinking process. This is required so the streaming output begins immediately.
+Your task is to extract EVERY question from the paper and return them in a structured, valid JSON format. No code fences, no explanation outside the JSON. Start your response with { and end with }.
 
 ## Section Classification Rules (STRICTLY follow these):
 - **Section I**: Always Multiple Choice (MCQ). Each question is worth 1 mark. The correct answer is one of A, B, C, D.
@@ -82,7 +82,6 @@ For each question, assign one or more topic names in the "topics" array. This he
 ## Output Format:
 Return ONLY a valid JSON object with this structure:
 {
-  "_thinking": "Your detailed step-by-step thinking process here. You MUST provide this field first.",
   "questions": [
     {
       "section_label": "I",
@@ -124,7 +123,6 @@ interface AIQuestion {
 }
 
 interface GeminiResponse {
-    _thinking?: string;
     questions: AIQuestion[];
 }
 
@@ -149,7 +147,7 @@ export async function callGemini(
         generationConfig: {
             temperature: 0.1,
             responseMimeType: 'application/json',
-            maxOutputTokens: 65536,
+            maxOutputTokens: 24000,
         },
     };
 

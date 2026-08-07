@@ -20,11 +20,14 @@
 				"max_batch_size": 1,
 				
 				"max_batch_timeout": 0, 
-				"max_retries": 2,
+				"max_retries": 1,
 				"dead_letter_queue": "paper-ai-dlq",
 				
 			}
 		]
+	},
+	"limits": {
+		"cpu_ms": 300000
 	},
 	"d1_databases": [
 		{

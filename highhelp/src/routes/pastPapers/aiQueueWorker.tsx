@@ -57,8 +57,6 @@ export async function processAIImportJob(job: AIImportJob, env: Bindings) {
       `AI imported ${count} questions into paper ${paperId}`, paperId, 'papers');
 
   } catch (err: any) {
-    await env.DB.prepare("UPDATE papers SET ai_status = 'error', ai_error = ? WHERE id = ?")
-      .bind(err.message || 'Unknown error', paperId).run();
     throw err;
   }
 }

@@ -193,16 +193,31 @@ app.route('/', atarRoutes)
 app.route('/', atarExplainedRoutes)
 app.route('/api/clipboard', clipboardRoutes)
 
+function isTransientError(err: unknown): boolean {
+    const msg = String((err as any)?.message ?? err ?? '');
+    if (/Gemini API error (5\d{2}|429)/.test(msg)) return true;
+    if (/Gemini API error \d{3}/.test(msg)) return false;
+    return true;
+}
+
 export default {
   fetch: app.fetch,
   async queue(batch: MessageBatch<AIImportJob>, env: Bindings) {
+    // max_retries: 1 in wrangler.jsonc => 2 total attempts
+    const MAX_ATTEMPTS = 2;
     for (const message of batch.messages) {
       try {
         await processAIImportJob(message.body, env)
         message.ack()
       } catch (err) {
         console.error('[Queue] Job failed:', err)
-        message.ack()
+        if (isTransientError(err) && message.attempts < MAX_ATTEMPTS) {
+          message.retry()
+        } else {
+          await env.DB.prepare("UPDATE papers SET ai_status = 'error', ai_error = ? WHERE id = ?")
+            .bind(String((err as any)?.message ?? 'Unknown error'), message.body.paperId).run()
+          message.ack()
+        }
       }
     }
   }
