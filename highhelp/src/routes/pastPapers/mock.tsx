@@ -51,7 +51,7 @@ app.get('/mock-exams', async (c) => {
 
                 <div class="flex justify-between items-center">
                     <h1 class="text-3xl font-bold dark:text-white">Mock Exams</h1>
-                    <a href={`/past-papers/mock-exams/create?subject=${encodeURIComponent(subject || '')}`} class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition">
+                    <a href={`/past-papers/mock-exams/create?subject=${encodeURIComponent(subject || '')}`} class="text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
                         + Create New Exam
                     </a>
                 </div>
@@ -94,11 +94,11 @@ app.get('/mock-exams', async (c) => {
                                 </div>
                                 <div class="flex gap-2">
                                     {exam.status === 'in_progress' ? (
-                                        <a href={`/past-papers/mock-exams/${exam.id}`} class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-lg font-bold hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors">
-                                            Continue
+                                        <a href={`/past-papers/mock-exams/${exam.id}`} class="text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
+                                            Continue →
                                         </a>
                                     ) : (
-                                        <a href={`/past-papers/mock-exams/${exam.id}/mark`} class="bg-gray-100 dark:bg-neutral-700 text-gray-700 dark:text-neutral-300 px-4 py-2 rounded-lg font-bold hover:bg-gray-200 dark:hover:bg-neutral-600 transition-colors">
+                                        <a href={`/past-papers/mock-exams/${exam.id}/mark`} class="text-gray-700 dark:text-neutral-300 font-bold hover:underline transition-colors">
                                             View Results
                                         </a>
                                     )}
@@ -213,7 +213,7 @@ app.get('/mock-exams/create', async (c) => {
                                 </div>
 
                                 <div class="pt-4">
-                                    <button class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition">Generate Exam</button>
+                                    <button class="w-full text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">Generate Exam</button>
                                 </div>
                             </form>
                         </div>
@@ -222,8 +222,8 @@ app.get('/mock-exams/create', async (c) => {
                     {c.req.query('mode') === 'manual' && (
                         <div class="bg-gray-50 dark:bg-neutral-800/50 p-6 rounded-xl border border-gray-200 dark:border-neutral-700 text-center">
                             <p class="text-gray-600 dark:text-neutral-300 mb-4">To create a manual exam, please browse the <strong>Practice Questions</strong> tab and select the questions you want to add.</p>
-                            <a href={`/past-papers?subject=${encodeURIComponent(subject || '')}&tab=practice&mode=select`} class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition shadow-md">
-                                Go to Question Selector
+                            <a href={`/past-papers?subject=${encodeURIComponent(subject || '')}&tab=practice&mode=select`} class="inline-block text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
+                                Go to Question Selector →
                             </a>
                         </div>
                     )}
@@ -490,7 +490,7 @@ app.get('/mock-exams/:id', async (c) => {
 
                 <div class="flex gap-4">
                     {isOwner && (
-                        <button type="submit" form="exam-form" onclick="return confirm('Are you sure you want to finish the exam? Answers will be saved.');" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
+                        <button type="submit" form="exam-form" onclick="return confirm('Are you sure you want to finish the exam? Answers will be saved.');" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">
                             Finish Exam
                         </button>
                     )}
@@ -513,7 +513,7 @@ app.get('/mock-exams/:id', async (c) => {
                                         {q.school_name} {q.paper_type} {q.academic_year} — {q.section_label} Q{q.question_number}
                                     </h1>
                                     <span class="text-gray-300 dark:text-neutral-600 hidden sm:inline">|</span>
-                                    <a href={pdfUrl} target="_blank" class="flex items-center gap-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-xs font-bold transition-colors">
+                                    <a href={pdfUrl} target="_blank" class="flex items-center gap-1 text-red-700 dark:text-red-400 text-xs font-bold hover:underline transition-colors">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></svg>
                                         Original PDF {stimPage ? `(p.${stimPage})` : ''}
                                     </a>
@@ -705,7 +705,7 @@ app.get('/mock-exams/:id/mark', async (c) => {
                                             {q.school_name} {q.academic_year} — {q.section_label} Q{q.question_number}
                                         </h1>
                                         <span class="text-gray-300 dark:text-neutral-600 hidden sm:inline">|</span>
-                                        <a href={pdfUrl} target="_blank" class="flex items-center gap-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-xs font-bold transition-colors">
+                                        <a href={pdfUrl} target="_blank" class="flex items-center gap-1 text-red-700 dark:text-red-400 text-xs font-bold hover:underline transition-colors">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></svg>
                                             Original PDF {stimPage ? `(p.${stimPage})` : ''}
                                         </a>
@@ -769,7 +769,7 @@ app.get('/mock-exams/:id/mark', async (c) => {
                                                     {Array.from({ length: (q.marks || 0) + 1 }, (_, m) => (
                                                         <label class="cursor-pointer">
                                                             <input type="radio" name={`marks_${q.id}`} value={m} checked={q.existing_marks === m} class="peer hidden" />
-                                                            <div class="w-10 h-10 rounded border border-gray-300 dark:border-neutral-600 font-bold flex items-center justify-center bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 transition-colors shadow-sm">
+                                                            <div class="w-8 font-bold flex items-center justify-center text-gray-700 dark:text-neutral-300 hover:text-gray-900 dark:hover:text-neutral-200 peer-checked:text-blue-600 dark:peer-checked:text-blue-400 peer-checked:underline transition-colors">
                                                                 {m}
                                                             </div>
                                                         </label>
@@ -790,7 +790,7 @@ app.get('/mock-exams/:id/mark', async (c) => {
 
                     <div class="fixed bottom-0 left-0 w-full bg-white dark:bg-neutral-900 border-t dark:border-neutral-800 p-4 flex justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-colors z-50">
                         <div class="text-gray-500 dark:text-neutral-400 text-sm pl-4 hidden sm:block">Don't forget to save your marks! Data gets saved directly to your questions history.</div>
-                        <button class="bg-green-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-green-700 shadow-md w-full sm:w-auto transition-colors">
+                        <button class="text-green-600 dark:text-green-400 font-bold hover:underline w-full sm:w-auto transition-colors">
                             Save & Complete Marking
                         </button>
                     </div>

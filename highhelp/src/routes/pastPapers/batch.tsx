@@ -145,7 +145,7 @@ app.get('/past-papers/batch/view', async (c) => {
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-gray-500 dark:text-neutral-400">{totalCount} questions</span>
                         {totalCount > 0 && (
-                            <button type="button" onclick="downloadPdfBatch()" class="text-xs bg-emerald-600 text-white px-3 py-1 rounded font-bold hover:bg-emerald-700">
+                            <button type="button" onclick="downloadPdfBatch()" class="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline transition-colors">
                                 ↓ PDF
                             </button>
                         )}
@@ -265,8 +265,8 @@ app.get('/past-papers/batch/view', async (c) => {
                                                     <div class="flex gap-1">
                                                         {Array.from({ length: (Number(q.marks) || 0) + 1 }, (_, m) => (
                                                             <button type="button"
-                                                                class={`mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold border rounded transition-none ${Number(attempt?.marks_awarded ?? 0) === m ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 dark:bg-neutral-800 border-gray-400 dark:border-neutral-500 text-black dark:text-white hover:bg-gray-200 dark:hover:bg-neutral-700'}`}
-                                                                onclick={`document.getElementById('marks-${q.id}').value = ${m}; document.querySelectorAll('.mk-${q.id}').forEach(b => { b.className = 'mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold border rounded transition-none bg-gray-50 dark:bg-neutral-800 border-gray-400 dark:border-neutral-500 text-black dark:text-white hover:bg-gray-200 dark:hover:bg-neutral-700'; }); this.className = 'mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold border rounded transition-none bg-blue-600 text-white border-blue-600';`}
+                                                                class={`mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors ${Number(attempt?.marks_awarded ?? 0) === m ? 'text-blue-700 dark:text-blue-400 underline' : 'text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline'}`}
+                                                                onclick={`document.getElementById('marks-${q.id}').value = ${m}; document.querySelectorAll('.mk-${q.id}').forEach(b => { b.className = 'mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline'; }); this.className = 'mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors text-blue-700 dark:text-blue-400 underline';`}
                                                             >{m}</button>
                                                         ))}
                                                     </div>
@@ -281,7 +281,7 @@ app.get('/past-papers/batch/view', async (c) => {
 
                                     {!answerRevealed && (
                                         <button type="button" id={`reveal-${q.id}`}
-                                            class="w-full py-2 border border-gray-300 dark:border-neutral-600 text-gray-600 dark:text-neutral-300 bg-white dark:bg-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-700 text-sm font-semibold rounded transition-none"
+                                            class="w-full text-gray-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-semibold hover:underline transition-colors"
                                             onclick={`document.getElementById('ans-${q.id}').style.display = 'block'; this.style.display = 'none';`}
                                         >
                                             Check Answer
@@ -291,7 +291,7 @@ app.get('/past-papers/batch/view', async (c) => {
                                     <div class="flex justify-end gap-2 pt-2 border-t dark:border-neutral-700">
                                         <button type="button" id={`save-btn-${q.id}`}
                                             onclick={`saveQuestion(${q.id}, '${q.question_type === 'multiple_choice' ? 'mcq' : 'text'}', '${mode || ''}')`}
-                                            class="px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700"
+                                            class="px-4 py-1.5 text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline transition-colors"
                                         >
                                             Save
                                         </button>
@@ -342,10 +342,10 @@ app.get('/past-papers/batch/view', async (c) => {
                         const d = await r.json();
                         if (d.success) {
                             btn.textContent = '✓ Saved';
-                            btn.className = 'px-4 py-1.5 bg-green-600 text-white text-sm font-bold rounded';
+                            btn.className = 'px-4 py-1.5 text-green-600 dark:text-green-400 text-sm font-bold';
                             setTimeout(() => {
                                 btn.textContent = 'Save';
-                                btn.className = 'px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700';
+                                btn.className = 'px-4 py-1.5 text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline transition-colors';
                                 btn.disabled = false;
                             }, 2000);
 

@@ -91,7 +91,7 @@ app.get('/past-papers/create', async (c) => {
                         <button type="button" id="add-segment-btn" class="mt-4 text-sm text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">+ Add Another Segment</button>
                     </div>
                     <div class="pt-4">
-                        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">Create Paper & Placeholders</button>
+                        <button type="submit" class="w-full text-blue-600 dark:text-blue-400 font-bold hover:underline transition">Create Paper & Placeholders</button>
                     </div>
                 </form>
 
@@ -160,7 +160,7 @@ app.get('/past-papers/create', async (c) => {
                             </div>
                         </div>
 
-                        <button type="submit" id="ai-submit-btn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                        <button type="submit" id="ai-submit-btn" class="w-full text-blue-600 dark:text-blue-400 font-bold hover:underline transition flex items-center justify-center gap-2">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                             <span id="ai-submit-text">Create Paper with AI</span>
                         </button>

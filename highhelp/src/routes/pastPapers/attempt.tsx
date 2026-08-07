@@ -204,21 +204,21 @@ app.get('/past-papers/attempt/:id', async (c) => {
                         <span class="text-xs font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded shrink-0">
                             {q.marks} Marks
                         </span>
-                        <a href={pdfUrl} target="_blank" class="flex items-center gap-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-xs font-bold transition-colors">
+                        <a href={pdfUrl} target="_blank" class="flex items-center gap-1 text-red-700 dark:text-red-400 text-xs font-bold hover:underline transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></svg>
                             Original PDF {stimCoords?.page ? `(p.${stimCoords.page})` : ''}
                         </a>
                     </div>
                     <div class="flex gap-1 shrink-0 ml-2">
                         {prevId ? (
-                            <a href={`/past-papers/attempt/${prevId}?${currentParams}`} class="px-2 py-1 bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded hover:bg-gray-50 dark:hover:bg-neutral-700 text-sm font-medium">Prev</a>
+                            <a href={`/past-papers/attempt/${prevId}?${currentParams}`} class="px-2 py-1 text-gray-700 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-bold hover:underline transition-colors">← Prev</a>
                         ) : (
-                            <button disabled class="px-2 py-1 bg-gray-50 dark:bg-neutral-900 border dark:border-neutral-800 rounded text-gray-400 text-sm opacity-50 cursor-not-allowed">Prev</button>
+                            <button disabled class="px-2 py-1 text-gray-400 dark:text-neutral-600 text-sm font-bold opacity-50 cursor-not-allowed">← Prev</button>
                         )}
                         {nextId ? (
-                            <a href={`/past-papers/attempt/${nextId}?${currentParams}`} class="px-2 py-1 bg-white dark:bg-neutral-800 border dark:border-neutral-700 rounded hover:bg-gray-50 dark:hover:bg-neutral-700 text-sm font-medium">Next</a>
+                            <a href={`/past-papers/attempt/${nextId}?${currentParams}`} class="px-2 py-1 text-gray-700 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-bold hover:underline transition-colors">Next →</a>
                         ) : (
-                            <button disabled class="px-2 py-1 bg-gray-50 dark:bg-neutral-900 border dark:border-neutral-800 rounded text-gray-400 text-sm opacity-50 cursor-not-allowed">Next</button>
+                            <button disabled class="px-2 py-1 text-gray-400 dark:text-neutral-600 text-sm font-bold opacity-50 cursor-not-allowed">Next →</button>
                         )}
                     </div>
                 </div>
@@ -230,14 +230,14 @@ app.get('/past-papers/attempt/:id', async (c) => {
                             const isActive = item.id === parseInt(qId);
                             const isDone = item.is_completed === 1;
 
-                            let baseClass = "flex-shrink-0 flex items-center justify-center min-w-[2.5rem] px-2.5 py-1.5 rounded-sm text-xs font-bold border transition-colors cursor-pointer ";
+                            let baseClass = "flex-shrink-0 flex items-center justify-center px-1 py-1 text-xs font-bold transition-colors cursor-pointer border-b-2 ";
 
                             if (isActive) {
-                                baseClass += "border-blue-500 bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 shadow-sm";
+                                baseClass += "border-blue-500 text-blue-700 dark:text-blue-400";
                             } else if (isDone) {
-                                baseClass += "border-green-300 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/50";
+                                baseClass += "border-transparent text-green-600 dark:text-green-400 hover:border-green-300";
                             } else {
-                                baseClass += "border-gray-200 bg-white text-gray-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 hover:bg-gray-50 dark:hover:bg-neutral-700";
+                                baseClass += "border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:border-gray-300";
                             }
 
                             return (
@@ -328,7 +328,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                     document.getElementById('reveal-btn-wrap').style.display = 'none';
                                     document.getElementById('answer-section').style.display = 'block';
                                 "
-                                    class="mt-3 w-full py-2 border border-gray-300 dark:border-neutral-600 text-gray-600 dark:text-neutral-300 bg-white dark:bg-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-700 text-sm font-semibold rounded-sm transition-none"
+                                    class="mt-3 w-full text-gray-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-semibold hover:underline transition-colors"
                                 >
                                     Check Answer
                                 </button>
@@ -372,12 +372,11 @@ app.get('/past-papers/attempt/:id', async (c) => {
                 document.querySelectorAll('.mark-btn').forEach(b => b.setAttribute('data-active', 'false'));
                 this.setAttribute('data-active', 'true');
             `}
-                                                    class="mark-btn min-w-[2.25rem] px-2 py-1 text-sm font-bold border rounded-sm transition-none
-                data-[active=true]:bg-blue-600 data-[active=true]:text-white data-[active=true]:border-blue-600
-                data-[active=false]:bg-gray-50 data-[active=false]:dark:bg-neutral-800
-                data-[active=false]:border-gray-400 data-[active=false]:dark:border-neutral-500
-                data-[active=false]:text-black data-[active=false]:dark:text-white
-                data-[active=false]:hover:bg-gray-200 data-[active=false]:dark:hover:bg-neutral-700"
+                                                    class="mark-btn min-w-[2.25rem] px-2 py-1 text-sm font-bold transition-colors
+                data-[active=true]:text-blue-700 dark:data-[active=true]:text-blue-400
+                data-[active=false]:text-gray-600 dark:data-[active=false]:text-neutral-400
+                data-[active=false]:hover:text-gray-900 dark:data-[active=false]:hover:text-neutral-200
+                data-[active=true]:underline data-[active=false]:hover:underline"
                                                 >
                                                     {m}
                                                 </button>
@@ -387,8 +386,8 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
                                     <button
                                         type="button"
-                                        onclick={`const val = ${q.marks}; document.getElementById('marks_awarded_input').value = val; document.querySelectorAll('.mark-btn').forEach(b => b.classList.remove('bg-blue-600', 'text-white', 'border-blue-600')); const maxBtn = Array.from(document.querySelectorAll('.mark-btn')).find(b => b.getAttribute('data-mark') == val); if(maxBtn) maxBtn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');`}
-                                        class="ml-auto px-2.5 py-1 text-xs font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-sm hover:bg-blue-200 dark:hover:bg-blue-900/60"
+                                        onclick={`const val = ${q.marks}; document.getElementById('marks_awarded_input').value = val; document.querySelectorAll('.mark-btn').forEach(b => { b.setAttribute('data-active', 'false'); }); const maxBtn = Array.from(document.querySelectorAll('.mark-btn')).find(b => b.getAttribute('data-mark') == val); if(maxBtn) maxBtn.setAttribute('data-active', 'true');`}
+                                        class="ml-auto px-2.5 py-1 text-xs font-bold text-blue-700 dark:text-blue-400 hover:underline"
                                     >
                                         MAX ({q.marks})
                                     </button>
@@ -413,10 +412,10 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                 ) : 'Pending'}
                             </div>
                             <div class="flex gap-2">
-                                <button type="submit" name="action" value="save" class="px-4 py-1.5 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-200 text-sm font-bold rounded-sm hover:bg-gray-50 dark:hover:bg-neutral-700">
+                                <button type="submit" name="action" value="save" class="px-4 py-1.5 text-gray-700 dark:text-neutral-300 text-sm font-bold hover:underline transition-colors">
                                     Save
                                 </button>
-                                <button type="submit" name="action" value="complete" class="px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded-sm hover:bg-blue-700">
+                                <button type="submit" name="action" value="complete" class="px-4 py-1.5 text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline transition-colors">
                                     Save + Continue
                                 </button>
                             </div>

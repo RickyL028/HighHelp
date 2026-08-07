@@ -67,7 +67,7 @@ app.get('/past-papers', async (c) => {
                 <div class="flex items-center justify-between mb-6">
                     <h1 class="text-3xl font-bold dark:text-white">{subject}</h1>
                     {canUpload && (
-                        <a href={`/past-papers/create?subject=${encodeURIComponent(subject)}`} class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition">
+                        <a href={`/past-papers/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
                             + Add New Paper
                         </a>
                     )}
@@ -114,7 +114,7 @@ app.get('/past-papers', async (c) => {
                                         {user && user.permission_level >= PermissionLevel.ADMIN && (
                                             <form action={`/past-papers/paper/${p.id}/delete`} method="post" onclick="event.stopPropagation(); return confirm('Are you sure you want to delete this paper and ALL its questions? This action is permanent and cannot be undone.');" class="z-10 relative">
                                                 <input type="hidden" name="subject" value={subject} />
-                                                <button type="submit" class="text-red-500 hover:text-white font-bold px-2 py-1 rounded hover:bg-red-500 dark:hover:bg-red-600 transition-colors border border-transparent hover:border-red-600">
+                                                <button type="submit" class="text-red-500 dark:text-red-400 font-bold hover:underline transition-colors">
                                                     Delete
                                                 </button>
                                             </form>
@@ -276,10 +276,10 @@ app.get('/past-papers', async (c) => {
                                 <option value="year_asc" selected={sort == 'year_asc'}>Year (Oldest)</option>
                             </select>
                         </div>
-                        <div class="flex gap-2">
-                            <button class="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm hover:bg-blue-700">Filter</button>
-                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice${mode ? '&mode=' + mode : ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded text-gray-600 dark:text-neutral-400 text-sm hover:bg-gray-50 dark:hover:bg-neutral-700">Reset</a>
-                            <a href={`/past-papers/batch/view?source=practice&subject=${encodeURIComponent(subject)}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm hover:bg-emerald-700">Batch Mode</a>
+                        <div class="flex gap-6 items-center">
+                            <button class="text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline">Filter</button>
+                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice${mode ? '&mode=' + mode : ''}`} class="text-gray-600 dark:text-neutral-400 text-sm hover:text-gray-900 dark:hover:text-neutral-200 hover:underline">Reset</a>
+                            <a href={`/past-papers/batch/view?source=practice&subject=${encodeURIComponent(subject)}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="text-emerald-600 dark:text-emerald-400 font-bold text-sm hover:underline">Batch Mode</a>
                         </div>
                     </div>
                 </form>
@@ -303,8 +303,8 @@ app.get('/past-papers', async (c) => {
 
                                     return (
                                         <div onclick={clickAction}
-                                            class={`block p-3 rounded border transition-colors cursor-pointer group 
-                                            ${isIncomplete ? 'bg-gray-50 dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 opacity-75 grayscale' : 'bg-white dark:bg-neutral-800 border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-neutral-700'}`}>
+                                            class={`block py-3 border-b border-gray-100 dark:border-neutral-800 transition-colors cursor-pointer group last:border-b-0
+                                            ${isIncomplete ? 'opacity-75 grayscale' : 'hover:border-blue-300 dark:hover:border-blue-800'}`}>
                                             <div class="flex justify-between items-start">
                                                 <div class="flex gap-3">
                                                     {mode === 'select' && (
@@ -326,7 +326,7 @@ app.get('/past-papers', async (c) => {
                                                     </div>
                                                 </div>
                                                 <div class="text-right">
-                                                    <span class={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase border ${isIncomplete ? 'bg-gray-200 dark:bg-neutral-800 text-gray-500 dark:text-neutral-500 border-gray-300 dark:border-neutral-700' : 'bg-gray-100 dark:bg-neutral-900 text-gray-600 dark:text-neutral-400 border-gray-200 dark:border-neutral-800'}`}>{q.marks || '?'}m</span>
+                                                    <span class={`text-[10px] font-bold uppercase ${isIncomplete ? 'text-gray-500 dark:text-neutral-500' : 'text-gray-600 dark:text-neutral-400'}`}>{q.marks || '?'}m</span>
                                                     {q.marks_awarded != null && (
                                                         <div class="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1">
                                                             {q.marks_awarded}/{q.marks}
@@ -347,11 +347,11 @@ app.get('/past-papers', async (c) => {
                                                 <input type="number" name="timer_minutes" placeholder="Timer (mins)" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm w-24" />
                                             </div>
                                         </div>
-                                        <div class="flex gap-2">
-                                            <button type="submit" formaction="/past-papers/batch/export-pdf" class="bg-emerald-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-emerald-700 shadow-md">
+                                        <div class="flex gap-4">
+                                            <button type="submit" formaction="/past-papers/batch/export-pdf" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
                                                 Download PDF
                                             </button>
-                                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-md">
+                                            <button type="submit" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">
                                                 Create Exam
                                             </button>
                                         </div>
@@ -436,9 +436,9 @@ app.get('/past-papers', async (c) => {
                         Page <span class="font-bold text-gray-900 dark:text-white">{page}</span> of <span class="font-bold text-gray-900 dark:text-white">{totalPages}</span>
                         <span class="ml-2 hidden sm:inline">({totalQuestions} questions)</span>
                     </div>
-                    <div class="flex gap-2">
-                        {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}&mode=${mode || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Previous</a>}
-                        {page < totalPages && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}&mode=${mode || ''}`} class="px-4 py-2 border dark:border-neutral-700 rounded bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors shadow-sm">Next</a>}
+                    <div class="flex gap-4">
+                        {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}&mode=${mode || ''}`} class="text-gray-700 dark:text-neutral-300 font-bold hover:underline transition-colors">← Previous</a>}
+                        {page < totalPages && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}&mode=${mode || ''}`} class="text-gray-700 dark:text-neutral-300 font-bold hover:underline transition-colors">Next →</a>}
                     </div>
                 </div>
             </div>
@@ -476,7 +476,7 @@ app.get('/past-papers', async (c) => {
             <div>
                 <div class="flex items-center justify-between mb-6">
                     <h1 class="text-3xl font-bold dark:text-white">Review Queue</h1>
-                    <a href={`/past-papers/batch/view?source=review&subject=${encodeURIComponent(subject)}&mode=review`} class="px-4 py-2 bg-emerald-600 text-white rounded font-bold text-sm hover:bg-emerald-700">Batch Review</a>
+                    <a href={`/past-papers/batch/view?source=review&subject=${encodeURIComponent(subject)}&mode=review`} class="text-emerald-600 dark:text-emerald-400 font-bold text-sm hover:underline">Batch Review</a>
                 </div>
                 <p class="text-gray-600 dark:text-neutral-400 mb-8">Questions you didn't get full marks on. Review and retry them to master the content.</p>
 

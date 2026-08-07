@@ -104,23 +104,23 @@ app.get('/past-papers/paper/:id', async (c) => {
                     </div>
 
                     <div class="flex items-center gap-3">
-                        <a href={`/past-papers/batch/view?paper_id=${paper.id}`} class="bg-emerald-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-emerald-700 flex items-center gap-2">
+                        <a href={`/past-papers/batch/view?paper_id=${paper.id}`} class="text-emerald-600 dark:text-emerald-400 text-sm font-bold flex items-center gap-2 hover:underline">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                             Attempt All
                         </a>
                         {canEdit && (
                             <>
-                                <button onclick="document.getElementById('upload-pdf-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
+                                <button onclick="document.getElementById('upload-pdf-modal').showModal()" class="text-blue-600 dark:text-blue-400 text-sm font-bold flex items-center gap-2 hover:underline">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                                     Upload PDF
                                 </button>
 
-                                <button onclick="document.getElementById('import-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
+                                <button onclick="document.getElementById('import-modal').showModal()" class="text-blue-600 dark:text-blue-400 text-sm font-bold flex items-center gap-2 hover:underline">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     Import JSON
                                 </button>
 
-                                <button onclick="document.getElementById('ai-import-modal').showModal()" class="bg-blue-600 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-blue-700 flex items-center gap-2">
+                                <button onclick="document.getElementById('ai-import-modal').showModal()" class="text-blue-600 dark:text-blue-400 text-sm font-bold flex items-center gap-2 hover:underline">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                                     AI Import PDF
                                 </button>
@@ -142,8 +142,8 @@ app.get('/past-papers/paper/:id', async (c) => {
                                             </div>
 
                                             <div class="flex justify-end gap-3 mt-6">
-                                                <button type="button" onclick="document.getElementById('upload-pdf-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg">Cancel</button>
-                                                <button class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition-colors">
+                                                <button type="button" onclick="document.getElementById('upload-pdf-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:underline">Cancel</button>
+                                                <button class="text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
                                                     Upload
                                                 </button>
                                             </div>
@@ -172,8 +172,8 @@ app.get('/past-papers/paper/:id', async (c) => {
                                             </div>
 
                                             <div class="flex justify-end gap-3 mt-6">
-                                                <button type="button" onclick="document.getElementById('import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg">Cancel</button>
-                                                <button class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition-colors">
+                                                <button type="button" onclick="document.getElementById('import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:underline">Cancel</button>
+                                                <button class="text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
                                                     Process & Import
                                                 </button>
                                             </div>
@@ -205,8 +205,8 @@ app.get('/past-papers/paper/:id', async (c) => {
                                             </div>
 
                                             <div class="flex justify-end gap-3 mt-6">
-                                                <button type="button" onclick="document.getElementById('ai-import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-100 dark:hover:bg-neutral-700 rounded-lg">Cancel</button>
-                                                <button id="ai-view-submit-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-2">
+                                                <button type="button" onclick="document.getElementById('ai-import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:underline">Cancel</button>
+                                                <button id="ai-view-submit-btn" class="text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors flex items-center gap-2">
                                                     <span id="ai-view-submit-text">AI Import</span>
                                                 </button>
                                             </div>
@@ -219,7 +219,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                         {paper.is_locked ? (
                             canUnlock && (
                                 <form action={`/past-papers/paper/${paper.id}/toggle-lock`} method="post">
-                                    <button class="bg-gray-800 dark:bg-neutral-700 text-white text-sm font-bold px-3 py-2 rounded shadow hover:bg-gray-900 dark:hover:bg-neutral-600 flex items-center gap-2 transition-colors">
+                                    <button class="text-gray-800 dark:text-neutral-200 text-sm font-bold flex items-center gap-2 hover:underline transition-colors">
                                         Uncheck
                                     </button>
                                 </form>
@@ -229,7 +229,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                 <>
                                     {incompleteQuestionsCount > 0 ? (
                                         <div class="group relative">
-                                            <button disabled class="bg-gray-100 dark:bg-neutral-800 text-gray-400 dark:text-neutral-600 border border-gray-200 dark:border-neutral-700 text-sm font-bold px-3 py-2 rounded cursor-not-allowed flex items-center gap-2">
+                                            <button disabled class="text-gray-400 dark:text-neutral-600 text-sm font-bold flex items-center gap-2 cursor-not-allowed">
                                                 Check
                                             </button>
                                             <div class="absolute right-0 top-full mt-2 w-64 bg-gray-800 dark:bg-neutral-700 text-white text-xs p-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
@@ -237,7 +237,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                             </div>
                                         </div>
                                     ) : (
-                                        <button onclick="document.getElementById('lock-modal').showModal()" class="bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300 border border-gray-300 dark:border-neutral-700 text-sm font-bold px-3 py-2 rounded shadow-sm hover:bg-gray-200 dark:hover:bg-neutral-700 flex items-center gap-2 transition-colors">
+                                        <button onclick="document.getElementById('lock-modal').showModal()" class="text-gray-700 dark:text-neutral-300 text-sm font-bold flex items-center gap-2 hover:underline transition-colors">
                                             Check
                                         </button>
                                     )}
@@ -264,9 +264,9 @@ app.get('/past-papers/paper/:id', async (c) => {
                         </p>
                         <p class="text-xs text-gray-400 dark:text-neutral-500 mb-6 font-mono">This action will be logged.</p>
                         <div class="flex justify-end gap-3">
-                            <button onclick="document.getElementById('lock-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:bg-gray-50 dark:hover:bg-neutral-700 rounded-lg transition-colors">Cancel</button>
+                            <button onclick="document.getElementById('lock-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:underline transition-colors">Cancel</button>
                             <form action={`/past-papers/paper/${paper.id}/toggle-lock`} method="post">
-                                <button class="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 shadow-sm transition-colors">
+                                <button class="text-red-600 dark:text-red-400 font-bold hover:underline transition-colors">
                                     I Understand, check
                                 </button>
                             </form>
@@ -333,7 +333,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                     <input type="hidden" name="subject" value={paper.subject} />
                                     <input type="hidden" name="redirect_paper_id" value={paper.id} />
                                     <input type="text" name="name" placeholder="New Topic Name" class="rounded border dark:border-neutral-700 p-1.5 text-sm bg-white dark:bg-neutral-900 dark:text-white" required />
-                                    <button class="bg-blue-600 text-white text-xs px-3 py-1 rounded font-bold hover:bg-blue-700 transition-colors">Create</button>
+                                    <button class="text-blue-600 dark:text-blue-400 text-xs font-bold hover:underline transition-colors">Create</button>
                                 </form>
                                 <div class="flex flex-wrap gap-2">
                                     {allTopics.results.map((t: any) => (
@@ -454,8 +454,8 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                                     <div class="flex justify-between items-center mb-2">
                                                                         <label class="text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase">{type} Content</label>
                                                                         <div class="flex gap-2">
-                                                                            <button type="button" onclick={`switchMode('${type}', ${q.id}, 'text')`} class={`text-xs px-2 py-1 rounded font-bold transition var-mode-text ${initialMode === 'text' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-gray-100 dark:bg-neutral-700 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-600'}`}>Text</button>
-                                                                            <button type="button" onclick={`switchMode('${type}', ${q.id}, 'image')`} class={`text-xs px-2 py-1 rounded font-bold transition var-mode-image ${initialMode === 'image' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-gray-100 dark:bg-neutral-700 text-gray-500 dark:text-neutral-400 hover:bg-gray-200 dark:hover:bg-neutral-600'}`}>Image</button>
+                                                                            <button type="button" onclick={`switchMode('${type}', ${q.id}, 'text')`} class={`text-xs px-2 py-1 font-bold transition var-mode-text ${initialMode === 'text' ? 'text-blue-700 dark:text-blue-400 underline' : 'text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200'}`}>Text</button>
+                                                                            <button type="button" onclick={`switchMode('${type}', ${q.id}, 'image')`} class={`text-xs px-2 py-1 font-bold transition var-mode-image ${initialMode === 'image' ? 'text-blue-700 dark:text-blue-400 underline' : 'text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200'}`}>Image</button>
                                                                         </div>
                                                                     </div>
 
@@ -474,7 +474,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                                     <div id={`mode-${type}-${q.id}-image`} class={`${initialMode === 'image' ? '' : 'hidden'}`}>
                                                                         <div class="flex justify-between items-center mb-2">
                                                                             <span class="text-xs text-gray-400 dark:text-neutral-500">Upload or Paste Image</span>
-                                                                            <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs bg-gray-100 dark:bg-neutral-700 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-neutral-600 text-blue-600 dark:text-blue-400 font-bold transition-colors">📋 Paste</button>
+                                                                            <button type="button" onclick={`pasteImage('file-${type}-${q.id}', '${type}-preview-${q.id}')`} class="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">📋 Paste</button>
                                                                         </div>
 
                                                                         {q[`${type}_image_key`] && (
@@ -543,7 +543,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                     type="submit"
                                                     formaction={`/past-papers/paper/${paper.id}/adjust-segment`}
                                                     name="action" value="add"
-                                                    class="text-xs bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 px-3 py-1 rounded font-bold transition-colors"
+                                                    class="text-xs text-blue-600 dark:text-blue-400 hover:underline px-3 py-1 font-bold transition-colors"
                                                     onclick={`
                                                     
                                                     const form = this.closest('form');
@@ -573,7 +573,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                     type="submit"
                                                     formaction={`/past-papers/paper/${paper.id}/adjust-segment`}
                                                     name="action" value="remove"
-                                                    class="text-xs bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-800 text-red-700 dark:text-red-300 px-3 py-1 rounded font-bold transition-colors"
+                                                    class="text-xs text-red-600 dark:text-red-400 hover:underline px-3 py-1 font-bold transition-colors"
                                                     onclick={`
                                                      if (!confirm('Remove last question of ${q.section_label} ${q.segment_label || ''}?')) return false;
 
@@ -613,7 +613,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                         <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-neutral-900 border-t border-gray-200 dark:border-neutral-800 p-4 shadow-lg z-50">
                             <div class="max-w-5xl mx-auto flex justify-between items-center">
                                 <span class="text-gray-500 dark:text-neutral-400 text-sm">Ensure all changes are saved.</span>
-                                <button type="submit" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 shadow-md transition transform hover:-translate-y-0.5">
+                                <button type="submit" class="text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
                                     Save All Changes
                                 </button>
                             </div>
@@ -641,17 +641,17 @@ app.get('/past-papers/paper/:id', async (c) => {
                     const imgBtn = container.querySelector('.var-mode-image');
 
                     if (mode === 'text') {
-                        textBtn.classList.remove('bg-gray-100', 'text-gray-500');
-                        textBtn.classList.add('bg-blue-100', 'text-blue-700');
-                        imgBtn.classList.remove('bg-blue-100', 'text-blue-700');
-                        imgBtn.classList.add('bg-gray-100', 'text-gray-500');
+                        textBtn.classList.remove('text-gray-500');
+                        textBtn.classList.add('text-blue-700', 'underline');
+                        imgBtn.classList.remove('text-blue-700', 'underline');
+                        imgBtn.classList.add('text-gray-500');
                         
                         
                     } else {
-                        imgBtn.classList.remove('bg-gray-100', 'text-gray-500');
-                        imgBtn.classList.add('bg-blue-100', 'text-blue-700');
-                        textBtn.classList.remove('bg-blue-100', 'text-blue-700');
-                        textBtn.classList.add('bg-gray-100', 'text-gray-500');
+                        imgBtn.classList.remove('text-gray-500');
+                        imgBtn.classList.add('text-blue-700', 'underline');
+                        textBtn.classList.remove('text-blue-700', 'underline');
+                        textBtn.classList.add('text-gray-500');
                         
                         
                          const textArea = document.querySelector('textarea[name="q_' + id + '_' + type + '_text"]');
