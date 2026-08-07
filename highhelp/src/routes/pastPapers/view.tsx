@@ -160,15 +160,23 @@ app.get('/past-papers/paper/:id', async (c) => {
 
                                         <form action={`/past-papers/paper/${paper.id}/upload-text`} method="post" enctype="multipart/form-data">
                                             <div class="border-2 border-dashed border-gray-300 dark:border-neutral-600 rounded-lg p-6 text-center hover:bg-gray-50 dark:hover:bg-neutral-700/50 transition cursor-pointer relative">
-                                                <input type="file" name="text_file" accept=".txt,.json" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required />
+                                                <input type="file" name="text_file" accept=".txt,.json" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                                 <div class="text-gray-500 dark:text-neutral-400">
                                                     <span class="block text-2xl mb-1">📄</span>
                                                     <span class="font-bold text-sm">Click to select .json or .txt file</span>
                                                 </div>
                                             </div>
 
+                                            <div class="my-4 flex items-center gap-3 text-xs text-gray-400 dark:text-neutral-500">
+                                                <span class="flex-1 border-t border-gray-200 dark:border-neutral-700"></span>
+                                                or paste
+                                                <span class="flex-1 border-t border-gray-200 dark:border-neutral-700"></span>
+                                            </div>
+
+                                            <textarea name="json_text" rows={8} placeholder='Paste your JSON here...' class="w-full text-sm rounded-md border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 font-mono"></textarea>
+
                                             <div class="mt-4 bg-gray-50 dark:bg-neutral-900 p-3 rounded text-xs text-gray-500 dark:text-neutral-400 font-mono overflow-x-auto border border-gray-200 dark:border-neutral-800">
-                                                Ensure the file contains a valid JSON object with a <code>questions</code> array matching the AI extraction format.
+                                                Provide a valid JSON object with a <code>questions</code> array matching the AI extraction format — either by file or paste.
                                             </div>
 
                                             <div class="flex justify-end gap-3 mt-6">
@@ -1215,9 +1223,10 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
 
     const body = await c.req.parseBody();
     const file = body['text_file'];
-    if (!(file instanceof File)) return c.text("Invalid file uploaded", 400);
+    const pasted = body['json_text'];
+    if (!(file instanceof File) && typeof pasted !== 'string') return c.text("No file or JSON pasted", 400);
 
-    const rawText = await file.text();
+    const rawText = file instanceof File ? await file.text() : pasted.trim();
     let parsed: any;
     try {
         let cleaned = rawText.trim()
@@ -1231,7 +1240,7 @@ app.post('/past-papers/paper/:id/upload-text', async (c) => {
         }
         parsed = JSON.parse(cleaned);
     } catch (e) {
-        return c.text("Invalid JSON file uploaded", 400);
+        return c.text("Invalid JSON file or pasted content", 400);
     }
 
     if (!parsed.questions || !Array.isArray(parsed.questions)) {

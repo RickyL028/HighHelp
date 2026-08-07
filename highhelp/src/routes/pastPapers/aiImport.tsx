@@ -360,8 +360,8 @@ app.post('/past-papers/paper/:id/ai-import', async (c) => {
     });
 
     // Mark as pending and enqueue
-    await c.env.DB.prepare("UPDATE papers SET ai_status = 'pending' WHERE id = ?")
-        .bind(paperId).run();
+    await c.env.DB.prepare("UPDATE papers SET ai_status = 'pending', reference_link = ? WHERE id = ?")
+        .bind(`/download/papers/${paperId}.pdf`, paperId).run();
 
     await c.env.AI_QUEUE.send({
         paperId,
@@ -405,6 +405,10 @@ app.post('/past-papers/create-with-ai', async (c) => {
     await c.env.BUCKET.put(`papers/${paperId}.pdf`, arrayBuffer, {
         httpMetadata: { contentType: 'application/pdf' },
     });
+
+    // Point the paper's reference link at the uploaded PDF
+    await c.env.DB.prepare("UPDATE papers SET reference_link = ? WHERE id = ?")
+        .bind(`/download/papers/${paperId}.pdf`, paperId).run();
 
     // Enqueue
     await c.env.AI_QUEUE.send({
