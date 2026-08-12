@@ -204,6 +204,25 @@ app.get('/api/proxy/attendance', async (c) => {
     }
 })
 
+app.get('/api/proxy/pre-explained-absences', async (c) => {
+    const authHeader = c.req.header('Authorization')
+    const studentId = c.req.query('studentId')
+    if (!authHeader || !studentId) return c.json({ error: 'Invalid request' }, 400)
+    try {
+        const context = c.req.query('context') || new Date().getFullYear().toString()
+        const params = new URLSearchParams({ _page: '1', _itemsPerPage: '200', context })
+
+        const response = await fetch(
+            `https://api.sbhs.net.au/api/core/students/${studentId}/clipboard/pre-explained-absences?${params.toString()}`,
+            { headers: { 'Authorization': authHeader } }
+        )
+        const data = await response.json()
+        return c.json(data, response.status as any)
+    } catch (e) {
+        return c.json({ error: 'Proxy error' }, 500)
+    }
+})
+
 app.route('/', homeRoutes)
 app.route('/home', homeRoutes)
 app.route('/', authRoutes)

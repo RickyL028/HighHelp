@@ -93,6 +93,18 @@
     if (h) return h + 'h';
     return m + 'm';
   }
+  function fmtFullDate(iso) {
+    const d = parseISO(iso);
+    if (!d) return '';
+    return d.toLocaleDateString('en-AU', { timeZone: SYDNEY, day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function fmtRange(startIso, endIso) {
+    const sStr = sydneyDateStr(startIso);
+    const eStr = sydneyDateStr(endIso);
+    if (!sStr || !eStr) return '';
+    if (sStr === eStr) return fmtFullDate(startIso);
+    return fmtFullDate(startIso) + ' – ' + fmtFullDate(endIso);
+  }
   function relativeDay(iso) {
     const d = parseISO(iso);
     if (!d) return '';
@@ -167,6 +179,27 @@
     }
     if (!res.ok) throw new Error('FETCH_FAILED:' + res.status);
     return normalize(await res.json());
+  }
+
+  async function fetchPreExplained() {
+    const sd = getStudentData();
+    if (!sd || !sd.accessToken || !sd.studentId) throw new Error('NO_SESSION');
+
+    const params = new URLSearchParams({ studentId: sd.studentId, context: String(new Date().getFullYear()) });
+
+    let res = await fetch('/api/proxy/pre-explained-absences?' + params.toString(), {
+      headers: { Authorization: 'Bearer ' + sd.accessToken },
+    });
+    if (res.status === 401 || res.status === 403) {
+      const token = await doRefresh();
+      if (!token) throw new Error('AUTH_EXPIRED');
+      res = await fetch('/api/proxy/pre-explained-absences?' + params.toString(), {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+    }
+    if (!res.ok) throw new Error('FETCH_FAILED:' + res.status);
+    const data = await res.json();
+    return Array.isArray(data) ? data : data.member || [];
   }
 
   function computeStats(records) {
@@ -496,6 +529,36 @@
     if (icon) icon.classList.toggle('animate-spin', on);
   }
 
+  function renderPreExplained(items) {
+    const container = $('pre-explained-container');
+    if (!container) return;
+    if (!items.length) {
+      container.innerHTML = '';
+      return;
+    }
+    container.innerHTML = `
+      <section class="mt-10">
+        <h2 class="text-xs uppercase  text-gray-400 dark:text-neutral-500 mb-3">Pre-explained</h2>
+        <ul class="divide-y divide-gray-100 dark:divide-neutral-800">
+          ${items
+            .map((item) => {
+              const range = fmtRange(item.startDateTime, item.endDateTime);
+              const school = !!item.isAbsenceFromSchool;
+              const explained = !!item.isExplained;
+              return `
+                <li class="py-2.5 flex flex-wrap items-center justify-between gap-2">
+                  <p class="text-sm font-medium text-gray-800 dark:text-neutral-200">${esc(range)}</p>
+                  <span class="flex items-center gap-1.5">
+                    ${school ? '<span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400">School</span>' : '<span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300">Co-curricular</span>'}
+                    ${explained ? '<span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400">👍</span>' : ''}
+                  </span>
+                </li>`;
+            })
+            .join('')}
+        </ul>
+      </section>`;
+  }
+
   function renderAll() {
     const stats = computeStats(allRecords);
     renderBreakdown(stats);
@@ -519,11 +582,18 @@
     setLoadingUI(true);
     $('error-state').classList.add('hidden');
     try {
-      const records = await fetchAttendance();
+      const [records, preExplained] = await Promise.all([
+        fetchAttendance(),
+        fetchPreExplained().catch((e) => {
+          console.warn('[attendance] pre-explained absences failed', e);
+          return [];
+        }),
+      ]);
       allRecords = records;
       hasLoaded = true;
       loading = false;
       renderAll();
+      renderPreExplained(preExplained);
     } catch (e) {
       loading = false;
       setLoadingUI(false);

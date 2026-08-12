@@ -22,6 +22,9 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
         <link rel="apple-touch-icon" href="/icon-2.png" />
 
         <title>${props.title} - HighHelp</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
         <script src="https://cdn.tailwindcss.com"></script>
         
         
@@ -108,6 +111,7 @@ ${props.latex ? html`
                 .scrollbar-hide{-ms-overflow-style:none;scrollbar-width:none}
                 .scrollbar-hide::-webkit-scrollbar{display:none}
                 html{background-color:#3E2723}
+                html,body{font-family:'Inter',sans-serif}
                 /* Night theme */
                 html.night body{background-color:#0A0E17!important;color:#fff!important}
                 html.night nav{background-color:#0A0E17!important}
@@ -235,7 +239,7 @@ ${props.latex ? html`
                 html.paper .animate-pulse{animation:none!important}
                 /* Glass / Frosted Metal theme */
                 html.glass{background:linear-gradient(180deg,#2c3543,#3b4758)!important}
-                html.glass body{background:linear-gradient(180deg,#2c3543,#3b4758)!important;color:#fff!important;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif!important}
+                html.glass body{background:linear-gradient(180deg,#2c3543,#3b4758)!important;color:#fff!important;font-family:'Inter',sans-serif!important}
                 html.glass nav{background:rgba(30,36,46,.85)!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 1px 0 rgba(255,255,255,.06)!important}
                 html.glass nav a:hover,html.glass nav button:hover{background:rgba(255,255,255,.06)!important}
                 html.glass main{background:transparent!important}
@@ -315,7 +319,7 @@ ${props.latex ? html`
                 html.glass .border-blue-500{border-color:rgba(95,123,140,.4)!important}
             </style>
           </head>
-      <body class="bg-background dark:bg-neutral-900 text-gray-800 dark:text-gray-200 font-sans min-h-screen flex flex-col transition-colors duration-300">
+      <body class="bg-background dark:bg-neutral-900 text-gray-800 dark:text-gray-200 min-h-screen flex flex-col transition-colors duration-300">
         <nav class="bg-primary dark:bg-neutral-950 text-white shadow-lg">
           <div class="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-14">

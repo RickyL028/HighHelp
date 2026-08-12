@@ -15,7 +15,7 @@ app.get('/', async (c) => {
                 <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
                     <div>
                         <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Attendance</h1>
-                        <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">Across every sport, season and co-curricular.</p>
+                        <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">(clipboard) absences & pre-explained</p>
                     </div>
                     <div class="flex items-center gap-3">
                         <button id="btn-refresh" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-sm text-gray-700 dark:text-neutral-200 hover:bg-gray-50 dark:hover:bg-neutral-700">
@@ -30,6 +30,8 @@ app.get('/', async (c) => {
                 </div>
 
                 <div id="calendar-container"></div>
+
+                <div id="pre-explained-container"></div>
 
                 <div id="error-state" class="hidden text-center py-16">
                     <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gray-100 dark:bg-neutral-800 flex items-center justify-center">

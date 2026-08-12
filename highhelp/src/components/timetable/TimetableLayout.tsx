@@ -42,7 +42,7 @@ export const TimetableLayout = ({ children }: { children: Child }) => (
                 </button>
             </div>
 
-            <div id="big-timer-display" class="mb-4 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl p-4 text-black dark:text-white font-sans transform transition-all relative overflow-hidden hidden">
+            <div id="big-timer-display" class="mb-4 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-2xl p-4 text-black dark:text-white transform transition-all relative overflow-hidden hidden">
                 <div class="absolute top-0 right-0 w-32 h-30 bg-gray-100 dark:bg-neutral-700 opacity-50 dark:opacity-20 rounded-full -mr-10 -mt-10 blur-2xl"></div>
                 <div class="absolute bottom-0 left-0 w-24 h-20 bg-red-500 opacity-5 rounded-full -ml-10 -mb-10 blur-xl"></div>
 

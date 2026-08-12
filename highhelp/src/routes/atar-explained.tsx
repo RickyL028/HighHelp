@@ -11,7 +11,7 @@ app.get('/atar/how-it-works', async (c) => {
 
   return c.html(
     <Layout title="How the ATAR Calculator Works" user={user}>
-      <div class="max-w-4xl mx-auto px-4 py-12 font-sans space-y-8">
+      <div class="max-w-4xl mx-auto px-4 py-12 space-y-8">
         <header class="border-b border-gray-200 dark:border-neutral-800 pb-4">
             <h1 class="text-4xl font-extrabold">How this thing works</h1>
         </header>
