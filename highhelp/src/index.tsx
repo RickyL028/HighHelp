@@ -16,6 +16,7 @@ import classesRoutes from './routes/timetable'
 import clipboardRoutes from './components/timetable/TimetableClipboard'
 import atarRoutes from './routes/atar'
 import atarExplainedRoutes from './routes/atar-explained'
+import attendanceRoutes from './routes/attendance'
 import { processAIImportJob, AIImportJob } from './routes/pastPapers/aiQueueWorker'
 import { getUser } from './utils'
 import { PermissionLevel } from './permissions'
@@ -175,6 +176,34 @@ app.get('/api/proxy/clipboard-sessions', async (c) => {
     }
 })
 
+app.get('/api/proxy/attendance', async (c) => {
+    const authHeader = c.req.header('Authorization')
+    const studentId = c.req.query('studentId')
+    if (!authHeader || !studentId) return c.json({ error: 'Invalid request' }, 400)
+    try {
+        const context = c.req.query('context') || new Date().getFullYear().toString()
+        const dateBefore = c.req.query('date[before]')
+        const dateAfter = c.req.query('date[after]')
+
+        const params = new URLSearchParams({
+            _page: '1',
+            _itemsPerPage: '200',
+            context
+        })
+        if (dateBefore) params.set('date[before]', dateBefore)
+        if (dateAfter) params.set('date[after]', dateAfter)
+
+        const response = await fetch(
+            `https://api.sbhs.net.au/api/core/students/${studentId}/clipboard/attendance?${params.toString()}`,
+            { headers: { 'Authorization': authHeader } }
+        )
+        const data = await response.json()
+        return c.json(data, response.status as any)
+    } catch (e) {
+        return c.json({ error: 'Proxy error' }, 500)
+    }
+})
+
 app.route('/', homeRoutes)
 app.route('/home', homeRoutes)
 app.route('/', authRoutes)
@@ -185,6 +214,7 @@ app.route('/', announcementsRoutes)
 app.route('/', forumRoutes)
 app.route('/', essaysRoutes)
 app.route('/timetable', classesRoutes)
+app.route('/attendance', attendanceRoutes)
 app.route('/', feedbackRoutes)
 app.route('/', aboutRoutes)
 app.route('/', leaderboardRoutes)
