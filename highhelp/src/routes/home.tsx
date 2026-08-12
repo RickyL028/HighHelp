@@ -59,7 +59,7 @@ app.get('/', async (c) => {
         `).all()
     ]);
 
-    const HALF_YEARLY_DATE = "2026-08-12T08:00:00";
+    const HALF_YEARLY_DATE = "2026-08-13T08:00:00";
 
     return c.html(
         <Layout title="Home" user={user}>
@@ -76,7 +76,7 @@ app.get('/', async (c) => {
                             --:--:--:--
                         </div>
                         <h2 class="text-xl md:text-1xl font-bold text-secondary tracking-widest flex items-center justify-center dark:text-white gap-2">
-                            Until Physics Depth Study
+                            Until Biology Depth Study
                         </h2>
                     </div>
 

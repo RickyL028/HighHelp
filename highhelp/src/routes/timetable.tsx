@@ -117,6 +117,7 @@ app.get('/', async (c) => {
                             const tabNotices = document.getElementById('tab-notices');
                             const tabEvents = document.getElementById('tab-events');
                             const tabCalendar = document.getElementById('tab-calendar');
+                            const tabHighNotes = document.getElementById('tab-highnotes');
                             const tabConfig = document.getElementById('tab-config');
                             const headerControls = document.querySelector('#content > .flex.items-center.gap-2.mb-6') || document.querySelector('#content > .flex.items-center.gap-2.mb-3');
                             const configContainer = document.getElementById('config-container');
@@ -127,7 +128,7 @@ app.get('/', async (c) => {
                             // Reset tabs
                             const themeAccent = getThemeAccent();
                             const accentColors = themeAccent === 'purple' ? ['border-purple-500', 'text-purple-500'] : themeAccent === 'glass' ? ['border-[#5F7B8C]', 'text-[#5F7B8C]'] : ['border-red-500', 'text-red-500'];
-                            [tabDay, tabCycle, tabNotices, tabEvents, tabCalendar, tabConfig].forEach(t => {
+                            [tabDay, tabCycle, tabNotices, tabEvents, tabCalendar, tabHighNotes, tabConfig].forEach(t => {
                                 if(t) {
                                     t.classList.remove('border-red-500', 'text-red-500', 'border-purple-500', 'text-purple-500', 'border-[#5F7B8C]', 'text-[#5F7B8C]');
                                     t.classList.add('border-transparent', 'text-gray-500');
@@ -233,6 +234,8 @@ app.get('/', async (c) => {
                         if (eventsBtn) eventsBtn.onclick = () => { currentView = 'events'; window.location.hash = 'events'; render(); };
                         const calendarBtn = document.getElementById('tab-calendar');
                         if (calendarBtn) calendarBtn.onclick = () => { currentView = 'calendar'; window.location.hash = 'exams'; render(); };
+                        const highNotesBtn = document.getElementById('tab-highnotes');
+                        if (highNotesBtn) highNotesBtn.onclick = () => { window.location.href = 'https://sbhs.co/hnpdf'; };
                         document.getElementById('tab-config').onclick = () => { currentView = 'config'; window.location.hash = 'config'; render(); };
 
                         document.addEventListener('click', (e) => {

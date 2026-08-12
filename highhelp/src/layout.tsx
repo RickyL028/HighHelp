@@ -205,6 +205,7 @@ ${props.latex ? html`
                 html.paper #app-container .flex.overflow-x-auto.border-b #tab-notices::before{content:'NOTICES';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
                 html.paper #app-container .flex.overflow-x-auto.border-b #tab-events::before{content:'EVENTS';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
                 html.paper #app-container .flex.overflow-x-auto.border-b #tab-calendar::before{content:'EXAMS';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
+                html.paper #app-container .flex.overflow-x-auto.border-b #tab-highnotes::before{content:'HIGHNOTES';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
                 html.paper #app-container .flex.overflow-x-auto.border-b #tab-config::before{content:'CONFIG';font-weight:400;text-transform:uppercase;letter-spacing:.08em;font-size:.75rem}
                 html.paper #app-container .flex.overflow-x-auto.border-b button span:not(.ql-title){font-size:0!important}
                 html.paper .flex.items-center.gap-1\.5 button svg{display:none!important}
@@ -269,7 +270,7 @@ ${props.latex ? html`
                 html.glass #bt-label{color:#94a3b8!important;text-transform:none!important;font-variant:normal!important}
                 html.glass #daily-progress-bar{background-color:rgba(95,123,140,.3)!important}
                 html.glass #app-container>.flex.border-b{border-bottom:1px solid rgba(255,255,255,.08)!important}
-                html.glass #app-container .flex.border-b #tab-day svg,html.glass #app-container .flex.border-b #tab-cycle svg,html.glass #app-container .flex.border-b #tab-notices svg,html.glass #app-container .flex.border-b #tab-events svg,html.glass #app-container .flex.border-b #tab-calendar svg,html.glass #app-container .flex.border-b #tab-config svg{display:none!important}
+                html.glass #app-container .flex.border-b #tab-day svg,html.glass #app-container .flex.border-b #tab-cycle svg,html.glass #app-container .flex.border-b #tab-notices svg,html.glass #app-container .flex.border-b #tab-events svg,html.glass #app-container .flex.border-b #tab-calendar svg,html.glass #app-container .flex.border-b #tab-highnotes svg,html.glass #app-container .flex.border-b #tab-config svg{display:none!important}
                 html.glass #app-container .flex.border-b button{font-size:.75rem!important;letter-spacing:.06em!important;font-weight:400!important}
                 html.glass #app-container .flex.border-b #tab-day{font-weight:600!important;font-size:.8rem!important}
                 html.glass #btn-prev svg,html.glass #btn-next svg{display:none!important}
