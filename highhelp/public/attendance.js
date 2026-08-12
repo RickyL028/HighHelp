@@ -16,6 +16,7 @@
 
   let allRecords = [];
   let activityFilter = 'all';
+  let monthOffset = 0;
   let loading = false;
   let hasLoaded = false;
 
@@ -76,11 +77,6 @@
     if (!d) return '—';
     return d.toLocaleTimeString('en-AU', { timeZone: SYDNEY, hour: 'numeric', minute: '2-digit' });
   }
-  function fmtDateHeader(iso) {
-    const d = parseISO(iso);
-    if (!d) return 'Unknown date';
-    return d.toLocaleDateString('en-US', { timeZone: SYDNEY, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  }
   function fmtDateTime(iso) {
     const d = parseISO(iso);
     if (!d) return '—';
@@ -109,18 +105,6 @@
     if (ds === today) return 'Today';
     if (ds === yStr) return 'Yesterday';
     return '';
-  }
-
-  // readable foreground for the dynamic activity tag colour
-  function readableText(hex) {
-    const h = String(hex).replace('#', '');
-    const full = h.length === 3 ? h.split('').map((x) => x + x).join('') : h;
-    const r = parseInt(full.substr(0, 2), 16);
-    const g = parseInt(full.substr(2, 2), 16);
-    const b = parseInt(full.substr(4, 2), 16);
-    if ([r, g, b].some((n) => isNaN(n))) return '#ffffff';
-    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return lum > 0.6 ? '#1f2937' : '#ffffff';
   }
 
   function getStudentData() {
@@ -228,16 +212,12 @@
   }
   function activityTag(r) {
     const c = colour(r);
-    return `<span class="text-[11px] font-bold px-2 py-0.5 rounded" style="background:${c};color:${readableText(c)}">${esc(act(r))}</span>`;
+    return `<span class="text-[11px] font-bold" style="color:${c}">${esc(act(r))}</span>`;
   }
-  function statusBadge(r, compact) {
+  function statusBadge(r) {
     const s = statusOf(r);
     if (s === 'unexplained') {
-      const badge = `<span class="text-[11px] font-semibold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/15 rounded px-2 py-1">Unexplained absence</span>`;
-      return compact
-        ? badge
-        : badge +
-          `<button type="button" data-action="explain" class="add-reason-btn text-[11px] font-semibold px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white">Add reason</button>`;
+      return `<span class="text-[11px] font-semibold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/15 rounded px-2 py-1">Unexplained absence</span>`;
     }
     if (s === 'explained') {
       return `<span class="text-[11px] font-semibold text-gray-400 dark:text-neutral-500">Explained absence</span>`;
@@ -281,68 +261,112 @@
     }</div>`;
   }
 
-  function recordCardHTML(r) {
-    const timeStr = [fmtTime(r.session.startDateTime), fmtTime(r.session.endDateTime)].filter((t) => t !== '—').join(' – ');
-    const teamName = (r.team && r.team.name) || '';
-    const teamCat = (r.team && r.team.category) || '';
-    return `
-      <article data-id="${r.id}" class="record-card group cursor-pointer">
-        <div class="flex">
-          <div class="w-1 flex-shrink-0" style="background:${colour(r)}"></div>
-          <div class="flex-1 min-w-0 py-4 pl-3">
-            <div class="flex flex-wrap items-center gap-2 mb-1.5">${activityTag(r)}${statusBadge(r)}</div>
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-white leading-snug">${esc(r.session.title || 'Untitled session')}</h4>
-            <p class="text-xs text-gray-500 dark:text-neutral-400 mt-1">${teamName ? esc(teamName) + (teamCat ? ' · ' + esc(teamCat) : '') : teamCat ? esc(teamCat) : ''}</p>
-            <p class="text-xs text-gray-400 dark:text-neutral-500 mt-2">${esc(timeStr || 'Time not recorded')}${timeStr && fmtDuration(r.session.startDateTime, r.session.endDateTime) ? ' · ' + esc(fmtDuration(r.session.startDateTime, r.session.endDateTime)) : ''}</p>
-          </div>
-        </div>
-      </article>`;
+  function sydneyTodayStr() {
+    return sydneyDateStr(new Date().toISOString());
+  }
+  function monthAnchor() {
+    const [y, m] = sydneyTodayStr().split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1, 1));
+    d.setUTCMonth(d.getUTCMonth() + monthOffset);
+    return d;
+  }
+  function monthLabel() {
+    return monthAnchor().toLocaleDateString('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' });
+  }
+  function monthGrid() {
+    const anchor = monthAnchor();
+    const [y, m] = [anchor.getUTCFullYear(), anchor.getUTCMonth()];
+    const first = new Date(Date.UTC(y, m, 1));
+    const firstDow = first.getUTCDay();
+    const lead = (firstDow + 6) % 7;
+    const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const total = Math.ceil((lead + daysInMonth) / 7) * 7;
+    const start = new Date(first);
+    start.setUTCDate(start.getUTCDate() - lead);
+    const dates = [];
+    for (let i = 0; i < total; i++) {
+      const d = new Date(start);
+      d.setUTCDate(d.getUTCDate() + i);
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    return dates;
+  }
+  function dayStatus(records) {
+    if (records.some((r) => statusOf(r) === 'unexplained')) return 'unexplained';
+    if (records.some((r) => statusOf(r) === 'explained')) return 'explained';
+    if (records.length) return 'present';
+    return 'none';
+  }
+  function dayClass(status) {
+    switch (status) {
+      case 'unexplained':
+        return 'bg-red-500 text-white';
+      case 'explained':
+        return 'bg-orange-500 text-white';
+      case 'present':
+        return 'bg-green-500 text-white';
+      default:
+        return 'bg-gray-100 dark:bg-neutral-700 text-gray-400 dark:text-neutral-500';
+    }
   }
 
-  function renderTimeline(filtered, skeleton) {
-    const container = $('timeline-container');
-
+  function renderCalendar(filtered, skeleton) {
+    const container = $('calendar-container');
     if (skeleton) {
       container.innerHTML = '<p class="text-sm text-gray-400 dark:text-neutral-500 py-8 text-center">Loading…</p>';
       return;
     }
-    if (!filtered.length) {
-      container.innerHTML = emptyHTML(!allRecords.length);
+    if (!allRecords.length) {
+      container.innerHTML = emptyHTML(true);
       return;
     }
-
     const groups = {};
     filtered.forEach((r) => {
       const ds = sydneyDateStr(r.session.startDateTime) || 'Unknown date';
       (groups[ds] = groups[ds] || []).push(r);
     });
-    const dates = Object.keys(groups).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
-
-    container.innerHTML = dates
+    const dates = monthGrid();
+    const today = sydneyTodayStr();
+    const anchor = monthAnchor();
+    const [viewY, viewM] = [anchor.getUTCFullYear(), anchor.getUTCMonth()];
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const inView = (ds) => {
+      const [y, m] = ds.split('-').map(Number);
+      return y === viewY && m === viewM;
+    };
+    const dayCells = dates
       .map((ds) => {
-        const items = groups[ds].slice().sort((a, b) => {
-          const ta = a.session.startDateTime || '';
-          const tb = b.session.startDateTime || '';
-          return ta < tb ? -1 : ta > tb ? 1 : 0;
-        });
-        const rel = relativeDay(ds);
+        const recs = groups[ds] || [];
+        const status = dayStatus(recs);
+        const [, , d] = ds.split('-').map(Number);
+        const isToday = ds === today;
+        const dim = inView(ds);
         return `
-          <section class="space-y-3">
-            <div class="flex items-center gap-2">
-              <h3 class="text-sm font-bold text-gray-900 dark:text-white">${esc(fmtDateHeader(ds))}</h3>
-              ${rel ? `<span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${rel === 'Today' ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300' : 'bg-gray-100 dark:bg-neutral-700 text-gray-500 dark:text-neutral-400'}">${rel}</span>` : ''}
-              <span class="text-xs text-gray-400 dark:text-neutral-500">· ${items.length}</span>
-            </div>
-            ${items.map(recordCardHTML).join('')}
-          </section>`;
+          <button type="button" data-date="${ds}" class="calendar-day flex flex-col items-center justify-center rounded-lg py-1 aspect-square transition-opacity ${recs.length ? 'cursor-pointer hover:opacity-80' : 'cursor-default'} ${dim ? 'opacity-40' : ''} ${dayClass(status)} ${isToday ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-neutral-900' : ''}">
+            <span class="text-sm font-bold leading-tight">${d}</span>
+            <span class="text-[9px] mt-0.5">${recs.length ? recs.length + ' session' + (recs.length > 1 ? 's' : '') : '—'}</span>
+          </button>`;
       })
       .join('');
+    container.innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <button type="button" data-nav="-1" class="cal-nav p-1.5 rounded hover:bg-gray-100 dark:hover:bg-neutral-700 text-gray-500 dark:text-neutral-400" aria-label="Previous month"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+        <h3 class="text-sm font-bold text-gray-900 dark:text-white">${esc(monthLabel())}</h3>
+        <button type="button" data-nav="1" class="cal-nav p-1.5 rounded hover:bg-gray-100 dark:hover:bg-neutral-700 text-gray-500 dark:text-neutral-400" aria-label="Next month"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+      </div>
+      <div class="grid grid-cols-7 gap-1.5 mb-1">
+        ${weekdays.map((w) => `<div class="text-center text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500">${w}</div>`).join('')}
+      </div>
+      <div class="grid grid-cols-7 gap-1.5">
+        ${dayCells}
+      </div>`;
+    refreshIcons();
   }
 
-  function openDrawer(id) {
-    const r = allRecords.find((x) => String(x.id) === String(id));
-    if (!r) return;
-    renderDrawer(r);
+  function openDayDrawer(dateStr) {
+    const records = getFiltered().filter((r) => sydneyDateStr(r.session.startDateTime) === dateStr);
+    if (!records.length) return;
+    renderDayDrawer(dateStr, records);
     $('drawer-backdrop').classList.remove('hidden');
     $('audit-drawer').classList.remove('translate-x-full');
     document.body.style.overflow = 'hidden';
@@ -353,7 +377,7 @@
     document.body.style.overflow = '';
   }
 
-  function renderDrawer(r) {
+  function sessionAuditBlock(r) {
     const s = statusOf(r);
     const flags = flagNames(r);
     const teamName = (r.team && r.team.name) || '—';
@@ -368,39 +392,32 @@
     markedBy = markedBy || '—';
     const outcome = s === 'present' ? 'Attended' : s === 'late' ? 'Attended (late)' : s === 'explained' ? 'Explained absence' : 'Unexplained absence';
 
-    $('drawer-content').innerHTML = `
-      <div class="flex items-center justify-between mb-5">
-        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Session audit</h3>
-        <button id="drawer-close" class="p-1 rounded hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-400" aria-label="Close"><i data-lucide="x" class="w-4 h-4"></i></button>
-      </div>
-      <div class="flex flex-wrap items-center gap-2 mb-3">${activityTag(r)}${statusBadge(r, true)}</div>
-      <h4 class="text-base font-semibold text-gray-900 dark:text-white leading-snug mb-2">${esc(r.session.title || 'Untitled session')}</h4>
+    return `
+      <div class="py-4 border-t border-gray-100 dark:border-neutral-800 first:border-0 first:pt-0">
+        <div class="flex flex-wrap items-center gap-2 mb-2">${activityTag(r)}${statusBadge(r)}</div>
+        <h4 class="text-sm font-semibold text-gray-900 dark:text-white leading-snug mb-2">${esc(r.session.title || 'Untitled session')}</h4>
 
-      <div class="divide-y divide-gray-100 dark:divide-neutral-800">
-        <div class="py-3">
-          <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500">Team</p>
-          <p class="text-sm text-gray-800 dark:text-neutral-200 mt-0.5">${esc(teamName)}</p>
-          ${teamCat ? `<p class="text-xs text-gray-400 dark:text-neutral-500">${esc(teamCat)}</p>` : ''}
-        </div>
-        <div class="py-3">
-          <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500">Department</p>
-          <p class="text-sm text-gray-800 dark:text-neutral-200 mt-0.5">${esc(dept(r))}</p>
-        </div>
-        <div class="py-3">
-          <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500">When</p>
-          <p class="text-sm text-gray-800 dark:text-neutral-200 mt-0.5">${esc(fmtDateHeader(r.session.startDateTime))}</p>
-          <p class="text-xs text-gray-400 dark:text-neutral-500">${esc(when)}${duration ? ' · ' + esc(duration) : ''}</p>
-        </div>
-        <div class="py-3">
-          <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500">Flags</p>
-          ${flags.length ? `<div class="flex flex-wrap gap-1.5 mt-1">${flags.map((f) => `<span class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300">${esc(f)}</span>`).join('')}</div>` : '<p class="text-sm text-gray-400 dark:text-neutral-500 mt-0.5">None</p>'}
-        </div>
-        ${r.comment ? `<div class="py-3"><p class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-neutral-500">Comment</p><p class="text-sm text-gray-800 dark:text-neutral-200 mt-0.5">${esc(r.comment)}</p></div>` : ''}
-      </div>
-
-      <div class="mt-5 pt-4 border-t border-gray-100 dark:border-neutral-800">
-        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-neutral-500 mb-3">Roll audit trail</p>
-        <div class="grid grid-cols-2 gap-y-3 gap-x-4">
+        <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+          <div>
+            <p class="text-[11px] text-gray-400 dark:text-neutral-500">When</p>
+            <p class="text-sm text-gray-800 dark:text-neutral-200 mt-0.5">${esc(when)}${duration ? ' · ' + esc(duration) : ''}</p>
+          </div>
+          <div>
+            <p class="text-[11px] text-gray-400 dark:text-neutral-500">Team</p>
+            <p class="text-sm text-gray-800 dark:text-neutral-200 mt-0.5">${esc(teamName)}${teamCat ? ' · ' + esc(teamCat) : ''}</p>
+          </div>
+          <div>
+            <p class="text-[11px] text-gray-400 dark:text-neutral-500">Department</p>
+            <p class="text-sm text-gray-800 dark:text-neutral-200 mt-0.5">${esc(dept(r))}</p>
+          </div>
+          <div>
+            <p class="text-[11px] text-gray-400 dark:text-neutral-500">Outcome</p>
+            <p class="text-sm font-medium text-gray-800 dark:text-neutral-200">${esc(outcome)}</p>
+          </div>
+          <div>
+            <p class="text-[11px] text-gray-400 dark:text-neutral-500">Flags</p>
+            ${flags.length ? `<div class="flex flex-wrap gap-1.5 mt-1">${flags.map((f) => `<span class="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-neutral-300">${esc(f)}</span>`).join('')}</div>` : '<p class="text-sm text-gray-400 dark:text-neutral-500 mt-0.5">None</p>'}
+          </div>
           <div>
             <p class="text-[11px] text-gray-400 dark:text-neutral-500">Roll marked</p>
             <p class="text-sm font-medium text-gray-800 dark:text-neutral-200">${esc(rollMarked)}</p>
@@ -413,62 +430,37 @@
             <p class="text-[11px] text-gray-400 dark:text-neutral-500">Record ID</p>
             <p class="text-sm font-mono text-gray-800 dark:text-neutral-200">${esc(r.id)}</p>
           </div>
-          <div>
-            <p class="text-[11px] text-gray-400 dark:text-neutral-500">Outcome</p>
-            <p class="text-sm font-medium text-gray-800 dark:text-neutral-200">${esc(outcome)}</p>
-          </div>
         </div>
+        ${r.comment ? `<p class="text-xs text-gray-500 dark:text-neutral-400 mt-3"><span class="font-semibold">Comment:</span> ${esc(r.comment)}</p>` : ''}
+      </div>`;
+  }
+
+  function renderDayDrawer(dateStr, records) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    const title = dt.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const rel = relativeDay(dateStr);
+
+    $('drawer-content').innerHTML = `
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white">Session audit</h3>
+          <p class="text-sm text-gray-500 dark:text-neutral-400 mt-0.5">${esc(title)}${rel ? ' · ' + esc(rel) : ''}</p>
+        </div>
+        <button id="drawer-close" class="p-1 rounded hover:bg-gray-100 dark:hover:bg-neutral-800 text-gray-400" aria-label="Close"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
+      ${records.map(sessionAuditBlock).join('')}
     `;
     refreshIcons();
     $('drawer-close').onclick = closeDrawer;
   }
 
-  function openExplainModal() {
-    const list = allRecords
-      .filter((r) => r.absent && !r.explained)
-      .slice()
-      .sort((a, b) => {
-        const ta = a.session.startDateTime || '';
-        const tb = b.session.startDateTime || '';
-        return ta < tb ? 1 : ta > tb ? -1 : 0;
-      });
-    $('explain-intro').textContent =
-      'You have ' + list.length + ' unexplained ' + (list.length === 1 ? 'absence' : 'absences') + ' — record a reason in the school portal for each session below.';
-    $('explain-list').innerHTML = list.length
-      ? list
-          .map(
-            (r) => `
-          <div class="flex items-center gap-3 rounded border border-red-100 dark:border-red-500/20 bg-red-50/60 dark:bg-red-500/5 px-3 py-2.5">
-            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${colour(r)}"></span>
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-semibold text-gray-900 dark:text-white truncate">${esc(r.session.title || 'Untitled session')}</p>
-              <p class="text-[11px] text-gray-500 dark:text-neutral-400 mt-0.5">${esc(fmtDateHeader(r.session.startDateTime))} · ${esc([fmtTime(r.session.startDateTime), fmtTime(r.session.endDateTime)].filter((t) => t !== '—').join(' – '))}</p>
-            </div>
-            <span class="text-[10px] font-bold uppercase tracking-wider text-red-500 flex-shrink-0">Unjustified</span>
-          </div>`
-          )
-          .join('')
-      : '<p class="text-sm text-gray-400 dark:text-neutral-500">Nothing to explain.</p>';
-    refreshIcons();
-    const bd = $('explain-backdrop');
-    bd.classList.remove('hidden');
-    bd.classList.add('flex');
-    document.body.style.overflow = 'hidden';
-  }
-  function closeExplainModal() {
-    const bd = $('explain-backdrop');
-    bd.classList.add('hidden');
-    bd.classList.remove('flex');
-    document.body.style.overflow = '';
-  }
-
   function showError(type) {
     const state = $('error-state');
     state.classList.remove('hidden');
-    const tl = $('timeline-container');
-    tl.classList.add('hidden');
-    tl.innerHTML = '';
+    const cal = $('calendar-container');
+    cal.classList.add('hidden');
+    cal.innerHTML = '';
 
     const icon = state.querySelector('#error-icon');
     const title = $('error-title');
@@ -508,28 +500,17 @@
     const stats = computeStats(allRecords);
     renderBreakdown(stats);
 
-    const summary = $('result-summary');
     const filtered = getFiltered();
 
     if (loading && !hasLoaded) {
-      summary.textContent = 'Loading…';
-      renderTimeline(filtered, true);
+      renderCalendar(filtered, true);
       return;
     }
     if (!hasLoaded) {
-      summary.textContent = '';
-      return;
-    }
-    if (!allRecords.length) {
-      summary.textContent = 'No attendance records yet';
-      renderTimeline(filtered, false);
       return;
     }
 
-    summary.textContent =
-      'Showing ' + filtered.length + ' of ' + allRecords.length + ' sessions' + (activityFilter !== 'all' ? ' · ' + activityFilter : '');
-
-    renderTimeline(filtered, false);
+    renderCalendar(filtered, false);
   }
 
   async function loadAndRender(force) {
@@ -570,23 +551,18 @@
     $('btn-refresh').addEventListener('click', () => {
       if (!loading) loadAndRender(true);
     });
-    $('btn-close-explain').addEventListener('click', closeExplainModal);
-    $('btn-explain-close').addEventListener('click', closeExplainModal);
-    $('explain-backdrop').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) closeExplainModal();
-    });
     $('drawer-backdrop').addEventListener('click', closeDrawer);
 
     document.addEventListener('click', (e) => {
-      const reason = e.target.closest('.add-reason-btn');
-      if (reason) {
-        e.stopPropagation();
-        openExplainModal();
+      const day = e.target.closest('.calendar-day');
+      if (day) {
+        openDayDrawer(day.getAttribute('data-date'));
         return;
       }
-      const card = e.target.closest('.record-card');
-      if (card) {
-        openDrawer(card.getAttribute('data-id'));
+      const nav = e.target.closest('.cal-nav');
+      if (nav) {
+        monthOffset += Number(nav.getAttribute('data-nav')) || 0;
+        renderAll();
         return;
       }
       const ap = e.target.closest('.activity-pill');
@@ -604,7 +580,7 @@
   }
 
   function init() {
-    if (!$('timeline-container')) return;
+    if (!$('calendar-container')) return;
     refreshIcons();
     bindStatic();
 
