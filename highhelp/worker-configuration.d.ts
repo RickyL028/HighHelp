@@ -13,6 +13,7 @@ interface __BaseEnv_Env {
 	PORTAL_API_CLIENT_ID: string;
 	APP_REDIRECT_URI: string;
 	GEMINI_API_KEY: string;
+	SESSION_SECRET: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {
@@ -25,7 +26,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "PORTAL_API_CLIENT_ID_full" | "APP_REDIRECT_URI_full" | "PORTAL_API_CLIENT_SECRET" | "CANVAS_API_TOKEN" | "CANVAS_BASE_URL" | "PORTAL_API_CLIENT_ID" | "APP_REDIRECT_URI" | "GEMINI_API_KEY">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "PORTAL_API_CLIENT_ID_full" | "APP_REDIRECT_URI_full" | "PORTAL_API_CLIENT_SECRET" | "CANVAS_API_TOKEN" | "CANVAS_BASE_URL" | "PORTAL_API_CLIENT_ID" | "APP_REDIRECT_URI" | "GEMINI_API_KEY" | "SESSION_SECRET">> {}
 }
 
 // Begin runtime types

@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { Layout } from '../layout'
 import { Bindings } from '../types'
+import { createSessionCookie } from '../utils'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -162,7 +163,8 @@ app.get('/api/auth/callback', async (c) => {
 
         // Set Cookie
         const isLocal = c.req.url.includes('localhost');
-        setCookie(c, 'user_id', String(user.id), {
+        const sessionValue = await createSessionCookie(Number(user.id), c.env.SESSION_SECRET);
+        setCookie(c, 'user_id', sessionValue, {
             path: '/',
             httpOnly: true,
             secure: !isLocal,
@@ -260,7 +262,8 @@ app.post('/login', async (c) => {
 
     if (user) {
         const isLocal = c.req.url.includes('localhost');
-        setCookie(c, 'user_id', String(user.id), {
+        const sessionValue = await createSessionCookie(Number(user.id), c.env.SESSION_SECRET);
+        setCookie(c, 'user_id', sessionValue, {
             path: '/',
             httpOnly: true,
             secure: !isLocal,

@@ -59,6 +59,7 @@ export interface ExamQuestion {
 
 export type Bindings = Env & {
     AI_QUEUE: Queue;
+    SESSION_SECRET: string;
     PORTAL_API_CLIENT_ID: string;
     PORTAL_API_CLIENT_SECRET: string;
     APP_REDIRECT_URI: string;
