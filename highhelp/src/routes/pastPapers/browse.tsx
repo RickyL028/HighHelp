@@ -7,6 +7,25 @@ import { Bindings } from '../../types'
 import { PastPaperTabs } from './tabs'
 const app = new Hono<{ Bindings: Bindings }>()
 
+// Split MCQ question_text into stem + option texts (options are stored inline, e.g. "(A) Use cost centres")
+const parseMcqOptions = (text: string | null): { stem: string; options: Record<string, string> | null } => {
+    if (!text) return { stem: '', options: null };
+    const opts: Record<string, string> = {};
+    const stemLines: string[] = [];
+    let seenOption = false;
+    for (const line of text.split('\n')) {
+        const m = line.match(/^\s*\(?\s*([A-Fa-f])[\).:\]]\s+(.*)$/);
+        if (m) {
+            seenOption = true;
+            opts[m[1].toUpperCase()] = m[2].trim();
+        } else if (!seenOption) {
+            stemLines.push(line);
+        }
+    }
+    if (Object.keys(opts).length < 2) return { stem: text.trim(), options: null };
+    return { stem: stemLines.join('\n').trim(), options: opts };
+};
+
 app.get('/past-papers', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
@@ -129,11 +148,6 @@ app.get('/past-papers', async (c) => {
         );
 
     } else if (tab === 'practice') {
-        const page = parseInt(c.req.query('page') || '1');
-        const limit = 10;
-        const offset = (page - 1) * limit;
-
-
         const filterTopic = c.req.query('topic');
         const filterSchool = c.req.query('school');
         const filterYear = c.req.query('year');
@@ -189,20 +203,32 @@ app.get('/past-papers', async (c) => {
         else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`;
         else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`;
 
-        query += ` LIMIT ? OFFSET ?`;
-        const countParams = [...params];
-        params.push(limit, offset);
-
         const [questions, countResult, allTopics, sections, schoolsResult] = await c.env.DB.batch([
             c.env.DB.prepare(query).bind(...params),
-            c.env.DB.prepare(countQuery).bind(...countParams),
+            c.env.DB.prepare(countQuery).bind(...params),
             c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject),
             c.env.DB.prepare('SELECT DISTINCT section_label FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE p.subject = ? ORDER BY section_label ASC').bind(subject),
             c.env.DB.prepare('SELECT DISTINCT school_name FROM papers WHERE subject = ? ORDER BY school_name ASC').bind(subject)
         ]);
 
         const totalQuestions = (countResult.results[0] as { total: number })?.total || 0;
-        const totalPages = Math.ceil(totalQuestions / limit) || 1;
+
+        // Group questions by section for the table view
+        const sectionsMap = new Map<string, any[]>();
+        for (const q of questions.results as any[]) {
+            const key = (q.section_label || '').trim() || 'Unsorted';
+            if (!sectionsMap.has(key)) sectionsMap.set(key, []);
+            sectionsMap.get(key)!.push(q);
+        }
+        const secNumber = (s: string) => {
+            const m = s.match(/\d+/);
+            return m ? parseInt(m[0], 10) : NaN;
+        };
+        const sectionKeys = Array.from(sectionsMap.keys()).sort((a, b) => {
+            const na = secNumber(a), nb = secNumber(b);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return a.localeCompare(b);
+        });
 
 
         content = (
@@ -286,161 +312,177 @@ app.get('/past-papers', async (c) => {
 
 
 
-                <div class="space-y-4">
-                    {questions.results.length === 0 ? (
-                        <div class="text-center py-12 text-gray-500">No questions found matching your filters.</div>
-                    ) : (<>
-                        <form action="/past-papers/mock-exams/create-manual" method="post" id="manual-exam-form">
-                            <input type="hidden" name="subject" value={subject} />
-                            <div class="space-y-4">
-                                {questions.results.map((q: any) => {
-                                    const params = `source=practice&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
-                                    const isIncomplete = !q.marks || (!q.question_image_key && !q.question_text);
+                {questions.results.length === 0 ? (
+                    <div class="text-center py-12 text-gray-500">No questions found matching your filters.</div>
+                ) : (
+                    <form action="/past-papers/mock-exams/create-manual" method="post" id="manual-exam-form">
+                        <input type="hidden" name="subject" value={subject} />
 
-                                    const clickAction = mode === 'select'
-                                        ? `const cb = document.querySelector('input[name="question_ids"][value="${q.id}"]'); if(cb) cb.checked = !cb.checked;`
-                                        : `window.location.href='/past-papers/attempt/${q.id}?${params}'`;
+                        <p class="text-sm text-gray-500 dark:text-neutral-400 mb-8">
+                            {totalQuestions} question{totalQuestions === 1 ? '' : 's'} across {sectionKeys.length} section{sectionKeys.length === 1 ? '' : 's'}.
+                        </p>
 
-                                    return (
-                                        <div onclick={clickAction}
-                                            class={`block py-3 border-b border-gray-100 dark:border-neutral-800 transition-colors cursor-pointer group last:border-b-0
-                                            ${isIncomplete ? 'opacity-75 grayscale' : 'hover:border-blue-300 dark:hover:border-blue-800'}`}>
-                                            <div class="flex justify-between items-start">
-                                                <div class="flex gap-3">
-                                                    {mode === 'select' && (
-                                                        <div class="pt-1" onclick="event.stopPropagation()">
-                                                            <input type="checkbox" name="question_ids" value={q.id} class="rounded border-gray-300 w-5 h-5 text-blue-600 focus:ring-blue-500" />
-                                                        </div>
-                                                    )}
-                                                    <div>
-                                                        <div class="flex items-center gap-2 mb-1">
-                                                            <span class={`font-bold text-sm ${isIncomplete ? 'text-gray-500 dark:text-neutral-500' : 'text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400'}`}>{q.school_name} {q.academic_year}</span>
-                                                            <span class="text-gray-400 dark:text-neutral-500 text-xs font-mono">| {q.section_label} {q.question_number}</span>
-                                                            {q.is_completed ? <span class="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-[10px] px-1.5 py-0.5 rounded border border-green-200 dark:border-green-900/60 font-bold uppercase">Done</span> : null}
-                                                        </div>
-                                                        <div class="text-xs text-gray-500 dark:text-neutral-400 flex gap-2">
-                                                            <span class="capitalize">{q.question_type ? q.question_type.replace('_', ' ') : '-'}</span>
-                                                            <span class="text-gray-300 dark:text-neutral-600">•</span>
-                                                            <span class="font-medium text-gray-600 dark:text-neutral-300">{q.topic_names || 'No topic'}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="text-right">
-                                                    <span class={`text-[10px] font-bold uppercase ${isIncomplete ? 'text-gray-500 dark:text-neutral-500' : 'text-gray-600 dark:text-neutral-400'}`}>{q.marks || '?'}m</span>
-                                                    {q.marks_awarded != null && (
-                                                        <div class="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1">
-                                                            {q.marks_awarded}/{q.marks}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            {mode === 'select' && (
-                                <div class="fixed bottom-0 left-0 w-full bg-white dark:bg-neutral-900 border-t dark:border-neutral-800 p-4 flex justify-between items-center shadow-lg z-50">
-                                    <div class="container mx-auto flex justify-between items-center text-gray-900 dark:text-white">
-                                        <div class="flex gap-4 items-center">
-                                            <input type="text" name="exam_name" placeholder="Custom Exam Name" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm" />
-                                            <div class="flex items-center gap-2">
-                                                <input type="number" name="timer_minutes" placeholder="Timer (mins)" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm w-24" />
-                                            </div>
-                                        </div>
-                                        <div class="flex gap-4">
-                                            <button type="submit" formaction="/past-papers/batch/export-pdf" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
-                                                Download PDF
-                                            </button>
-                                            <button type="submit" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">
-                                                Create Exam
-                                            </button>
+                        {sectionKeys.map((secKey) => {
+                            const qs = sectionsMap.get(secKey)!;
+                            const hasMcq = qs.some((q: any) => q.question_type === 'multiple_choice');
+
+                            return (
+                                <section class="mb-12">
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-neutral-700">{secKey}</h2>
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full min-w-[760px] text-sm">
+                                            <thead>
+                                                <tr class="text-left text-[11px] uppercase tracking-wider text-gray-500 dark:text-neutral-400 border-b-2 border-gray-200 dark:border-neutral-700">
+                                                    {mode === 'select' && <th class="py-2 pr-2 w-8"></th>}
+                                                    <th class="py-2 pr-3 font-bold">Paper</th>
+                                                    <th class="py-2 pr-3 font-bold">Year</th>
+                                                    <th class="py-2 pr-3 font-bold">#</th>
+                                                    <th class="py-2 pr-3 font-bold">Question</th>
+                                                    {hasMcq && ['A', 'B', 'C', 'D'].map(l => (<th class="py-2 pr-3 font-bold min-w-[9rem]">{l}</th>))}
+                                                    <th class="py-2 pr-2 font-bold text-right">Marks</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {qs.map((q: any) => {
+                                                    const params = `source=practice&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+                                                    const isMcq = q.question_type === 'multiple_choice';
+                                                    const parsed = isMcq ? parseMcqOptions(q.question_text) : null;
+                                                    const isIncomplete = !q.marks || (!q.question_image_key && !q.question_text);
+
+                                                    const clickAction = mode === 'select'
+                                                        ? `const cb = document.querySelector('input[name="question_ids"][value="${q.id}"]'); if(cb) cb.checked = !cb.checked;`
+                                                        : `window.location.href='/past-papers/attempt/${q.id}?${params}'`;
+
+                                                    return (
+                                                        <tr onclick={clickAction}
+                                                            class={`border-b border-gray-100 dark:border-neutral-800 align-top cursor-pointer transition-colors
+                                                            ${isIncomplete ? 'opacity-60' : 'hover:bg-blue-50 dark:hover:bg-neutral-800/60'}`}>
+                                                            {mode === 'select' && (
+                                                                <td class="py-2.5 pr-2" onclick="event.stopPropagation()">
+                                                                    <input type="checkbox" name="question_ids" value={q.id} class="rounded border-gray-300 w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                                                                </td>
+                                                            )}
+                                                            <td class="py-2.5 pr-3 whitespace-nowrap font-medium text-gray-900 dark:text-white">{q.school_name}</td>
+                                                            <td class="py-2.5 pr-3 whitespace-nowrap text-gray-600 dark:text-neutral-400">{q.academic_year}</td>
+                                                            <td class="py-2.5 pr-3 whitespace-nowrap font-mono text-xs text-gray-500 dark:text-neutral-400">
+                                                                {q.is_completed ? <span class="text-green-600 dark:text-green-400 mr-1" title="Completed">✓</span> : null}{q.question_number}
+                                                            </td>
+                                                            <td class="py-2.5 pr-3 max-w-md text-gray-800 dark:text-neutral-200 leading-snug">
+                                                                {parsed?.options ? (
+                                                                    parsed.stem || <span class="italic text-gray-400 dark:text-neutral-500">(see paper image)</span>
+                                                                ) : q.question_text ? (
+                                                                    <span class="whitespace-pre-wrap">{q.question_text}</span>
+                                                                ) : q.question_image_key ? (
+                                                                    <a href={`/past-papers/attempt/${q.id}?${params}`} onclick="event.stopPropagation()" class="italic text-blue-600 dark:text-blue-400 hover:underline">[image question]</a>
+                                                                ) : (
+                                                                    <span class="italic text-gray-400 dark:text-neutral-500">—</span>
+                                                                )}
+                                                            </td>
+                                                            {hasMcq && ['A', 'B', 'C', 'D'].map(l => (
+                                                                <td class="py-2.5 pr-3 text-gray-600 dark:text-neutral-300">{(parsed?.options && parsed.options[l]) || ''}</td>
+                                                            ))}
+                                                            <td class="py-2.5 pr-2 text-right font-bold text-gray-700 dark:text-neutral-200">{q.marks || '?'}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+                            );
+                        })}
+
+                        {mode === 'select' && (
+                            <div class="fixed bottom-0 left-0 w-full bg-white dark:bg-neutral-900 border-t dark:border-neutral-800 p-4 flex justify-between items-center shadow-lg z-50">
+                                <div class="container mx-auto flex justify-between items-center text-gray-900 dark:text-white">
+                                    <div class="flex gap-4 items-center">
+                                        <input type="text" name="exam_name" placeholder="Custom Exam Name" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm" />
+                                        <div class="flex items-center gap-2">
+                                            <input type="number" name="timer_minutes" placeholder="Timer (mins)" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm w-24" />
                                         </div>
                                     </div>
+                                    <div class="flex gap-4">
+                                        <button type="submit" formaction="/past-papers/batch/export-pdf" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
+                                            Download PDF
+                                        </button>
+                                        <button type="submit" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">
+                                            Create Exam
+                                        </button>
+                                    </div>
                                 </div>
-                            )}
-                        </form>
-                        {mode === 'select' && (
-                            <script dangerouslySetInnerHTML={{ __html: `
-                                (function() {
-                                    var key = 'mockSelect_' + document.querySelector('#manual-exam-form input[name=subject]').value;
-                                    var form = document.getElementById('manual-exam-form');
-
-                                    function saveToLS(ids) {
-                                        try { localStorage.setItem(key, JSON.stringify(Array.from(ids))); } catch(e) {}
-                                    }
-                                    function loadFromLS() {
-                                        try { var saved = localStorage.getItem(key); return saved ? new Set(JSON.parse(saved)) : new Set(); } catch(e) { return new Set(); }
-                                    }
-
-                                    function restore() {
-                                        var ids = loadFromLS();
-                                        form.querySelectorAll('input[name=question_ids]').forEach(function(cb) {
-                                            if (ids.has(String(cb.value))) cb.checked = true;
-                                        });
-                                    }
-
-                                    function persist(e) {
-                                        if (e.target.matches('input[name=question_ids]')) {
-                                            var ids = loadFromLS();
-                                            if (e.target.checked) ids.add(String(e.target.value));
-                                            else ids.delete(String(e.target.value));
-                                            saveToLS(ids);
-                                        }
-                                    }
-
-                                    function persistToggle(qid, cb) {
-                                        var ids = loadFromLS();
-                                        if (cb.checked) ids.add(String(qid));
-                                        else ids.delete(String(qid));
-                                        saveToLS(ids);
-                                    }
-
-                                    restore();
-                                    form.addEventListener('change', persist);
-
-                                    document.querySelectorAll('[onclick*="cb.checked = !cb.checked"]').forEach(function(el) {
-                                        var old = el.onclick;
-                                        el.onclick = function(e) {
-                                            old.call(this, e);
-                                            var m = this.getAttribute('onclick').match(/value="(\\d+)"/);
-                                            if (m) {
-                                                var cb = document.querySelector('input[name=question_ids][value="' + m[1] + '"]');
-                                                if (cb) persistToggle(m[1], cb);
-                                            }
-                                        };
-                                    });
-
-                                    form.addEventListener('submit', function() {
-                                        var ids = loadFromLS();
-                                        var visible = new Set();
-                                        form.querySelectorAll('input[name=question_ids]').forEach(function(cb) { visible.add(String(cb.value)); });
-                                        ids.forEach(function(id) {
-                                            if (!visible.has(id)) {
-                                                var h = document.createElement('input');
-                                                h.type = 'hidden';
-                                                h.name = 'question_ids';
-                                                h.value = id;
-                                                form.appendChild(h);
-                                            }
-                                        });
-                                    });
-                                })();
-                            `}} />
+                            </div>
                         )}
-                        </>
-                    )}
-                        </div>
+                    </form>
+                )}
 
-                <div class="mt-8 flex justify-between items-center gap-2">
-                    <div class="text-sm text-gray-500 dark:text-neutral-400">
-                        Page <span class="font-bold text-gray-900 dark:text-white">{page}</span> of <span class="font-bold text-gray-900 dark:text-white">{totalPages}</span>
-                        <span class="ml-2 hidden sm:inline">({totalQuestions} questions)</span>
-                    </div>
-                    <div class="flex gap-4">
-                        {page > 1 && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page - 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}&mode=${mode || ''}`} class="text-gray-700 dark:text-neutral-300 font-bold hover:underline transition-colors">← Previous</a>}
-                        {page < totalPages && <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&page=${page + 1}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}&mode=${mode || ''}`} class="text-gray-700 dark:text-neutral-300 font-bold hover:underline transition-colors">Next →</a>}
-                    </div>
-                </div>
+                {mode === 'select' && questions.results.length > 0 && (
+                    <script dangerouslySetInnerHTML={{ __html: `
+                        (function() {
+                            var key = 'mockSelect_' + document.querySelector('#manual-exam-form input[name=subject]').value;
+                            var form = document.getElementById('manual-exam-form');
+
+                            function saveToLS(ids) {
+                                try { localStorage.setItem(key, JSON.stringify(Array.from(ids))); } catch(e) {}
+                            }
+                            function loadFromLS() {
+                                try { var saved = localStorage.getItem(key); return saved ? new Set(JSON.parse(saved)) : new Set(); } catch(e) { return new Set(); }
+                            }
+
+                            function restore() {
+                                var ids = loadFromLS();
+                                form.querySelectorAll('input[name=question_ids]').forEach(function(cb) {
+                                    if (ids.has(String(cb.value))) cb.checked = true;
+                                });
+                            }
+
+                            function persist(e) {
+                                if (e.target.matches('input[name=question_ids]')) {
+                                    var ids = loadFromLS();
+                                    if (e.target.checked) ids.add(String(e.target.value));
+                                    else ids.delete(String(e.target.value));
+                                    saveToLS(ids);
+                                }
+                            }
+
+                            function persistToggle(qid, cb) {
+                                var ids = loadFromLS();
+                                if (cb.checked) ids.add(String(qid));
+                                else ids.delete(String(qid));
+                                saveToLS(ids);
+                            }
+
+                            restore();
+                            form.addEventListener('change', persist);
+
+                            document.querySelectorAll('[onclick*="cb.checked = !cb.checked"]').forEach(function(el) {
+                                var old = el.onclick;
+                                el.onclick = function(e) {
+                                    old.call(this, e);
+                                    var m = this.getAttribute('onclick').match(/value="(\\d+)"/);
+                                    if (m) {
+                                        var cb = document.querySelector('input[name=question_ids][value="' + m[1] + '"]');
+                                        if (cb) persistToggle(m[1], cb);
+                                    }
+                                };
+                            });
+
+                            form.addEventListener('submit', function() {
+                                var ids = loadFromLS();
+                                var visible = new Set();
+                                form.querySelectorAll('input[name=question_ids]').forEach(function(cb) { visible.add(String(cb.value)); });
+                                ids.forEach(function(id) {
+                                    if (!visible.has(id)) {
+                                        var h = document.createElement('input');
+                                        h.type = 'hidden';
+                                        h.name = 'question_ids';
+                                        h.value = id;
+                                        form.appendChild(h);
+                                    }
+                                });
+                            });
+                        })();
+                    `}} />
+                )}
             </div>
         )
 
