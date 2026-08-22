@@ -26,6 +26,13 @@ const parseMcqOptions = (text: string | null): { stem: string; options: Record<s
     return { stem: stemLines.join('\n').trim(), options: opts };
 };
 
+// "Sydney Boys High School" -> "SBHS"; single-word names are left as-is
+const abbreviateSchool = (name: string) => {
+    const words = (name || '').trim().split(/\s+/).filter(Boolean);
+    if (words.length <= 1) return name;
+    return words.map(w => w.charAt(0).toUpperCase()).join('');
+};
+
 app.get('/past-papers', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
@@ -338,7 +345,7 @@ app.get('/past-papers', async (c) => {
                                                     <th class="py-2 pr-3 font-bold">Year</th>
                                                     <th class="py-2 pr-3 font-bold">#</th>
                                                     <th class="py-2 pr-3 font-bold">Question</th>
-                                                    {hasMcq && ['A', 'B', 'C', 'D'].map(l => (<th class="py-2 pr-3 font-bold min-w-[9rem]">{l}</th>))}
+                                                    {hasMcq && ['A', 'B', 'C', 'D'].map(l => (<th class="py-2 pr-3 font-bold min-w-[7rem]">{l}</th>))}
                                                     <th class="py-2 pr-2 font-bold text-right">Marks</th>
                                                 </tr>
                                             </thead>
@@ -362,12 +369,12 @@ app.get('/past-papers', async (c) => {
                                                                     <input type="checkbox" name="question_ids" value={q.id} class="rounded border-gray-300 w-4 h-4 text-blue-600 focus:ring-blue-500" />
                                                                 </td>
                                                             )}
-                                                            <td class="py-2.5 pr-3 whitespace-nowrap font-medium text-gray-900 dark:text-white">{q.school_name}</td>
+                                                            <td class="py-2.5 pr-3 whitespace-nowrap font-medium text-gray-900 dark:text-white" title={q.school_name}>{abbreviateSchool(q.school_name)}</td>
                                                             <td class="py-2.5 pr-3 whitespace-nowrap text-gray-600 dark:text-neutral-400">{q.academic_year}</td>
                                                             <td class="py-2.5 pr-3 whitespace-nowrap font-mono text-xs text-gray-500 dark:text-neutral-400">
                                                                 {q.is_completed ? <span class="text-green-600 dark:text-green-400 mr-1" title="Completed">✓</span> : null}{q.question_number}
                                                             </td>
-                                                            <td class="py-2.5 pr-3 max-w-md text-gray-800 dark:text-neutral-200 leading-snug">
+                                                            <td class="py-2.5 pr-3 max-w-2xl text-gray-800 dark:text-neutral-200 leading-snug">
                                                                 {parsed?.options ? (
                                                                     parsed.stem || <span class="italic text-gray-400 dark:text-neutral-500">(see paper image)</span>
                                                                 ) : q.question_text ? (
@@ -568,7 +575,7 @@ app.get('/past-papers', async (c) => {
     }
 
     return c.html(
-        <Layout title={`Past Papers - ${subject}`} user={user}>
+        <Layout title={`Past Papers - ${subject}`} user={user} latex={true}>
             <div class="mx-auto">
 
                 <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-neutral-400 mb-4">
