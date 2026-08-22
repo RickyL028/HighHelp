@@ -454,7 +454,7 @@ app.get('/resources', async (c) => {
                                     <div class="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 mb-1">
                                         <a href={`/resources/view/${r.id}`} class="text-sm font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 truncate">{r.title}</a>
                                         <SubjectBadge subject={r.subject} tab="resource" />
-                                        {r.is_deleted && <span class="text-[10px] font-bold text-red-600 uppercase">Deleted</span>}
+                                        {r.is_deleted && <span class="text-[10px] font-bold text-red-600">Deleted</span>}
                                     </div>
                                     {r.description && <p class="text-xs text-gray-500 dark:text-neutral-400 truncate mt-0.5">{r.description}</p>}
                                     <div class="text-xs text-gray-500 dark:text-neutral-400 flex items-center gap-2 mt-0.5">
@@ -729,84 +729,119 @@ app.get('/resources/view/:id', async (c) => {
     const hasPreview = isPDF || isImage || isText;
     // -------------------------
 
+    // Other resources in same subject for sidebar
+    const othersSql = `
+        SELECT r.id, r.title, r.created_at, r.download_count
+        FROM resources r
+        WHERE r.subject = ? AND r.id != ? AND r.type = 'resource' AND r.is_deleted = 0
+        ORDER BY r.created_at DESC
+        LIMIT 30
+    `;
+    const { results: otherResources } = await c.env.DB.prepare(othersSql).bind(resource.subject, resource.id).all();
+
     return c.html(
         <Layout title={`${resource.title} - ${resource.subject}`} user={user}>
-            <div class="max-w-4xl mx-auto py-8 px-4">
-                <a href={`/resources?subject=${encodeURIComponent(resource.subject)}`} class="text-blue-600 hover:underline mb-6 inline-block">← Back to {resource.subject} Resources</a>
+            <div class="max-w-6xl mx-auto py-8 px-4">
+                <a href={`/resources?subject=${encodeURIComponent(resource.subject)}`} class="text-blue-600 hover:underline text-sm inline-block mb-6">← Back to {resource.subject} Resources</a>
 
-                <div class="bg-white dark:bg-neutral-800 rounded-lg border border-gray-200 dark:border-neutral-700 shadow-sm p-8">
-                    {/* Header Section */}
-                    <div class="flex items-start justify-between mb-6">
-                        <div>
-                            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-3">{resource.title}</h1>
-                            <div class="flex flex-wrap items-center gap-x-3 text-sm text-gray-500 dark:text-neutral-400">
-                                <SubjectBadge subject={resource.subject} tab="resource" />
-                                <span class="local-date" data-format="datetime" data-timestamp={resource.created_at}>{formatDate(resource.created_at)}</span>
-                                <span class="text-gray-300 dark:text-neutral-600">•</span>
-                                <span class="flex items-center">
-                                    Uploaded by: <b class="ml-1 text-gray-700 dark:text-neutral-200">{renderUploaderName(resource)}</b>
-                                    {resource.uploader_display !== 'anonymous' && <span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(resource.tags) }}></span>}
-                                </span>
-                            </div>
+                <div class="flex flex-col md:flex-row-reverse gap-10">
+
+                    {/* Main Post */}
+                    <main class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-4">
+                            <h1 class="text-2xl font-medium text-gray-900 dark:text-white leading-snug">{resource.title}</h1>
+                            {resource.is_deleted && <span class="shrink-0 text-xs font-bold uppercase tracking-wide text-red-600 border border-red-300 px-2 py-1">Deleted</span>}
                         </div>
-                        {resource.is_deleted && <span class="bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300 font-bold px-3 py-1 rounded-full text-sm uppercase">Deleted</span>}
-                    </div>
 
-                    {/* Description Section */}
-                    <div class="bg-gray-50 dark:bg-neutral-900/50 p-6 rounded-lg mb-8 border border-gray-100 dark:border-neutral-700">
-                        <h3 class="text-sm font-bold text-gray-400 dark:text-neutral-500 uppercase tracking-wider mb-2">Description</h3>
-                        <p class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap leading-relaxed">{resource.description || <span class="italic text-gray-400 dark:text-neutral-500">No description provided.</span>}</p>
-                    </div>
+                        {/* Meta line */}
+                        <p class="text-xs text-gray-500 dark:text-neutral-400 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span>Submitted</span>
+                            <span class="local-date" data-format="datetime" data-timestamp={resource.created_at}>{formatDate(resource.created_at)}</span>
+                            <span>by</span>
+                            <b class="text-gray-700 dark:text-neutral-200">{renderUploaderName(resource)}</b>
+                            {resource.uploader_display !== 'anonymous' && <span dangerouslySetInnerHTML={{ __html: renderTags(resource.tags) }}></span>}
+                            <span>to</span>
+                            <SubjectBadge subject={resource.subject} tab="resource" />
+                        </p>
 
-                    {/* NEW PREVIEW SECTION */}
-                    {hasPreview && (
-                        <div class="mb-8 border border-gray-200 dark:border-neutral-700 rounded-lg overflow-hidden bg-gray-50 dark:bg-neutral-900 shadow-inner">
-                            <div class="bg-gray-100 dark:bg-neutral-800 px-4 py-3 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center">
-                                <span class="text-sm font-bold text-gray-700 dark:text-neutral-300 uppercase tracking-wider">File Preview</span>
-                                <a href={`/download/${resource.file_key}`} target="_blank" class="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                                    Open in new tab
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        <hr class="border-gray-200 dark:border-neutral-800 my-4" />
+
+                        {/* Description */}
+                        <div class="text-sm text-gray-800 dark:text-neutral-200 whitespace-pre-wrap leading-relaxed">
+                            {resource.description || <span class="italic text-gray-400 dark:text-neutral-500">No description provided.</span>}
+                        </div>
+
+                        {/* File Preview */}
+                        {hasPreview && (
+                            <>
+                                <hr class="border-gray-200 dark:border-neutral-800 my-4" />
+                                <div>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400">{isPDF ? 'PDF' : isImage ? 'Image' : 'Text'} Preview</span>
+                                        <a href={`/download/${resource.file_key}`} target="_blank" class="text-xs text-blue-600 hover:underline">open in new tab →</a>
+                                    </div>
+                                    {(isPDF || isText) && (
+                                        <iframe
+                                            src={`/download/${resource.file_key}`}
+                                            class="w-full h-[600px] border border-gray-300 dark:border-neutral-700 bg-white"
+                                            title="File Preview">
+                                        </iframe>
+                                    )}
+                                    {isImage && (
+                                        <img
+                                            src={`/download/${resource.file_key}`}
+                                            alt={resource.title}
+                                            class="max-w-full max-h-[700px] border border-gray-300 dark:border-neutral-700"
+                                        />
+                                    )}
+                                </div>
+                            </>
+                        )}
+
+                        <hr class="border-gray-200 dark:border-neutral-800 my-4" />
+
+                        {/* Action bar */}
+                        <div class="flex items-center justify-between gap-4 flex-wrap">
+                            <span class="text-xs text-gray-500 dark:text-neutral-400">
+                                <b class="text-gray-700 dark:text-neutral-200">{resource.download_count || 0}</b> downloads
+                            </span>
+                            <div class="flex items-center gap-3 text-sm">
+                                {!resource.is_deleted && user && (canModerateSubject(user, resource.subject) || user.id === resource.uploader_id) && (
+                                    <>
+                                        <a href={`/resources/${resource.id}/edit`} class="text-gray-500 dark:text-neutral-400 hover:text-blue-600 hover:underline">edit</a>
+                                        <form action={`/resources/${resource.id}/delete`} method="post" class="inline">
+                                            <button class="text-gray-500 dark:text-neutral-400 hover:text-red-600 hover:underline">delete</button>
+                                        </form>
+                                        <span class="text-gray-300 dark:text-neutral-700">|</span>
+                                    </>
+                                )}
+                                <a href={`/download/${resource.file_key}?id=${resource.id}`} target="_blank" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm transition-colors inline-flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                    Download
                                 </a>
                             </div>
-                            <div class="w-full h-[600px] flex items-center justify-center overflow-auto">
-                                {(isPDF || isText) && (
-                                    <iframe
-                                        src={`/download/${resource.file_key}`}
-                                        class="w-full h-full border-0 bg-white dark:bg-white"
-                                        title="File Preview">
-                                    </iframe>
-                                )}
-                                {isImage && (
-                                    <img
-                                        src={`/download/${resource.file_key}`}
-                                        alt={resource.title}
-                                        class="max-w-full max-h-full object-contain p-4"
-                                    />
-                                )}
-                            </div>
                         </div>
-                    )}
+                    </main>
 
-                    {/* Download/Action Footer */}
-                    <div class="flex items-center justify-between border-t border-gray-100 dark:border-neutral-700 pt-6">
-                        <div class="text-gray-500 dark:text-neutral-400 text-sm">
-                            <span class="font-medium text-gray-700 dark:text-neutral-200">{resource.download_count || 0}</span> downloads
-                        </div>
-                        <div class="flex gap-4">
-                            {!resource.is_deleted && user && (canModerateSubject(user, resource.subject) || user.id === resource.uploader_id) && (
-                                <>
-                                    <a href={`/resources/${resource.id}/edit`} class="px-4 py-2 border border-gray-300 dark:border-neutral-600 text-gray-700 dark:text-neutral-300 rounded hover:bg-gray-50 dark:hover:bg-neutral-700 font-medium transition-colors">Edit Resource</a>
-                                    <form action={`/resources/${resource.id}/delete`} method="post">
-                                        <button class="px-4 py-2 border border-red-200 text-red-600 rounded hover:bg-red-50 font-medium transition-colors">Delete Resource</button>
-                                    </form>
-                                </>
-                            )}
-                            <a href={`/download/${resource.file_key}?id=${resource.id}`} target="_blank" class="px-6 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors flex items-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                                Download File
-                            </a>
-                        </div>
-                    </div>
+                    {/* Sidebar: other resources in this subject */}
+                    <aside class="w-full md:w-64 shrink-0">
+                        <h2 class="text-xs font-bold tracking-wider text-gray-500 dark:text-neutral-400 pb-2 border-b border-gray-200 dark:border-neutral-800">More in {resource.subject}</h2>
+                        <ul class="divide-y divide-gray-100 dark:divide-neutral-800">
+                            {otherResources?.length === 0 ? (
+                                <li class="py-3 text-xs italic text-gray-400 dark:text-neutral-500">No other resources yet.</li>
+                            ) : otherResources.map((r: any) => (
+                                <li class="py-2.5">
+                                    <a href={`/resources/view/${r.id}`} class="text-sm font-medium text-gray-800 dark:text-neutral-200 hover:text-blue-600 dark:hover:text-blue-400 leading-snug line-clamp-2 block">{r.title}</a>
+                                    <div class="text-[11px] text-gray-400 dark:text-neutral-500 mt-0.5 flex items-center gap-1.5">
+                                        <span class="local-date" data-timestamp={r.created_at}>{formatDate(r.created_at)}</span>
+                                        <span>•</span>
+                                        <span>{r.download_count || 0} downloads</span>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </aside>
+
                 </div>
             </div>
         </Layout>
