@@ -66,27 +66,6 @@ export const TimetableConfig = html`
                 </div>
             </div>
         </div>
-
-        <!-- Quick Links -->
-        <div class="py-5">
-            <div class="flex items-start justify-between mb-3">
-                <div>
-                    <h2 class="text-sm font-bold text-gray-900 dark:text-neutral-100">Quick Links</h2>
-                    <p class="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">Up to 4 shortcuts shown on Day, Notices & Events views.</p>
-                </div>
-            </div>
-            <div id="quick-links-config" class="space-y-1.5">
-                ${[1, 2, 3, 4].map(i => html`
-                    <div class="flex items-center gap-2.5 px-3 py-2 bg-gray-50 dark:bg-neutral-900/50 rounded-lg">
-                        <span class="text-[10px] font-bold text-gray-400 dark:text-neutral-500 w-4 text-right flex-shrink-0">${i}</span>
-                        <input type="text" class="quick-link-title flex-1 min-w-0 text-xs bg-transparent border-0 border-b border-transparent focus:border-red-400 focus:ring-0 py-0.5 text-gray-700 dark:text-neutral-300 placeholder-gray-400 dark:placeholder-neutral-600 transition"
-                            data-index="${i - 1}" placeholder="Title" maxlength="20">
-                        <input type="text" class="quick-link-url flex-[2] min-w-0 text-xs bg-transparent border-0 border-b border-transparent focus:border-red-400 focus:ring-0 py-0.5 text-gray-700 dark:text-neutral-300 placeholder-gray-400 dark:placeholder-neutral-600 transition"
-                            data-index="${i - 1}" placeholder="https://...">
-                    </div>
-                `)}
-            </div>
-        </div>
     </div>
 
     <div class="flex items-center justify-between mt-5 pt-4 border-t border-gray-100 dark:border-neutral-800">
@@ -144,17 +123,6 @@ export const TimetableConfig = html`
 
                 localStorage.setItem('subjectConfig', JSON.stringify(newConfig));
                 window.dispatchEvent(new Event('subjectConfigUpdated'));
-
-                const quickLinks = [];
-                document.querySelectorAll('.quick-link-title').forEach(input => {
-                    const idx = parseInt(input.getAttribute('data-index'));
-                    const title = input.value.trim();
-                    const urlInput = document.querySelector('.quick-link-url[data-index="' + idx + '"]');
-                    const url = urlInput ? urlInput.value.trim() : '';
-                    quickLinks[idx] = { title, url };
-                });
-                localStorage.setItem('quickLinks', JSON.stringify(quickLinks));
-                window.dispatchEvent(new Event('quickLinksUpdated'));
 
                 statusMsg.textContent = 'Saved!';
                 statusMsg.classList.remove('hidden');
@@ -218,35 +186,6 @@ export const TimetableConfig = html`
             });
         }
 
-        function loadQuickLinks() {
-            const DEFAULT_LINKS = [
-                { title: 'Portal', url: 'https://student.sbhs.net.au' },
-                { title: 'Gmail', url: 'https://mail.google.com/' },
-                { title: 'Canvas', url: 'https://sydneyboyshigh.instructure.com' },
-                { title: 'Calendar', url: 'https://portal.clipboard.app/sbhs/calendar' }
-            ];
-
-            let quickLinks = [{}, {}, {}, {}];
-            try {
-                const raw = localStorage.getItem('quickLinks');
-                if (raw) {
-                    quickLinks = JSON.parse(raw);
-                } else {
-                    quickLinks = DEFAULT_LINKS;
-                }
-            } catch(e) {
-                quickLinks = DEFAULT_LINKS;
-            }
-            document.querySelectorAll('.quick-link-title').forEach(input => {
-                const idx = parseInt(input.getAttribute('data-index'));
-                if (quickLinks[idx] && quickLinks[idx].title) input.value = quickLinks[idx].title;
-            });
-            document.querySelectorAll('.quick-link-url').forEach(input => {
-                const idx = parseInt(input.getAttribute('data-index'));
-                if (quickLinks[idx] && quickLinks[idx].url) input.value = quickLinks[idx].url;
-            });
-        }
-
         if (urlInput && saveBtn && subjectConfigContainer) {
             try {
                 let savedUrls = [];
@@ -265,7 +204,6 @@ export const TimetableConfig = html`
             } catch (error) {}
 
             loadSubjectConfig();
-            loadQuickLinks();
             saveBtn.addEventListener('click', saveAll);
 
             urlInput.addEventListener('keydown', (e) => {

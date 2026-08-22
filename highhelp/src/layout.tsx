@@ -1,6 +1,6 @@
 import { html } from 'hono/html'
 
-export const Layout = (props: { title: string; children: any; user?: any; hideFooter?: boolean; latex?: boolean }) => {
+export const Layout = (props: { title: string; children: any; user?: any; hideFooter?: boolean; latex?: boolean; noScroll?: boolean }) => {
   return html`
     <!DOCTYPE html>
     <html lang="en">
@@ -223,7 +223,6 @@ ${props.latex ? html`
                 html.paper .period-card>.absolute.left-0::before{content:'';position:absolute;top:50%;left:-3px;width:8px;height:8px;border-radius:50%;background:inherit;transform:translateY(-50%)}
                 html.paper .period-card [data-accent-text]{color:#3D3535!important}
                 html.paper .ring-2.ring-red-500,html.paper .ring-2{border:2px solid #4A6278!important;box-shadow:2px 2px 0 rgba(74,98,120,.15)!important;--tw-ring-color:transparent!important}
-                html.paper #quick-links-wrapper{display:none!important}
                 html.paper .fixed.bg-black\/60{background:rgba(245,245,240,.92)!important}
                 html.paper #class-modal-content{border:2px solid #3D3535!important;border-radius:4px!important;background:#F5F5F0!important}
                 html.paper .bg-red-600{background:#4A6278!important}
@@ -298,9 +297,6 @@ ${props.latex ? html`
                 html.glass .period-card .pl-3.flex.items-center.gap-4 span{white-space:nowrap}
                 html.glass .ring-2.ring-red-500,html.glass .ring-2{box-shadow:0 0 0 2px rgba(95,123,140,.4),0 4px 20px rgba(95,123,140,.15)!important;--tw-ring-color:transparent!important}
                 html.glass .ring-offset-2{--tw-ring-offset-color:rgba(30,36,46,.95)!important}
-                html.glass #quick-links-wrapper{border-color:rgba(255,255,255,.06)!important}
-                html.glass #quick-links-wrapper .quick-link-btn{background:rgba(0,0,0,.25)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-color:rgba(255,255,255,.08)!important;color:#94a3b8!important;border-radius:.75rem!important}
-                html.glass #quick-links-wrapper .quick-link-btn:hover{background:rgba(0,0,0,.4)!important;border-color:rgba(255,255,255,.15)!important;color:#fff!important}
                 html.glass .fixed.bg-black\/60{background:rgba(30,36,46,.8)!important;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
                 html.glass #class-modal-content{border:1px solid rgba(255,255,255,.1)!important;border-radius:1rem!important;background:rgba(30,36,46,.95)!important;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
                 html.glass .bg-red-600{background:rgba(95,123,140,.3)!important;border:1px solid rgba(255,255,255,.1)}
@@ -318,6 +314,7 @@ ${props.latex ? html`
                 html.glass .text-blue-500,html.glass .text-blue-400,html.glass .dark\:text-blue-400{color:#94a3b8!important}
                 html.glass .border-blue-500{border-color:rgba(95,123,140,.4)!important}
             </style>
+            ${props.noScroll ? html`<style>html,body{overflow:hidden!important;height:100%}</style>` : ''}
           </head>
       <body class="bg-background dark:bg-neutral-900 text-gray-800 dark:text-gray-200 min-h-screen flex flex-col transition-colors duration-300">
         <nav class="bg-primary dark:bg-neutral-950 text-white shadow-lg">

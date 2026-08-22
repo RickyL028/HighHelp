@@ -80,26 +80,6 @@ export const TimetableLayout = ({ children }: { children: Child }) => (
 
             <div id="timetable-list" class="space-y-4"></div>
 
-            {/* Quick Links Grid */}
-            <div id="quick-links-wrapper" class="relative mt-8 pt-4 border-t border-gray-100 dark:border-neutral-800">
-                <div id="quick-links-panel">
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <a id="ql-btn-0" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center justify-center py-2 px-1 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-xs font-medium shadow-sm no-underline">
-                            <span class="ql-title truncate"></span>
-                        </a>
-                        <a id="ql-btn-1" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center justify-center py-2 px-1 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-xs font-medium shadow-sm no-underline">
-                            <span class="ql-title truncate"></span>
-                        </a>
-                        <a id="ql-btn-2" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center justify-center py-2 px-1 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-xs font-medium shadow-sm no-underline">
-                            <span class="ql-title truncate"></span>
-                        </a>
-                        <a id="ql-btn-3" href="#" target="_blank" rel="noopener noreferrer" class="quick-link-btn hidden flex items-center justify-center py-2 px-1 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-xl text-gray-700 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-500/40 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 text-xs font-medium shadow-sm no-underline">
-                            <span class="ql-title truncate"></span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
             <div class="flex items-center justify-center py-10 opacity-60">
                 <div class="h-px bg-gray-300 dark:bg-neutral-800 flex-grow"></div>
                 <span class="mx-4 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-neutral-600">

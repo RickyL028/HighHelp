@@ -123,8 +123,7 @@ app.get('/', async (c) => {
                             const configContainer = document.getElementById('config-container');
                             const timetableList = document.getElementById('timetable-list');
                             const cycleContainer = document.getElementById('cycle-view');
-                            const quickLinksWrapper = document.getElementById('quick-links-wrapper');
-                            
+
                             // Reset tabs
                             const themeAccent = getThemeAccent();
                             const accentColors = themeAccent === 'purple' ? ['border-purple-500', 'text-purple-500'] : themeAccent === 'glass' ? ['border-[#5F7B8C]', 'text-[#5F7B8C]'] : ['border-red-500', 'text-red-500'];
@@ -134,12 +133,6 @@ app.get('/', async (c) => {
                                     t.classList.add('border-transparent', 'text-gray-500');
                                 }
                             });
-
-                            // Show quick links only in day/notices/events views
-                            const showQuickLinks = ['day', 'notices', 'events', 'calendar'].includes(currentView);
-                            if (quickLinksWrapper) {
-                                quickLinksWrapper.style.display = showQuickLinks ? '' : 'none';
-                            }
 
                             if (currentView === 'day') {
                                 tabDay.classList.add(accentColors[0], accentColors[1]);
@@ -245,58 +238,6 @@ app.get('/', async (c) => {
                                 resetCards(cards);
                             }
                         });
-
-                        // --- Quick Links Logic ---
-                        function loadQuickLinksUI() {
-                            const DEFAULT_LINKS = [
-                                { title: 'Portal', url: 'https://student.sbhs.net.au' },
-                                { title: 'Gmail', url: 'https://mail.google.com/' },
-                                { title: 'Canvas', url: 'https://sydneyboyshigh.instructure.com' },
-                                { title: 'Calendar', url: 'https://portal.clipboard.app/sbhs/calendar' }
-                            ];
-
-                            let quickLinks = [];
-                            try {
-                                const raw = localStorage.getItem('quickLinks');
-                                if (raw) {
-                                    quickLinks = JSON.parse(raw);
-                                } else {
-                                    // Set defaults on first load
-                                    quickLinks = DEFAULT_LINKS;
-                                    localStorage.setItem('quickLinks', JSON.stringify(quickLinks));
-                                }
-                            } catch(e) {
-                                quickLinks = DEFAULT_LINKS;
-                            }
-
-                            const wrapper = document.getElementById('quick-links-wrapper');
-                            let hasAny = false;
-
-                            for (let i = 0; i < 4; i++) {
-                                const btn = document.getElementById('ql-btn-' + i);
-                                if (!btn) continue;
-                                const ql = quickLinks[i];
-                                if (ql && ql.title && ql.url) {
-                                    btn.classList.remove('hidden');
-                                    btn.classList.add('flex');
-                                    btn.href = ql.url;
-                                    btn.querySelector('.ql-title').textContent = ql.title;
-                                    hasAny = true;
-                                } else {
-                                    btn.classList.add('hidden');
-                                    btn.classList.remove('flex');
-                                }
-                            }
-
-                            if (wrapper) {
-                                if (hasAny) wrapper.classList.remove('hidden');
-                                else wrapper.classList.add('hidden');
-                            }
-                        }
-
-                        // Load quick links on init and listen for updates
-                        loadQuickLinksUI();
-                        window.addEventListener('quickLinksUpdated', loadQuickLinksUI);
 
                         // Hide nav unless hovered
                         const nav = document.querySelector('nav');
