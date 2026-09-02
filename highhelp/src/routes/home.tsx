@@ -8,7 +8,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 app.get('/', async (c) => {
     const user = await getUser(c)
 
-    const HALF_YEARLY_DATE = "2026-08-27T09:00:00";
+    const HALF_YEARLY_DATE = "2026-09-18T09:00:00";
 
     return c.html(
         <Layout title="Home" user={user} noScroll>
@@ -25,7 +25,7 @@ app.get('/', async (c) => {
                             --:--:--:--
                         </div>
                         <h2 class="text-xl md:text-1xl font-bold text-secondary tracking-widest flex items-center justify-center dark:text-white gap-2">
-                            Until Year 11 Math Advanced Yearly
+                            Until Year 11 English Advanced Yearly
                         </h2>
                     </div>
 

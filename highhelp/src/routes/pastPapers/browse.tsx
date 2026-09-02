@@ -14,7 +14,7 @@ const parseMcqOptions = (text: string | null): { stem: string; options: Record<s
     const stemLines: string[] = [];
     let seenOption = false;
     for (const line of text.split('\n')) {
-        const m = line.match(/^\s*\(?\s*([A-Fa-f])[\).:\]]\s+(.*)$/);
+        const m = line.match(/^\s*\(?\s*([A-Fa-f])[\).:\]]\s*(.+)$/);
         if (m) {
             seenOption = true;
             opts[m[1].toUpperCase()] = m[2].trim();
@@ -166,10 +166,23 @@ app.get('/past-papers', async (c) => {
         const sort = c.req.query('sort') || 'school_asc';
         const mode = c.req.query('mode');
 
+        // Topic may be appended as a name or passed as a legacy id; resolve either way
+        let filterTopicId = filterTopic || '';
+        let filterTopicLabel = filterTopic || '';
+        if (filterTopic) {
+            if (/^\d+$/.test(filterTopic)) {
+                const row: any = await c.env.DB.prepare('SELECT name FROM topics WHERE id = ?').bind(filterTopic).first();
+                if (row?.name) filterTopicLabel = row.name;
+            } else {
+                const row: any = await c.env.DB.prepare('SELECT id FROM topics WHERE subject = ? AND lower(name) = lower(?)').bind(subject, filterTopic).first();
+                filterTopicId = row ? String(row.id) : '-1';
+            }
+        }
+
         const params: any[] = [user?.id || null, subject];
         let filterSql = '';
 
-        if (filterTopic) { filterSql += ` AND qt.topic_id = ?`; params.push(filterTopic); }
+        if (filterTopic) { filterSql += ` AND qt.topic_id = ?`; params.push(filterTopicId); }
         if (filterSchool) { filterSql += ` AND p.school_name = ?`; params.push(filterSchool); }
         if (filterYear) { filterSql += ` AND p.academic_year = ?`; params.push(filterYear); }
         if (filterType) { filterSql += ` AND q.question_type = ?`; params.push(filterType); }
@@ -242,80 +255,130 @@ app.get('/past-papers', async (c) => {
             <div>
                 <h1 class="text-3xl font-bold mb-6 dark:text-white">Practice Questions</h1>
 
-                {/* Practice Questions Filters */}
-                <form action="/past-papers" method="get" class="bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-neutral-700 mb-6 space-y-4">
-                    <input type="hidden" name="subject" value={subject} />
-                    <input type="hidden" name="tab" value="practice" />
-                    {mode && <input type="hidden" name="mode" value={mode} />}
+                {/* Flat appendable filter bar */}
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6 text-sm">
+                    {([
+                        ['school', filterSchool],
+                        ['topic', filterTopicLabel],
+                        ['year', filterYear],
+                        ['section', filterSection],
+                        ['type', filterType && ({ 'multiple_choice': 'MCQ', 'short_answer': 'Short answer', 'extended_response': 'Extended' } as any)[filterType] || filterType],
+                        ['status', filterStatus === 'done' ? 'Completed' : filterStatus === 'undone' ? 'Unattempted' : ''],
+                        ['marks ≥', filterMarksMin],
+                        ['marks ≤', filterMarksMax]
+                    ] as Array<[string, string]>).filter(([, v]) => v).map(([k, v]) => {
+                        const removeKey = k.startsWith('marks') ? (k.endsWith('≥') ? 'marks_min' : 'marks_max') : k;
+                        const chipUrl = (() => {
+                            const p = new URLSearchParams();
+                            p.set('subject', subject); p.set('tab', 'practice');
+                            if (mode) p.set('mode', mode);
+                            const vals: Record<string, string> = {
+                                school: filterSchool || '', topic: filterTopic || '', year: filterYear || '',
+                                section: filterSection || '', type: filterType || '', status: filterStatus || '',
+                                marks_min: filterMarksMin || '', marks_max: filterMarksMax || ''
+                            };
+                            delete vals[removeKey];
+                            if (sort) p.set('sort', sort);
+                            Object.entries(vals).forEach(([kk, vv]) => { if (vv) p.set(kk, vv); });
+                            return `/past-papers?${p.toString()}`;
+                        })();
+                        return (
+                            <a href={chipUrl} class="group inline-flex items-center gap-1.5 py-0.5 border-b border-gray-300 dark:border-neutral-600 hover:border-red-400 dark:hover:border-red-500 transition-colors" title="Click to remove this filter">
+                                <span class="text-xs text-gray-400 dark:text-neutral-500">{k}:</span>
+                                <span class="font-medium text-gray-800 dark:text-neutral-200">{v}</span>
+                                <span class="text-gray-300 dark:text-neutral-600 group-hover:text-red-500 transition-colors">✕</span>
+                            </a>
+                        );
+                    })}
 
-                    <div class="flex flex-wrap gap-4 items-end">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">School</label>
-                            <select name="school" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-48">
-                                <option value="">All Schools</option>
-                                {schoolsResult.results.map((s: any) => <option value={s.school_name} selected={filterSchool == s.school_name}>{s.school_name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Topic</label>
-                            <select name="topic" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-48">
-                                <option value="">All Topics</option>
-                                {allTopics.results.map((t: any) => <option value={t.id} selected={filterTopic == t.id}>{t.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Year</label>
-                            <input type="number" name="year" value={filterYear} placeholder="Any" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-24" />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Section</label>
-                            <select name="section" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-32">
-                                <option value="">All</option>
-                                {sections.results.map((s: any) => <option value={s.section_label} selected={filterSection == s.section_label}>{s.section_label}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Type</label>
-                            <select name="type" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-32">
-                                <option value="">All</option>
-                                <option value="multiple_choice" selected={filterType == 'multiple_choice'}>Multiple Choice</option>
-                                <option value="short_answer" selected={filterType == 'short_answer'}>Short Answer</option>
-                                <option value="extended_response" selected={filterType == 'extended_response'}>Extended Response</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="flex flex-wrap gap-4 items-end border-t dark:border-neutral-700 pt-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Status</label>
-                            <select name="status" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-32">
-                                <option value="">All</option>
-                                <option value="done" selected={filterStatus == 'done'}>Completed</option>
-                                <option value="undone" selected={filterStatus == 'undone'}>Unattempted</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Marks Range</label>
-                            <div class="flex items-center gap-2">
-                                <input type="number" name="marks_min" value={filterMarksMin} placeholder="Min" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-20" />
-                                <span class="text-gray-400">-</span>
-                                <input type="number" name="marks_max" value={filterMarksMax} placeholder="Max" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-20" />
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-1">Sort</label>
-                            <select name="sort" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 dark:text-white text-sm w-32">
-                                <option value="school_asc" selected={sort == 'school_asc'}>School A-Z</option>
-                                <option value="year_desc" selected={sort == 'year_desc'}>Year (Newest)</option>
-                                <option value="year_asc" selected={sort == 'year_asc'}>Year (Oldest)</option>
-                            </select>
-                        </div>
-                        <div class="flex gap-6 items-center">
-                            <button class="text-blue-600 dark:text-blue-400 font-bold text-sm hover:underline">Filter</button>
-                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice${mode ? '&mode=' + mode : ''}`} class="text-gray-600 dark:text-neutral-400 text-sm hover:text-gray-900 dark:hover:text-neutral-200 hover:underline">Reset</a>
-                            <a href={`/past-papers/batch/view?source=practice&subject=${encodeURIComponent(subject)}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="text-emerald-600 dark:text-emerald-400 font-bold text-sm hover:underline">Batch Mode</a>
-                        </div>
-                    </div>
-                </form>
+                    {/* Append-a-filter control */}
+                    <span id="af-wrap" class="hidden items-center gap-3">
+                        <select id="af-field" class="bg-transparent border-b border-gray-300 dark:border-neutral-600 focus:outline-none focus:border-blue-500 dark:bg-transparent dark:text-white py-0.5 pr-1 text-sm">
+                            <option value="school">school</option>
+                            <option value="topic">topic</option>
+                            <option value="year">year</option>
+                            <option value="section">section</option>
+                            <option value="type">type</option>
+                            <option value="status">status</option>
+                            <option value="marks_min">marks min</option>
+                            <option value="marks_max">marks max</option>
+                        </select>
+                        <input id="af-value" list="af-suggestions" autocomplete="off" placeholder="value…"
+                            class="bg-transparent border-b border-gray-300 dark:border-neutral-600 focus:outline-none focus:border-blue-500 dark:text-white py-0.5 w-40 text-sm" />
+                        <datalist id="af-suggestions"></datalist>
+                        <button type="button" id="af-add" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">add</button>
+                    </span>
+                    <button type="button" id="af-toggle" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">+ filter</button>
+
+                    <span class="flex-grow"></span>
+
+                    <label class="text-xs text-gray-400 dark:text-neutral-500 uppercase tracking-wide flex items-center gap-1.5">
+                        Sort
+                        <select id="af-sort" class="bg-transparent border-b border-gray-300 dark:border-neutral-600 focus:outline-none focus:border-blue-500 dark:bg-transparent dark:text-white py-0.5 pr-1 text-sm">
+                            <option value="school_asc" selected={sort == 'school_asc'}>School A-Z</option>
+                            <option value="year_desc" selected={sort == 'year_desc'}>Year (Newest)</option>
+                            <option value="year_asc" selected={sort == 'year_asc'}>Year (Oldest)</option>
+                        </select>
+                    </label>
+                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice${mode ? '&mode=' + mode : ''}`} class="text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline">reset</a>
+                    <a href={`/past-papers/batch/view?source=practice&subject=${encodeURIComponent(subject)}&school=${filterSchool || ''}&topic=${filterTopicId}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Batch Mode</a>
+                </div>
+
+                <script dangerouslySetInnerHTML={{ __html: `
+                (function() {
+                    var SUGGESTIONS = ${JSON.stringify({
+                        school: schoolsResult.results.map((s: any) => s.school_name),
+                        topic: allTopics.results.map((t: any) => t.name),
+                        section: sections.results.map((s: any) => s.section_label).filter(Boolean),
+                        type: ['multiple_choice', 'short_answer', 'extended_response'],
+                        status: ['done', 'undone'],
+                        year: [],
+                        marks_min: [],
+                        marks_max: []
+                    }).replace(/</g, '\\u003c')};
+                    var wrap = document.getElementById('af-wrap');
+                    var toggle = document.getElementById('af-toggle');
+                    var fieldSel = document.getElementById('af-field');
+                    var valInput = document.getElementById('af-value');
+                    var addBtn = document.getElementById('af-add');
+                    var list = document.getElementById('af-suggestions');
+                    var sortSel = document.getElementById('af-sort');
+                    if (!wrap) return;
+
+                    function updateSuggestions() {
+                        list.innerHTML = '';
+                        (SUGGESTIONS[fieldSel.value] || []).forEach(function(v) {
+                            var o = document.createElement('option');
+                            o.value = v;
+                            list.appendChild(o);
+                        });
+                    }
+
+                    function go() {
+                        var p = new URLSearchParams(window.location.search);
+                        p.set(fieldSel.value, valInput.value.trim());
+                        window.location.href = '/past-papers?' + p.toString();
+                    }
+
+                    toggle.addEventListener('click', function() {
+                        var isHidden = wrap.classList.toggle('hidden');
+                        wrap.classList.toggle('inline-flex', !isHidden);
+                        if (!isHidden) { updateSuggestions(); valInput.focus(); }
+                        else valInput.value = '';
+                    });
+                    fieldSel.addEventListener('change', updateSuggestions);
+                    addBtn.addEventListener('click', function() { if (valInput.value.trim()) go(); else valInput.focus(); });
+                    valInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') { e.preventDefault(); if (valInput.value.trim()) go(); }
+                    });
+
+                    sortSel.addEventListener('change', function() {
+                        var p = new URLSearchParams(window.location.search);
+                        p.set('sort', sortSel.value);
+                        window.location.href = '/past-papers?' + p.toString();
+                    });
+                })();
+                `}} />
 
 
 
@@ -330,8 +393,11 @@ app.get('/past-papers', async (c) => {
                         </p>
 
                         {sectionKeys.map((secKey) => {
-                            const qs = sectionsMap.get(secKey)!;
-                            const hasMcq = qs.some((q: any) => q.question_type === 'multiple_choice');
+                            const qs = sectionsMap.get(secKey)!.map((q: any) => ({
+                                ...q,
+                                parsed: parseMcqOptions(q.question_text)
+                            }));
+                            const hasMcq = qs.some((q: any) => q.question_type === 'multiple_choice' || !!q.parsed.options);
 
                             return (
                                 <section class="mb-12">
@@ -352,8 +418,8 @@ app.get('/past-papers', async (c) => {
                                             <tbody>
                                                 {qs.map((q: any) => {
                                                     const params = `source=practice&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
-                                                    const isMcq = q.question_type === 'multiple_choice';
-                                                    const parsed = isMcq ? parseMcqOptions(q.question_text) : null;
+                                                    const isMcq = !!q.parsed.options;
+                                                    const parsed = isMcq ? q.parsed : null;
                                                     const isIncomplete = !q.marks || (!q.question_image_key && !q.question_text);
 
                                                     const clickAction = mode === 'select'
