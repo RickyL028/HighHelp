@@ -257,6 +257,11 @@ app.get('/past-papers', async (c) => {
 
                 {/* Flat appendable filter bar */}
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6 text-sm">
+                    <div class="relative w-full md:flex-[2] md:min-w-[16rem] md:max-w-md">
+                        <input type="text" id="practice-search" placeholder="Search questions…  (⏎ apply)" class="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm" />
+                        <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+
                     {([
                         ['school', filterSchool],
                         ['topic', filterTopicLabel],
@@ -292,8 +297,8 @@ app.get('/past-papers', async (c) => {
                     })}
 
                     {/* Append-a-filter control */}
-                    <span id="af-wrap" class="hidden items-center gap-3">
-                        <select id="af-field" class="bg-transparent border-b border-gray-300 dark:border-neutral-600 focus:outline-none focus:border-blue-500 dark:bg-transparent dark:text-white py-0.5 pr-1 text-sm">
+                    <span id="af-wrap" class="hidden items-center gap-3 flex-1 min-w-[16rem] max-w-sm">
+                        <select id="af-field" class="bg-transparent border-b border-gray-300 dark:border-neutral-600 focus:outline-none focus:border-blue-500 dark:bg-transparent dark:text-white py-0.5 pr-1 text-sm shrink-0">
                             <option value="school">school</option>
                             <option value="topic">topic</option>
                             <option value="year">year</option>
@@ -304,13 +309,29 @@ app.get('/past-papers', async (c) => {
                             <option value="marks_max">marks max</option>
                         </select>
                         <input id="af-value" list="af-suggestions" autocomplete="off" placeholder="value…"
-                            class="bg-transparent border-b border-gray-300 dark:border-neutral-600 focus:outline-none focus:border-blue-500 dark:text-white py-0.5 w-40 text-sm" />
+                            class="bg-transparent border-b border-gray-300 dark:border-neutral-600 focus:outline-none focus:border-blue-500 dark:text-white py-0.5 flex-1 min-w-0 w-full text-sm" />
                         <datalist id="af-suggestions"></datalist>
-                        <button type="button" id="af-add" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">add</button>
+                        <button type="button" id="af-add" class="text-blue-600 dark:text-blue-400 font-bold hover:underline shrink-0">add</button>
                     </span>
                     <button type="button" id="af-toggle" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">+ filter</button>
 
+                    <span class="flex items-center gap-2">
+                        <span class="text-xs text-gray-400 dark:text-neutral-500 uppercase tracking-wide">Show</span>
+                        <select id="max-render" class="bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded px-1.5 py-0.5 text-xs dark:text-white focus:outline-none">
+                            <option value="25">25</option>
+                            <option value="50" selected>50</option>
+                            <option value="75">75</option>
+                            <option value="100">100</option>
+                        </select>
+                    </span>
+
                     <span class="flex-grow"></span>
+
+                    <label class="text-xs text-gray-400 dark:text-neutral-500 uppercase tracking-wide hidden sm:flex items-center gap-1.5">
+                        <span id="search-count" class="text-gray-500 dark:text-neutral-400">
+                            <span id="visible-count">0</span>/<span id="total-count">0</span>
+                        </span>
+                    </label>
 
                     <label class="text-xs text-gray-400 dark:text-neutral-500 uppercase tracking-wide flex items-center gap-1.5">
                         Sort
@@ -402,7 +423,7 @@ app.get('/past-papers', async (c) => {
                             return (
                                 <section class="mb-12">
                                     <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-neutral-700">{secKey}</h2>
-                                    <div class="overflow-x-auto">
+                                    <div class="overflow-x-auto practice-table">
                                         <table class="w-full min-w-[760px] text-sm">
                                             <thead>
                                                 <tr class="text-left text-[11px] uppercase tracking-wider text-gray-500 dark:text-neutral-400 border-b-2 border-gray-200 dark:border-neutral-700">
@@ -426,9 +447,12 @@ app.get('/past-papers', async (c) => {
                                                         ? `const cb = document.querySelector('input[name="question_ids"][value="${q.id}"]'); if(cb) cb.checked = !cb.checked;`
                                                         : `window.location.href='/past-papers/attempt/${q.id}?${params}'`;
 
+                                                    const searchText = `${q.school_name} ${q.academic_year} ${q.question_number} ${q.question_text || ''} ${q.topic_names || ''} ${q.question_type || ''}`.toLowerCase();
+
                                                     return (
                                                         <tr onclick={clickAction}
-                                                            class={`border-b border-gray-100 dark:border-neutral-800 align-top cursor-pointer transition-colors
+                                                            data-search-text={searchText}
+                                                            class={`practice-row border-b border-gray-100 dark:border-neutral-800 align-top cursor-pointer transition-colors
                                                             ${isIncomplete ? 'opacity-60' : 'hover:bg-blue-50 dark:hover:bg-neutral-800/60'}`}>
                                                             {mode === 'select' && (
                                                                 <td class="py-2.5 pr-2" onclick="event.stopPropagation()">
@@ -487,6 +511,74 @@ app.get('/past-papers', async (c) => {
                         )}
                     </form>
                 )}
+
+                <script dangerouslySetInnerHTML={{ __html: `
+                (function() {
+                    var searchInput = document.getElementById('practice-search');
+                    var maxRenderSelect = document.getElementById('max-render');
+                    var visibleCountEl = document.getElementById('visible-count');
+                    var totalCountEl = document.getElementById('total-count');
+                    var rows = Array.prototype.slice.call(document.querySelectorAll('.practice-row'));
+                    var totalRows = rows.length;
+
+                    if (totalCountEl) totalCountEl.textContent = totalRows;
+
+                    function applyFiltersAndRender() {
+                        var term = searchInput ? searchInput.value.toLowerCase().trim() : '';
+                        var visibleCount = 0;
+                        var renderedCount = 0;
+                        var maxRender = parseInt(maxRenderSelect.value, 10) || 100;
+
+                        rows.forEach(function(row) {
+                            var searchText = (row.getAttribute('data-search-text') || '').toLowerCase();
+                            var matchesSearch = !term || searchText.includes(term);
+
+                            if (matchesSearch) {
+                                visibleCount++;
+                                if (renderedCount < maxRender) {
+                                    row.style.display = '';
+                                    row.classList.remove('hidden');
+                                    renderedCount++;
+                                } else {
+                                    row.style.display = 'none';
+                                    row.classList.add('hidden');
+                                }
+                            } else {
+                                row.style.display = 'none';
+                                row.classList.add('hidden');
+                            }
+                        });
+
+                        if (visibleCountEl) visibleCountEl.textContent = Math.min(visibleCount, maxRender);
+
+                        document.querySelectorAll('.practice-table').forEach(function(tableWrap) {
+                            var container = tableWrap.closest('section');
+                            if (!container) return;
+                            var visibleInSection = container.querySelectorAll('.practice-row:not(.hidden)');
+                            container.style.display = visibleInSection.length === 0 ? 'none' : '';
+                        });
+                    }
+
+                    if (searchInput) {
+                        searchInput.addEventListener('keydown', function(e) {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                applyFiltersAndRender();
+                            }
+                        });
+                    }
+
+                    if (maxRenderSelect) {
+                        maxRenderSelect.value = localStorage.getItem('practice_max_render') || '50';
+                        maxRenderSelect.addEventListener('change', function() {
+                            localStorage.setItem('practice_max_render', maxRenderSelect.value);
+                            applyFiltersAndRender();
+                        });
+                    }
+
+                    applyFiltersAndRender();
+                })();
+                `}} />
 
                 {mode === 'select' && questions.results.length > 0 && (
                     <script dangerouslySetInnerHTML={{ __html: `
