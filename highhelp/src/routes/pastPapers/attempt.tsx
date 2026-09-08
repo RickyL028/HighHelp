@@ -100,12 +100,12 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     const currentParams = `source=${source || ''}&mode=${mode || ''}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
 
-    let allQuestions: { id: number, question_number: string, is_completed: number }[] = [];
+    let allQuestions: { id: number, question_number: string, is_completed: number, marks_awarded: number | null, marks: number }[] = [];
 
     // OPTIMIZATION 2: Avoid LEFT JOIN and GROUP BY entirely when mapping allQuestions
     if (source === 'practice') {
         let query = `
-            SELECT q.id, q.question_number, ua.is_completed
+            SELECT q.id, q.question_number, ua.is_completed, ua.marks_awarded, q.marks
             FROM exam_questions q
             JOIN papers p ON q.paper_id = p.id
             LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
@@ -139,7 +139,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
     } else if (source === 'review') {
         // OPTIMIZATION 3: Replace per-row Select Correlated Subquery with a proper Window-function join
         const query = `
-            SELECT q.id, q.question_number, ura.is_completed
+            SELECT q.id, q.question_number, ura.is_completed, ua.marks_awarded, q.marks
             FROM exam_questions q
             JOIN papers p ON q.paper_id = p.id
             JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
@@ -161,7 +161,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     } else {
         const res = await c.env.DB.prepare(`
-            SELECT q.id, q.question_number, ua.is_completed 
+            SELECT q.id, q.question_number, ua.is_completed, ua.marks_awarded, q.marks 
             FROM exam_questions q 
             LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             WHERE q.paper_id = ? AND q.is_deleted = 0
@@ -228,22 +228,25 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     <div class="flex items-center gap-1.5 overflow-x-auto pb-3 mb-2 shrink-0 w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                         {allQuestions.map((item, index) => {
                             const isActive = item.id === parseInt(qId);
-                            const isDone = item.is_completed === 1;
+                            const attempted = item.is_completed === 1 || (item.marks_awarded != null && item.marks_awarded >= 0);
+                            const isCorrect = item.marks_awarded != null && item.marks_awarded >= item.marks && item.marks > 0;
 
                             let baseClass = "flex-shrink-0 flex items-center justify-center px-1 py-1 text-xs font-bold transition-colors cursor-pointer border-b-2 ";
 
                             if (isActive) {
                                 baseClass += "border-blue-500 text-blue-700 dark:text-blue-400";
-                            } else if (isDone) {
+                            } else if (isCorrect) {
                                 baseClass += "border-transparent text-green-600 dark:text-green-400 hover:border-green-300";
+                            } else if (attempted) {
+                                baseClass += "border-transparent text-amber-600 dark:text-amber-400 hover:border-amber-300";
                             } else {
                                 baseClass += "border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:border-gray-300";
                             }
 
                             return (
-                                <a href={`/past-papers/attempt/${item.id}?${currentParams}`} class={baseClass} title={`Question ${item.question_number || index + 1}`}>
+                                <a href={`/past-papers/attempt/${item.id}?${currentParams}`} class={baseClass} title={`Question ${item.question_number || index + 1}${item.marks_awarded != null ? ' — ' + item.marks_awarded + '/' + item.marks : ''}`}>
                                     Q{item.question_number || index + 1}
-                                    {isDone && <span class="ml-1 text-[10px] opacity-80">✓</span>}
+                                    {attempted && <span class="ml-1 text-[10px] opacity-80">{isCorrect ? '✓' : '•'}</span>}
                                 </a>
                             );
                         })}
@@ -251,7 +254,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                 )}
 
                 {/* Main Form */}
-                <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" class="flex-1 min-h-0 flex flex-col lg:flex-row bg-white dark:bg-neutral-900 overflow-hidden rounded-sm border dark:border-neutral-800">
+                <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" id="attempt-form" class="flex-1 min-h-0 flex flex-col lg:flex-row bg-white dark:bg-neutral-900 overflow-hidden rounded-sm border dark:border-neutral-800">
                     <input type="hidden" name="next_id" value={nextId || ''} />
                     <input type="hidden" name="max_marks" value={q.marks} />
 
@@ -322,12 +325,8 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
                             {!answerRevealed && (
                                 <button
-                                    id="reveal-btn-wrap"
+                                    id="reveal-btn"
                                     type="button"
-                                    onclick="
-                                    document.getElementById('reveal-btn-wrap').style.display = 'none';
-                                    document.getElementById('answer-section').style.display = 'block';
-                                "
                                     class="mt-3 w-full text-gray-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-semibold hover:underline transition-colors"
                                 >
                                     Check Answer
@@ -386,7 +385,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
                                     <button
                                         type="button"
-                                        onclick={`const val = ${q.marks}; document.getElementById('marks_awarded_input').value = val; document.querySelectorAll('.mark-btn').forEach(b => { b.setAttribute('data-active', 'false'); }); const maxBtn = Array.from(document.querySelectorAll('.mark-btn')).find(b => b.getAttribute('data-mark') == val); if(maxBtn) maxBtn.setAttribute('data-active', 'true');`}
+                                        data-max-btn
                                         class="ml-auto px-2.5 py-1 text-xs font-bold text-blue-700 dark:text-blue-400 hover:underline"
                                     >
                                         MAX ({q.marks})
@@ -422,6 +421,70 @@ app.get('/past-papers/attempt/:id', async (c) => {
                         </div>
                     </div>
                 </form>
+
+                <script dangerouslySetInnerHTML={{ __html: `
+                (function() {
+                    var isMcq = ${q.question_type === 'multiple_choice' ? 'true' : 'false'};
+                    var correctAnswer = ${JSON.stringify(q.mc_answer || '').replace(/</g, '\\u003c')};
+                    var maxMarks = ${Number(q.marks) || 0};
+                    var revealBtn = document.getElementById('reveal-btn');
+                    var answerSection = document.getElementById('answer-section');
+                    var marksInput = document.getElementById('marks_awarded_input');
+
+                    function setMark(m) {
+                        marksInput.value = m;
+                        document.querySelectorAll('.mark-btn').forEach(function(b) {
+                            b.setAttribute('data-active', String(Number(b.getAttribute('data-mark')) === m));
+                        });
+                    }
+
+                    function submitComplete() {
+                        var f = document.querySelector('#attempt-form');
+                        var h = document.createElement('input');
+                        h.type = 'hidden';
+                        h.name = 'action';
+                        h.value = 'complete';
+                        f.appendChild(h);
+                        f.submit();
+                    }
+
+                    function reveal() {
+                        if (revealBtn) revealBtn.style.display = 'none';
+                        if (answerSection) answerSection.style.display = '';
+                        if (answerSection) answerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+
+                    if (revealBtn) {
+                        revealBtn.addEventListener('click', function() {
+                            if (isMcq) {
+                                var selected = document.querySelector('input[name="selected_option"]:checked');
+                                var val = selected ? selected.value : '';
+                                setMark(val && val === correctAnswer ? maxMarks : 0);
+                                reveal();
+                                submitComplete();
+                            } else {
+                                reveal();
+                            }
+                        });
+                    }
+
+                    document.querySelectorAll('.mark-btn').forEach(function(btn) {
+                        btn.addEventListener('click', function() {
+                            var m = Number(btn.getAttribute('data-mark'));
+                            setMark(m);
+                            submitComplete();
+                        });
+                    });
+
+                    var maxBtn = document.querySelector('[data-max-btn]');
+                    if (maxBtn) {
+                        maxBtn.addEventListener('click', function() {
+                            setMark(maxMarks);
+                            submitComplete();
+                        });
+                    }
+                })();
+                `}} />
             </div>
         </Layout>
     );
