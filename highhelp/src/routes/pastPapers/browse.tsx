@@ -80,13 +80,38 @@ app.get('/past-papers', async (c) => {
 
     if (tab === 'browse') {
         const papers = await c.env.DB.prepare(`
-            SELECT p.*, count(q.id) as question_count, sum(q.marks) as total_marks 
+            SELECT p.*, 
+                   count(q.id) as question_count, 
+                   COALESCE(SUM(q.marks), 0) as total_marks,
+                   COALESCE(SUM(CASE WHEN ua.is_completed = 1 THEN 1 ELSE 0 END), 0) as completed_count
             FROM papers p 
             LEFT JOIN exam_questions q ON p.id = q.paper_id AND q.is_deleted = 0
+            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             WHERE p.subject = ? 
             GROUP BY p.id 
-            ORDER BY p.academic_year DESC, p.created_at DESC
-        `).bind(subject).all();
+            ORDER BY p.school_name ASC, p.academic_year DESC, p.created_at DESC
+        `).bind(user.id, subject).all();
+
+        // Group papers by school name; each school's papers are already ordered by year DESC
+        const schoolMap = new Map<string, any[]>();
+        for (const p of papers.results as any[]) {
+            const key = (p.school_name || 'Unknown School').trim();
+            if (!schoolMap.has(key)) schoolMap.set(key, []);
+            schoolMap.get(key)!.push(p);
+        }
+
+        const schoolKeys = Array.from(schoolMap.keys()).sort((a, b) => {
+            // 1) HSC first
+            if (/^hsc$/i.test(a)) return -1;
+            if (/^hsc$/i.test(b)) return 1;
+            // 2) Sydney Boys High School second
+            if (/sydney boys high/i.test(a)) return -1;
+            if (/sydney boys high/i.test(b)) return 1;
+            // 3) Everything else, ordered by number of papers (descending)
+            const countDiff = (schoolMap.get(b)!.length) - (schoolMap.get(a)!.length);
+            if (countDiff !== 0) return countDiff;
+            return a.localeCompare(b);
+        });
 
         content = (
             <div>
@@ -106,51 +131,69 @@ app.get('/past-papers', async (c) => {
                     </div>
                 </div>
 
-                <div id="grid-view-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {papers.results.length === 0 ? (
-                        <div class="col-span-full text-center py-12 text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-dashed border-gray-300 dark:border-neutral-700">
-                            No papers found for {subject}.
-                        </div>
-                    ) : (
-                        papers.results.map((p: any) => (
-                            <div class="search-item block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors group h-full flex flex-col justify-between cursor-pointer" onclick={`window.location.href='/past-papers/paper/${p.id}'`} data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}>
-                                <div>
-                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 mb-1 leading-snug">{p.school_name}</h3>
+                {papers.results.length === 0 ? (
+                    <div class="text-center py-12 text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-dashed border-gray-300 dark:border-neutral-700">
+                        No papers found for {subject}.
+                    </div>
+                ) : (
+                    <div class="space-y-10">
+                        {schoolKeys.map((school) => {
+                            const schoolPapers = schoolMap.get(school)!;
+                            const catTotal = schoolPapers.reduce((s: number, p: any) => s + (Number(p.question_count) || 0), 0);
+                            const catCompleted = schoolPapers.reduce((s: number, p: any) => s + (Number(p.completed_count) || 0), 0);
 
-                                    <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-2">
-                                        <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{p.academic_year}</span>
-                                        <span class="text-gray-300 dark:text-neutral-600">•</span>
-                                        <span class="uppercase tracking-wide text-gray-600 dark:text-neutral-300">{p.paper_type || 'Trial Paper'}</span>
-                                        {p.is_locked ? <span class="text-xs font-bold text-gray-500 dark:text-neutral-400 ml-2">✅ Checked</span> : null}
+                            return (
+                                <section key={school}>
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                            {school}
+                                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&school=${encodeURIComponent(school)}`} title="Practice questions from this school" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors shrink-0">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                                            </a>
+                                            <span class="ml-1 text-sm font-medium text-gray-500 dark:text-neutral-400">
+                                                <span class="font-bold text-gray-800 dark:text-neutral-200">{catCompleted}</span> / {catTotal} done!
+                                            </span>
+                                        </h2>
                                     </div>
-                                </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {schoolPapers.map((p: any) => {
+                                            const totQ = Number(p.question_count) || 0;
+                                            const doneQ = Number(p.completed_count) || 0;
+                                            return (
+                                                <div class="search-item block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 transition-colors group cursor-pointer" onclick={`window.location.href='/past-papers/paper/${p.id}'`} data-search-text={`${p.school_name} ${p.academic_year} ${subject}`}>
+                                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 leading-snug">
+                                                        {p.paper_type || 'Trial Paper'}
+                                                        {p.is_locked ? <span class="ml-2 text-xs font-bold text-gray-500 dark:text-neutral-400">✅ Checked</span> : null}
+                                                    </h3>
 
-                                <div class="flex flex-col gap-1 mt-2">
-                                    <div class="flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-neutral-400 font-mono border-t border-gray-100 dark:border-neutral-700 pt-2">
-                                        <div class="flex gap-3">
-                                            <span class="flex items-center gap-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                                                {p.question_count || 0} Qs
-                                            </span>
-                                            <span class="flex items-center gap-1">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                                {p.total_marks || 0} Marks
-                                            </span>
-                                        </div>
-                                        {user && user.permission_level >= PermissionLevel.ADMIN && (
-                                            <form action={`/past-papers/paper/${p.id}/delete`} method="post" onclick="event.stopPropagation(); return confirm('Are you sure you want to delete this paper and ALL its questions? This action is permanent and cannot be undone.');" class="z-10 relative">
-                                                <input type="hidden" name="subject" value={subject} />
-                                                <button type="submit" class="text-red-500 dark:text-red-400 font-bold hover:underline transition-colors">
-                                                    Delete
-                                                </button>
-                                            </form>
-                                        )}
+                                                    <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mt-1">
+                                                        <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{p.academic_year}</span>
+                                                        <span class="text-gray-300 dark:text-neutral-600">•</span>
+                                                        <span class="text-gray-600 dark:text-neutral-300">{totQ} Qs</span>
+                                                    </div>
+
+                                                    <div class="flex items-center justify-between gap-3 mt-3 text-xs text-gray-500 dark:text-neutral-400 font-mono border-t border-gray-100 dark:border-neutral-700 pt-2">
+                                                        <span>
+                                                            <span class="font-bold text-gray-800 dark:text-neutral-200">{doneQ}/{totQ}</span> questions
+                                                        </span>
+                                                        {user && user.permission_level >= PermissionLevel.ADMIN && (
+                                                            <form action={`/past-papers/paper/${p.id}/delete`} method="post" onclick="event.stopPropagation(); return confirm('Are you sure you want to delete this paper and ALL its questions? This action is permanent and cannot be undone.');" class="z-10 relative">
+                                                                <input type="hidden" name="subject" value={subject} />
+                                                                <button type="submit" class="text-red-500 dark:text-red-400 font-bold hover:underline transition-colors">
+                                                                    Delete
+                                                                </button>
+                                                            </form>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
+                                </section>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         );
 
@@ -299,8 +342,9 @@ app.get('/past-papers', async (c) => {
                     {/* Append-a-filter control */}
                     <span id="af-wrap" class="hidden items-center gap-3 flex-1 min-w-[16rem] max-w-sm">
                         <select id="af-field" class="bg-transparent border-b border-gray-300 dark:border-neutral-600 focus:outline-none focus:border-blue-500 dark:bg-transparent dark:text-white py-0.5 pr-1 text-sm shrink-0">
-                            <option value="school">school</option>
+                            
                             <option value="topic">topic</option>
+                            <option value="school">school</option>
                             <option value="year">year</option>
                             <option value="section">section</option>
                             <option value="type">type</option>
