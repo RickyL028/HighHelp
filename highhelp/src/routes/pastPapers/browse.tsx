@@ -438,7 +438,7 @@ app.get('/past-papers', async (c) => {
                                             </thead>
                                             <tbody>
                                                 {qs.map((q: any) => {
-                                                    const params = `source=practice&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+                                                    const params = `source=practice&school=${filterSchool || ''}&topic=${filterTopicId || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
                                                     const isMcq = !!q.parsed.options;
                                                     const parsed = isMcq ? q.parsed : null;
                                                     const isIncomplete = !q.marks || (!q.question_image_key && !q.question_text);
