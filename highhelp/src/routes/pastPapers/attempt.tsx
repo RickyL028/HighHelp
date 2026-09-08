@@ -5,6 +5,25 @@ import { Bindings } from '../../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// Split MCQ question_text into stem + option texts (options are stored inline, e.g. "(A) Use cost centres")
+const parseMcqOptions = (text: string | null): { stem: string; options: Record<string, string> | null } => {
+    if (!text) return { stem: '', options: null };
+    const opts: Record<string, string> = {};
+    const stemLines: string[] = [];
+    let seenOption = false;
+    for (const line of text.split('\n')) {
+        const m = line.match(/^\s*\(?\s*([A-Fa-f])[\).:\]]\s*(.+)$/);
+        if (m) {
+            seenOption = true;
+            opts[m[1].toUpperCase()] = m[2].trim();
+        } else if (!seenOption) {
+            stemLines.push(line);
+        }
+    }
+    if (Object.keys(opts).length < 2) return { stem: text.trim(), options: null };
+    return { stem: stemLines.join('\n').trim(), options: opts };
+};
+
 app.get('/past-papers/attempt/:id', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
@@ -183,42 +202,46 @@ app.get('/past-papers/attempt/:id', async (c) => {
     const answerRevealed = !!attempt?.is_completed;
     const hasStimulus = !!(q.stimulus_text || q.stimulus_image_key);
 
+    const parsed = q.question_type === 'multiple_choice' ? parseMcqOptions(q.question_text) : { stem: q.question_text, options: null };
+    const mcqOptions = parsed.options;
+
     return c.html(
         <Layout title={`Question - ${q.subject}`} user={user} latex={true}>
             <div class="w-full h-[calc(100vh-3rem)] flex flex-col p-2 max-w-[120rem] mx-auto">
 
                 {/* Header */}
-                <div class="flex items-center justify-between mb-2 shrink-0">
-                    <div class="flex items-center gap-3 overflow-hidden">
+                <div class="flex items-center justify-between gap-3 mb-2 shrink-0">
+                    <div class="flex items-center gap-3 overflow-hidden min-w-0">
                         <a href={
                             source === 'practice' ? `/past-papers?subject=${encodeURIComponent(q.subject)}&tab=practice&${currentParams}` :
                                 source === 'review' ? `/past-papers?subject=${encodeURIComponent(q.subject)}&tab=review` :
                                     `/past-papers/paper/${q.paper_id}`
-                        } class="text-sm font-semibold text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white shrink-0">
-                            ← Back
+                        } class="text-sm font-semibold text-gray-500 hover:text-gray-900 dark:text-neutral-400 dark:hover:text-white shrink-0 flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                            Back
                         </a>
-                        <span class="text-gray-300 dark:text-neutral-700">|</span>
+                        <span class="text-gray-300 dark:text-neutral-700 shrink-0">|</span>
                         <h1 class="text-sm font-bold text-gray-900 dark:text-neutral-100 truncate">
                             {q.school_name} {q.academic_year} — {q.section_label} Q{q.question_number}
                         </h1>
-                        <span class="text-xs font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded shrink-0">
-                            {q.marks} Marks
-                        </span>
-                        <a href={pdfUrl} target="_blank" class="flex items-center gap-1 text-red-700 dark:text-red-400 text-xs font-bold hover:underline transition-colors">
+                        <a href={pdfUrl} target="_blank" class="hidden md:flex items-center gap-1 text-red-700 dark:text-red-400 text-xs font-bold hover:underline transition-colors shrink-0">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></svg>
-                            Original PDF {stimCoords?.page ? `(p.${stimCoords.page})` : ''}
+                            PDF
                         </a>
                     </div>
-                    <div class="flex gap-1 shrink-0 ml-2">
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-xs text-gray-400 dark:text-neutral-500 font-medium hidden sm:inline">
+                            Q{currentIndex + 1} of {allQuestions.length}
+                        </span>
                         {prevId ? (
-                            <a href={`/past-papers/attempt/${prevId}?${currentParams}`} class="px-2 py-1 text-gray-700 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-bold hover:underline transition-colors">← Prev</a>
+                            <a href={`/past-papers/attempt/${prevId}?${currentParams}`} class="px-2.5 py-1 rounded border dark:border-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 text-sm font-bold transition-colors">← Prev</a>
                         ) : (
-                            <button disabled class="px-2 py-1 text-gray-400 dark:text-neutral-600 text-sm font-bold opacity-50 cursor-not-allowed">← Prev</button>
+                            <button disabled class="px-2.5 py-1 rounded border dark:border-neutral-700 text-gray-400 dark:text-neutral-600 text-sm font-bold opacity-50 cursor-not-allowed">← Prev</button>
                         )}
                         {nextId ? (
-                            <a href={`/past-papers/attempt/${nextId}?${currentParams}`} class="px-2 py-1 text-gray-700 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-bold hover:underline transition-colors">Next →</a>
+                            <a href={`/past-papers/attempt/${nextId}?${currentParams}`} class="px-2.5 py-1 rounded border dark:border-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 text-sm font-bold transition-colors">Next →</a>
                         ) : (
-                            <button disabled class="px-2 py-1 text-gray-400 dark:text-neutral-600 text-sm font-bold opacity-50 cursor-not-allowed">Next →</button>
+                            <button disabled class="px-2.5 py-1 rounded border dark:border-neutral-700 text-gray-400 dark:text-neutral-600 text-sm font-bold opacity-50 cursor-not-allowed">Next →</button>
                         )}
                     </div>
                 </div>
@@ -292,10 +315,13 @@ app.get('/past-papers/attempt/:id', async (c) => {
                         )}
 
                         {/* Question Content */}
-                        <div class="p-4 bg-white dark:bg-neutral-900 shrink-0 border-b dark:border-neutral-800">
+                        <div class="relative p-4 pt-6 bg-white dark:bg-neutral-900 shrink-0 border-b dark:border-neutral-800">
+                            <span class="absolute top-2 right-3 text-xs font-bold bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 px-2 py-0.5 rounded-full border border-gray-200 dark:border-neutral-700">
+                                {q.marks} mark{q.marks === 1 ? '' : 's'}
+                            </span>
                             {q.question_text ? (
                                 <div class="text-gray-900 dark:text-neutral-100 whitespace-pre-wrap font-serif text-lg leading-snug">
-                                    {q.question_text}
+                                    {mcqOptions ? parsed.stem : q.question_text}
                                 </div>
                             ) : q.question_image_key ? (
                                 <img src={`/download/${q.question_image_key}`} class="w-full h-auto object-contain" />
@@ -305,13 +331,12 @@ app.get('/past-papers/attempt/:id', async (c) => {
                         {/* Response Input */}
                         <div class="p-4 bg-gray-50/50 dark:bg-neutral-800/30 shrink-0 border-b dark:border-neutral-800">
                             {q.question_type === 'multiple_choice' ? (
-                                <div class="flex gap-2">
+                                <div class="flex flex-col gap-2">
                                     {['A', 'B', 'C', 'D'].map(opt => (
-                                        <label class="cursor-pointer flex-1">
+                                        <label class="cursor-pointer flex items-center gap-3 border dark:border-neutral-600 rounded-sm bg-white dark:bg-neutral-800 px-3 py-2.5 has-[:checked]:border-blue-600 has-[:checked]:ring-1 has-[:checked]:ring-blue-600 transition-colors">
                                             <input type="radio" name="selected_option" value={opt} class="peer sr-only" checked={attempt?.selected_option === opt} />
-                                            <div class="text-center py-2 border dark:border-neutral-600 rounded-sm bg-white dark:bg-neutral-800 peer-checked:bg-blue-600 peer-checked:border-blue-600 peer-checked:text-white text-gray-700 dark:text-neutral-300 font-bold transition-none">
-                                                {opt}
-                                            </div>
+                                            <span class="w-7 h-7 shrink-0 flex items-center justify-center rounded-full border border-gray-300 dark:border-neutral-600 font-bold text-sm text-gray-700 dark:text-neutral-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 peer-checked:text-white transition-colors">{opt}</span>
+                                            <span class="text-sm text-gray-800 dark:text-neutral-200">{mcqOptions?.[opt] || ''}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -327,7 +352,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                 <button
                                     id="reveal-btn"
                                     type="button"
-                                    class="mt-3 w-full text-gray-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-semibold hover:underline transition-colors"
+                                    class="mt-4 w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-sm text-sm transition-colors"
                                 >
                                     Check Answer
                                 </button>
@@ -401,20 +426,22 @@ app.get('/past-papers/attempt/:id', async (c) => {
                         </div>
 
                         {/* Sticky Action Footer */}
-                        <div class="p-3 bg-gray-100 dark:bg-neutral-900/80 border-t dark:border-neutral-700 flex justify-end items-center gap-4 shrink-0">
+                        <div class="p-3 bg-gray-100 dark:bg-neutral-900/80 border-t dark:border-neutral-700 flex justify-between items-center gap-4 shrink-0">
                             <div class="text-xs text-gray-500 dark:text-neutral-400 font-medium">
                                 {attempt?.is_completed ? (
                                     <span class="flex items-center gap-2">
-                                        ✓ Done {completedDate}
-                                        <button type="submit" name="action" value="undone" class="text-red-600 dark:text-red-400 hover:underline ml-1">Revert</button>
+                                        <span class="text-green-600 dark:text-green-400">✓ Completed {completedDate}</span>
+                                        <button type="submit" name="action" value="undone" class="text-red-600 dark:text-red-400 hover:underline">Revert</button>
                                     </span>
-                                ) : 'Pending'}
+                                ) : (
+                                    <span class="opacity-70">Select a mark to auto-save & continue</span>
+                                )}
                             </div>
                             <div class="flex gap-2">
-                                <button type="submit" name="action" value="save" class="px-4 py-1.5 text-gray-700 dark:text-neutral-300 text-sm font-bold hover:underline transition-colors">
+                                <button type="submit" name="action" value="save" class="px-4 py-1.5 rounded border dark:border-neutral-600 text-gray-700 dark:text-neutral-300 text-sm font-bold hover:bg-gray-200 dark:hover:bg-neutral-700 transition-colors">
                                     Save
                                 </button>
-                                <button type="submit" name="action" value="complete" class="px-4 py-1.5 text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline transition-colors">
+                                <button type="submit" name="action" value="complete" class="px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors">
                                     Save + Continue
                                 </button>
                             </div>
