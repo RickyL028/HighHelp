@@ -116,6 +116,57 @@ export const getSortedSubjects = (type: 'standard' | 'essay') => {
     return { popular, others };
 }
 
+// Derive the student's subject names from the timetable payload.
+// Each subject is stored as { "9Ma1": { ..., "subject": "English", ... } }.
+// We use the `subject` field, and skip non-academic entries (meetings/sport/year).
+const NON_SUBJECT_MARKERS = ['meetings', 'sport', 'year'];
+export function extractTimetableSubjects(timetable: any): string[] {
+    const names = new Set<string>();
+    const subjects = timetable?.subjects || {};
+    const entries: any[] = Array.isArray(subjects) ? subjects : Object.values(subjects);
+    for (const s of entries) {
+        const name = s?.subject;
+        if (!name || typeof name !== 'string') continue;
+        const trimmed = name.trim();
+        if (!trimmed) continue;
+        const lower = trimmed.toLowerCase();
+        if (NON_SUBJECT_MARKERS.some(m => lower.includes(m))) continue;
+        names.add(trimmed);
+    }
+    return Array.from(names);
+}
+
+// Build the display tags object for a user.
+// Subject tags default to 0 (hidden) and preserve any existing user toggle (0 or 1).
+// The Year tag is stored with its raw value (e.g. "7") so it is never rendered
+// (renderTags only shows tags whose value is exactly 1).
+export function buildUserTags(existingTagsJson: string | null | undefined, subjects: string[], yearGroup: string | number | null | undefined): string {
+    let existing: Record<string, any> = {};
+    if (existingTagsJson) {
+        try {
+            const parsed = JSON.parse(existingTagsJson);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) existing = parsed;
+        } catch (e) {
+        }
+    }
+
+    const tags: Record<string, any> = {};
+
+    for (const subject of subjects) {
+        const current = existing[subject];
+        const value = current === 1 || current === 0 ? current : 0;
+        tags[subject] = value;
+    }
+
+    if (yearGroup !== undefined && yearGroup !== null && yearGroup !== '') {
+        tags['Year'] = String(yearGroup);
+    } else if (existing['Year'] !== undefined) {
+        tags['Year'] = existing['Year'];
+    }
+
+    return JSON.stringify(tags);
+}
+
 // render tags pill
 export const renderTags = (tagsJson: string | null) => {
     if (!tagsJson) return '';

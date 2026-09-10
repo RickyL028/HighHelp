@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { Layout } from '../layout'
 import { Bindings } from '../types'
-import { createSessionCookie } from '../utils'
+import { createSessionCookie, buildUserTags, extractTimetableSubjects } from '../utils'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -154,6 +154,14 @@ app.get('/api/auth/callback', async (c) => {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
         const calendarData = await calendarResponse.json();
+
+        // Tags are now display-only: auto-decorate with the student's subjects
+        // (default hidden, value 0) and record the student's year group separately.
+        const subjects = extractTimetableSubjects(timetableData);
+        const newTags = buildUserTags(typeof user.tags === 'string' ? user.tags : null, subjects, userData.yearGroup);
+        await c.env.DB.prepare('UPDATE users SET tags = ? WHERE id = ?')
+            .bind(newTags, user.id).run();
+        user.tags = newTags;
 
         const studentData = {
             timetable: timetableData,

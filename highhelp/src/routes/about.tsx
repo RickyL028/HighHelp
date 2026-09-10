@@ -291,10 +291,9 @@ app.get('/about', async (c) => {
                             <li>Nicklas Li,</li>
                             
 
-                            <li>Tuyvan Mai,</li>
+                            <li>Geoffrey Li,</li>
                             
 
-                            <li>Aryaman Pachori,</li>
                             
 
                             <li>Jun Shim,</li>

@@ -16,7 +16,9 @@ app.get('/profile', async (c) => {
         userTags = {};
     }
 
-    const tagKeys = Object.keys(userTags);
+    const tagKeys = Object.keys(userTags).filter(tag =>
+        tag !== 'Year' && (userTags[tag] === 0 || userTags[tag] === 1)
+    );
 
     return c.html(
         <Layout title="Profile" user={user}>
@@ -113,6 +115,14 @@ app.post('/profile', async (c) => {
         const newTags: Record<string, number> = {};
 
         for (const tag of Object.keys(currentTags)) {
+
+            const isToggleable = tag !== 'Year' && (currentTags[tag] === 0 || currentTags[tag] === 1);
+
+            if (!isToggleable) {
+                // Preserve non-toggleable tags (e.g. Year) untouched
+                newTags[tag] = currentTags[tag];
+                continue;
+            }
 
             const formKey = `tag_${encodeURIComponent(tag)}`;
 

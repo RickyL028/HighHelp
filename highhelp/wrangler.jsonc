@@ -7,6 +7,14 @@
 		"global_fetch_strictly_public",
 		"nodejs_compat"
 	],
+	"routes": [
+		{
+			"pattern": "highhelp.org",
+			"custom_domain": true
+		}
+	],
+	"workers_dev": true,
+	"preview_urls": true,
 	"queues": {
 		"producers": [
 			{
@@ -18,11 +26,9 @@
 			{
 				"queue": "paper-ai-queue",
 				"max_batch_size": 1,
-				
 				"max_batch_timeout": 0, 
 				"max_retries": 1,
-				"dead_letter_queue": "paper-ai-dlq",
-				
+				"dead_letter_queue": "paper-ai-dlq"
 			}
 		]
 	},
@@ -41,39 +47,15 @@
 			"binding": "BUCKET",
 			"bucket_name": "highhelp-storage",
 			"preview_bucket_name": "my-app-preview-bucket"
-		},
+		}
 	],
-	/**
-	 * Smart Placement
-	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
-	 */
-	// "placement": {  "mode": "smart" }
-	/**
-	 * Bindings
-	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
-	 * databases, object storage, AI inference, real-time communication and more.
-	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
-	 */
-	/**
-	 * Environment Variables
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
-	 * Note: Use secrets to store sensitive data.
-	 * https://developers.cloudflare.com/workers/configuration/secrets/
-	 */
 	"assets": {
 		"directory": "./public"
 	},
 	"vars": {
-		"PORTAL_API_CLIENT_ID": "01kdpqeyf5eeb8nbpvwj1bp22w", // actual one
-		"PORTAL_API_CLIENT_ID_full":"01khd5yr82f56trpdz32s0zm8p",
-		//"PORTAL_API_CLIENT_ID": "01kfvv0vkzfbza9qzncmsfhwme",
+		"PORTAL_API_CLIENT_ID": "01kdpqeyf5eeb8nbpvwj1bp22w",
+		"PORTAL_API_CLIENT_ID_full": "01khd5yr82f56trpdz32s0zm8p",
 		"APP_REDIRECT_URI": "https://highhelp.sbhs27.workers.dev/api/auth/callback",
 		"APP_REDIRECT_URI_full": "https://highhelp.org/api/auth/callback"
-		//"APP_REDIRECT_URI": "http://localhost:8787/api/auth/callback"
 	}
-	/**
-	 * Service Bindings (communicate between multiple Workers)
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
-	 */
-	// "services": [  {   "binding": "MY_SERVICE",   "service": "my-service"  } ]
 }

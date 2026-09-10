@@ -58,11 +58,10 @@ app.get('/past-papers/paper/:id', async (c) => {
     });
 
     // Check permissions
-    // Locking: Permission >= 4 OR tag C*
+    // Locking: Permission >= 4
     // Unlocking: Permission >= 5
 
-    const hasCTag = user?.tags && (typeof user.tags === 'string' ? user.tags.includes('C*') : user.tags.includes('C*'));
-    const canLock = user && (user.permission_level >= 4 || hasCTag);
+    const canLock = user && user.permission_level >= 4;
     const canUnlock = user && user.permission_level >= 5;
 
 
@@ -74,7 +73,7 @@ app.get('/past-papers/paper/:id', async (c) => {
 
     const canEdit = canEditSubject && (!paper.is_locked || canUnlock);
 
-    const canManageTopics = user && (user.permission_level >= PermissionLevel.ADMIN || hasCTag);
+    const canManageTopics = user && user.permission_level >= PermissionLevel.ADMIN;
 
 
 
@@ -801,15 +800,12 @@ app.post('/past-papers/paper/:id/toggle-lock', async (c) => {
     const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
     if (!paper) return c.notFound();
 
-    const hasCTag = user?.tags && (typeof user.tags === 'string' ? user.tags.includes('C*') : user.tags.includes('C*'));
-
-
     if (paper.is_locked) {
         if (!user || user.permission_level < 5) return c.text("Unauthorised to unlock", 403);
 
         await logAction(c.env.DB, user.id, 'UNLOCK_PAPER', `Unlocked paper ${paperId}`, parseInt(paperId), 'papers');
     } else {
-        if (!user || (user.permission_level < 4 && !hasCTag)) return c.text("Unauthorised to lock", 403);
+        if (!user || user.permission_level < 4) return c.text("Unauthorised to lock", 403);
 
 
         const invalidQuestions = await c.env.DB.prepare(`
