@@ -99,7 +99,12 @@ Return ONLY a valid JSON object with this structure:
   ]
 }
 
-Be thorough. Do not skip any questions.`;
+Be thorough. Do not skip any questions.
+
+If and if only the subject is English advanced (ignore otherwise)
+- If short answer: you MUST include the STIMULUS text (or cropped image).
+- If essay: you MUST include the PRESCRIBED TEXT AT THE START in BRACKETS e.g. "[William Shakespeare - Hamlet] How does ... "
+`;
 }
 
 interface AIQuestion {

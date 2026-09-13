@@ -74,12 +74,11 @@ app.get('/about', async (c) => {
                             </ul>
                             <h3 class="text-1xl font-bold mt-4 mb-1">Guidelines</h3>
                             <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
-                                <li>No deliberate misinformation</li>
+                                <li>No (deliberate) misinformation</li>
                                 <li>No plagiarism</li>
                                 <li>No copyright infringement (e.g. Textbook)</li>
-                                <li>No viruses</li>
                             </ul>
-                            <h3 class="text-1xl mt-4 mb-1">Failure in doing so results in suspension/ban.</h3>
+                            
 
 
                         </p>
@@ -316,7 +315,7 @@ app.get('/about', async (c) => {
                         </ul>
 <br></br>
                     Lastly, myself    
-                        <p class='pl-8'>Ricky Luo.</p>
+                        <p class='pl-8'>Ricky Luo</p>
                     </section>
                     
 

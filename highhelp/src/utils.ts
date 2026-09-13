@@ -2,9 +2,8 @@ import { getCookie } from 'hono/cookie'
 import { SUBJECTS } from './constants'
 
 export const PRIORITY_STANDARD = [
-    "English Advanced",
+    "English Advanced (HSC)",
     "Mathematics 2U (HSC)",
-    "Mathematics 3U",
     "Physics",
     "Chemistry",
     "Biology",

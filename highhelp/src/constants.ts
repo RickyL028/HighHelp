@@ -10,6 +10,7 @@ export const SUBJECTS = [
     "Economics",
     "Engineering Studies",
     "English Advanced",
+    "English Advanced (HSC)",
     "English 3U",
     "Geography",
     "Geography (HSC)",
