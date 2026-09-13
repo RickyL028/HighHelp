@@ -6,20 +6,29 @@ import { createSessionCookie, buildUserTags, extractTimetableSubjects } from '..
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+function isLocalDev(c: any): boolean {
+    return c.env.LOCAL_DEV === true || c.env.LOCAL_DEV === 'true';
+}
 
+function portalCreds(c: any) {
+    const host = c.req.header('host') || '';
+    if (!isLocalDev(c) && host.includes('highhelp.org')) {
+        return {
+            clientId: c.env.PORTAL_API_CLIENT_ID_full,
+            clientSecret: c.env.PORTAL_API_CLIENT_SECRET_full,
+            redirectUri: c.env.APP_REDIRECT_URI_full,
+        };
+    }
+    return {
+        clientId: c.env.PORTAL_API_CLIENT_ID,
+        clientSecret: c.env.PORTAL_API_CLIENT_SECRET,
+        redirectUri: c.env.APP_REDIRECT_URI,
+    };
+}
 
 app.get('/api/auth/login', (c) => {
 
-    let clientId = c.env.PORTAL_API_CLIENT_ID;
-    let redirectUri = c.env.APP_REDIRECT_URI;
-
-    const host = c.req.header('host');
-
-    if (host && host.includes('highhelp.org')) {
-        clientId = c.env.PORTAL_API_CLIENT_ID_full;
-        redirectUri = c.env.APP_REDIRECT_URI_full;
-    }
-
+    const { clientId, redirectUri } = portalCreds(c);
 
     if (!clientId || !redirectUri) {
         return c.text('Configuration Error: Missing Client ID or Redirect URI', 500);
@@ -30,7 +39,7 @@ app.get('/api/auth/login', (c) => {
     setCookie(c, 'oauth_state', state, {
         path: '/',
         httpOnly: true,
-        secure: !c.req.url.includes('localhost'),
+        secure: !isLocalDev(c),
         maxAge: 300, // 5 minutes
         sameSite: 'Lax'
     });
@@ -59,18 +68,7 @@ app.get('/api/auth/callback', async (c) => {
         return c.text('Invalid State or Missing Code. Please try logging in again.', 400);
     }
 
-    let clientId = c.env.PORTAL_API_CLIENT_ID;
-    let clientSecret = c.env.PORTAL_API_CLIENT_SECRET;
-    let redirectUri = c.env.APP_REDIRECT_URI;
-
-
-    const host = c.req.header('host');
-
-    if (host && host.includes('highhelp.org')) {
-        clientId = c.env.PORTAL_API_CLIENT_ID_full;
-        redirectUri = c.env.APP_REDIRECT_URI_full;
-        clientSecret = c.env.PORTAL_API_CLIENT_SECRET_full;
-    }
+    let { clientId, clientSecret, redirectUri } = portalCreds(c);
 
     if (!clientSecret) {
         return c.text('Configuration Error: Missing Client Secret. add PORTAL_API_CLIENT_SECRET to .dev.vars or secrets.', 500);
@@ -106,7 +104,7 @@ app.get('/api/auth/callback', async (c) => {
             setCookie(c, 'sbhs_refresh_token', refreshToken, {
                 path: '/api/auth', // Only send this cookie to auth endpoints
                 httpOnly: true,    // JavaScript cannot read this (prevents XSS theft)
-                secure: !c.req.url.includes('localhost'),
+                secure: !isLocalDev(c),
                 maxAge: 60 * 60 * 24 * 90, // 90 Days
                 sameSite: 'Lax'
             });
@@ -170,7 +168,7 @@ app.get('/api/auth/callback', async (c) => {
         };
 
         // Set Cookie
-        const isLocal = c.req.url.includes('localhost');
+        const isLocal = isLocalDev(c);
         const sessionValue = await createSessionCookie(Number(user.id), c.env.SESSION_SECRET);
         setCookie(c, 'user_id', sessionValue, {
             path: '/',
@@ -269,7 +267,7 @@ app.post('/login', async (c) => {
     const user = await c.env.DB.prepare('SELECT * FROM users WHERE email = ? AND password = ?').bind(email, password).first()
 
     if (user) {
-        const isLocal = c.req.url.includes('localhost');
+        const isLocal = isLocalDev(c);
         const sessionValue = await createSessionCookie(Number(user.id), c.env.SESSION_SECRET);
         setCookie(c, 'user_id', sessionValue, {
             path: '/',
@@ -302,15 +300,8 @@ app.get('/api/auth/refresh', async (c) => {
         return c.json({ success: false, error: 'No refresh token' }, 401);
     }
 
-    // Determine credentials based on host (reuse your existing logic)
-    const host = c.req.header('host');
-    let clientId = c.env.PORTAL_API_CLIENT_ID;
-    let clientSecret = c.env.PORTAL_API_CLIENT_SECRET;
-
-    if (host && host.includes('highhelp.org')) {
-        clientId = c.env.PORTAL_API_CLIENT_ID_full;
-        clientSecret = c.env.PORTAL_API_CLIENT_SECRET_full;
-    }
+    // Determine credentials based on env/host (reuse existing logic)
+    const { clientId, clientSecret } = portalCreds(c);
 
     try {
         // Ask SBHS for a new access token
@@ -333,7 +324,7 @@ app.get('/api/auth/refresh', async (c) => {
                 setCookie(c, 'sbhs_refresh_token', data.refresh_token, {
                     path: '/api/auth',
                     httpOnly: true,
-                    secure: !c.req.url.includes('localhost'),
+                    secure: !isLocalDev(c),
                     maxAge: 60 * 60 * 24 * 90,
                     sameSite: 'Lax'
                 });

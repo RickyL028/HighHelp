@@ -35,6 +35,13 @@ app.get('/about', async (c) => {
                         <a href="#qa" class="block hover:text-blue-600 transition-colors">Q&A</a>
                         <a href="#essays" class="block hover:text-blue-600 transition-colors">Essays</a>
                         <br></br>
+                        <a href="#timetable" class="block hover:text-blue-600 transition-colors">Timetable</a>
+
+                        
+                        <a href="#atar" class="block hover:text-blue-600 transition-colors">ATAR</a>
+                        <a href="#attendance" class="block hover:text-blue-600 transition-colors">Attendance</a>
+                        <a href="#points" class="block hover:text-blue-600 transition-colors">Points</a>
+                        <br></br>
                         <a href="#application" class="block hover:text-blue-600 transition-colors">Applications</a>
                         <a href="#faq" class="block hover:text-blue-600 transition-colors">FAQs</a>
                         <a href="#feedback" class="block hover:text-blue-600 transition-colors">Feedback</a>
@@ -46,7 +53,7 @@ app.get('/about', async (c) => {
                 <main class="flex-1 max-w-3xl">
                     <h1 class="text-4xl font-extrabold mb-8">About HighHelp</h1>
                     <p class="text-gray-700 dark:text-neutral-300 leading-relaxed mb-12 dark:text-neutral-300">
-                        
+                        [Last Updated: 13 Sep 2026] <br></br>
                         On this page, you will find information and guidelines for each section of this website. 
                     </p>
 
@@ -70,7 +77,7 @@ app.get('/about', async (c) => {
 
                             <h3 class="text-1xl font-bold mt-4 mb-1">Requirements</h3>
                             <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
-                                <li>File size less than <s>25MB</s> 50MB [13 Sep]</li>
+                                <li>File size less than <s>25MB</s> 50MB</li>
                                 <li>Uploader must have agreed to website guidelines</li>
                             </ul>
                             <h3 class="text-1xl font-bold mt-4 mb-1">Guidelines</h3>
@@ -87,7 +94,7 @@ app.get('/about', async (c) => {
                     <section id="announcements" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Announcements</h2>
                         <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
-                            [13 Sep] This feature will be reworked very soon.
+                            This feature will be reworked very soon.
 
                             <br></br>
                             
@@ -142,7 +149,7 @@ app.get('/about', async (c) => {
                     <section id="essays" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Essays</h2>
                         <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
-                            [13 Sep] This feature may be reworked. <br></br>
+                            
                             Students can upload their essays for others to read and learn from / give feedback or comment.
 
                             
@@ -157,6 +164,50 @@ app.get('/about', async (c) => {
                                 <li>No spamming</li>
                             </ul>
                             <h3 class="text-1xl mt-4 mb-1">Failure in doing so results in suspension/ban.</h3>
+                        </p>
+                    </section>
+                    <section id="timetable" class="mb-12 scroll-mt-20">
+                        <h2 class="text-2xl font-bold mb-4">Timetable</h2>
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
+                            An integrated timetable from your SBHS student portal API, displaying:
+                            <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
+                                <li>Timetabled Classes</li>
+                                <li>Room / Teacher Change</li>
+                                <li>Timetable Cycle</li>
+                                <li>Daily Notices</li>
+                                <li>School Events</li>
+                                <li>Exam Timetable (Y11)</li>
+                                <li>Latest High Notes</li>
+                            </ul>
+                            <br></br>
+                            Additionally, from a leading-edge API donated by IT department, displays:
+                            <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
+                                <li>Scan-In Time</li>
+                                <li>Clipboard Sessions (sports + extra-curricular)</li>
+                                <li>Canvas Assingments</li>
+                                <li>Class Notes</li>
+
+                            </ul>
+                            
+
+                        </p>
+                    </section>
+                    <section id="atar" class="mb-12 scroll-mt-20">
+                        <h2 class="text-2xl font-bold mb-4">ATAR</h2>
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
+                            An approximation of your SBHS internal rank using maths and a few hundred collected data points and a few years of data from UAC reports. Quite accurate with R-squared = 0.9171.
+                        </p>
+                    </section>
+                    <section id="attendance" class="mb-12 scroll-mt-20">
+                        <h2 class="text-2xl font-bold mb-4">Attendance</h2>
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
+                            Another exclusive feature (from the in-development API) displaying your attendance rate and pre-explained clipboard absences - presumably for the 85% attendance required for Award Scheme Points.
+                        </p>
+                    </section>
+                    <section id="points" class="mb-12 scroll-mt-20">
+                        <h2 class="text-2xl font-bold mb-4">Points</h2>
+                        <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
+                            Another exclusive feature (from the in-development API) displaying your Award Scheme Points + Blazer Lines + Some planning tools.
                         </p>
                     </section>
                     <section id="application" class="mb-12 scroll-mt-20">
@@ -242,7 +293,7 @@ app.get('/about', async (c) => {
                             <br></br>
                             We have inquired and consulted with Software Engineering teacher and our Year Advisors, and we express our sincere gratitude for their support.
                             <br></br>
-                            [Sep 13] HighHelp is also honoured to be recognised by our Principal, Mr. Barris, and our Deputy Teacher Ms. Ibbott. <br></br>See more: <a href="https://sydneyhigh.school/publications/document-library/doc_view/8864-high-notes-vol-27-no-24-august-14-2026"><u>High Notes Vol 27 No 24</u></a>
+                            HighHelp is also honoured to be recognised by our Principal, Mr. Barris, and our Deputy Teachers.<br></br>See more: <a href="https://sydneyhigh.school/publications/document-library/doc_view/8864-high-notes-vol-27-no-24-august-14-2026"><u>High Notes Vol 27 No 24</u></a>
                             <br></br>
                             <h3 class="text-1xl font-bold mt-4 mb-1">Ask more questions in the Contact section!</h3>
 
@@ -252,6 +303,8 @@ app.get('/about', async (c) => {
                         <h2 class="text-2xl font-bold mb-4">Feedback</h2>
                         <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
                             Report bugs and provide feedback via <a href="https://forms.gle/7af9Dq8mZiQtjfbs9"><u>Google Form</u></a>.
+                            <br></br>
+                            Alternately, use the inbuilt <u><a href="/feedback">"Hmmm...?"</a></u> Section.
                         </p>
                     </section>
                     <section id="contact" class="mb-6 scroll-mt-20">
