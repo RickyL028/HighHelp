@@ -46,7 +46,8 @@ app.get('/about', async (c) => {
                 <main class="flex-1 max-w-3xl">
                     <h1 class="text-4xl font-extrabold mb-8">About HighHelp</h1>
                     <p class="text-gray-700 dark:text-neutral-300 leading-relaxed mb-12 dark:text-neutral-300">
-                        On this page, you will find information and guidelines for each section of this website.
+                        
+                        On this page, you will find information and guidelines for each section of this website. 
                     </p>
 
                     <section id="mission" class="mb-12 scroll-mt-20">
@@ -65,11 +66,11 @@ app.get('/about', async (c) => {
                     <section id="resources" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Resources</h2>
                         <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
-                            Students can access resources, such as notes, uploaded by their peers on this page. We encourage any materials beneficial in any way - personal notes, class worksheets, exemplar essays etc.
+                            Students can access resources, such as notes, uploaded by their peers on this page. We encourage any materials beneficial in any way such as personal notes, class worksheets, exemplar essays etc.
 
                             <h3 class="text-1xl font-bold mt-4 mb-1">Requirements</h3>
                             <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
-                                <li>File size less than 25MB</li>
+                                <li>File size less than <s>25MB</s> 50MB [13 Sep]</li>
                                 <li>Uploader must have agreed to website guidelines</li>
                             </ul>
                             <h3 class="text-1xl font-bold mt-4 mb-1">Guidelines</h3>
@@ -86,14 +87,19 @@ app.get('/about', async (c) => {
                     <section id="announcements" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Announcements</h2>
                         <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
+                            [13 Sep] This feature will be reworked very soon.
+
+                            <br></br>
+                            
                             These are usually significant updates within a subject (e.g. release/change in notification) - or within our cohort (e.g. school events). Surprisingly this is the most wanted feature, according to the survey.
 
                             <h3 class="text-1xl font-bold mt-4 mb-1">Requirements</h3>
                             All users receive identical announcements. However, we did limit access of posting announcements to avoid unnecessary chaos. Students interested in posting announcements can fill out a form at the end of this page :P
 
                             <h3 class="text-1xl font-bold mt-4 mb-1">Guidelines</h3>
-                            No misinformation or spamming.
-                            <h3 class="text-1xl mt-4 mb-1">Failure in doing so results in removal of permission.</h3>
+                            No misinformation or spamming
+                            
+
 
                         </p>
                     </section>
@@ -106,14 +112,14 @@ app.get('/about', async (c) => {
                             <br></br>
                             <br></br>
                             My heartfelt credit goes to Mr. Jackson's Bizzy website for inspiration for this feature, and for carrying my assessments.
-                            <h3 class="text-1xl font-bold mt-4 mb-1">Requirements</h3>
-                            All users, not banned, can access.
+                            
+
+
+
                             <br></br>
                             <br></br>
                             Interested students in contributing to this feature can fill out the same form at the end of this page. Thanks to all students who has contributed.
-                            <h3 class="text-1xl font-bold mt-4 mb-1">Guidelines</h3>
-                            Information should be accurate.
-                            <h3 class="text-1xl mt-4 mb-1">Failure in doing so results in removal.</h3>
+                            
                         </p>
                     </section>
                     <section id="qa" class="mb-12 scroll-mt-20">
@@ -121,8 +127,7 @@ app.get('/about', async (c) => {
                         <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
                             Literally Q&A.
 
-                            <h3 class="text-1xl font-bold mt-4 mb-1">Requirements</h3>
-                            Not banned.
+                            
                             <h3 class="text-1xl font-bold mt-4 mb-1">Guidelines</h3>
                             <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
                                 <li>No trolling, for both the question and answer. We understand your urge to demonstrate your humour, but please keep it in check - you can laugh after HSC results.</li>
@@ -137,10 +142,10 @@ app.get('/about', async (c) => {
                     <section id="essays" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Essays</h2>
                         <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
+                            [13 Sep] This feature may be reworked. <br></br>
                             Students can upload their essays for others to read and learn from / give feedback or comment.
 
-                            <h3 class="text-1xl font-bold mt-4 mb-1">Requirements</h3>
-                            Not banned.
+                            
                             <br></br>
                             <br></br>
                             Additionally, to reward students giving genuine feedback, and to avoid over-reliance, there is a hidden points system. Though, it is very unlikely that you will be restricted due to this feature.
@@ -229,14 +234,15 @@ app.get('/about', async (c) => {
                         <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
                             <h3 class="text-1xl font-bold mt-4 mb-1">What if data is lost before important exams?</h3>
                             The database and storage provider of this website is Cloudflare - which features a built-in backup system that allows for data to be restored to any snapshots in the past 30 days. Additionally, we will manually backup all the data before e.g. Trials and HSC.
-                            <br></br>
-                            <h3 class="text-1xl font-bold mt-4 mb-1">Is there support for SBHS students outside of Class of 2027?</h3>
-                            We do not currently support students outside of Class of 2027 (as the website was established so recently). However, resources will be passed down to the next cohort, and we may work on adding support for other cohorts in the future depending on demand.
+                            
+                            
                             <br></br>
                             <h3 class="text-1xl font-bold mt-4 mb-1">Who is behind all this? Does the school know?</h3>
                             We are a group of students consisted mainly of subject duxes and students assuming leadership roles, as we gathered to discuss efficient methods to better our cohort academically. The website is programmed by a group of students taking Software Engineering.
                             <br></br>
                             We have inquired and consulted with Software Engineering teacher and our Year Advisors, and we express our sincere gratitude for their support.
+                            <br></br>
+                            [Sep 13] HighHelp is also honoured to be recognised by our Principal, Mr. Barris, and our Deputy Teacher Ms. Ibbott. <br></br>See more: <a href="https://sydneyhigh.school/publications/document-library/doc_view/8864-high-notes-vol-27-no-24-august-14-2026"><u>High Notes Vol 27 No 24</u></a>
                             <br></br>
                             <h3 class="text-1xl font-bold mt-4 mb-1">Ask more questions in the Contact section!</h3>
 
@@ -253,8 +259,9 @@ app.get('/about', async (c) => {
                         <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
 
                             <ul class="list-disc list-inside text-gray-700 dark:text-neutral-300 leading-relaxed">
-                                <li>Use the above feedback form. We read each feedback carefully and will respond within one day.</li>
+                                <li>Use the above feedback form. We read each feedback carefully.</li>
                                 <li>Contact any SRCs for additional information.</li>
+                                <li>Email Ricky 457297106@student.sbhs.nsw.edu. </li>
                                 
                             </ul>
 
