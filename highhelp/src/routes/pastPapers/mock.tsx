@@ -127,6 +127,8 @@ app.get('/mock-exams/create', async (c) => {
 
     const topics = await c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject).all()
 
+    const schools = await c.env.DB.prepare('SELECT DISTINCT school_name FROM papers WHERE subject = ? ORDER BY school_name ASC').bind(subject).all()
+
     return c.html(
         <Layout title={`Create Mock Exam - ${subject}`} user={user} latex={true}>
             <div class="max-w-3xl mx-auto">
@@ -164,7 +166,7 @@ app.get('/mock-exams/create', async (c) => {
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div>
+                                    <div class="md:col-span-3">
                                         <label class="block font-bold text-gray-700 dark:text-neutral-300 mb-2">Topic Filter</label>
                                         <div class="max-h-48 overflow-y-auto border border-gray-300 dark:border-neutral-600 rounded-md p-2 bg-white dark:bg-neutral-900 space-y-1">
                                             {topics.results.length === 0 && <p class="text-sm text-gray-400 dark:text-neutral-500">No topics validation</p>}
@@ -175,6 +177,15 @@ app.get('/mock-exams/create', async (c) => {
                                                 </label>
                                             ))}
                                         </div>
+                                    </div>
+                                    <div>
+                                        <label class="block font-bold text-gray-700 dark:text-neutral-300 mb-2">School Filter</label>
+                                        <select name="school" class="w-full rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                            <option value="">Any School</option>
+                                            {schools.results.map((s: any) => (
+                                                <option value={s.school_name}>{s.school_name}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div>
                                         <label class="block font-bold text-gray-700 dark:text-neutral-300 mb-2">Year</label>
@@ -254,6 +265,7 @@ app.post('/mock-exams/create-auto', async (c) => {
     }
     const filterYear = body['year'] as string
     const filterType = body['type'] as string
+    const filterSchool = body['school'] as string
 
     const sections: Record<string, number> = {}
     for (const key in body) {
@@ -305,6 +317,7 @@ app.post('/mock-exams/create-auto', async (c) => {
         }
         if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
         if (filterType) { query += ` AND q.question_type = ?`; params.push(filterType); }
+        if (filterSchool) { query += ` AND p.school_name = ?`; params.push(filterSchool); }
 
         query += ` GROUP BY q.id ORDER BY RANDOM()`
 

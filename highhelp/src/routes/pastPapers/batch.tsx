@@ -266,7 +266,7 @@ app.get('/past-papers/batch/view', async (c) => {
                                                         {Array.from({ length: (Number(q.marks) || 0) + 1 }, (_, m) => (
                                                             <button type="button"
                                                                 class={`mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors ${Number(attempt?.marks_awarded ?? 0) === m ? 'text-blue-700 dark:text-blue-400 underline' : 'text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline'}`}
-                                                                onclick={`document.getElementById('marks-${q.id}').value = ${m}; document.querySelectorAll('.mk-${q.id}').forEach(b => { b.className = 'mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline'; }); this.className = 'mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors text-blue-700 dark:text-blue-400 underline';`}
+                                                                onclick={`setMark(${q.id}, ${m}); saveQuestion(${q.id}, '${q.question_type === 'multiple_choice' ? 'mcq' : 'text'}', '${mode || ''}')`}
                                                             >{m}</button>
                                                         ))}
                                                     </div>
@@ -282,7 +282,7 @@ app.get('/past-papers/batch/view', async (c) => {
                                     {!answerRevealed && (
                                         <button type="button" id={`reveal-${q.id}`}
                                             class="w-full text-gray-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-semibold hover:underline transition-colors"
-                                            onclick={`document.getElementById('ans-${q.id}').style.display = 'block'; this.style.display = 'none';`}
+                                            onclick={`checkAnswer(${q.id}, '${q.question_type === 'multiple_choice' ? 'mcq' : 'text'}', ${JSON.stringify(q.mc_answer || '')}, ${Number(q.marks) || 0}, '${mode || ''}')`}
                                         >
                                             Check Answer
                                         </button>
@@ -315,6 +315,30 @@ app.get('/past-papers/batch/view', async (c) => {
 
                 let batchCompleted = ${completedCount};
                 const batchTotal = ${totalCount};
+
+                function setMark(qid, m) {
+                    const input = document.getElementById('marks-' + qid);
+                    if (input) input.value = m;
+                    document.querySelectorAll('.mk-' + qid).forEach(b => {
+                        b.className = parseInt(b.textContent) === m
+                            ? 'mk-' + qid + ' min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors text-blue-700 dark:text-blue-400 underline'
+                            : 'mk-' + qid + ' min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline';
+                    });
+                }
+
+                async function checkAnswer(qid, type, correct, maxMarks, mode) {
+                    const ans = document.getElementById('ans-' + qid);
+                    if (ans) ans.style.display = 'block';
+                    const btn = document.getElementById('reveal-' + qid);
+                    if (btn) btn.style.display = 'none';
+
+                    if (type === 'mcq') {
+                        const selected = document.querySelector('input[name="sel-' + qid + '"]:checked');
+                        const m = selected && selected.value === correct ? maxMarks : 0;
+                        setMark(qid, m);
+                        await saveQuestion(qid, 'mcq', mode);
+                    }
+                }
 
                 async function saveQuestion(qid, type, mode) {
                     const btn = document.getElementById('save-btn-' + qid);
@@ -383,16 +407,21 @@ app.post('/past-papers/batch/save', async (c) => {
 
     const body = await c.req.parseBody()
     const qId = parseInt(body['question_id'] as string)
-    const marks = parseInt((body['marks_awarded'] as string) || '0')
     const response = (body['response_content'] as string) || ''
     const selected = (body['selected_option'] as string) || null
     const notes = (body['marker_notes'] as string) || ''
     const mode = body['mode'] as string
 
-    const q = await c.env.DB.prepare('SELECT marks FROM exam_questions WHERE id = ?').bind(qId).first<any>()
+    const q = await c.env.DB.prepare('SELECT marks, question_type, mc_answer FROM exam_questions WHERE id = ?').bind(qId).first<any>()
     if (!q) return c.json({ success: false, error: 'Question not found' }, 404)
 
     const maxMarks = parseInt(q.marks) || 100
+    let marks = parseInt((body['marks_awarded'] as string) || '0')
+
+    if (q.question_type === 'multiple_choice' && selected && q.mc_answer) {
+        marks = selected === q.mc_answer ? maxMarks : 0
+    }
+
     const isComplete = marks >= maxMarks ? 1 : 0
 
     if (mode === 'review') {
