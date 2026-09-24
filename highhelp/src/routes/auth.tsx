@@ -222,10 +222,9 @@ app.get('/api/auth/callback', async (c) => {
 app.get('/login', (c) => {
     return c.html(
         <Layout title="Login">
-            <div class="flex flex-col md:flex-row min-h-[600px]">
+            <div class="flex flex-col">
 
-
-                <div class="w-full p-8 flex flex-col justify-center items-center bg-gray-50 border-r border-gray-200">
+                <div class="w-full min-h-[calc(100vh_-_8rem)] p-8 flex flex-col justify-center items-center bg-gray-50 border-b border-gray-200">
                     <h2 class="text-2xl font-bold mb-6 text-gray-800">Student Portal Login</h2>
                     <p class="text-gray-600 mb-6 text-center">Log in with your school account.</p>
 
@@ -234,25 +233,19 @@ app.get('/login', (c) => {
                     </a>
                     <p class="text-gray-600 mb-6 text-center"></p>
                 </div>
-                {/* 
 
-                <div class="w-full md:w-1/2 p-8 flex flex-col justify-center">
-                    <h2 class="text-2xl font-bold mb-6 text-blue-900">[DEPRECIATED] Manual Login</h2>
-                    <form action="/login" method="post" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Email Address</label>
-                            <input type="email" name="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border" placeholder="student@student.sbhs.nsw.edu.au" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">PIN</label>
-                            <input type="password" name="password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-3 border" placeholder="••••••••" />
-                        </div>
-                        <button type="submit" class="w-full bg-blue-800 text-white font-bold py-3 mb-6 rounded hover:bg-blue-900 transition">
+                <div class="w-full min-h-[calc(100vh_-_8rem)] flex flex-col justify-center items-center">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">Code</h2>
+                    
+                    <form action="/code-login" method="post" class="w-3/4 max-w-sm space-y-4">
+                        <input type="text" name="code" required
+                            class="block w-full rounded-md border-gray-300 shadow-sm p-3 border text-center text-lg tracking-widest font-mono uppercase"
+                            placeholder="" maxLength={20} />
+                        <button type="submit" class="w-full bg-gray-700 text-white font-bold py-3 rounded hover:bg-gray-800 transition">
                             Log In
                         </button>
-                        <p class="text-gray-600 mb-6 text-center">PS: This method is neither supported nor recommended - unless you are really, really concerned with your student portal privacy (and don't care about the timetable or 27 million potential bugs).. Then contact <u><a href = './about#contact'>us</a></u></p>
                     </form>
-                </div> */}
+                </div>
 
             </div>
         </Layout>
@@ -282,6 +275,46 @@ app.post('/login', async (c) => {
             <Layout title="Login Error">
                 <div class="p-4 bg-red-100 text-red-700 rounded text-center">
                     <p>Invalid email or password.</p>
+                    <a href="/login" class="underline mt-2 inline-block">Try Again</a>
+                </div>
+            </Layout>
+        )
+    }
+})
+
+app.post('/code-login', async (c) => {
+    const body = await c.req.parseBody()
+    const code = (body['code'] as string || '').trim()
+
+    if (!code) {
+        return c.html(
+            <Layout title="Code Login Error">
+                <div class="p-4 bg-red-100 text-red-700 rounded text-center max-w-md mx-auto mt-8">
+                    <p>Please enter a login code.</p>
+                    <a href="/login" class="underline mt-2 inline-block">Try Again</a>
+                </div>
+            </Layout>
+        )
+    }
+
+    const user = await c.env.DB.prepare('SELECT * FROM users WHERE password = ?').bind(code).first()
+
+    if (user) {
+        const isLocal = isLocalDev(c);
+        const sessionValue = await createSessionCookie(Number(user.id), c.env.SESSION_SECRET);
+        setCookie(c, 'user_id', sessionValue, {
+            path: '/',
+            httpOnly: true,
+            secure: !isLocal,
+            maxAge: 60 * 60 * 24 * 7,
+            sameSite: 'Lax'
+        });
+        return c.redirect('/')
+    } else {
+        return c.html(
+            <Layout title="Code Login Error">
+                <div class="p-4 bg-red-100 text-red-700 rounded text-center max-w-md mx-auto mt-8">
+                    <p>Invalid login code.</p>
                     <a href="/login" class="underline mt-2 inline-block">Try Again</a>
                 </div>
             </Layout>
