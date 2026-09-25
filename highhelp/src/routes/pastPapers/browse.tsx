@@ -1,11 +1,21 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getTopicIdsForHierarchy, getUser, parseTopicHierarchy, topicHierarchyKey } from '../../utils'
+import { getUser, parseTopicHierarchy, topicHierarchyKey } from '../../utils'
 import { canUploadPastPaper, PermissionLevel } from '../../permissions'
 import { SubjectSelector } from '../../components/SubjectSelector'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 import { PastPaperTabs } from './tabs'
+import {
+    PRACTICE_PAGE_SIZE,
+    RawPracticeFilters,
+    buildPracticeCountQuery,
+    buildPracticeListQuery,
+    buildPracticeRowsUrl,
+    buildPracticeSectionTypeQuery,
+    readRawPracticeFilters,
+    resolvePracticeFilters
+} from './practiceQuery'
 const app = new Hono<{ Bindings: Bindings }>()
 
 // Split MCQ question_text into stem + option texts (options are stored inline, e.g. "(A) Use cost centres")
@@ -34,6 +44,178 @@ const abbreviateSchool = (name: string) => {
     return words.map(w => w.charAt(0).toUpperCase()).join('');
 };
 
+type PracticeRow = {
+    id: number
+    paper_id: number
+    section_label: string
+    segment_label: string | null
+    question_number: string
+    question_type: string | null
+    marks: number | null
+    question_text: string | null
+    question_image_key: string | null
+    ordering_index: number | null
+    school_name: string
+    academic_year: number
+    is_completed: number | null
+    marks_awarded: number | null
+}
+
+type McqContent = { stem: string; options: Record<string, string> | null }
+
+const sectionNumber = (value: string) => {
+    const match = value.match(/\d+/);
+    return match ? parseInt(match[0], 10) : NaN;
+};
+
+const groupPracticeRows = (rows: PracticeRow[]) => {
+    const grouped = new Map<string, PracticeRow[]>();
+    for (const row of rows) {
+        const key = (row.section_label || '').trim() || 'Unsorted';
+        const current = grouped.get(key) || [];
+        current.push(row);
+        grouped.set(key, current);
+    }
+    return Array.from(grouped.entries()).sort(([a], [b]) => {
+        const aNumber = sectionNumber(a);
+        const bNumber = sectionNumber(b);
+        if (!Number.isNaN(aNumber) && !Number.isNaN(bNumber)) return aNumber - bNumber;
+        return a.localeCompare(b);
+    });
+};
+
+const renderPracticeRow = (row: PracticeRow, parsed: McqContent, practiceQueryString: string, mode: string | undefined, hasMcq: boolean) => {
+    const attemptUrl = `/past-papers/attempt/${row.id}?${practiceQueryString}`;
+    const isIncomplete = !row.marks || (!row.question_image_key && !row.question_text);
+    const clickAction = mode === 'select'
+        ? `const cb = document.querySelector('input[name="question_ids"][value="${row.id}"]'); if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change', { bubbles: true })); }`
+        : `window.location.href=${JSON.stringify(attemptUrl)}`;
+    const searchText = `${row.school_name} ${row.academic_year} ${row.section_label} ${row.question_number} ${row.question_text || ''} ${row.question_type || ''}`.toLowerCase();
+
+    return (
+        <tr data-question-id={row.id} data-search-text={searchText} onclick={clickAction}
+            class={`practice-row border-b border-gray-100 dark:border-neutral-800 align-top cursor-pointer transition-colors ${isIncomplete ? 'opacity-60' : 'hover:bg-blue-50 dark:hover:bg-neutral-800/60'}`}>
+            {mode === 'select' && (
+                <td class="py-2.5 pr-2" onclick="event.stopPropagation()">
+                    <input type="checkbox" name="question_ids" value={row.id} class="rounded border-gray-300 w-4 h-4 text-blue-600 focus:ring-blue-500" />
+                </td>
+            )}
+            <td class="py-2.5 pr-3 whitespace-nowrap font-medium text-gray-900 dark:text-white" title={row.school_name}>{abbreviateSchool(row.school_name)}</td>
+            <td class="py-2.5 pr-3 whitespace-nowrap text-gray-600 dark:text-neutral-400">{row.academic_year}</td>
+            <td class="py-2.5 pr-3 whitespace-nowrap font-mono text-xs text-gray-500 dark:text-neutral-400">
+                {row.is_completed ? <span class="text-green-600 dark:text-green-400 mr-1" title="Completed">✓</span> : null}{row.question_number}
+            </td>
+            <td class="py-2.5 pr-3 max-w-2xl text-gray-800 dark:text-neutral-200 leading-snug">
+                {parsed.options || row.question_type === 'multiple_choice' ? (
+                    parsed.stem || <span class="italic text-gray-400 dark:text-neutral-500">(see paper image)</span>
+                ) : row.question_text ? (
+                    <span class="whitespace-pre-wrap">{row.question_text}</span>
+                ) : row.question_image_key ? (
+                    <a href={attemptUrl} onclick="event.stopPropagation()" class="italic text-blue-600 dark:text-blue-400 hover:underline">[image question]</a>
+                ) : (
+                    <span class="italic text-gray-400 dark:text-neutral-500">—</span>
+                )}
+            </td>
+            {hasMcq && ['A', 'B', 'C', 'D'].map(label => (
+                <td class="py-2.5 pr-3 text-gray-600 dark:text-neutral-300">{parsed.options?.[label] || ''}</td>
+            ))}
+            <td class="py-2.5 pr-2 text-right font-bold text-gray-700 dark:text-neutral-200">{row.marks || '?'}</td>
+        </tr>
+    );
+};
+
+const renderPracticeSections = (rows: PracticeRow[], practiceQueryString: string, mode: string | undefined, mcqSections?: Set<string>) => {
+    if (rows.length === 0) {
+        return <div class="text-center py-12 text-gray-500">No questions found matching your filters.</div>;
+    }
+
+    return groupPracticeRows(rows).map(([sectionKey, sectionRows]) => {
+        const parsedRows = sectionRows.map(row => ({ row, parsed: parseMcqOptions(row.question_text) }));
+        const hasMcq = mcqSections
+            ? mcqSections.has(sectionKey)
+            : parsedRows.some(item => item.row.question_type === 'multiple_choice' || !!item.parsed.options);
+
+        return (
+            <section data-practice-section={sectionKey} class="mb-12">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-neutral-700">{sectionKey}</h2>
+                <div class="overflow-x-auto practice-table">
+                    <table class="w-full min-w-[760px] text-sm">
+                        <thead>
+                            <tr class="text-left text-[11px] uppercase tracking-wider text-gray-500 dark:text-neutral-400 border-b-2 border-gray-200 dark:border-neutral-700">
+                                {mode === 'select' && <th class="py-2 pr-2 w-8"></th>}
+                                <th class="py-2 pr-3 font-bold">Paper</th>
+                                <th class="py-2 pr-3 font-bold">Year</th>
+                                <th class="py-2 pr-3 font-bold">#</th>
+                                <th class="py-2 pr-3 font-bold">Question</th>
+                                {hasMcq && ['A', 'B', 'C', 'D'].map(label => (<th class="py-2 pr-3 font-bold min-w-[7rem]">{label}</th>))}
+                                <th class="py-2 pr-2 font-bold text-right">Marks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {parsedRows.map(item => renderPracticeRow(item.row, item.parsed, practiceQueryString, mode, hasMcq))}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        );
+    });
+};
+
+const buildPracticeQueryString = (raw: RawPracticeFilters, mode: string | undefined) => {
+    const params = new URLSearchParams({ source: 'practice' });
+    const values: Record<string, string> = {
+        school: raw.school,
+        topic: raw.topic,
+        topic_group: raw.topicGroup,
+        year: raw.year,
+        section: raw.section,
+        type: raw.type,
+        status: raw.status,
+        marks_min: raw.marksMin,
+        marks_max: raw.marksMax,
+        sort: raw.sort
+    };
+    if (mode) params.set('mode', mode);
+    Object.entries(values).forEach(([key, value]) => {
+        if (value) params.set(key, value);
+    });
+    return params.toString();
+};
+
+app.get('/past-papers/rows', async (c) => {
+    const user = await getUser(c);
+    if (!user) return c.json({ error: 'Unauthorized' }, 401);
+
+    const subject = subjectLabel(c.req.query('subject') || '');
+    if (!subject) return c.json({ error: 'Unknown subject' }, 400);
+
+    const raw = readRawPracticeFilters(key => c.req.query(key));
+    const filters = await resolvePracticeFilters(c.env.DB, subject, raw);
+    const mode = c.req.query('mode') || undefined;
+    const requestedOffset = parseInt(c.req.query('offset') || '0', 10);
+    const offset = Number.isFinite(requestedOffset) && requestedOffset > 0 ? requestedOffset : 0;
+
+    const list = buildPracticeListQuery(user.id, subject, filters, PRACTICE_PAGE_SIZE + 1, offset);
+    const sectionTypes = buildPracticeSectionTypeQuery(user.id, subject, filters);
+    const [listResult, sectionResult] = await c.env.DB.batch([
+        c.env.DB.prepare(list.sql).bind(...list.params),
+        c.env.DB.prepare(sectionTypes.sql).bind(...sectionTypes.params)
+    ]);
+    const mcqSections = new Set(
+        (sectionResult.results as { section_label: string; has_mcq: number }[])
+            .filter(row => row.has_mcq)
+            .map(row => (row.section_label || '').trim() || 'Unsorted')
+    );
+    const rows = (listResult.results as any[]).slice(0, PRACTICE_PAGE_SIZE);
+    const html = String(renderPracticeSections(rows as PracticeRow[], buildPracticeQueryString(raw, mode), mode, mcqSections));
+
+    return c.json({
+        html,
+        hasMore: listResult.results.length > PRACTICE_PAGE_SIZE,
+        nextOffset: offset + rows.length
+    });
+});
+
 app.get('/past-papers', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect('/login')
@@ -43,16 +225,6 @@ app.get('/past-papers', async (c) => {
 
 
     if (!subject) {
-
-        const recentPapers = await c.env.DB.prepare(`
-            SELECT p.*, count(q.id) as question_count 
-            FROM papers p 
-            LEFT JOIN exam_questions q ON p.id = q.paper_id 
-            GROUP BY p.id 
-            ORDER BY p.created_at DESC 
-            LIMIT 5
-        `).all();
-
         return c.html(
             <Layout title="Past Papers" user={user}>
                 <div class="mx-auto space-y-12">
@@ -120,9 +292,8 @@ app.get('/past-papers', async (c) => {
         const topicHierarchy = JSON.stringify(topicGroups.flatMap(group => group.topicIds.map((id: number) => ({ topic: group.name, id }))));
         const [papers, topicTotals] = await c.env.DB.batch([
             c.env.DB.prepare(`
-                SELECT p.*,
+                SELECT p.id, p.school_name, p.academic_year, p.paper_type, p.is_locked,
                        count(q.id) as question_count,
-                       COALESCE(SUM(q.marks), 0) as total_marks,
                        COALESCE(SUM(CASE WHEN ua.is_completed = 1 THEN 1 ELSE 0 END), 0) as completed_count
                 FROM papers p
                 LEFT JOIN exam_questions q ON p.id = q.paper_id AND q.is_deleted = 0
@@ -289,138 +460,44 @@ app.get('/past-papers', async (c) => {
         );
 
     } else if (tab === 'practice') {
-        const filterTopic = c.req.query('topic');
-        const filterTopicGroup = c.req.query('topic_group');
-        const filterSchool = c.req.query('school');
-        const filterYear = c.req.query('year');
-        const filterStatus = c.req.query('status'); // done, undone
-        const filterType = c.req.query('type');
-        const filterSection = c.req.query('section');
-        const filterMarksMin = c.req.query('marks_min');
-        const filterMarksMax = c.req.query('marks_max');
-        const sort = c.req.query('sort') || 'school_asc';
+        const rawFilters = readRawPracticeFilters(key => c.req.query(key));
+        const filters = await resolvePracticeFilters(c.env.DB, subject, rawFilters);
         const mode = c.req.query('mode');
+        const filterTopic = rawFilters.topic;
+        const filterTopicGroup = rawFilters.topicGroup;
+        const filterTopicId = filters.topicId;
+        const filterTopicLabel = filters.topicLabel;
+        const filterSchool = rawFilters.school;
+        const filterYear = rawFilters.year;
+        const filterStatus = rawFilters.status;
+        const filterType = rawFilters.type;
+        const filterSection = rawFilters.section;
+        const filterMarksMin = rawFilters.marksMin;
+        const filterMarksMax = rawFilters.marksMax;
+        const sort = rawFilters.sort;
+        const practiceQueryString = buildPracticeQueryString(rawFilters, mode);
 
-        // Topic may be appended as a name or passed as a legacy id; resolve either way
-        let filterTopicId = filterTopic || '';
-        let filterTopicLabel = filterTopic || '';
-        if (filterTopic) {
-            if (/^\d+$/.test(filterTopic)) {
-                const row: any = await c.env.DB.prepare('SELECT name FROM topics WHERE id = ?').bind(filterTopic).first();
-                if (row?.name) filterTopicLabel = row.name;
-            } else {
-                const row: any = await c.env.DB.prepare('SELECT id FROM topics WHERE subject = ? AND lower(name) = lower(?)').bind(subject, filterTopic).first();
-                filterTopicId = row ? String(row.id) : '-1';
-            }
-        }
-
-        const topicGroupIds = filterTopicGroup ? await getTopicIdsForHierarchy(c.env.DB, subject, filterTopicGroup) : [];
-        const practiceQuery = new URLSearchParams({ source: 'practice' });
-        const practiceFilters: Record<string, string | undefined> = {
-            school: filterSchool,
-            topic: filterTopicId,
-            topic_group: filterTopicGroup,
-            year: filterYear,
-            status: filterStatus,
-            sort,
-            type: filterType,
-            section: filterSection,
-            marks_min: filterMarksMin,
-            marks_max: filterMarksMax
-        };
-        for (const [key, value] of Object.entries(practiceFilters)) {
-            if (value) practiceQuery.set(key, value);
-        }
-        const practiceQueryString = practiceQuery.toString();
-
-        const params: any[] = [user?.id || null, subject];
-        let filterSql = '';
-
-        if (filterTopic && filterTopicGroup) {
-            if (topicGroupIds.length > 0) {
-                filterSql += ` AND qt.topic_id = ? AND qt.topic_id IN (SELECT value FROM json_each(?))`;
-                params.push(filterTopicId, JSON.stringify(topicGroupIds));
-            } else {
-                filterSql += ` AND 0`;
-            }
-        } else if (filterTopic) {
-            filterSql += ` AND qt.topic_id = ?`;
-            params.push(filterTopicId);
-        } else if (filterTopicGroup) {
-            if (topicGroupIds.length > 0) {
-                filterSql += ` AND qt.topic_id IN (SELECT value FROM json_each(?))`;
-                params.push(JSON.stringify(topicGroupIds));
-            } else {
-                filterSql += ` AND 0`;
-            }
-        }
-        if (filterSchool) { filterSql += ` AND p.school_name = ?`; params.push(filterSchool); }
-        if (filterYear) { filterSql += ` AND p.academic_year = ?`; params.push(filterYear); }
-        if (filterType) { filterSql += ` AND q.question_type = ?`; params.push(filterType); }
-        if (filterSection) { filterSql += ` AND q.section_label = ?`; params.push(filterSection); }
-        if (filterMarksMin) { filterSql += ` AND q.marks >= ?`; params.push(filterMarksMin); }
-        if (filterMarksMax) { filterSql += ` AND q.marks <= ?`; params.push(filterMarksMax); }
-
-        if (filterStatus === 'done') {
-            filterSql += ` AND ua.is_completed = 1`;
-        } else if (filterStatus === 'undone') {
-            filterSql += ` AND (ua.is_completed IS NULL OR ua.is_completed = 0)`;
-        }
-
-        const baseJoin = `
-            FROM exam_questions q
-            JOIN papers p ON q.paper_id = p.id
-            LEFT JOIN question_topics qt ON q.id = qt.question_id
-            LEFT JOIN topics t ON qt.topic_id = t.id
-            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
-            WHERE p.subject = ? AND q.is_deleted = 0
-            ${filterSql}
-        `;
-
-        let query = `
-            SELECT q.*, p.school_name, p.academic_year, 
-                   group_concat(t.name, ', ') as topic_names,
-                   ua.is_completed, ua.marks_awarded
-            ${baseJoin}
-            GROUP BY q.id
-        `;
-
-        let countQuery = `
-            SELECT COUNT(DISTINCT q.id) as total
-            ${baseJoin}
-        `;
-
-        if (sort === 'year_desc') query += ` ORDER BY p.academic_year DESC, q.ordering_index ASC`;
-        else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`;
-        else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`;
-
-        const [questions, countResult, allTopics, sections, schoolsResult] = await c.env.DB.batch([
-            c.env.DB.prepare(query).bind(...params),
-            c.env.DB.prepare(countQuery).bind(...params),
-            c.env.DB.prepare('SELECT * FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject),
-            c.env.DB.prepare('SELECT DISTINCT section_label FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE p.subject = ? ORDER BY section_label ASC').bind(subject),
+        const listQuery = buildPracticeListQuery(user.id, subject, filters, PRACTICE_PAGE_SIZE + 1, 0);
+        const countQuery = buildPracticeCountQuery(user.id, subject, filters);
+        const sectionTypesQuery = buildPracticeSectionTypeQuery(user.id, subject, filters);
+        const [questions, countResult, sectionTypesResult, allTopics, sections, schoolsResult] = await c.env.DB.batch([
+            c.env.DB.prepare(listQuery.sql).bind(...listQuery.params),
+            c.env.DB.prepare(countQuery.sql).bind(...countQuery.params),
+            c.env.DB.prepare(sectionTypesQuery.sql).bind(...sectionTypesQuery.params),
+            c.env.DB.prepare('SELECT id, name FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject),
+            c.env.DB.prepare('SELECT DISTINCT q.section_label FROM exam_questions q JOIN papers p ON q.paper_id = p.id WHERE p.subject = ? AND q.is_deleted = 0 ORDER BY q.section_label ASC').bind(subject),
             c.env.DB.prepare('SELECT DISTINCT school_name FROM papers WHERE subject = ? ORDER BY school_name ASC').bind(subject)
         ]);
 
-        const totalQuestions = (countResult.results[0] as { total: number })?.total || 0;
-
-        // Group questions by section for the table view
-        const sectionsMap = new Map<string, any[]>();
-        for (const q of questions.results as any[]) {
-            const key = (q.section_label || '').trim() || 'Unsorted';
-            if (!sectionsMap.has(key)) sectionsMap.set(key, []);
-            sectionsMap.get(key)!.push(q);
-        }
-        const secNumber = (s: string) => {
-            const m = s.match(/\d+/);
-            return m ? parseInt(m[0], 10) : NaN;
-        };
-        const sectionKeys = Array.from(sectionsMap.keys()).sort((a, b) => {
-            const na = secNumber(a), nb = secNumber(b);
-            if (!isNaN(na) && !isNaN(nb)) return na - nb;
-            return a.localeCompare(b);
-        });
-
+        const mcqSections = new Set(
+            (sectionTypesResult.results as { section_label: string; has_mcq: number }[])
+                .filter(row => row.has_mcq)
+                .map(row => (row.section_label || '').trim() || 'Unsorted')
+        );
+        const practiceRows = (questions.results as PracticeRow[]).slice(0, PRACTICE_PAGE_SIZE);
+        const totalQuestions = Number((countResult.results[0] as { total: number })?.total || 0);
+        const hasMore = questions.results.length > PRACTICE_PAGE_SIZE;
+        const nextOffset = practiceRows.length;
 
         content = (
             <div>
@@ -488,21 +565,11 @@ app.get('/past-papers', async (c) => {
                     </span>
                     <button type="button" id="af-toggle" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">+ filter</button>
 
-                    <span class="flex items-center gap-2">
-                        <span class="text-xs text-gray-400 dark:text-neutral-500 uppercase tracking-wide">Show</span>
-                        <select id="max-render" class="bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-600 rounded px-1.5 py-0.5 text-xs dark:text-white focus:outline-none">
-                            <option value="25">25</option>
-                            <option value="50" selected>50</option>
-                            <option value="75">75</option>
-                            <option value="100">100</option>
-                        </select>
-                    </span>
-
                     <span class="flex-grow"></span>
 
                     <label class="text-xs text-gray-400 dark:text-neutral-500 uppercase tracking-wide hidden sm:flex items-center gap-1.5">
                         <span id="search-count" class="text-gray-500 dark:text-neutral-400">
-                            <span id="visible-count">0</span>/<span id="total-count">0</span>
+                            <span id="visible-count">{practiceRows.length}</span>/<span id="total-count">{totalQuestions}</span>
                         </span>
                     </label>
 
@@ -576,91 +643,17 @@ app.get('/past-papers', async (c) => {
 
 
 
-                {questions.results.length === 0 ? (
+                {practiceRows.length === 0 ? (
                     <div class="text-center py-12 text-gray-500">No questions found matching your filters.</div>
                 ) : (
                     <form action="/past-papers/mock-exams/create-manual" method="post" id="manual-exam-form">
                         <input type="hidden" name="subject" value={subject} />
 
                         <p class="text-sm text-gray-500 dark:text-neutral-400 mb-8">
-                            {totalQuestions} question{totalQuestions === 1 ? '' : 's'} across {sectionKeys.length} section{sectionKeys.length === 1 ? '' : 's'}.
+                            Showing {practiceRows.length} of {totalQuestions} question{totalQuestions === 1 ? '' : 's'} across {groupPracticeRows(practiceRows).length} loaded section{groupPracticeRows(practiceRows).length === 1 ? '' : 's'}.
                         </p>
 
-                        {sectionKeys.map((secKey) => {
-                            const qs = sectionsMap.get(secKey)!.map((q: any) => ({
-                                ...q,
-                                parsed: parseMcqOptions(q.question_text)
-                            }));
-                            const hasMcq = qs.some((q: any) => q.question_type === 'multiple_choice' || !!q.parsed.options);
-
-                            return (
-                                <section class="mb-12">
-                                    <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-neutral-700">{secKey}</h2>
-                                    <div class="overflow-x-auto practice-table">
-                                        <table class="w-full min-w-[760px] text-sm">
-                                            <thead>
-                                                <tr class="text-left text-[11px] uppercase tracking-wider text-gray-500 dark:text-neutral-400 border-b-2 border-gray-200 dark:border-neutral-700">
-                                                    {mode === 'select' && <th class="py-2 pr-2 w-8"></th>}
-                                                    <th class="py-2 pr-3 font-bold">Paper</th>
-                                                    <th class="py-2 pr-3 font-bold">Year</th>
-                                                    <th class="py-2 pr-3 font-bold">#</th>
-                                                    <th class="py-2 pr-3 font-bold">Question</th>
-                                                    {hasMcq && ['A', 'B', 'C', 'D'].map(l => (<th class="py-2 pr-3 font-bold min-w-[7rem]">{l}</th>))}
-                                                    <th class="py-2 pr-2 font-bold text-right">Marks</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {qs.map((q: any) => {
-                                                    const attemptUrl = `/past-papers/attempt/${q.id}?${practiceQueryString}`;
-                                                    const isMcq = !!q.parsed.options;
-                                                    const parsed = isMcq ? q.parsed : null;
-                                                    const isIncomplete = !q.marks || (!q.question_image_key && !q.question_text);
-
-                                                    const clickAction = mode === 'select'
-                                                        ? `const cb = document.querySelector('input[name="question_ids"][value="${q.id}"]'); if(cb) cb.checked = !cb.checked;`
-                                                        : `window.location.href=${JSON.stringify(attemptUrl)}`;
-
-                                                    const searchText = `${q.school_name} ${q.academic_year} ${q.question_number} ${q.question_text || ''} ${q.topic_names || ''} ${q.question_type || ''}`.toLowerCase();
-
-                                                    return (
-                                                        <tr onclick={clickAction}
-                                                            data-search-text={searchText}
-                                                            class={`practice-row border-b border-gray-100 dark:border-neutral-800 align-top cursor-pointer transition-colors
-                                                            ${isIncomplete ? 'opacity-60' : 'hover:bg-blue-50 dark:hover:bg-neutral-800/60'}`}>
-                                                            {mode === 'select' && (
-                                                                <td class="py-2.5 pr-2" onclick="event.stopPropagation()">
-                                                                    <input type="checkbox" name="question_ids" value={q.id} class="rounded border-gray-300 w-4 h-4 text-blue-600 focus:ring-blue-500" />
-                                                                </td>
-                                                            )}
-                                                            <td class="py-2.5 pr-3 whitespace-nowrap font-medium text-gray-900 dark:text-white" title={q.school_name}>{abbreviateSchool(q.school_name)}</td>
-                                                            <td class="py-2.5 pr-3 whitespace-nowrap text-gray-600 dark:text-neutral-400">{q.academic_year}</td>
-                                                            <td class="py-2.5 pr-3 whitespace-nowrap font-mono text-xs text-gray-500 dark:text-neutral-400">
-                                                                {q.is_completed ? <span class="text-green-600 dark:text-green-400 mr-1" title="Completed">✓</span> : null}{q.question_number}
-                                                            </td>
-                                                            <td class="py-2.5 pr-3 max-w-2xl text-gray-800 dark:text-neutral-200 leading-snug">
-                                                                {parsed?.options ? (
-                                                                    parsed.stem || <span class="italic text-gray-400 dark:text-neutral-500">(see paper image)</span>
-                                                                ) : q.question_text ? (
-                                                                    <span class="whitespace-pre-wrap">{q.question_text}</span>
-                                                                ) : q.question_image_key ? (
-                                                                    <a href={attemptUrl} onclick="event.stopPropagation()" class="italic text-blue-600 dark:text-blue-400 hover:underline">[image question]</a>
-                                                                ) : (
-                                                                    <span class="italic text-gray-400 dark:text-neutral-500">—</span>
-                                                                )}
-                                                            </td>
-                                                            {hasMcq && ['A', 'B', 'C', 'D'].map(l => (
-                                                                <td class="py-2.5 pr-3 text-gray-600 dark:text-neutral-300">{(parsed?.options && parsed.options[l]) || ''}</td>
-                                                            ))}
-                                                            <td class="py-2.5 pr-2 text-right font-bold text-gray-700 dark:text-neutral-200">{q.marks || '?'}</td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </section>
-                            );
-                        })}
+                        <div id="practice-sections">{renderPracticeSections(practiceRows, practiceQueryString, mode, mcqSections)}</div>
 
                         {mode === 'select' && (
                             <div class="fixed bottom-0 left-0 w-full bg-white dark:bg-neutral-900 border-t dark:border-neutral-800 p-4 flex justify-between items-center shadow-lg z-50">
@@ -671,7 +664,8 @@ app.get('/past-papers', async (c) => {
                                             <input type="number" name="timer_minutes" placeholder="Timer (mins)" class="rounded border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-sm w-24" />
                                         </div>
                                     </div>
-                                    <div class="flex gap-4">
+                                    <div class="flex gap-4 items-center">
+                                        <span class="text-sm text-gray-600 dark:text-neutral-400"><span id="practice-selected-count">0</span> selected</span>
                                         <button type="submit" formaction="/past-papers/batch/export-pdf" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
                                             Download PDF
                                         </button>
@@ -685,71 +679,114 @@ app.get('/past-papers', async (c) => {
                     </form>
                 )}
 
+                {practiceRows.length > 0 && hasMore && (
+                    <div class="flex flex-col items-center gap-2 my-10">
+                        <button type="button" id="practice-load-more"
+                            data-next-offset={nextOffset}
+                            data-url={buildPracticeRowsUrl(subject, rawFilters, mode, 0)}
+                            class="px-5 py-2.5 rounded-lg border border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 font-bold hover:bg-blue-50 dark:hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            Load 50 more
+                        </button>
+                        <span class="text-xs text-gray-400 dark:text-neutral-500">Showing {practiceRows.length} of {totalQuestions}</span>
+                    </div>
+                )}
+
                 <script dangerouslySetInnerHTML={{ __html: `
                 (function() {
+                    var PAGE_SIZE = ${PRACTICE_PAGE_SIZE};
                     var searchInput = document.getElementById('practice-search');
-                    var maxRenderSelect = document.getElementById('max-render');
                     var visibleCountEl = document.getElementById('visible-count');
-                    var totalCountEl = document.getElementById('total-count');
-                    var rows = Array.prototype.slice.call(document.querySelectorAll('.practice-row'));
-                    var totalRows = rows.length;
+                    var sections = document.getElementById('practice-sections');
+                    var loadMoreBtn = document.getElementById('practice-load-more');
+                    var loading = false;
 
-                    if (totalCountEl) totalCountEl.textContent = totalRows;
+                    function allRows() {
+                        return Array.prototype.slice.call(document.querySelectorAll('.practice-row'));
+                    }
 
-                    function applyFiltersAndRender() {
+                    function applySearch() {
                         var term = searchInput ? searchInput.value.toLowerCase().trim() : '';
                         var visibleCount = 0;
-                        var renderedCount = 0;
-                        var maxRender = parseInt(maxRenderSelect.value, 10) || 100;
-
-                        rows.forEach(function(row) {
+                        allRows().forEach(function(row) {
                             var searchText = (row.getAttribute('data-search-text') || '').toLowerCase();
-                            var matchesSearch = !term || searchText.includes(term);
-
-                            if (matchesSearch) {
+                            var matches = !term || searchText.includes(term);
+                            if (matches) {
                                 visibleCount++;
-                                if (renderedCount < maxRender) {
-                                    row.style.display = '';
-                                    row.classList.remove('hidden');
-                                    renderedCount++;
-                                } else {
-                                    row.style.display = 'none';
-                                    row.classList.add('hidden');
-                                }
+                                row.classList.remove('hidden');
                             } else {
-                                row.style.display = 'none';
                                 row.classList.add('hidden');
                             }
                         });
-
-                        if (visibleCountEl) visibleCountEl.textContent = Math.min(visibleCount, maxRender);
-
-                        document.querySelectorAll('.practice-table').forEach(function(tableWrap) {
-                            var container = tableWrap.closest('section');
-                            if (!container) return;
-                            var visibleInSection = container.querySelectorAll('.practice-row:not(.hidden)');
-                            container.style.display = visibleInSection.length === 0 ? 'none' : '';
-                        });
+                        if (visibleCountEl) visibleCountEl.textContent = term ? visibleCount : allRows().length;
+                        if (sections) {
+                            Array.prototype.forEach.call(sections.querySelectorAll('[data-practice-section]'), function(section) {
+                                var visible = section.querySelectorAll('.practice-row:not(.hidden)').length;
+                                if (term) section.style.display = visible === 0 ? 'none' : '';
+                                else section.style.removeProperty('display');
+                            });
+                        }
                     }
 
                     if (searchInput) {
+                        searchInput.addEventListener('input', applySearch);
                         searchInput.addEventListener('keydown', function(e) {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                applyFiltersAndRender();
+                            if (e.key === 'Enter') { e.preventDefault(); applySearch(); }
+                        });
+                    }
+
+                    function appendSections(html) {
+                        var template = document.createElement('template');
+                        template.innerHTML = html;
+                        var incoming = template.content.querySelectorAll('[data-practice-section]');
+                        Array.prototype.forEach.call(incoming, function(newSection) {
+                            var key = newSection.getAttribute('data-practice-section');
+                            var existing = null;
+                            Array.prototype.forEach.call(sections.querySelectorAll('[data-practice-section]'), function(candidate) {
+                                if (candidate.getAttribute('data-practice-section') === key) existing = candidate;
+                            });
+                            if (existing) {
+                                var body = existing.querySelector('tbody');
+                                Array.prototype.forEach.call(newSection.querySelectorAll('tbody > tr'), function(tr) { body.appendChild(tr); });
+                            } else {
+                                sections.appendChild(newSection);
                             }
                         });
                     }
 
-                    if (maxRenderSelect) {
-                        maxRenderSelect.value = localStorage.getItem('practice_max_render') || '50';
-                        maxRenderSelect.addEventListener('change', function() {
-                            localStorage.setItem('practice_max_render', maxRenderSelect.value);
-                            applyFiltersAndRender();
+                    if (loadMoreBtn && sections) {
+                        loadMoreBtn.addEventListener('click', async function() {
+                            if (loading) return;
+                            loading = true;
+                            var originalText = loadMoreBtn.textContent;
+                            loadMoreBtn.disabled = true;
+                            loadMoreBtn.textContent = 'Loading…';
+                            try {
+                                var url = new URL(loadMoreBtn.dataset.url, window.location.origin);
+                                url.searchParams.set('offset', loadMoreBtn.dataset.nextOffset || '0');
+                                var res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+                                if (!res.ok) throw new Error('request failed');
+                                var data = await res.json();
+                                if (data.html) appendSections(data.html);
+                                if (typeof window.highhelpRestorePracticeSelection === 'function') window.highhelpRestorePracticeSelection();
+                                applySearch();
+                                if (data.hasMore) {
+                                    loadMoreBtn.dataset.nextOffset = String(data.nextOffset);
+                                    loadMoreBtn.disabled = false;
+                                    loadMoreBtn.textContent = originalText;
+                                } else {
+                                    loadMoreBtn.remove();
+                                }
+                            } catch (err) {
+                                loadMoreBtn.disabled = false;
+                                loadMoreBtn.textContent = originalText;
+                                console.error('Failed to load more questions', err);
+                            } finally {
+                                loading = false;
+                            }
                         });
                     }
 
-                    applyFiltersAndRender();
+                    applySearch();
                 })();
                 `}} />
 
@@ -779,30 +816,26 @@ app.get('/past-papers', async (c) => {
                                     if (e.target.checked) ids.add(String(e.target.value));
                                     else ids.delete(String(e.target.value));
                                     saveToLS(ids);
+                                    updateCount();
                                 }
                             }
 
-                            function persistToggle(qid, cb) {
-                                var ids = loadFromLS();
-                                if (cb.checked) ids.add(String(qid));
-                                else ids.delete(String(qid));
-                                saveToLS(ids);
+                            function updateCount() {
+                                var counter = document.getElementById('practice-selected-count');
+                                if (counter) counter.textContent = loadFromLS().size;
                             }
 
+                            function restore() {
+                                var ids = loadFromLS();
+                                form.querySelectorAll('input[name=question_ids]').forEach(function(cb) {
+                                    cb.checked = ids.has(String(cb.value));
+                                });
+                                updateCount();
+                            }
+
+                            window.highhelpRestorePracticeSelection = restore;
                             restore();
                             form.addEventListener('change', persist);
-
-                            document.querySelectorAll('[onclick*="cb.checked = !cb.checked"]').forEach(function(el) {
-                                var old = el.onclick;
-                                el.onclick = function(e) {
-                                    old.call(this, e);
-                                    var m = this.getAttribute('onclick').match(/value="(\\d+)"/);
-                                    if (m) {
-                                        var cb = document.querySelector('input[name=question_ids][value="' + m[1] + '"]');
-                                        if (cb) persistToggle(m[1], cb);
-                                    }
-                                };
-                            });
 
                             form.addEventListener('submit', function() {
                                 var ids = loadFromLS();

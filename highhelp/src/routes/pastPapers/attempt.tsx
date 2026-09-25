@@ -1,8 +1,14 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getTopicIdsForHierarchy, getUser, formatDate } from '../../utils'
+import { getUser, formatDate } from '../../utils'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
+import {
+    buildNavigationPlan,
+    buildNeighborQueries,
+    readRawPracticeFilters,
+    resolvePracticeFilters
+} from './practiceQuery'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -42,6 +48,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                ua.is_completed as ua_completed,
                ua.marker_notes as ua_notes,
                ua.updated_at as ua_updated,
+               ua.created_at as ua_created,
                ura.response_content as ura_response,
                ura.selected_option as ura_selected,
                ura.marks_awarded as ura_marks,
@@ -108,124 +115,55 @@ app.get('/past-papers/attempt/:id', async (c) => {
     }
 
     const source = c.req.query('source');
-    const filterTopic = c.req.query('topic');
-    const filterTopicGroup = c.req.query('topic_group');
-    const filterSchool = c.req.query('school');
-    const filterYear = c.req.query('year');
-    const filterStatus = c.req.query('status');
-    const filterType = c.req.query('type');
-    const filterSection = c.req.query('section');
-    const filterMarksMin = c.req.query('marks_min');
-    const filterMarksMax = c.req.query('marks_max');
-    const sort = c.req.query('sort') || 'school_asc';
+    const rawFilters = readRawPracticeFilters(key => c.req.query(key));
 
     const currentParams = new URLSearchParams({
         source: source || '',
         mode: mode || '',
-        school: filterSchool || '',
-        topic: filterTopic || '',
-        topic_group: filterTopicGroup || '',
-        year: filterYear || '',
-        status: filterStatus || '',
-        sort,
-        type: filterType || '',
-        section: filterSection || '',
-        marks_min: filterMarksMin || '',
-        marks_max: filterMarksMax || ''
+        school: rawFilters.school,
+        topic: rawFilters.topic,
+        topic_group: rawFilters.topicGroup,
+        year: rawFilters.year,
+        status: rawFilters.status,
+        sort: rawFilters.sort,
+        type: rawFilters.type,
+        section: rawFilters.section,
+        marks_min: rawFilters.marksMin,
+        marks_max: rawFilters.marksMax
     }).toString();
 
-    let allQuestions: { id: number, question_number: string, is_completed: number, marks_awarded: number | null, marks: number }[] = [];
+    let nextId: number | null = null;
+    let prevId: number | null = null;
+    let position = 0;
+    let total = 0;
 
-    // OPTIMIZATION 2: Avoid LEFT JOIN and GROUP BY entirely when mapping allQuestions
-    if (source === 'practice') {
-        let query = `
-            SELECT q.id, q.question_number, ua.is_completed, ua.marks_awarded, q.marks
-            FROM exam_questions q
-            JOIN papers p ON q.paper_id = p.id
-            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
-            WHERE p.subject = ? AND q.is_deleted = 0
-        `;
+    const currentId = parseInt(qId);
+    const plan = source === 'practice'
+        ? buildNavigationPlan({
+            source: 'practice',
+            userId: user.id,
+            subject: q.subject,
+            filters: await resolvePracticeFilters(c.env.DB, q.subject, rawFilters),
+            row: qRow
+        })
+        : source === 'review'
+            ? buildNavigationPlan({ source: 'review', userId: user.id, subject: q.subject, questionId: currentId, attemptCreatedAt: qRow.ua_created })
+            : buildNavigationPlan({ source: 'paper', userId: user.id, paperId: q.paper_id, row: qRow });
 
-        const params: any[] = [user.id, q.subject];
+    const neighbor = buildNeighborQueries(plan.base, plan.order, plan.keys, currentId);
+    const [positionResult, previousResult, nextResult] = await c.env.DB.batch([
+        c.env.DB.prepare(neighbor.position.sql).bind(...neighbor.position.params),
+        c.env.DB.prepare(neighbor.previous.sql).bind(...neighbor.previous.params),
+        c.env.DB.prepare(neighbor.next.sql).bind(...neighbor.next.params)
+    ]);
 
-        const topicGroupIds = filterTopicGroup ? await getTopicIdsForHierarchy(c.env.DB, q.subject, filterTopicGroup) : [];
-        if (filterTopic && filterTopicGroup) {
-            if (topicGroupIds.length > 0) {
-                query += ` AND EXISTS (SELECT 1 FROM question_topics qt WHERE qt.question_id = q.id AND qt.topic_id = ? AND qt.topic_id IN (SELECT value FROM json_each(?)))`;
-                params.push(filterTopic, JSON.stringify(topicGroupIds));
-            } else {
-                query += ` AND 0`;
-            }
-        } else if (filterTopic) {
-            query += ` AND EXISTS (SELECT 1 FROM question_topics qt WHERE qt.question_id = q.id AND qt.topic_id = ?)`;
-            params.push(filterTopic);
-        } else if (filterTopicGroup) {
-            if (topicGroupIds.length > 0) {
-                query += ` AND EXISTS (SELECT 1 FROM question_topics qt WHERE qt.question_id = q.id AND qt.topic_id IN (SELECT value FROM json_each(?)))`;
-                params.push(JSON.stringify(topicGroupIds));
-            } else {
-                query += ` AND 0`;
-            }
-        }
-        if (filterSchool) { query += ` AND p.school_name = ?`; params.push(filterSchool); }
-        if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
-        if (filterType) { query += ` AND q.question_type = ?`; params.push(filterType); }
-        if (filterSection) { query += ` AND q.section_label = ?`; params.push(filterSection); }
-        if (filterMarksMin) { query += ` AND q.marks >= ?`; params.push(filterMarksMin); }
-        if (filterMarksMax) { query += ` AND q.marks <= ?`; params.push(filterMarksMax); }
-
-        if (filterStatus === 'done') { query += ` AND ua.is_completed = 1`; }
-        else if (filterStatus === 'undone') { query += ` AND (ua.is_completed IS NULL OR ua.is_completed = 0)`; }
-
-        if (sort === 'year_desc') query += ` ORDER BY p.academic_year DESC, q.ordering_index ASC`;
-        else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`;
-        else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`;
-
-        const res = await c.env.DB.prepare(query).bind(...params).all<any>();
-        allQuestions = res.results;
-
-    } else if (source === 'review') {
-        // OPTIMIZATION 3: Replace per-row Select Correlated Subquery with a proper Window-function join
-        const query = `
-            SELECT q.id, q.question_number, ura.is_completed, ua.marks_awarded, q.marks
-            FROM exam_questions q
-            JOIN papers p ON q.paper_id = p.id
-            JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
-            LEFT JOIN (
-                SELECT question_id, is_completed
-                FROM (
-                    SELECT question_id, is_completed, ROW_NUMBER() OVER(PARTITION BY question_id ORDER BY created_at DESC) as rn
-                    FROM user_review_attempts
-                    WHERE user_id = ?
-                ) WHERE rn = 1
-            ) ura ON q.id = ura.question_id
-            WHERE p.subject = ?
-              AND q.is_deleted = 0
-              AND (ua.marks_awarded < q.marks OR ua.marks_awarded IS NULL)
-            ORDER BY ua.created_at DESC
-        `;
-        const res = await c.env.DB.prepare(query).bind(user.id, user.id, q.subject).all<any>();
-        allQuestions = res.results;
-
-    } else {
-        const res = await c.env.DB.prepare(`
-            SELECT q.id, q.question_number, ua.is_completed, ua.marks_awarded, q.marks 
-            FROM exam_questions q 
-            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
-            WHERE q.paper_id = ? AND q.is_deleted = 0
-            ORDER BY q.ordering_index ASC
-        `).bind(user.id, q.paper_id).all<any>();
-        allQuestions = res.results;
+    const stats = positionResult.results[0] as { total: number; before_count: number; found: number } | undefined;
+    if (stats && stats.found) {
+        total = Number(stats.total) || 0;
+        position = Number(stats.before_count) + 1;
     }
-
-    let nextId = null;
-    let prevId = null;
-    const currentIndex = allQuestions.findIndex(x => x.id === parseInt(qId));
-
-    if (currentIndex !== -1) {
-        if (currentIndex > 0) prevId = allQuestions[currentIndex - 1].id;
-        if (currentIndex < allQuestions.length - 1) nextId = allQuestions[currentIndex + 1].id;
-    }
+    prevId = (previousResult.results[0] as { id: number } | undefined)?.id ?? null;
+    nextId = (nextResult.results[0] as { id: number } | undefined)?.id ?? null;
 
     const completedDate = attempt?.updated_at ? formatDate(attempt.updated_at) : '';
     const answerRevealed = !!attempt?.is_completed;
@@ -260,7 +198,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <span class="text-xs text-gray-400 dark:text-neutral-500 font-medium hidden sm:inline">
-                            Q{currentIndex + 1} of {allQuestions.length}
+                            Q{position} of {total}
                         </span>
                         {prevId ? (
                             <a href={`/past-papers/attempt/${prevId}?${currentParams}`} class="px-2.5 py-1 rounded border dark:border-neutral-700 text-gray-700 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 text-sm font-bold transition-colors">← Prev</a>
@@ -274,36 +212,6 @@ app.get('/past-papers/attempt/:id', async (c) => {
                         )}
                     </div>
                 </div>
-
-                {/* Question Navigation Bar */}
-                {allQuestions.length > 0 && (
-                    <div class="flex items-center gap-1.5 overflow-x-auto pb-3 mb-2 shrink-0 w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                        {allQuestions.map((item, index) => {
-                            const isActive = item.id === parseInt(qId);
-                            const attempted = item.is_completed === 1 || (item.marks_awarded != null && item.marks_awarded >= 0);
-                            const isCorrect = item.marks_awarded != null && item.marks_awarded >= item.marks && item.marks > 0;
-
-                            let baseClass = "flex-shrink-0 flex items-center justify-center px-1 py-1 text-xs font-bold transition-colors cursor-pointer border-b-2 ";
-
-                            if (isActive) {
-                                baseClass += "border-blue-500 text-blue-700 dark:text-blue-400";
-                            } else if (isCorrect) {
-                                baseClass += "border-transparent text-green-600 dark:text-green-400 hover:border-green-300";
-                            } else if (attempted) {
-                                baseClass += "border-transparent text-amber-600 dark:text-amber-400 hover:border-amber-300";
-                            } else {
-                                baseClass += "border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:border-gray-300";
-                            }
-
-                            return (
-                                <a href={`/past-papers/attempt/${item.id}?${currentParams}`} class={baseClass} title={`Question ${item.question_number || index + 1}${item.marks_awarded != null ? ' — ' + item.marks_awarded + '/' + item.marks : ''}`}>
-                                    Q{item.question_number || index + 1}
-                                    {attempted && <span class="ml-1 text-[10px] opacity-80">{isCorrect ? '✓' : '•'}</span>}
-                                </a>
-                            );
-                        })}
-                    </div>
-                )}
 
                 {/* Main Form */}
                 <form action={`/past-papers/attempt/${qId}/save?${currentParams}`} method="post" id="attempt-form" class="flex-1 min-h-0 flex flex-col lg:flex-row bg-white dark:bg-neutral-900 overflow-hidden rounded-sm border dark:border-neutral-800">

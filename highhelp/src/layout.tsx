@@ -1,6 +1,7 @@
 import { html } from 'hono/html'
 
-export const Layout = (props: { title: string; children: any; user?: any; hideFooter?: boolean; latex?: boolean; noScroll?: boolean }) => {
+export const Layout = (props: { title: string; children: any; user?: any; hideFooter?: boolean; latex?: boolean; noScroll?: boolean; pdfCrop?: boolean }) => {
+  const needsPdfCrop = props.pdfCrop ?? (typeof props.children === 'string' && props.children.includes('pdf-crop'));
   return html`
     <!DOCTYPE html>
     <html lang="en">
@@ -572,6 +573,7 @@ ${props.latex ? html`
           </div>
         </footer>
         `}
+        ${needsPdfCrop ? html`
         <script>
             // PDF Crop Web Component
             class PdfCrop extends HTMLElement {
@@ -664,6 +666,7 @@ ${props.latex ? html`
                 customElements.define('pdf-crop', PdfCrop);
             }
         </script>
+        ` : ''}
         <script>
             // date & localisation
             document.addEventListener('DOMContentLoaded', () => {

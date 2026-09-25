@@ -109,10 +109,16 @@ export async function getSessionUserId(c: any): Promise<number | null> {
     }
 }
 
+const userCache = new WeakMap<object, any>();
+
 export async function getUser(c: any) {
+    if (userCache.has(c)) return userCache.get(c);
     const userId = await getSessionUserId(c);
-    if (!userId) return null;
-    return await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first();
+    const user = userId
+        ? await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first()
+        : null;
+    userCache.set(c, user);
+    return user;
 }
 
 // sort subjects based on the requested priority

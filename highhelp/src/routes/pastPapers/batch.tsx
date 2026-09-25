@@ -1,9 +1,17 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getTopicIdsForHierarchy, getUser } from '../../utils'
+import { getUser } from '../../utils'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import {
+    BATCH_PAGE_LIMIT,
+    buildBatchPracticeQuery,
+    buildPracticeCountQuery,
+    practiceUrlFilters,
+    readRawPracticeFilters,
+    resolvePracticeFilters
+} from './practiceQuery'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -16,95 +24,25 @@ app.get('/past-papers/batch/view', async (c) => {
     const mode = c.req.query('mode')
     const subject = c.req.query('subject')
 
-    const filterTopic = c.req.query('topic')
-    const filterTopicGroup = c.req.query('topic_group')
-    const filterSchool = c.req.query('school')
-    const filterYear = c.req.query('year')
-    const filterStatus = c.req.query('status')
-    const filterType = c.req.query('type')
-    const filterSection = c.req.query('section')
-    const filterMarksMin = c.req.query('marks_min')
-    const filterMarksMax = c.req.query('marks_max')
-    const sort = c.req.query('sort') || 'school_asc'
-
+    const raw = readRawPracticeFilters(key => c.req.query(key))
     let questions: any[] = []
     let headerTitle = 'Questions'
     let backUrl = '/past-papers'
+    let truncated = false
 
     if (source === 'practice' && subject) {
-        let query = `
-            SELECT q.*, p.subject, p.school_name, p.academic_year, p.id as paper_id,
-                   group_concat(t.name, ', ') as topic_names,
-                   ua.response_content as ua_response,
-                   ua.selected_option as ua_selected,
-                   ua.marks_awarded as ua_marks,
-                   ua.is_completed as ua_completed,
-                   ua.marker_notes as ua_notes,
-                   ua.updated_at as ua_updated
-            FROM exam_questions q
-            JOIN papers p ON q.paper_id = p.id
-            LEFT JOIN question_topics qt ON q.id = qt.question_id
-            LEFT JOIN topics t ON qt.topic_id = t.id
-            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
-            WHERE p.subject = ? AND q.is_deleted = 0
-        `
-        const params: any[] = [user.id, subject]
-
-        const topicGroupIds = filterTopicGroup ? await getTopicIdsForHierarchy(c.env.DB, subject, filterTopicGroup) : []
-        if (filterTopic && filterTopicGroup) {
-            if (topicGroupIds.length > 0) {
-                query += ` AND EXISTS (SELECT 1 FROM question_topics qt2 WHERE qt2.question_id = q.id AND qt2.topic_id = ? AND qt2.topic_id IN (SELECT value FROM json_each(?)))`
-                params.push(filterTopic, JSON.stringify(topicGroupIds))
-            } else {
-                query += ` AND 0`
-            }
-        } else if (filterTopic) {
-            query += ` AND EXISTS (SELECT 1 FROM question_topics qt2 WHERE qt2.question_id = q.id AND qt2.topic_id = ?)`
-            params.push(filterTopic)
-        } else if (filterTopicGroup) {
-            if (topicGroupIds.length > 0) {
-                query += ` AND EXISTS (SELECT 1 FROM question_topics qt2 WHERE qt2.question_id = q.id AND qt2.topic_id IN (SELECT value FROM json_each(?)))`
-                params.push(JSON.stringify(topicGroupIds))
-            } else {
-                query += ` AND 0`
-            }
-        }
-        if (filterSchool) { query += ` AND p.school_name = ?`; params.push(filterSchool) }
-        if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear) }
-        if (filterType) { query += ` AND q.question_type = ?`; params.push(filterType) }
-        if (filterSection) { query += ` AND q.section_label = ?`; params.push(filterSection) }
-        if (filterMarksMin) { query += ` AND q.marks >= ?`; params.push(filterMarksMin) }
-        if (filterMarksMax) { query += ` AND q.marks <= ?`; params.push(filterMarksMax) }
-        if (filterStatus === 'done') { query += ` AND ua.is_completed = 1` }
-        else if (filterStatus === 'undone') { query += ` AND (ua.is_completed IS NULL OR ua.is_completed = 0)` }
-
-        query += ` GROUP BY q.id`
-
-        if (sort === 'year_desc') query += ` ORDER BY p.academic_year DESC, q.ordering_index ASC`
-        else if (sort === 'year_asc') query += ` ORDER BY p.academic_year ASC, q.ordering_index ASC`
-        else query += ` ORDER BY p.school_name ASC, q.ordering_index ASC`
-
-        const res = await c.env.DB.prepare(query).bind(...params).all()
-        questions = res.results
+        const filters = await resolvePracticeFilters(c.env.DB, subject, raw)
+        const list = buildBatchPracticeQuery(user.id, subject, filters)
+        const count = buildPracticeCountQuery(user.id, subject, filters)
+        const [res, countResult] = await c.env.DB.batch([
+            c.env.DB.prepare(list.sql).bind(...list.params),
+            c.env.DB.prepare(count.sql).bind(...count.params)
+        ])
+        questions = res.results as any[]
+        const matching = Number((countResult.results[0] as { total: number })?.total || 0)
+        truncated = matching > questions.length
         headerTitle = `${subjectLabel(subject)} Practice Questions`
-
-        const backParams = new URLSearchParams({ subject, tab: 'practice' })
-        const backFilters: Record<string, string> = {
-            school: filterSchool || '',
-            topic: filterTopic || '',
-            topic_group: filterTopicGroup || '',
-            year: filterYear || '',
-            status: filterStatus || '',
-            sort,
-            type: filterType || '',
-            section: filterSection || '',
-            marks_min: filterMarksMin || '',
-            marks_max: filterMarksMax || ''
-        }
-        for (const [key, value] of Object.entries(backFilters)) {
-            if (value) backParams.set(key, value)
-        }
-        backUrl = `/past-papers?${backParams.toString()}`
+        backUrl = `/past-papers?${new URLSearchParams({ subject, tab: 'practice', ...practiceUrlFilters(raw) })}`
 
     } else if (source === 'review' && subject) {
         const query = `
@@ -178,6 +116,11 @@ app.get('/past-papers/batch/view', async (c) => {
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-gray-500 dark:text-neutral-400">{totalCount} questions</span>
+                        {truncated && (
+                            <span class="text-xs text-amber-600 dark:text-amber-400">
+                                (showing the first {BATCH_PAGE_LIMIT} — narrow your filters to see the rest)
+                            </span>
+                        )}
                         {totalCount > 0 && (
                             <button type="button" onclick="downloadPdfBatch()" class="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline transition-colors">
                                 ↓ PDF

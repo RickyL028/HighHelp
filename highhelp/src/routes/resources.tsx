@@ -668,6 +668,25 @@ const getMimeType = (filename: string) => {
     return map[ext || ''] || 'application/octet-stream';
 };
 
+const parseRangeHeader = (header: string | undefined): R2Range | undefined => {
+    if (!header) return undefined;
+    const match = header.match(/^bytes=(\d*)-(\d*)$/);
+    if (!match) return undefined;
+    const [, startRaw, endRaw] = match;
+    if (startRaw === '' && endRaw === '') return undefined;
+    if (startRaw === '') {
+        const suffix = parseInt(endRaw, 10);
+        if (!Number.isFinite(suffix) || suffix <= 0) return undefined;
+        return { suffix };
+    }
+    const offset = parseInt(startRaw, 10);
+    if (!Number.isFinite(offset)) return undefined;
+    if (endRaw === '') return { offset };
+    const length = parseInt(endRaw, 10) - offset + 1;
+    if (!Number.isFinite(length) || length <= 0) return undefined;
+    return { offset, length };
+};
+
 app.get('/download/*', async (c) => {
     try {
         const user = await getUser(c)
@@ -676,8 +695,17 @@ app.get('/download/*', async (c) => {
         const path = c.req.path;
         const prefix = '/download/';
         const key = path.slice(prefix.length);
-        const object = await c.env.BUCKET.get(key);
-        if (!object) return c.text('File not found', 404);
+        const rangeHeader = c.req.header('range');
+        const range = parseRangeHeader(rangeHeader);
+        const object = await c.env.BUCKET.get(key, {
+            range,
+            onlyIf: c.req.header('if-none-match') ? { etagMatches: c.req.header('if-none-match')! } : undefined
+        });
+
+        if (object === null) {
+            if (c.req.header('if-none-match')) return new Response(null, { status: 304 });
+            return c.text('File not found', 404);
+        }
 
         // --- NEW LOGIC ---
         // If the bucket metadata is missing or generic, use our helper
@@ -692,14 +720,28 @@ app.get('/download/*', async (c) => {
             await c.env.DB.prepare('UPDATE resources SET download_count = download_count + 1 WHERE id = ?').bind(id).run();
         }
 
-        return new Response(object.body, {
-            headers: {
-                'etag': object.httpEtag,
-                'Content-Type': contentType, // Use the detected type
-                // Ensure browser doesn't force download
-                'Content-Disposition': 'inline',
-            }
-        })
+        const cacheHeaders: Record<string, string> = {
+            'etag': object.httpEtag,
+            'Content-Type': contentType,
+            'Content-Disposition': 'inline',
+            'cache-control': 'private, max-age=86400',
+            'accept-ranges': 'bytes',
+        };
+
+        if (range && object.range && 'offset' in object.range && typeof object.range.offset === 'number') {
+            const offset: number = object.range.offset;
+            const size = object.range.length ?? object.size - offset;
+            return new Response(object.body, {
+                status: 206,
+                headers: {
+                    ...cacheHeaders,
+                    'Content-Length': String(size),
+                    'content-range': `bytes ${offset}-${offset + size - 1}/${object.size}`,
+                }
+            });
+        }
+
+        return new Response(object.body, { headers: cacheHeaders });
     } catch (e: any) {
         return c.text(`Download Failed: ${e.message}`, 500);
     }
