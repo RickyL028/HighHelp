@@ -2,18 +2,29 @@ import { getCookie } from 'hono/cookie'
 import { SUBJECTS } from './constants'
 
 export const PRIORITY_STANDARD = [
-    "English Advanced (HSC)",
+    "Mathematics 3U (HSC)",
+    "Mathematics 4U (HSC)",
+    "Physics (HSC)",
+    "Chemistry (HSC)",
+    "Biology (HSC)",
     "Mathematics 2U (HSC)",
-    "Physics",
-    "Chemistry",
-    "Biology",
-    "Economics",
-    "Business Studies",
-    "Modern History",
-    "Geography",
-    "Legal Studies",
-    "Software Engineering",
-    "Engineering Studies"
+    "Economics (HSC)",
+    "Business Studies (HSC)",
+    
+    "Legal Studies (HSC)",
+    "Geography (HSC)",
+
+    "Modern History (HSC)",
+    "Ancient History (HSC)",
+    
+    
+    "Music 2 (HSC)",
+    "Studies of Religion II (HSC)",
+    "English Extension 1 (HSC)",
+    "Health & Movement Science (HSC)",
+
+    "Software Engineering (HSC)",
+    "English Advanced (HSC)",
 ];
 
 export async function updatePoints(userId: number, amount: number, db: D1Database) {
@@ -26,12 +37,18 @@ export async function updatePoints(userId: number, amount: number, db: D1Databas
 
 
 export const PRIORITY_ESSAY = [
+    "English Advanced (HSC)",
     "English Advanced",
     "Economics",
+    "Business Studies (HSC)",
     "Business Studies",
+    "Modern History (HSC)",
+    "Ancient History (HSC)",
     "Modern History",
+    "Geography (HSC)",
     "Geography",
-    "Legal Studies"
+    "Legal Studies",
+    "Studies of Religion II (HSC)"
 ];
 
 // --- HELPER FUNCTIONS ---
@@ -108,11 +125,15 @@ export const getSortedSubjects = (type: 'standard' | 'essay') => {
 
     const popular = priorityList.filter(s => SUBJECTS.includes(s));
 
+    // Surface every (HSC) subject as popular too, so new current-year subjects are never missed.
+    const hscNotListed = SUBJECTS.filter(s => /\(HSC\)/.test(s) && !popular.includes(s));
+    const finalPopular = type === 'standard' ? [...popular, ...hscNotListed] : popular;
+
     const others = SUBJECTS
-        .filter(s => !(priorityList as string[]).includes(s))
+        .filter(s => !finalPopular.includes(s))
         .sort((a, b) => a.localeCompare(b));
 
-    return { popular, others };
+    return { popular: finalPopular, others };
 }
 
 // Derive the student's subject names from the timetable payload.

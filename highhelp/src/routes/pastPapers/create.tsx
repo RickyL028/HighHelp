@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { Layout } from '../../layout'
 import { getUser, logAction } from '../../utils'
 import { canUploadPastPaper } from '../../permissions'
+import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -16,10 +17,10 @@ app.get('/past-papers/create', async (c) => {
     const years = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
 
     return c.html(
-        <Layout title={`Add Paper - ${subject}`} user={user}>
+        <Layout title={`Add Paper - ${subjectLabel(subject)}`} user={user}>
             <div class="max-w-2xl mx-auto">
                 <div class="mb-6">
-                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}`} class="text-sm text-gray-500 dark:text-neutral-400 hover:underline">← Back to {subject}</a>
+                    <a href={`/past-papers?subject=${encodeURIComponent(subject)}`} class="text-sm text-gray-500 dark:text-neutral-400 hover:underline">← Back to {subjectLabel(subject)}</a>
                     <h1 class="text-2xl font-bold mt-2 dark:text-white">Add New Past Paper</h1>
                 </div>
 

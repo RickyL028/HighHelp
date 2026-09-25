@@ -6,7 +6,7 @@ import { SubjectSelector } from '../components/SubjectSelector'
 import { SubjectBadge, SubjectIcon } from '../components/SubjectBadge'
 
 import { Bindings, User } from '../types'
-import { ANNOUNCEMENT_SUBJECTS } from '../constants'
+import { ANNOUNCEMENT_SUBJECTS, subjectLabel } from '../constants'
 
 const app = new Hono<{ Bindings: Bindings }>()
 interface PostDetail {
@@ -118,11 +118,11 @@ const sql = `
 const { results } = await c.env.DB.prepare(sql).bind(subject).all()
 
 return c.html(
-    <Layout title={`${subject} Forum`} user={user}>
+    <Layout title={`${subjectLabel(subject)} Forum`} user={user}>
         <div class="mx-auto">
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <h1 class="text-3xl font-bold">{subject} Forum</h1>
+                    <h1 class="text-3xl font-bold">{subjectLabel(subject)} Forum</h1>
                     <a href="/forum" class="text-blue-600 hover:underline text-sm">← All Subjects</a>
                 </div>
                 {user ? (
@@ -151,7 +151,7 @@ return c.html(
             <div id="grid-view-container" class="space-y-4">
                 {results?.length === 0 ? (
                     <div class="bg-gray-50 p-8 text-center rounded border border-dashed border-gray-300">
-                        <p class="text-gray-500 mb-2">No discussions in {subject} yet.</p>
+                        <p class="text-gray-500 mb-2">No discussions in {subjectLabel(subject)} yet.</p>
                         {user ? (
                             <a href={`/forum/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 hover:underline">Start the first discussion!</a>
                         ) : (
@@ -267,7 +267,7 @@ return c.html(
                     <select name="subject" required class="w-full rounded-md border-gray-300 dark:border-neutral-600 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-neutral-700 dark:text-white">
                         <option value="" disabled selected={!preselectedSubject}>Select a Subject</option>
                         {ANNOUNCEMENT_SUBJECTS.map(s => (
-                            <option value={s} selected={s === preselectedSubject}>{s}</option>
+                            <option value={s} selected={s === preselectedSubject}>{subjectLabel(s)}</option>
                         ))}
                     </select>
                 </div>
@@ -348,7 +348,7 @@ return c.html(
         <div class="mx-auto">
             <div class="mb-4">
 
-                <a href={`/forum?subject=${encodeURIComponent(post.subject)}`} class="text-blue-600 dark:text-blue-400 hover:underline text-sm">← Back to {post.subject}</a>
+                <a href={`/forum?subject=${encodeURIComponent(post.subject)}`} class="text-blue-600 dark:text-blue-400 hover:underline text-sm">← Back to {subjectLabel(post.subject)}</a>
             </div>
 
             {/* Main Post */}

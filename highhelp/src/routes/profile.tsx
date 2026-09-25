@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
 import { getUser, renderTags, getFruitPermission, formatDate } from '../utils'
+import { subjectLabel } from '../constants'
 import { Bindings, User } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -177,7 +178,7 @@ app.get('/profile/contributions', async (c) => {
                                     <div class="bg-white dark:bg-neutral-800 p-4 rounded-xl border border-gray-300 dark:border-neutral-700 flex justify-between items-center group hover:border-blue-500 dark:hover:border-blue-400 transition-colors shadow-sm">
                                         <div>
                                             <h3 class="font-bold text-gray-800 dark:text-neutral-100">{r.title}</h3>
-                                            <p class="text-sm text-gray-500 dark:text-neutral-400">{r.subject} • {formatDate(r.created_at)}</p>
+                                            <p class="text-sm text-gray-500 dark:text-neutral-400">{subjectLabel(r.subject)} • {formatDate(r.created_at)}</p>
                                         </div>
                                         <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">Download</a>
                                     </div>

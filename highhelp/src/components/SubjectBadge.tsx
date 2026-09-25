@@ -1,3 +1,5 @@
+import { subjectLabel } from '../constants'
+
 interface SubjectColors { color: string; bg: string }
 
 export function getSubjectColors(subject: string): SubjectColors {
@@ -50,7 +52,7 @@ export function SubjectBadge({ subject, tab }: { subject: string; tab?: TabType 
     return (
         <span class={`inline-flex items-center gap-1 ${s.color} text-xs whitespace-nowrap`}>
             {tab && <TabIconSm tab={tab} />}
-            {subject}
+            {subjectLabel(subject)}
         </span>
     );
 }

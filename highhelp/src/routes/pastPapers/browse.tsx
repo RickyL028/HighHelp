@@ -3,6 +3,7 @@ import { Layout } from '../../layout'
 import { getUser } from '../../utils'
 import { canUploadPastPaper, PermissionLevel } from '../../permissions'
 import { SubjectSelector } from '../../components/SubjectSelector'
+import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 import { PastPaperTabs } from './tabs'
 const app = new Hono<{ Bindings: Bindings }>()
@@ -116,7 +117,7 @@ app.get('/past-papers', async (c) => {
         content = (
             <div>
                 <div class="flex items-center justify-between mb-6">
-                    <h1 class="text-3xl font-bold dark:text-white">{subject}</h1>
+                    <h1 class="text-3xl font-bold dark:text-white">{subjectLabel(subject)}</h1>
                     {canUpload && (
                         <a href={`/past-papers/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
                             + Add New Paper
@@ -133,7 +134,7 @@ app.get('/past-papers', async (c) => {
 
                 {papers.results.length === 0 ? (
                     <div class="text-center py-12 text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-dashed border-gray-300 dark:border-neutral-700">
-                        No papers found for {subject}.
+                        No papers found for {subjectLabel(subject)}.
                     </div>
                 ) : (
                     <div class="space-y-10">
@@ -777,13 +778,13 @@ app.get('/past-papers', async (c) => {
     }
 
     return c.html(
-        <Layout title={`Past Papers - ${subject}`} user={user} latex={true}>
+        <Layout title={`Past Papers - ${subjectLabel(subject)}`} user={user} latex={true}>
             <div class="mx-auto">
 
                 <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-neutral-400 mb-4">
                     <a href="/past-papers" class="hover:underline">Past Papers</a>
                     <span class="text-gray-300 dark:text-neutral-600">/</span>
-                    <span class="font-bold text-gray-700 dark:text-neutral-200">{subject}</span>
+                    <span class="font-bold text-gray-700 dark:text-neutral-200">{subjectLabel(subject)}</span>
                 </div>
 
 

@@ -1,4 +1,5 @@
 import { getSortedSubjects } from '../utils'
+import { subjectLabel } from '../constants'
 
 // usage: subject select filters for pages
 export const SubjectSelector = (props: { baseUrl: string, type: 'standard' | 'essay' }) => {
@@ -9,7 +10,7 @@ export const SubjectSelector = (props: { baseUrl: string, type: 'standard' | 'es
             href={`${props.baseUrl}?subject=${encodeURIComponent(subject)}`}
             class="inline-block bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-neutral-300 px-3 py-1 rounded text-xs font-medium hover:bg-blue-600 hover:text-white hover:border-blue-600 dark:hover:bg-blue-600 dark:hover:border-blue-600 transition mb-2 mr-2"
         >
-            {subject}
+            {subjectLabel(subject)}
         </a>
     );
 

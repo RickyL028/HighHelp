@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
 import { getUser } from '../../utils'
+import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 
@@ -69,7 +70,7 @@ app.get('/past-papers/batch/view', async (c) => {
 
         const res = await c.env.DB.prepare(query).bind(...params).all()
         questions = res.results
-        headerTitle = `${subject} Practice Questions`
+        headerTitle = `${subjectLabel(subject)} Practice Questions`
         backUrl = `/past-papers?subject=${encodeURIComponent(subject)}&tab=practice`
 
     } else if (source === 'review' && subject) {
@@ -95,7 +96,7 @@ app.get('/past-papers/batch/view', async (c) => {
         `
         const res = await c.env.DB.prepare(query).bind(user.id, subject).all()
         questions = res.results
-        headerTitle = `${subject} Review Queue`
+        headerTitle = `${subjectLabel(subject)} Review Queue`
         backUrl = `/past-papers?subject=${encodeURIComponent(subject)}&tab=review`
 
     } else if (paperId) {

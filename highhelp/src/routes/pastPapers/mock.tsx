@@ -4,6 +4,7 @@ import { Layout } from '../../layout'
 import { getUser } from '../../utils'
 import { Bindings } from '../../types'
 import { PastPaperTabs } from './tabs'
+import { subjectLabel } from '../../constants'
 const app = new Hono<{ Bindings: Bindings }>()
 
 
@@ -40,11 +41,11 @@ app.get('/mock-exams', async (c) => {
 `).bind(user.id, subject).all()
 
     return c.html(
-        <Layout title={`Mock Exams - ${subject}`} user={user} latex={true}>
+        <Layout title={`Mock Exams - ${subjectLabel(subject)}`} user={user} latex={true}>
             <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-neutral-400 mb-4">
                 <a href="/past-papers" class="hover:underline">Past Papers</a>
                 <span>/</span>
-                <span class="font-bold text-gray-700 dark:text-neutral-300">{subject}</span>
+                <span class="font-bold text-gray-700 dark:text-neutral-300">{subjectLabel(subject)}</span>
             </div>
             <PastPaperTabs subject={subject} activeTab="exam" />
             <div class="mx-auto space-y-8">
@@ -59,7 +60,7 @@ app.get('/mock-exams', async (c) => {
                 <div class="grid gap-4">
                     {exams.results.length === 0 ? (
                         <div class="text-center py-12 text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-900/50 rounded-lg border border-dashed border-gray-300 dark:border-neutral-700">
-                            You haven't created any mock exams for {subject} yet.
+                            You haven't created any mock exams for {subjectLabel(subject)} yet.
                         </div>
                     ) : (
                         exams.results.map((exam: any) => (
@@ -130,7 +131,7 @@ app.get('/mock-exams/create', async (c) => {
     const schools = await c.env.DB.prepare('SELECT DISTINCT school_name FROM papers WHERE subject = ? ORDER BY school_name ASC').bind(subject).all()
 
     return c.html(
-        <Layout title={`Create Mock Exam - ${subject}`} user={user} latex={true}>
+        <Layout title={`Create Mock Exam - ${subjectLabel(subject || '')}`} user={user} latex={true}>
             <div class="max-w-3xl mx-auto">
                 <div class="mb-6">
                     <a href={`/past-papers/mock-exams?subject=${encodeURIComponent(subject || '')}`} class="text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200 text-sm">

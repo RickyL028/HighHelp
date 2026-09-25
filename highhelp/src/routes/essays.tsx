@@ -5,7 +5,7 @@ import { canPostGeneral, canViewDeleted, canCommentModeration } from '../permiss
 import { SubjectSelector } from '../components/SubjectSelector'
 import { SubjectBadge, SubjectIcon } from '../components/SubjectBadge'
 import { Bindings, User } from '../types'
-import { SUBJECTS } from '../constants'
+import { SUBJECTS, subjectLabel } from '../constants'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -109,11 +109,11 @@ app.get('/essays', async (c) => {
     const { results } = await c.env.DB.prepare(sql).bind(subject).all()
 
     return c.html(
-        <Layout title={`${subject} Essays`} user={user}>
+        <Layout title={`${subjectLabel(subject)} Essays`} user={user}>
             <div class="mx-auto">
                 <div class="flex items-center justify-between mb-6">
                     <div>
-                        <h1 class="text-3xl font-bold dark:text-white">{subject} Essays</h1>
+                        <h1 class="text-3xl font-bold dark:text-white">{subjectLabel(subject)} Essays</h1>
                         <a href="/essays" class="text-blue-600 dark:text-blue-400 hover:underline text-sm">← All Subjects</a>
                     </div>
                     {user ? (
@@ -142,7 +142,7 @@ app.get('/essays', async (c) => {
                 <div id="grid-view-container" class="space-y-4">
                     {results?.length === 0 ? (
                         <div class="bg-gray-50 dark:bg-neutral-800 p-8 text-center rounded border border-dashed border-gray-300 dark:border-neutral-700">
-                            <p class="text-gray-500 dark:text-neutral-400 mb-2">No essays in {subject} yet.</p>
+                            <p class="text-gray-500 dark:text-neutral-400 mb-2">No essays in {subjectLabel(subject)} yet.</p>
                             {user ? (
                                 <a href={`/essays/create?subject=${encodeURIComponent(subject)}`} class="text-blue-600 dark:text-blue-400 hover:underline">Submit the first essay!</a>
                             ) : (
@@ -286,7 +286,7 @@ app.get('/essays/create', async (c) => {
                         <select name="subject" required class="w-full rounded-md border-gray-300 dark:border-neutral-600 shadow-sm p-3 border bg-white dark:bg-neutral-700 dark:text-white focus:ring-blue-500 focus:border-blue-500">
                             <option value="" disabled selected={!preselectedSubject}>Select a Subject</option>
                             {SUBJECTS.map(s => (
-                                <option value={s} selected={s === preselectedSubject}>{s}</option>
+                                <option value={s} selected={s === preselectedSubject}>{subjectLabel(s)}</option>
                             ))}
                         </select>
                     </div>
@@ -417,7 +417,7 @@ app.get('/essays/view/:id', async (c) => {
         <Layout title={essay.title} user={user}>
             <div class="mx-auto">
                 <div class="mb-4">
-                    <a href={`/essays?subject=${encodeURIComponent(essay.subject)}`} class="text-blue-600 dark:text-blue-400 hover:underline text-sm">← Back to {essay.subject}</a>
+                    <a href={`/essays?subject=${encodeURIComponent(essay.subject)}`} class="text-blue-600 dark:text-blue-400 hover:underline text-sm">← Back to {subjectLabel(essay.subject)}</a>
                 </div>
 
                 {/* Essay */}

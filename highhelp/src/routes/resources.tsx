@@ -4,6 +4,7 @@ import { getSortedSubjects, getUser, renderTags, updatePoints, logAction, format
 import { canUploadResource, canViewDeleted, canModerateSubject } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 import { SubjectBadge, SubjectIcon } from '../components/SubjectBadge'
+import { subjectLabel } from '../constants'
 
 import { Bindings } from '../types'
 
@@ -66,7 +67,7 @@ app.get('/resources', async (c) => {
                                 {allSubjects.map((sub: any) => (
                                     <label class="shrink-0 flex items-center gap-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-neutral-700 bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-neutral-700 py-1.5 px-3 rounded-full transition-colors">
                                         <input type="checkbox" value={sub} class="subject-cb rounded text-blue-600 focus:ring-blue-500 bg-white dark:bg-neutral-800 border-gray-300 dark:border-neutral-600 w-3.5 h-3.5" />
-                                        <span class="text-sm text-gray-700 dark:text-neutral-300 whitespace-nowrap select-none font-medium">{sub}</span>
+                                        <span class="text-sm text-gray-700 dark:text-neutral-300 whitespace-nowrap select-none font-medium">{subjectLabel(sub)}</span>
                                     </label>
                                 ))}
                             </div>
@@ -302,9 +303,9 @@ app.get('/resources', async (c) => {
     const { results } = await c.env.DB.prepare(sql).bind(subject).all()
 
     return c.html(
-        <Layout title={`Resources - ${subject}`} user={user}>
+        <Layout title={`Resources - ${subjectLabel(subject)}`} user={user}>
             <div class="flex items-center justify-between mb-6">
-                <h1 class="text-3xl font-bold">{subject} Resources</h1>
+                <h1 class="text-3xl font-bold">{subjectLabel(subject)} Resources</h1>
                 <a href="/resources" class="text-blue-600 hover:underline">← All Subjects</a>
             </div>
 
@@ -740,9 +741,9 @@ app.get('/resources/view/:id', async (c) => {
     const { results: otherResources } = await c.env.DB.prepare(othersSql).bind(resource.subject, resource.id).all();
 
     return c.html(
-        <Layout title={`${resource.title} - ${resource.subject}`} user={user}>
+        <Layout title={`${resource.title} - ${subjectLabel(resource.subject)}`} user={user}>
             <div class="max-w-6xl mx-auto py-8 px-4">
-                <a href={`/resources?subject=${encodeURIComponent(resource.subject)}`} class="text-blue-600 hover:underline text-sm inline-block mb-6">← Back to {resource.subject} Resources</a>
+                <a href={`/resources?subject=${encodeURIComponent(resource.subject)}`} class="text-blue-600 hover:underline text-sm inline-block mb-6">← Back to {subjectLabel(resource.subject)} Resources</a>
 
                 <div class="flex flex-col md:flex-row-reverse gap-10">
 
@@ -825,7 +826,7 @@ app.get('/resources/view/:id', async (c) => {
 
                     {/* Sidebar: other resources in this subject */}
                     <aside class="w-full md:w-64 shrink-0">
-                        <h2 class="text-xs font-bold tracking-wider text-gray-500 dark:text-neutral-400 pb-2 border-b border-gray-200 dark:border-neutral-800">More in {resource.subject}</h2>
+                        <h2 class="text-xs font-bold tracking-wider text-gray-500 dark:text-neutral-400 pb-2 border-b border-gray-200 dark:border-neutral-800">More in {subjectLabel(resource.subject)}</h2>
                         <ul class="divide-y divide-gray-100 dark:divide-neutral-800">
                             {otherResources?.length === 0 ? (
                                 <li class="py-3 text-xs italic text-gray-400 dark:text-neutral-500">No other resources yet.</li>

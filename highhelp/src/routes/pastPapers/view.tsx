@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { Layout } from '../../layout'
 import { getUser, logAction } from '../../utils'
 import { canUploadPastPaper, canCreateTopic, PermissionLevel } from '../../permissions'
+import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -85,7 +86,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                         <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-neutral-400 mb-1">
                             <a href="/past-papers" class="hover:underline">Papers</a>
                             <span class="text-gray-300 dark:text-neutral-600">/</span>
-                            <a href={`/past-papers?subject=${encodeURIComponent(paper.subject)}`} class="hover:underline">{paper.subject}</a>
+                            <a href={`/past-papers?subject=${encodeURIComponent(paper.subject)}`} class="hover:underline">{subjectLabel(paper.subject)}</a>
                             <span class="text-gray-300 dark:text-neutral-600">/</span>
                         </div>
                         <div class="flex items-center gap-3">

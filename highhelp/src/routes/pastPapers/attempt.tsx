@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
 import { getUser, formatDate } from '../../utils'
+import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -206,7 +207,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
     const mcqOptions = parsed.options;
 
     return c.html(
-        <Layout title={`Question - ${q.subject}`} user={user} latex={true}>
+        <Layout title={`Question - ${subjectLabel(q.subject)}`} user={user} latex={true}>
             <div class="w-full h-[calc(100vh-3rem)] flex flex-col p-2 max-w-[120rem] mx-auto">
 
                 {/* Header */}

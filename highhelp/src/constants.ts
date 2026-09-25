@@ -3,38 +3,41 @@ export const SUBJECTS = [
     "Business Studies",
     "Business Studies (HSC)",
     "Chemistry",
-    "Chinese Continuers",
-    "Chinese Continuers (HSC)",
-    "Classical Greek",
-    "Drama",
     "Economics",
     "Engineering Studies",
     "English Advanced",
     "English Advanced (HSC)",
-    "English 3U",
+    "English Extension 1 (HSC)",
     "Geography",
     "Geography (HSC)",
-    "German Continuers (HSC)",
-    "Health & Movement Science",
-    "Latin Continuers",
-    "Legal Studies",
-    "Mathematics 2U",
+    "Health & Movement Science (HSC)",
+    "Economics (HSC)",
+    "Software Engineering",
+    "Software Engineering (HSC)",
     "Mathematics 2U (HSC)",
-    "Mathematics 3U",
+    "Mathematics 3U (HSC)",
+    "Mathematics 4U (HSC)",
+    "Legal Studies (HSC)",
     "Modern History",
     "Modern History (HSC)",
-    "Music 2",
+    "Ancient History (HSC)",
     "Music 2 (HSC)",
-    "NSW School of Languages",
     "Physics",
-    "Software Engineering",
-    "Visual Arts",
     "Physics (HSC)",
     "Chemistry (HSC)",
     "Biology (HSC)",
+    "Studies of Religion II (HSC)",
     "Other",
 ] as const;
 
 export const ANNOUNCEMENT_SUBJECTS = ["All", ...SUBJECTS] as const;
+
+// The canonical subject key (as stored in the DB / used in ?subject= filters) may differ from
+// what we render in the UI. Bare names (the cohort's prior-year subjects) display with an
+// explicit "(Y11)" suffix; already-suffixed and special catch-all values are left untouched.
+const YEAR_SUFFIX = /\((?:HSC|Y1[0-9])\)$/;
+const SPECIAL_SUBJECTS = new Set(['All', 'General', 'Other']);
+export const subjectLabel = (key: string) =>
+    SPECIAL_SUBJECTS.has(key) || YEAR_SUFFIX.test(key) ? key : `${key} (Y11)`;
 
 export type Subject = typeof SUBJECTS[number];

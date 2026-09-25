@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { Layout } from '../layout'
 import { getUser, renderTags, logAction, formatDate } from '../utils'
 import { canPostAnnouncement, canViewDeleted, canModerateSubject } from '../permissions'
-import { ANNOUNCEMENT_SUBJECTS } from '../constants'
+import { ANNOUNCEMENT_SUBJECTS, subjectLabel } from '../constants'
 import { Bindings } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -55,7 +55,7 @@ app.get('/announcements', async (c) => {
                                         <label class="block text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-1">Subject</label>
                                         <select name="subject"
                                             class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white cursor-pointer">
-                                            {ANNOUNCEMENT_SUBJECTS.filter(s => canPostAnnouncement(user, s)).map(s => <option value={s}>{s}</option>)}
+                                            {ANNOUNCEMENT_SUBJECTS.filter(s => canPostAnnouncement(user, s)).map(s => <option value={s}>{subjectLabel(s)}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -84,7 +84,7 @@ app.get('/announcements', async (c) => {
 
                     {ANNOUNCEMENT_SUBJECTS.map(subject => (
                         <a href={`/announcements?subject=${encodeURIComponent(subject)}`} class={`px-4 py-1.5 rounded-lg shadow-sm text-sm font-medium transition-all ${subjectFilter === subject ? 'bg-blue-600 dark:bg-blue-600 text-white shadow-blue-500/20' : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 border border-gray-200 dark:border-neutral-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-800'}`}>
-                            {subject}
+                            {subjectLabel(subject)}
                         </a>
                     ))}
                 </div>
@@ -121,7 +121,7 @@ app.get('/announcements', async (c) => {
                                 <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2 leading-snug group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">{a.title}</h2>
 
                                 <div class="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 dark:text-neutral-400 mb-3">
-                                    <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{a.subject}</span>
+                                    <span class="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wide">{subjectLabel(a.subject)}</span>
                                     <span class="text-gray-300 dark:text-neutral-700">•</span>
                                     <span class="local-date" data-timestamp={a.created_at}>{formatDate(a.created_at)}</span>
                                     <span class="text-gray-300 dark:text-neutral-700">•</span>
@@ -174,7 +174,7 @@ app.get('/announcements', async (c) => {
                                         {formatDate(a.created_at)}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide">{a.subject}</span>
+                                        <span class="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide">{subjectLabel(a.subject)}</span>
                                     </td>
                                     <td class="px-6 py-4 text-sm text-gray-900 dark:text-neutral-100">
                                         <div class="font-bold">{a.title}</div>
@@ -246,7 +246,7 @@ app.get('/announcements/:id', async (c) => {
                 <div class="mb-4">
                     <a href={`/announcements?subject=${encodeURIComponent(ann.subject)}`} class="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1 font-medium transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                        Back to {ann.subject} Announcements
+                        Back to {subjectLabel(ann.subject)} Announcements
                     </a>
                 </div>
 
@@ -254,7 +254,7 @@ app.get('/announcements/:id', async (c) => {
                     <div class="p-8 border-b border-gray-100 dark:border-neutral-700/50">
                         {ann.is_deleted && <span class="text-xs font-bold text-red-600 dark:text-red-400 uppercase mb-4 block tracking-widest">Deleted</span>}
                         <div class="flex items-center gap-3 mb-6">
-                            <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-400 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider">{ann.subject}</span>
+                            <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-400 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider">{subjectLabel(ann.subject)}</span>
                             <span class="text-gray-400 dark:text-neutral-500 text-sm font-mono local-date" data-timestamp={ann.created_at} data-format="datetime">| {formatDate(ann.created_at)}</span>
                         </div>
                         <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white mb-8 leading-tight tracking-tight">{ann.title}</h1>
