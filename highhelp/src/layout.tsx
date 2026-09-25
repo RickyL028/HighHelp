@@ -41,35 +41,49 @@ ${props.latex ? html`
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
   
   <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // defined inside the listener to access the window global after load
-        if (window.renderMathInElement) {
-            window.renderMathInElement(document.body, {
-                delimiters: [
-                  {left: '$$', right: '$$', display: true},
-                  {left: '$', right: '$', display: false},
-                  {left: '\\\\(', right: '\\\\)', display: false},
-                  {left: '\\\\[', right: '\\\\]', display: true}
-                ],
-                throwOnError : false
-            });
-        } else {
-            // Fallback in case scripts load slower than DOMContentLoaded
-            window.addEventListener('load', function() {
-                if (window.renderMathInElement) {
-                    window.renderMathInElement(document.body, {
-                        delimiters: [
-                          {left: '$$', right: '$$', display: true},
-                          {left: '$', right: '$', display: false},
-                          {left: '\\\\(', right: '\\\\)', display: false},
-                          {left: '\\\\[', right: '\\\\]', display: true}
-                        ],
-                        throwOnError : false
-                    });
-                }
+    (function () {
+        // KaTeX is loaded from a CDN with \`defer\`, so it is normally ready by DOMContentLoaded.
+        // Elements added later (e.g. "Load 50 more" rows) are typeset on demand through
+        // window.__highhelpRenderMath, which queues them if the CDN is still in flight.
+        var options = {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '$', right: '$', display: false},
+                {left: '\\\\(', right: '\\\\)', display: false},
+                {left: '\\\\[', right: '\\\\]', display: true}
+            ],
+            throwOnError: false
+        };
+        var pending = [];
+        var attempts = 0;
+
+        function drain() {
+            if (!window.renderMathInElement || !pending.length) return;
+            var queued = pending.splice(0, pending.length);
+            queued.forEach(function (node) {
+                if (node && node.isConnected) window.renderMathInElement(node, options);
             });
         }
-    });
+
+        window.__highhelpRenderMath = function (node) {
+            if (!node) return;
+            if (window.renderMathInElement) {
+                window.renderMathInElement(node, options);
+            } else {
+                pending.push(node);
+            }
+        };
+
+        window.addEventListener('load', drain);
+        var timer = setInterval(function () {
+            drain();
+            if (window.renderMathInElement || ++attempts > 40) clearInterval(timer);
+        }, 250);
+
+        document.addEventListener('DOMContentLoaded', function () {
+            window.__highhelpRenderMath(document.body);
+        });
+    })();
   </script>
 ` : ''}
         <script>
@@ -667,6 +681,17 @@ ${props.latex ? html`
             }
         </script>
         ` : ''}
+        <script>
+            // TEMP-VERIFY: auto-trigger "Load 50 more" for headless KaTeX testing
+            if (location.search.includes('autoload=1')) {
+                window.addEventListener('load', function () {
+                    setTimeout(function () {
+                        var b = document.getElementById('practice-load-more');
+                        if (b) b.click();
+                    }, 300);
+                });
+            }
+        </script>
         <script>
             // date & localisation
             document.addEventListener('DOMContentLoaded', () => {

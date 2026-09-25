@@ -738,6 +738,7 @@ app.get('/past-papers', async (c) => {
                         var template = document.createElement('template');
                         template.innerHTML = html;
                         var incoming = template.content.querySelectorAll('[data-practice-section]');
+                        var added = [];
                         Array.prototype.forEach.call(incoming, function(newSection) {
                             var key = newSection.getAttribute('data-practice-section');
                             var existing = null;
@@ -746,11 +747,20 @@ app.get('/past-papers', async (c) => {
                             });
                             if (existing) {
                                 var body = existing.querySelector('tbody');
-                                Array.prototype.forEach.call(newSection.querySelectorAll('tbody > tr'), function(tr) { body.appendChild(tr); });
+                                Array.prototype.forEach.call(newSection.querySelectorAll('tbody > tr'), function(tr) {
+                                    body.appendChild(tr);
+                                    added.push(tr);
+                                });
                             } else {
                                 sections.appendChild(newSection);
+                                added.push(newSection);
                             }
                         });
+                        // KaTeX only typesets the document once on load, so newly appended
+                        // rows keep their raw delimiters until re-rendered here.
+                        if (window.__highhelpRenderMath) {
+                            added.forEach(function(node) { window.__highhelpRenderMath(node); });
+                        }
                     }
 
                     if (loadMoreBtn && sections) {
