@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getUser, formatDate } from '../../utils'
+import { getTopicIdsForHierarchy, getUser, formatDate } from '../../utils'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 
@@ -109,6 +109,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     const source = c.req.query('source');
     const filterTopic = c.req.query('topic');
+    const filterTopicGroup = c.req.query('topic_group');
     const filterSchool = c.req.query('school');
     const filterYear = c.req.query('year');
     const filterStatus = c.req.query('status');
@@ -118,7 +119,20 @@ app.get('/past-papers/attempt/:id', async (c) => {
     const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
 
-    const currentParams = `source=${source || ''}&mode=${mode || ''}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+    const currentParams = new URLSearchParams({
+        source: source || '',
+        mode: mode || '',
+        school: filterSchool || '',
+        topic: filterTopic || '',
+        topic_group: filterTopicGroup || '',
+        year: filterYear || '',
+        status: filterStatus || '',
+        sort,
+        type: filterType || '',
+        section: filterSection || '',
+        marks_min: filterMarksMin || '',
+        marks_max: filterMarksMax || ''
+    }).toString();
 
     let allQuestions: { id: number, question_number: string, is_completed: number, marks_awarded: number | null, marks: number }[] = [];
 
@@ -134,10 +148,24 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
         const params: any[] = [user.id, q.subject];
 
-        if (filterTopic) {
-            // Use EXISTS to filter without cloning rows or needing GROUP BY overhead
+        const topicGroupIds = filterTopicGroup ? await getTopicIdsForHierarchy(c.env.DB, q.subject, filterTopicGroup) : [];
+        if (filterTopic && filterTopicGroup) {
+            if (topicGroupIds.length > 0) {
+                query += ` AND EXISTS (SELECT 1 FROM question_topics qt WHERE qt.question_id = q.id AND qt.topic_id = ? AND qt.topic_id IN (SELECT value FROM json_each(?)))`;
+                params.push(filterTopic, JSON.stringify(topicGroupIds));
+            } else {
+                query += ` AND 0`;
+            }
+        } else if (filterTopic) {
             query += ` AND EXISTS (SELECT 1 FROM question_topics qt WHERE qt.question_id = q.id AND qt.topic_id = ?)`;
             params.push(filterTopic);
+        } else if (filterTopicGroup) {
+            if (topicGroupIds.length > 0) {
+                query += ` AND EXISTS (SELECT 1 FROM question_topics qt WHERE qt.question_id = q.id AND qt.topic_id IN (SELECT value FROM json_each(?)))`;
+                params.push(JSON.stringify(topicGroupIds));
+            } else {
+                query += ` AND 0`;
+            }
         }
         if (filterSchool) { query += ` AND p.school_name = ?`; params.push(filterSchool); }
         if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear); }
@@ -559,6 +587,7 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
 
     const source = c.req.query('source');
     const filterTopic = c.req.query('topic');
+    const filterTopicGroup = c.req.query('topic_group');
     const filterSchool = c.req.query('school');
     const filterYear = c.req.query('year');
     const filterStatus = c.req.query('status');
@@ -568,7 +597,20 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     const filterMarksMax = c.req.query('marks_max');
     const sort = c.req.query('sort') || 'school_asc';
 
-    const params = `source=${source || ''}&mode=${mode || ''}&school=${filterSchool || ''}&topic=${filterTopic || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+    const params = new URLSearchParams({
+        source: source || '',
+        mode: mode || '',
+        school: filterSchool || '',
+        topic: filterTopic || '',
+        topic_group: filterTopicGroup || '',
+        year: filterYear || '',
+        status: filterStatus || '',
+        sort,
+        type: filterType || '',
+        section: filterSection || '',
+        marks_min: filterMarksMin || '',
+        marks_max: filterMarksMax || ''
+    }).toString();
 
     if (action === 'complete' && nextId) {
         return c.redirect(`/past-papers/attempt/${nextId}?${params}`);

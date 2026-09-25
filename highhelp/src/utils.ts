@@ -236,6 +236,46 @@ export const formatDate = (dateInput: string | number | Date) => {
     const d = String(date.getDate()).padStart(2, '0');
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const y = String(date.getFullYear()).slice(-2);
-
     return `${d}-${m}-${y}`;
+}
+
+export type TopicHierarchy = {
+    topic: string;
+    subtopic: string | null;
+};
+
+export const normalizeTopicHierarchyLabel = (value: string) => value.trim().replace(/\s+/g, ' ');
+
+export function parseTopicHierarchy(name: string): TopicHierarchy {
+    const value = normalizeTopicHierarchyLabel(name);
+    const numberIndex = value.search(/\d/);
+
+    if (numberIndex > 0) {
+        return {
+            topic: normalizeTopicHierarchyLabel(value.slice(0, numberIndex)),
+            subtopic: normalizeTopicHierarchyLabel(value.slice(numberIndex))
+        };
+    }
+
+    const dashIndex = value.search(/[-–—]/);
+    if (dashIndex > 0) {
+        return {
+            topic: normalizeTopicHierarchyLabel(value.slice(0, dashIndex)),
+            subtopic: normalizeTopicHierarchyLabel(value.slice(dashIndex + 1))
+        };
+    }
+
+    return { topic: value, subtopic: null };
+}
+
+export const topicHierarchyKey = (value: string) => normalizeTopicHierarchyLabel(value).toLowerCase();
+
+export async function getTopicIdsForHierarchy(db: D1Database, subject: string, topic: string): Promise<number[]> {
+    const target = topicHierarchyKey(topic);
+    if (!target) return [];
+
+    const topics = await db.prepare('SELECT id, name FROM topics WHERE subject = ?').bind(subject).all<{ id: number; name: string }>();
+    return topics.results
+        .filter(row => topicHierarchyKey(parseTopicHierarchy(row.name).topic) === target)
+        .map(row => row.id);
 }

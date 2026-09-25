@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getUser } from '../../utils'
+import { getTopicIdsForHierarchy, getUser } from '../../utils'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
@@ -17,6 +17,7 @@ app.get('/past-papers/batch/view', async (c) => {
     const subject = c.req.query('subject')
 
     const filterTopic = c.req.query('topic')
+    const filterTopicGroup = c.req.query('topic_group')
     const filterSchool = c.req.query('school')
     const filterYear = c.req.query('year')
     const filterStatus = c.req.query('status')
@@ -49,9 +50,24 @@ app.get('/past-papers/batch/view', async (c) => {
         `
         const params: any[] = [user.id, subject]
 
-        if (filterTopic) {
+        const topicGroupIds = filterTopicGroup ? await getTopicIdsForHierarchy(c.env.DB, subject, filterTopicGroup) : []
+        if (filterTopic && filterTopicGroup) {
+            if (topicGroupIds.length > 0) {
+                query += ` AND EXISTS (SELECT 1 FROM question_topics qt2 WHERE qt2.question_id = q.id AND qt2.topic_id = ? AND qt2.topic_id IN (SELECT value FROM json_each(?)))`
+                params.push(filterTopic, JSON.stringify(topicGroupIds))
+            } else {
+                query += ` AND 0`
+            }
+        } else if (filterTopic) {
             query += ` AND EXISTS (SELECT 1 FROM question_topics qt2 WHERE qt2.question_id = q.id AND qt2.topic_id = ?)`
             params.push(filterTopic)
+        } else if (filterTopicGroup) {
+            if (topicGroupIds.length > 0) {
+                query += ` AND EXISTS (SELECT 1 FROM question_topics qt2 WHERE qt2.question_id = q.id AND qt2.topic_id IN (SELECT value FROM json_each(?)))`
+                params.push(JSON.stringify(topicGroupIds))
+            } else {
+                query += ` AND 0`
+            }
         }
         if (filterSchool) { query += ` AND p.school_name = ?`; params.push(filterSchool) }
         if (filterYear) { query += ` AND p.academic_year = ?`; params.push(filterYear) }
@@ -71,7 +87,24 @@ app.get('/past-papers/batch/view', async (c) => {
         const res = await c.env.DB.prepare(query).bind(...params).all()
         questions = res.results
         headerTitle = `${subjectLabel(subject)} Practice Questions`
-        backUrl = `/past-papers?subject=${encodeURIComponent(subject)}&tab=practice`
+
+        const backParams = new URLSearchParams({ subject, tab: 'practice' })
+        const backFilters: Record<string, string> = {
+            school: filterSchool || '',
+            topic: filterTopic || '',
+            topic_group: filterTopicGroup || '',
+            year: filterYear || '',
+            status: filterStatus || '',
+            sort,
+            type: filterType || '',
+            section: filterSection || '',
+            marks_min: filterMarksMin || '',
+            marks_max: filterMarksMax || ''
+        }
+        for (const [key, value] of Object.entries(backFilters)) {
+            if (value) backParams.set(key, value)
+        }
+        backUrl = `/past-papers?${backParams.toString()}`
 
     } else if (source === 'review' && subject) {
         const query = `
@@ -267,7 +300,7 @@ app.get('/past-papers/batch/view', async (c) => {
                                                         {Array.from({ length: (Number(q.marks) || 0) + 1 }, (_, m) => (
                                                             <button type="button"
                                                                 class={`mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors ${Number(attempt?.marks_awarded ?? 0) === m ? 'text-blue-700 dark:text-blue-400 underline' : 'text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline'}`}
-                                                                onclick={`setMark(${q.id}, ${m}); saveQuestion(${q.id}, '${q.question_type === 'multiple_choice' ? 'mcq' : 'text'}', '${mode || ''}')`}
+                                                                onclick={`setMark(${q.id}, ${m}); saveQuestion(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(mode || '')})`}
                                                             >{m}</button>
                                                         ))}
                                                     </div>
@@ -283,7 +316,7 @@ app.get('/past-papers/batch/view', async (c) => {
                                     {!answerRevealed && (
                                         <button type="button" id={`reveal-${q.id}`}
                                             class="w-full text-gray-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-semibold hover:underline transition-colors"
-                                            onclick={`checkAnswer(${q.id}, '${q.question_type === 'multiple_choice' ? 'mcq' : 'text'}', ${JSON.stringify(q.mc_answer || '')}, ${Number(q.marks) || 0}, '${mode || ''}')`}
+                                            onclick={`checkAnswer(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(q.mc_answer || '')}, ${Number(q.marks) || 0}, ${JSON.stringify(mode || '')})`}
                                         >
                                             Check Answer
                                         </button>
@@ -291,7 +324,7 @@ app.get('/past-papers/batch/view', async (c) => {
 
                                     <div class="flex justify-end gap-2 pt-2 border-t dark:border-neutral-700">
                                         <button type="button" id={`save-btn-${q.id}`}
-                                            onclick={`saveQuestion(${q.id}, '${q.question_type === 'multiple_choice' ? 'mcq' : 'text'}', '${mode || ''}')`}
+                                            onclick={`saveQuestion(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(mode || '')})`}
                                             class="px-4 py-1.5 text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline transition-colors"
                                         >
                                             Save

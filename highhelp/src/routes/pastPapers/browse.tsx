@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getUser } from '../../utils'
+import { getTopicIdsForHierarchy, getUser, parseTopicHierarchy, topicHierarchyKey } from '../../utils'
 import { canUploadPastPaper, PermissionLevel } from '../../permissions'
 import { SubjectSelector } from '../../components/SubjectSelector'
 import { subjectLabel } from '../../constants'
@@ -80,18 +80,70 @@ app.get('/past-papers', async (c) => {
     let content;
 
     if (tab === 'browse') {
-        const papers = await c.env.DB.prepare(`
-            SELECT p.*, 
-                   count(q.id) as question_count, 
-                   COALESCE(SUM(q.marks), 0) as total_marks,
-                   COALESCE(SUM(CASE WHEN ua.is_completed = 1 THEN 1 ELSE 0 END), 0) as completed_count
-            FROM papers p 
-            LEFT JOIN exam_questions q ON p.id = q.paper_id AND q.is_deleted = 0
-            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
-            WHERE p.subject = ? 
-            GROUP BY p.id 
-            ORDER BY p.school_name ASC, p.academic_year DESC, p.created_at DESC
-        `).bind(user.id, subject).all();
+        const topicCounts = await c.env.DB.prepare(`
+            SELECT t.id, t.name, COUNT(DISTINCT q.id) AS question_count
+            FROM topics t
+            JOIN question_topics qt ON qt.topic_id = t.id
+            JOIN exam_questions q ON q.id = qt.question_id AND q.is_deleted = 0
+            JOIN papers p ON p.id = q.paper_id
+            WHERE p.subject = ? AND t.subject = p.subject
+            GROUP BY t.id, t.name
+            ORDER BY t.name COLLATE NOCASE
+        `).bind(subject).all();
+
+        const topicMap = new Map<string, any>();
+        for (const topic of topicCounts.results as any[]) {
+            const hierarchy = parseTopicHierarchy(topic.name);
+            if (!hierarchy.topic) continue;
+
+            const key = topicHierarchyKey(hierarchy.topic);
+            const group = topicMap.get(key) || { name: hierarchy.topic, questionCount: 0, topicIds: [], subtopics: [] };
+            const questionCount = Number(topic.question_count) || 0;
+            group.topicIds.push(topic.id);
+            if (hierarchy.subtopic) group.subtopics.push({ id: topic.id, name: hierarchy.subtopic, questionCount });
+            topicMap.set(key, group);
+        }
+
+        const topicGroups = Array.from(topicMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        for (const group of topicGroups) {
+            group.subtopics.sort((a: any, b: any) => a.name.localeCompare(b.name));
+        }
+
+        const topicHierarchy = JSON.stringify(topicGroups.flatMap(group => group.topicIds.map((id: number) => ({ topic: group.name, id }))));
+        const [papers, topicTotals] = await c.env.DB.batch([
+            c.env.DB.prepare(`
+                SELECT p.*,
+                       count(q.id) as question_count,
+                       COALESCE(SUM(q.marks), 0) as total_marks,
+                       COALESCE(SUM(CASE WHEN ua.is_completed = 1 THEN 1 ELSE 0 END), 0) as completed_count
+                FROM papers p
+                LEFT JOIN exam_questions q ON p.id = q.paper_id AND q.is_deleted = 0
+                LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+                WHERE p.subject = ?
+                GROUP BY p.id
+                ORDER BY p.school_name ASC, p.academic_year DESC, p.created_at DESC
+            `).bind(user.id, subject),
+            c.env.DB.prepare(`
+                WITH topic_hierarchy AS (
+                    SELECT json_extract(value, '$.topic') AS topic,
+                           CAST(json_extract(value, '$.id') AS INTEGER) AS topic_id
+                    FROM json_each(?)
+                )
+                SELECT th.topic, COUNT(DISTINCT q.id) AS question_count
+                FROM topic_hierarchy th
+                JOIN question_topics qt ON qt.topic_id = th.topic_id
+                JOIN exam_questions q ON q.id = qt.question_id AND q.is_deleted = 0
+                JOIN papers p ON p.id = q.paper_id
+                JOIN topics t ON t.id = th.topic_id AND t.subject = p.subject
+                WHERE p.subject = ?
+                GROUP BY th.topic
+            `).bind(topicHierarchy, subject)
+        ]);
+
+        const totalByTopic = new Map((topicTotals.results as any[]).map(row => [topicHierarchyKey(row.topic), Number(row.question_count) || 0]));
+        for (const group of topicGroups) {
+            group.questionCount = totalByTopic.get(topicHierarchyKey(group.name)) || 0;
+        }
 
         // Group papers by school name; each school's papers are already ordered by year DESC
         const schoolMap = new Map<string, any[]>();
@@ -138,6 +190,36 @@ app.get('/past-papers', async (c) => {
                     </div>
                 ) : (
                     <div class="space-y-10">
+                        {topicGroups.map((group) => (
+                            <section key={group.name}>
+                                <div class="flex items-center justify-between mb-4">
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&topic_group=${encodeURIComponent(group.name)}`} title="Practice questions from this topic" class="flex items-center gap-2 hover:text-blue-700 dark:hover:text-blue-400 transition-colors">
+                                            {group.name}
+                                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                                        </a>
+                                        <span class="ml-1 text-sm font-medium text-gray-500 dark:text-neutral-400">
+                                            {group.questionCount} question{group.questionCount === 1 ? '' : 's'}
+                                        </span>
+                                    </h2>
+                                </div>
+                                {group.subtopics.length > 0 && (
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {group.subtopics.map((subtopic: any) => (
+                                            <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice&topic=${encodeURIComponent(String(subtopic.id))}`} class="block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-neutral-700 transition-colors group">
+                                                <h3 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 leading-snug">
+                                                    {subtopic.name}
+                                                </h3>
+                                                <div class="flex items-center justify-between gap-3 mt-3 text-xs text-gray-500 dark:text-neutral-400 font-mono border-t border-gray-100 dark:border-neutral-700 pt-2">
+                                                    <span>{subtopic.questionCount} question{subtopic.questionCount === 1 ? '' : 's'}</span>
+                                                </div>
+                                            </a>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
+                        ))}
+
                         {schoolKeys.map((school) => {
                             const schoolPapers = schoolMap.get(school)!;
                             const catTotal = schoolPapers.reduce((s: number, p: any) => s + (Number(p.question_count) || 0), 0);
@@ -200,6 +282,7 @@ app.get('/past-papers', async (c) => {
 
     } else if (tab === 'practice') {
         const filterTopic = c.req.query('topic');
+        const filterTopicGroup = c.req.query('topic_group');
         const filterSchool = c.req.query('school');
         const filterYear = c.req.query('year');
         const filterStatus = c.req.query('status'); // done, undone
@@ -223,10 +306,46 @@ app.get('/past-papers', async (c) => {
             }
         }
 
+        const topicGroupIds = filterTopicGroup ? await getTopicIdsForHierarchy(c.env.DB, subject, filterTopicGroup) : [];
+        const practiceQuery = new URLSearchParams({ source: 'practice' });
+        const practiceFilters: Record<string, string | undefined> = {
+            school: filterSchool,
+            topic: filterTopicId,
+            topic_group: filterTopicGroup,
+            year: filterYear,
+            status: filterStatus,
+            sort,
+            type: filterType,
+            section: filterSection,
+            marks_min: filterMarksMin,
+            marks_max: filterMarksMax
+        };
+        for (const [key, value] of Object.entries(practiceFilters)) {
+            if (value) practiceQuery.set(key, value);
+        }
+        const practiceQueryString = practiceQuery.toString();
+
         const params: any[] = [user?.id || null, subject];
         let filterSql = '';
 
-        if (filterTopic) { filterSql += ` AND qt.topic_id = ?`; params.push(filterTopicId); }
+        if (filterTopic && filterTopicGroup) {
+            if (topicGroupIds.length > 0) {
+                filterSql += ` AND qt.topic_id = ? AND qt.topic_id IN (SELECT value FROM json_each(?))`;
+                params.push(filterTopicId, JSON.stringify(topicGroupIds));
+            } else {
+                filterSql += ` AND 0`;
+            }
+        } else if (filterTopic) {
+            filterSql += ` AND qt.topic_id = ?`;
+            params.push(filterTopicId);
+        } else if (filterTopicGroup) {
+            if (topicGroupIds.length > 0) {
+                filterSql += ` AND qt.topic_id IN (SELECT value FROM json_each(?))`;
+                params.push(JSON.stringify(topicGroupIds));
+            } else {
+                filterSql += ` AND 0`;
+            }
+        }
         if (filterSchool) { filterSql += ` AND p.school_name = ?`; params.push(filterSchool); }
         if (filterYear) { filterSql += ` AND p.academic_year = ?`; params.push(filterYear); }
         if (filterType) { filterSql += ` AND q.question_type = ?`; params.push(filterType); }
@@ -309,6 +428,7 @@ app.get('/past-papers', async (c) => {
                     {([
                         ['school', filterSchool],
                         ['topic', filterTopicLabel],
+                        ['topic group', filterTopicGroup],
                         ['year', filterYear],
                         ['section', filterSection],
                         ['type', filterType && ({ 'multiple_choice': 'MCQ', 'short_answer': 'Short answer', 'extended_response': 'Extended' } as any)[filterType] || filterType],
@@ -316,13 +436,13 @@ app.get('/past-papers', async (c) => {
                         ['marks ≥', filterMarksMin],
                         ['marks ≤', filterMarksMax]
                     ] as Array<[string, string]>).filter(([, v]) => v).map(([k, v]) => {
-                        const removeKey = k.startsWith('marks') ? (k.endsWith('≥') ? 'marks_min' : 'marks_max') : k;
+                        const removeKey = k === 'topic group' ? 'topic_group' : k.startsWith('marks') ? (k.endsWith('≥') ? 'marks_min' : 'marks_max') : k;
                         const chipUrl = (() => {
                             const p = new URLSearchParams();
                             p.set('subject', subject); p.set('tab', 'practice');
                             if (mode) p.set('mode', mode);
                             const vals: Record<string, string> = {
-                                school: filterSchool || '', topic: filterTopic || '', year: filterYear || '',
+                                school: filterSchool || '', topic: filterTopic || '', topic_group: filterTopicGroup || '', year: filterYear || '',
                                 section: filterSection || '', type: filterType || '', status: filterStatus || '',
                                 marks_min: filterMarksMin || '', marks_max: filterMarksMax || ''
                             };
@@ -387,7 +507,7 @@ app.get('/past-papers', async (c) => {
                         </select>
                     </label>
                     <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice${mode ? '&mode=' + mode : ''}`} class="text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline">reset</a>
-                    <a href={`/past-papers/batch/view?source=practice&subject=${encodeURIComponent(subject)}&school=${filterSchool || ''}&topic=${filterTopicId}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`} class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Batch Mode</a>
+                    <a href={`/past-papers/batch/view?source=practice&subject=${encodeURIComponent(subject)}&school=${encodeURIComponent(filterSchool || '')}&topic=${filterTopicId}&topic_group=${encodeURIComponent(filterTopicGroup || '')}&year=${encodeURIComponent(filterYear || '')}&status=${encodeURIComponent(filterStatus || '')}&sort=${encodeURIComponent(sort)}&type=${encodeURIComponent(filterType || '')}&section=${encodeURIComponent(filterSection || '')}&marks_min=${encodeURIComponent(filterMarksMin || '')}&marks_max=${encodeURIComponent(filterMarksMax || '')}`} class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Batch Mode</a>
                 </div>
 
                 <script dangerouslySetInnerHTML={{ __html: `
@@ -483,14 +603,14 @@ app.get('/past-papers', async (c) => {
                                             </thead>
                                             <tbody>
                                                 {qs.map((q: any) => {
-                                                    const params = `source=practice&school=${filterSchool || ''}&topic=${filterTopicId || ''}&year=${filterYear || ''}&status=${filterStatus || ''}&sort=${sort}&type=${filterType || ''}&section=${filterSection || ''}&marks_min=${filterMarksMin || ''}&marks_max=${filterMarksMax || ''}`;
+                                                    const attemptUrl = `/past-papers/attempt/${q.id}?${practiceQueryString}`;
                                                     const isMcq = !!q.parsed.options;
                                                     const parsed = isMcq ? q.parsed : null;
                                                     const isIncomplete = !q.marks || (!q.question_image_key && !q.question_text);
 
                                                     const clickAction = mode === 'select'
                                                         ? `const cb = document.querySelector('input[name="question_ids"][value="${q.id}"]'); if(cb) cb.checked = !cb.checked;`
-                                                        : `window.location.href='/past-papers/attempt/${q.id}?${params}'`;
+                                                        : `window.location.href=${JSON.stringify(attemptUrl)}`;
 
                                                     const searchText = `${q.school_name} ${q.academic_year} ${q.question_number} ${q.question_text || ''} ${q.topic_names || ''} ${q.question_type || ''}`.toLowerCase();
 
@@ -515,7 +635,7 @@ app.get('/past-papers', async (c) => {
                                                                 ) : q.question_text ? (
                                                                     <span class="whitespace-pre-wrap">{q.question_text}</span>
                                                                 ) : q.question_image_key ? (
-                                                                    <a href={`/past-papers/attempt/${q.id}?${params}`} onclick="event.stopPropagation()" class="italic text-blue-600 dark:text-blue-400 hover:underline">[image question]</a>
+                                                                    <a href={attemptUrl} onclick="event.stopPropagation()" class="italic text-blue-600 dark:text-blue-400 hover:underline">[image question]</a>
                                                                 ) : (
                                                                     <span class="italic text-gray-400 dark:text-neutral-500">—</span>
                                                                 )}
