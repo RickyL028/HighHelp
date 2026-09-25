@@ -1,7 +1,18 @@
 import { html } from 'hono/html'
 
+// Recursively checks the hono/jsx node graph for a <pdf-crop> element.
+// props.children is a JSX node (or array of nodes), never a string, so a
+// `typeof === 'string'` check here always fails and the script never loads.
+const containsPdfCrop = (node: any): boolean => {
+	if (node == null || typeof node !== 'object') return false;
+	if (Array.isArray(node)) return node.some(containsPdfCrop);
+	if (node.tag === 'pdf-crop') return true;
+	const kids = node.children ?? node.props?.children;
+	return kids ? containsPdfCrop(kids) : false;
+};
+
 export const Layout = (props: { title: string; children: any; user?: any; hideFooter?: boolean; latex?: boolean; noScroll?: boolean; pdfCrop?: boolean }) => {
-  const needsPdfCrop = props.pdfCrop ?? (typeof props.children === 'string' && props.children.includes('pdf-crop'));
+	const needsPdfCrop = props.pdfCrop ?? containsPdfCrop(props.children);
   return html`
     <!DOCTYPE html>
     <html lang="en">
