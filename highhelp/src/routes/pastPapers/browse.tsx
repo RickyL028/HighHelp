@@ -57,9 +57,17 @@ app.get('/past-papers', async (c) => {
             <Layout title="Past Papers" user={user}>
                 <div class="mx-auto space-y-12">
                     <section>
-                        <h1 class="text-3xl font-bold mb-6 dark:text-white">Past Paper Bank</h1>
-                        <p class="text-gray-600 dark:text-neutral-400 mb-8">Select a subject to browse structured past papers.</p>
+                        <h1 class="text-3xl font-bold mb-6 dark:text-white">Past Paper by Topic</h1>
+                        <p class="text-gray-600 dark:text-neutral-400 mb-8">Select a subject.</p>
                         <SubjectSelector baseUrl="/past-papers" type="standard" />
+                        <br></br>
+                        <br></br>
+                        <br></br>
+                        <br></br>
+                        <br></br>
+                        <p class="text-gray-600 dark:text-neutral-400 mb-8">Note: If your subject isn't listed here, it's for one of a few reasons: 1) it's not practical to include, e.g. Geography, where a significant syllabus change means older past papers aren't very valuable; 2) it's not really necessary, e.g. English Extension; or 3) too few people would benefit from it relative to the effort of maintaining it, e.g. language extensions, where the cost of importing and upkeeping papers grows with each addition. That said, if you really want a subject added, feel free to contact me and I'll see what I can do. </p>
+                        
+                        <p class="text-gray-600 dark:text-neutral-400 mb-8">Also, papers listed during my prelim year (ie: 2U maths + business studies + all Y11 subjects) might be less structured/detailed in terms of syllabus. Please use Mr. Jackson's Bizzy for business studies.</p>
                     </section>
                 </div>
             </Layout>

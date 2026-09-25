@@ -9,22 +9,20 @@ export const PRIORITY_STANDARD = [
     "Biology (HSC)",
     "Mathematics 2U (HSC)",
     "Economics (HSC)",
-    "Business Studies (HSC)",
-    
-    "Legal Studies (HSC)",
-    "Geography (HSC)",
-
     "Modern History (HSC)",
+    "Business Studies (HSC)",
+    "Legal Studies (HSC)",
+    "Geography (HSC)",    
+    "English Advanced (HSC)",
     "Ancient History (HSC)",
-    
-    
+    "Engineering Studies (HSC)",
     "Music 2 (HSC)",
     "Studies of Religion II (HSC)",
     "English Extension 1 (HSC)",
     "Health & Movement Science (HSC)",
 
     "Software Engineering (HSC)",
-    "English Advanced (HSC)",
+
 ];
 
 export async function updatePoints(userId: number, amount: number, db: D1Database) {
