@@ -4,6 +4,7 @@ import { Layout } from '../../layout'
 import { getUser, loginRedirect } from '../../utils'
 import { Bindings } from '../../types'
 import { PastPaperTabs } from './tabs'
+import { QuestionMeta, QuestionShell } from './questionShell'
 import { subjectLabel } from '../../constants'
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -469,7 +470,7 @@ app.get('/mock-exams/:id', async (c) => {
     const isOwner = user && user.id === exam.user_id;
 
     const questions = await c.env.DB.prepare(`
-                SELECT q.*, mq.ordering_index, mq.response_content, mq.selected_option, p.school_name, p.academic_year
+                SELECT q.*, mq.ordering_index, mq.response_content, mq.selected_option, p.school_name, p.academic_year, p.paper_type
                 FROM mock_exam_questions mq
                 JOIN exam_questions q ON mq.question_id = q.id
                 JOIN papers p ON q.paper_id = p.id
@@ -511,47 +512,40 @@ app.get('/mock-exams/:id', async (c) => {
                 </div>
             </div>
 
-            <form id="exam-form" action={`/past-papers/mock-exams/${examId}/finish`} method="post" class="mt-24 max-w-4xl mx-auto space-y-12 pb-24 px-4">
+            <form id="exam-form" action={`/past-papers/mock-exams/${examId}/finish`} method="post" class="mt-24 max-w-4xl mx-auto pb-24 px-4">
                 {questions.results.map((q: any, i: number) => {
                     
                     const stimPage = getPage(q.stimulus_image_key) || getPage(q.question_image_key);
                     const pdfUrl = `/download/papers/${q.paper_id}.pdf${stimPage ? `#page=${stimPage}` : ''}`;
                     
                     return (
-                        <div class="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700" id={`q-${q.id}`}>
-                            <h3 class="font-bold text-gray-900 dark:text-white text-lg mb-3">Question {i + 1}</h3>
-                            
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-5 gap-4">
-                                <div class="flex flex-wrap items-center gap-3">
-                                    <h1 class="text-sm font-bold text-gray-700 dark:text-neutral-500">
-                                        {q.school_name} {q.paper_type} {q.academic_year} — {q.section_label} Q{q.question_number}
-                                    </h1>
-                                    <span class="text-gray-300 dark:text-neutral-600 hidden sm:inline">|</span>
-                                    <a href={pdfUrl} target="_blank" class="flex items-center gap-1 text-red-700 dark:text-red-400 text-xs font-bold hover:underline transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></svg>
-                                        Original PDF {stimPage ? `(p.${stimPage})` : ''}
-                                    </a>
-                                </div>
-                                <div class="text-right shrink-0">
-                                    <span class="text-sm font-bold text-gray-500 dark:text-neutral-400">{q.marks} Marks</span>
-                                </div>
-                            </div>
-
+                        <QuestionShell
+                            id={`q-${q.id}`}
+                            marks={q.marks}
+                            header={
+                                <QuestionMeta
+                                    label={`Question ${i + 1}`}
+                                    source={`${q.school_name} ${q.paper_type || ''} ${q.academic_year} — ${q.section_label} Q${q.question_number}`}
+                                    pdfUrl={pdfUrl}
+                                    pdfPage={stimPage}
+                                />
+                            }
+                        >
                             {q.question_text ? (
-                                <div class="mb-4 p-6 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg text-gray-800 dark:text-neutral-200 whitespace-pre-wrap font-serif text-lg leading-relaxed shadow-sm">
+                                <div class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap font-serif text-lg leading-relaxed">
                                     {q.question_text}
                                 </div>
                             ) : (
                                 q.question_image_key && (
-                                    <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 dark:border-neutral-700 mb-4" />
+                                    <img src={`/download/${q.question_image_key}`} class="max-w-full rounded bg-white dark:bg-neutral-900" />
                                 )
                             )}
 
                             {(q.stimulus_text || q.stimulus_image_key) && (
-                                <div class="mt-4 p-4 bg-gray-50 dark:bg-neutral-900/50 rounded border border-gray-200 dark:border-neutral-700">
-                                    <p class="text-xs font-bold text-gray-500 dark:text-neutral-400 uppercase mb-2">Stimulus</p>
+                                <div class="bg-gray-50 dark:bg-neutral-900/40 p-4 rounded-lg">
+                                    <p class="text-[11px] font-bold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Stimulus</p>
                                     {q.stimulus_text ? (
-                                        <div class="text-gray-700 dark:text-neutral-300 italic border-l-4 border-l-blue-400 dark:border-l-blue-600 pl-4 py-2 whitespace-pre-wrap">
+                                        <div class="text-gray-700 dark:text-neutral-300 italic border-l-2 border-blue-400 dark:border-blue-600 pl-4 whitespace-pre-wrap">
                                             {q.stimulus_text}
                                         </div>
                                     ) : q.stimulus_image_key?.startsWith('pdf_crop:') ? (
@@ -563,29 +557,24 @@ app.get('/mock-exams/:id', async (c) => {
                             )}
 
                             {/* Response Capture Area */}
-                            <div class="mt-6">
-                                {q.question_type === 'multiple_choice' ? (
-                                    <div class="flex flex-col gap-3">
-                                        <label class="font-bold text-gray-700 dark:text-neutral-300">Select an Option:</label>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                                            {['A', 'B', 'C', 'D'].map(opt => (
-                                                <label class="cursor-pointer">
-                                                    <input type="radio" name={`option_${q.id}`} value={opt} checked={q.selected_option === opt} class="peer hidden" />
-                                                    <div class="p-3 border border-gray-300 dark:border-neutral-700 rounded text-center hover:bg-gray-50 dark:hover:bg-neutral-800 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/30 peer-checked:text-blue-700 dark:peer-checked:text-blue-400 font-bold transition-all">
-                                                        {opt}
-                                                    </div>
-                                                </label>
-                                            ))}
-                                        </div>
+                            {q.question_type === 'multiple_choice' ? (
+                                <div>
+                                    <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-2">Select an option</label>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                                        {['A', 'B', 'C', 'D'].map(opt => (
+                                            <label class="cursor-pointer">
+                                                <input type="radio" name={`option_${q.id}`} value={opt} checked={q.selected_option === opt} class="peer hidden" />
+                                                <div class="p-3 border border-gray-300 dark:border-neutral-700 rounded text-center hover:bg-gray-50 dark:hover:bg-neutral-800 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/30 peer-checked:text-blue-700 dark:peer-checked:text-blue-400 font-bold transition-all">
+                                                    {opt}
+                                                </div>
+                                            </label>
+                                        ))}
                                     </div>
-                                ) : (
-                                    <div>
-                                        
-                                        <textarea name={`response_${q.id}`} placeholder="Type your answer here..." class="w-full h-40 p-4 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">{q.response_content || ''}</textarea>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                                </div>
+                            ) : (
+                                <textarea name={`response_${q.id}`} placeholder="Type your answer here..." class="w-full h-40 p-4 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">{q.response_content || ''}</textarea>
+                            )}
+                        </QuestionShell>
                     )
                 })}
             </form>
@@ -682,7 +671,7 @@ app.get('/mock-exams/:id/mark', async (c) => {
     const totalMarks = stats?.total_marks || 0;
 
     const questions = await c.env.DB.prepare(`
-                SELECT q.*, mq.ordering_index, mq.response_content, mq.selected_option, p.school_name, p.academic_year,
+                SELECT q.*, mq.ordering_index, mq.response_content, mq.selected_option, p.school_name, p.academic_year, p.paper_type,
                 ua.marks_awarded as existing_marks, ua.marker_notes, ua.is_completed
                 FROM mock_exam_questions mq
                 JOIN exam_questions q ON mq.question_id = q.id
@@ -703,56 +692,50 @@ app.get('/mock-exams/:id/mark', async (c) => {
                     </div>
                 </div>
 
-                <form action={`/past-papers/mock-exams/${examId}/submit-marks`} method="post" class="space-y-12">
+                <form action={`/past-papers/mock-exams/${examId}/submit-marks`} method="post" class="pb-24">
                     {questions.results.map((q: any, i: number) => {
                         const stimPage = getPage(q.stimulus_image_key) || getPage(q.question_image_key);
                         const pdfUrl = `/download/papers/${q.paper_id}.pdf${stimPage ? `#page=${stimPage}` : ''}`;
                         
 
                         return (
-                            <div class="bg-white dark:bg-neutral-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-neutral-700">
-                                
-                                <h3 class="font-bold text-gray-900 dark:text-white text-lg mb-3">Question {i + 1}</h3>
-                                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-                                    <div class="flex flex-wrap items-center gap-3">
-                                        <h1 class="text-sm font-bold text-gray-700 dark:text-neutral-300">
-                                            {q.school_name} {q.academic_year} — {q.section_label} Q{q.question_number}
-                                        </h1>
-                                        <span class="text-gray-300 dark:text-neutral-600 hidden sm:inline">|</span>
-                                        <a href={pdfUrl} target="_blank" class="flex items-center gap-1 text-red-700 dark:text-red-400 text-xs font-bold hover:underline transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></svg>
-                                            Original PDF {stimPage ? `(p.${stimPage})` : ''}
-                                        </a>
-                                    </div>
-                                    <div class="text-right shrink-0">
-                                        <span class="text-sm font-bold text-gray-500 dark:text-neutral-400">{q.marks} Marks Max</span>
-                                    </div>
-                                </div>
-
+                            <QuestionShell
+                                id={`q-${q.id}`}
+                                marks={q.marks}
+                                marksCaption="max"
+                                header={
+                                    <QuestionMeta
+                                        label={`Question ${i + 1}`}
+                                        source={`${q.school_name} ${q.academic_year} — ${q.section_label} Q${q.question_number}`}
+                                        pdfUrl={pdfUrl}
+                                        pdfPage={stimPage}
+                                    />
+                                }
+                            >
                                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                     {/* Left: Question & Student Answer */}
-                                    <div class="flex flex-col gap-6">
+                                    <div class="flex flex-col gap-5">
                                         <div>
-                                            <h4 class="font-bold text-sm text-gray-500 dark:text-neutral-400 uppercase mb-2">Question</h4>
+                                            <h4 class="font-bold text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Question</h4>
                                             {q.question_text ? (
-                                                <div class="p-4 bg-gray-50 dark:bg-neutral-900/50 border border-gray-200 dark:border-neutral-700 rounded text-gray-800 dark:text-neutral-200 whitespace-pre-wrap text-sm">
+                                                <div class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap text-sm leading-relaxed">
                                                     {q.question_text}
                                                 </div>
                                             ) : (
                                                 q.question_image_key ? (
-                                                    <img src={`/download/${q.question_image_key}`} class="max-w-full rounded border border-gray-100 dark:border-neutral-700" />
+                                                    <img src={`/download/${q.question_image_key}`} class="max-w-full rounded bg-white dark:bg-neutral-900" />
                                                 ) : <p class="text-red-500 dark:text-red-400 text-sm">Image missing</p>
                                             )}
                                         </div>
 
-                                        <div class="bg-blue-50 dark:bg-blue-900/10 p-4 rounded border border-blue-200 dark:border-blue-800/50">
-                                            <h4 class="font-bold text-sm text-blue-800 dark:text-blue-300 uppercase mb-3">Student's Answer</h4>
+                                        <div class="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg">
+                                            <h4 class="font-bold text-[11px] text-blue-800 dark:text-blue-300 uppercase tracking-wider mb-3">Student's Answer</h4>
                                             {q.question_type === 'multiple_choice' ? (
                                                 <div class="font-medium text-gray-900 dark:text-gray-100">
                                                     Selected Option: <span class="font-bold bg-white dark:bg-neutral-800 px-3 py-1 border border-gray-300 dark:border-neutral-600 rounded ml-2">{q.selected_option || 'None'}</span>
                                                 </div>
                                             ) : (
-                                                <div class="whitespace-pre-wrap text-gray-900 dark:text-gray-200 bg-white dark:bg-neutral-800 p-4 border border-gray-200 dark:border-neutral-700 rounded shadow-inner min-h-[100px]">
+                                                <div class="whitespace-pre-wrap text-gray-900 dark:text-gray-200 bg-white dark:bg-neutral-800 p-4 border border-gray-200 dark:border-neutral-700 rounded min-h-[100px]">
                                                     {q.response_content || <span class="italic text-gray-500 dark:text-neutral-500">No response provided.</span>}
                                                 </div>
                                             )}
@@ -760,25 +743,25 @@ app.get('/mock-exams/:id/mark', async (c) => {
                                     </div>
 
                                     {/* Right: Answer Key & Marking */}
-                                    <div class="flex flex-col gap-6">
+                                    <div class="flex flex-col gap-5">
                                         <div>
-                                            <h4 class="font-bold text-sm text-gray-500 dark:text-neutral-400 uppercase mb-2">Answer / Guidelines</h4>
+                                            <h4 class="font-bold text-[11px] text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Answer / Guidelines</h4>
                                             {q.answer_text ? (
-                                                <div class="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/50 rounded text-green-900 dark:text-green-300 whitespace-pre-wrap text-sm">
+                                                <div class="text-green-900 dark:text-green-300 whitespace-pre-wrap text-sm leading-relaxed">
                                                     {q.answer_text}
                                                 </div>
                                             ) : (
                                                 q.answer_image_key ? (
-                                                    <img src={`/download/${q.answer_image_key}`} class="max-w-full rounded border border-gray-100 dark:border-neutral-700" />
+                                                    <img src={`/download/${q.answer_image_key}`} class="max-w-full rounded bg-white dark:bg-neutral-900" />
                                                 ) : (
-                                                    <div class="bg-gray-50 dark:bg-neutral-900/50 p-4 rounded text-sm text-gray-500 dark:text-neutral-400 italic border border-gray-200 dark:border-neutral-700">No answer key available.</div>
+                                                    <div class="text-sm text-gray-500 dark:text-neutral-400 italic">No answer key available.</div>
                                                 )
                                             )}
                                         </div>
 
-                                        <div class="bg-gray-50 dark:bg-neutral-900/50 p-5 rounded border border-gray-200 dark:border-neutral-700">
+                                        <div class="bg-gray-50 dark:bg-neutral-900/40 p-5 rounded-lg">
                                             <div class="mb-5">
-                                                <label class="block font-bold text-gray-800 dark:text-neutral-200 mb-3">Marks Awarded (Max: {q.marks})</label>
+                                                <label class="block font-bold text-sm text-gray-800 dark:text-neutral-200 mb-3">Marks Awarded</label>
                                                 <div class="flex flex-wrap gap-2">
                                                     {Array.from({ length: (q.marks || 0) + 1 }, (_, m) => (
                                                         <label class="cursor-pointer">
@@ -792,13 +775,13 @@ app.get('/mock-exams/:id/mark', async (c) => {
                                             </div>
 
                                             <div>
-                                                <label class="block font-bold text-gray-800 dark:text-neutral-200 mb-2">Marker's Notes</label>
-                                                <textarea name={`notes_${q.id}`} placeholder="Provide feedback or notes here..." class="w-full h-24 p-3 rounded-md border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm">{q.marker_notes || ''}</textarea>
+                                                <label class="block font-bold text-sm text-gray-800 dark:text-neutral-200 mb-2">Marker's Notes</label>
+                                                <textarea name={`notes_${q.id}`} placeholder="Provide feedback or notes here..." class="w-full h-24 p-3 rounded-md border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm">{q.marker_notes || ''}</textarea>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </QuestionShell>
                         )
                     })}
 
