@@ -212,10 +212,29 @@ export function extractTimetableSubjects(timetable: any): string[] {
     return Array.from(names);
 }
 
+// Tags that are managed by the system or by hand, so they are never treated as a
+// user-toggleable visibility tag and survive a rebuild of the tag object.
+export const RESERVED_TAGS = ['Year', 'External'];
+
+// Accounts tagged "External" (e.g. { "External": 1 }) signed in with a login code
+// rather than the portal API, so the portal-backed features (timetable, attendance,
+// points) have no data behind them for that account.
+export function isExternalUser(user: { tags?: string | null } | null | undefined): boolean {
+	if (!user?.tags) return false;
+	try {
+		const parsed = JSON.parse(user.tags);
+		if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return false;
+		return parsed['External'] !== undefined && parsed['External'] !== null;
+	} catch (e) {
+		return false;
+	}
+}
+
 // Build the display tags object for a user.
 // Subject tags default to 0 (hidden) and preserve any existing user toggle (0 or 1).
-// The Year tag is stored with its raw value (e.g. "7") so it is never rendered
-// (renderTags only shows tags whose value is exactly 1).
+// Reserved tags are carried over untouched: the Year tag keeps its raw value
+// (e.g. "7") so it is never rendered (renderTags only shows tags whose value is
+// exactly 1), and manually set tags such as External are never dropped.
 export function buildUserTags(existingTagsJson: string | null | undefined, subjects: string[], yearGroup: string | number | null | undefined): string {
     let existing: Record<string, any> = {};
     if (existingTagsJson) {
@@ -234,10 +253,12 @@ export function buildUserTags(existingTagsJson: string | null | undefined, subje
         tags[subject] = value;
     }
 
+    for (const tag of RESERVED_TAGS) {
+        if (existing[tag] !== undefined) tags[tag] = existing[tag];
+    }
+
     if (yearGroup !== undefined && yearGroup !== null && yearGroup !== '') {
         tags['Year'] = String(yearGroup);
-    } else if (existing['Year'] !== undefined) {
-        tags['Year'] = existing['Year'];
     }
 
     return JSON.stringify(tags);

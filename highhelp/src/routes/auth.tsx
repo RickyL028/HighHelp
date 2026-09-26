@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { Layout } from '../layout'
 import { Bindings } from '../types'
-import { createSessionCookie, buildUserTags, extractTimetableSubjects, safeNext, refererTarget } from '../utils'
+import { createSessionCookie, buildUserTags, extractTimetableSubjects, safeNext, refererTarget, isExternalUser, updatePoints } from '../utils'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -202,6 +202,12 @@ app.get('/api/auth/callback', async (c) => {
             .bind(newTags, user.id).run();
         user.tags = newTags;
 
+        // External accounts have no portal data, so logging in is the only thing that counts
+        // towards their score. Checked after the tag rebuild so a just-added tag applies.
+        if (isExternalUser(user as any)) {
+            await updatePoints(Number(user.id), 1, c.env.DB);
+        }
+
         const studentData = {
             timetable: timetableData,
             calendar: calendarData,
@@ -352,6 +358,12 @@ app.post('/code-login', async (c) => {
     const user = await c.env.DB.prepare('SELECT * FROM users WHERE password = ?').bind(code).first()
 
     if (user) {
+        // External accounts can't earn points from the portal-backed features, so each
+        // code login counts as a contribution instead.
+        if (isExternalUser(user as any)) {
+            await updatePoints(Number(user.id), 1, c.env.DB);
+        }
+
         const isLocal = isLocalDev(c);
         const sessionValue = await createSessionCookie(Number(user.id), c.env.SESSION_SECRET);
         setCookie(c, 'user_id', sessionValue, {

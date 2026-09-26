@@ -496,6 +496,10 @@ app.post('/resources', async (c) => {
         const user = await getUser(c)
         if (!user) return c.redirect(loginRedirect(c))
 
+        if (!canUploadResource(user)) {
+            return c.text('You are not allowed to upload resources.', 403);
+        }
+
         const body = await c.req.parseBody()
         const title = body['title'] as string
         const description = body['description'] as string
@@ -508,10 +512,6 @@ app.post('/resources', async (c) => {
         }
 
         if (title && file && subject) {
-            if (!canUploadResource(user)) {
-                return c.text('You are not allowed to upload resources.', 403);
-            }
-
             const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
             const fileKey = `resources/${Date.now()}-${safeName}`
             await c.env.BUCKET.put(fileKey, file, {

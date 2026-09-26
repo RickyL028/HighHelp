@@ -16,7 +16,8 @@ export function canView(user: User): boolean {
 }
 
 export function canPostGeneral(user: User): boolean {
-    return Number(user.permission_level) > PermissionLevel.MUTED;
+    // Anything below DEFAULT (muted, banned) is blocked from posting everywhere.
+    return Number(user.permission_level) >= PermissionLevel.DEFAULT;
 }
 
 export function canUploadResource(user: User): boolean {

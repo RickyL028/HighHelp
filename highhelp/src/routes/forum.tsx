@@ -47,7 +47,7 @@ if (!subject) {
                 <section>
                     <div class="flex justify-between items-center mb-6">
                         <h1 class="text-3xl font-bold">Recent Discussions</h1>
-                        {user ? (
+                        {user && canPostGeneral(user) ? (
                             <a href="/forum/create" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 transition shadow-sm">
                                 + Ask a Question
                             </a>
@@ -125,7 +125,7 @@ return c.html(
                     <h1 class="text-3xl font-bold">{subjectLabel(subject)} Forum</h1>
                     <a href="/forum" class="text-blue-600 hover:underline text-sm">← All Subjects</a>
                 </div>
-                {user ? (
+                {user && canPostGeneral(user) ? (
                     <a href={`/forum/create?subject=${encodeURIComponent(subject)}`} class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 transition shadow-sm">
                         + Ask Question
                     </a>
@@ -247,6 +247,9 @@ return c.html(
 app.get('/forum/create', async (c) => {
 const user = await getUser(c)
 if (!user) return c.redirect(loginRedirect(c))
+
+if (!canPostGeneral(user)) return c.redirect('/forum')
+
 const date = new Date().toISOString();
 
 const preselectedSubject = c.req.query('subject') || ""
@@ -416,7 +419,7 @@ return c.html(
             </div>
 
             {/* Add Comment  */}
-            {user ? (
+            {user && canPostGeneral(user) ? (
                 <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-100 dark:border-blue-900/40">
                     <h3 class="text-lg font-bold text-blue-900 dark:text-blue-200 mb-4">Add Your Answer</h3>
                     <form action="/forum/comment" method="post">
@@ -428,6 +431,10 @@ return c.html(
                             </button>
                         </div>
                     </form>
+                </div>
+            ) : user ? (
+                <div class="bg-gray-100 dark:bg-neutral-800 p-6 rounded-lg text-center border border-gray-200 dark:border-neutral-700">
+                    <p class="text-gray-600 dark:text-neutral-400">Your account is muted — you can't post answers right now.</p>
                 </div>
             ) : (
                 <div class="bg-gray-100 dark:bg-neutral-800 p-6 rounded-lg text-center border border-gray-200 dark:border-neutral-700">

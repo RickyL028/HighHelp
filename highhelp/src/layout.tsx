@@ -1,4 +1,5 @@
 import { html } from 'hono/html'
+import { isExternalUser } from './utils'
 
 // Recursively checks the hono/jsx node graph for a <pdf-crop> element.
 // props.children is a JSX node (or array of nodes), never a string, so a
@@ -13,6 +14,19 @@ const containsPdfCrop = (node: any): boolean => {
 
 export const Layout = (props: { title: string; children: any; user?: any; hideFooter?: boolean; latex?: boolean; noScroll?: boolean; pdfCrop?: boolean }) => {
 	const needsPdfCrop = props.pdfCrop ?? containsPdfCrop(props.children);
+
+	// Timetable, Attendance and Points are all fed by the student portal. Accounts that
+	// signed in with a login code ("External" tag) have no portal data, so their tabs are
+	// greyed out rather than hidden — the label stays visible, the link goes away.
+	const external = isExternalUser(props.user);
+	const disabledTitle = 'Not available for your account';
+	const desktopTab = (href: string, label: string) => external
+		? html`<span class="px-2 lg:px-3 py-2 text-sm font-medium whitespace-nowrap text-white/30 cursor-not-allowed select-none" title="${disabledTitle}" aria-disabled="true">${label}</span>`
+		: html`<a href="${href}" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">${label}</a>`;
+	const mobileTab = (href: string, label: string) => external
+		? html`<span class="block px-4 py-2.5 text-base font-medium whitespace-nowrap text-gray-100/30 cursor-not-allowed select-none" title="${disabledTitle}" aria-disabled="true">${label}</span>`
+		: html`<a href="${href}" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">${label}</a>`;
+
   return html`
     <!DOCTYPE html>
     <html lang="en">
@@ -350,15 +364,15 @@ ${props.latex ? html`
                 <a href="/home" class="font-bold text-xl tracking-tight">HighHelp</a>
                 <div class="hidden md:block">
                     <div class="ml-6 lg:ml-10 flex items-center gap-1 lg:gap-2 whitespace-nowrap">
-                    <a href="/timetable" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Timetable</a>
+                    ${desktopTab('/timetable', 'Timetable')}
                     
                     <a href="/resources" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Resources</a>
                     <a href="/past-papers" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Past Papers</a>
-                    <a href="/attendance" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Attendance</a>
+                    ${desktopTab('/attendance', 'Attendance')}
                     <a href="/leaderboard" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Leaderboard</a>
                     
                     <a href="/atar" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">ATAR</a>
-                    <a href="/points" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Points</a>
+                    ${desktopTab('/points', 'Points')}
                     <a href="/feedback" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Hmmm..!</a>
                     <div class="relative" id="more-dropdown">
                       <button class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1">
@@ -445,14 +459,14 @@ ${props.latex ? html`
 
           <div class="hidden md:hidden" id="mobile-menu">
             <div class="px-3 pt-3 pb-3 space-y-1 sm:px-4 bg-[#4E342E] dark:bg-neutral-900">
-              <a href="/timetable" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Timetable</a>
+              ${mobileTab('/timetable', 'Timetable')}
               
               <a href="/resources" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Resources</a>
               <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Past Papers</a>
-              <a href="/attendance" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Attendance</a>
+              ${mobileTab('/attendance', 'Attendance')}
               <a href="/leaderboard" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Leaderboard</a>
               <a href="/atar" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">ATAR</a>
-              <a href="/points" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Points</a>
+              ${mobileTab('/points', 'Points')}
               <a href="/feedback" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Hmmm..!</a>
               <details class="group">
                 <summary class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap cursor-pointer list-none flex items-center justify-between">

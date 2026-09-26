@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, loginRedirect, renderTags, getFruitPermission, formatDate } from '../utils'
+import { getUser, loginRedirect, renderTags, getFruitPermission, formatDate, RESERVED_TAGS } from '../utils'
 import { subjectLabel } from '../constants'
 import { Bindings, User } from '../types'
 
@@ -18,7 +18,7 @@ app.get('/profile', async (c) => {
     }
 
     const tagKeys = Object.keys(userTags).filter(tag =>
-        tag !== 'Year' && (userTags[tag] === 0 || userTags[tag] === 1)
+        !RESERVED_TAGS.includes(tag) && (userTags[tag] === 0 || userTags[tag] === 1)
     );
 
     return c.html(
@@ -117,10 +117,10 @@ app.post('/profile', async (c) => {
 
         for (const tag of Object.keys(currentTags)) {
 
-            const isToggleable = tag !== 'Year' && (currentTags[tag] === 0 || currentTags[tag] === 1);
+            const isToggleable = !RESERVED_TAGS.includes(tag) && (currentTags[tag] === 0 || currentTags[tag] === 1);
 
             if (!isToggleable) {
-                // Preserve non-toggleable tags (e.g. Year) untouched
+                // Preserve non-toggleable tags (e.g. Year, External) untouched
                 newTags[tag] = currentTags[tag];
                 continue;
             }
