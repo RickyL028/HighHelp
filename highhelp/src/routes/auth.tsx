@@ -276,7 +276,7 @@ app.get('/login', (c) => {
     const next = setNext(c, c.req.query('next') ?? refererTarget(c));
     return c.html(
         <Layout title="Login">
-            <div class="flex flex-col">
+            <div class="flex flex-col scroll-smooth">
 
                 <div class="w-full min-h-[calc(100vh_-_8rem)] p-8 flex flex-col justify-center items-center bg-gray-50 border-b border-gray-200">
                     <h2 class="text-2xl font-bold mb-6 text-gray-800">Student Portal Login</h2>
@@ -285,15 +285,18 @@ app.get('/login', (c) => {
                     <a href={`/api/auth/login?next=${encodeURIComponent(next)}`} class="w-3/4 bg-blue-600 text-white font-bold py-3 mb-6 rounded text-center hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2">
                         <span>Log In with Student Portal</span>
                     </a>
-                    <p class="text-gray-600 mb-6 text-center"></p>
+                    
+                    {/* Optional: Add a quick button for users to skip directly down */}
+                    
                 </div>
 
-                <div class="w-full min-h-[calc(100vh_-_8rem)] flex flex-col justify-center items-center">
+                {/* 1. Added id="code" here */}
+                <div id="code" class="w-full min-h-[calc(100vh_-_8rem)] flex flex-col justify-center items-center">
                     <h2 class="text-2xl font-bold mb-4 text-gray-800">Code</h2>
                     
                     <form action="/code-login" method="post" class="w-3/4 max-w-sm space-y-4">
                         <input type="hidden" name="next" value={next} />
-                        <input type="text" name="code" required
+                        <input type="text" id="code-input" name="code" required
                             class="block w-full rounded-md border-gray-300 shadow-sm p-3 border text-center text-lg tracking-widest font-mono uppercase"
                             placeholder="" maxLength={20} />
                         <button type="submit" class="w-full bg-gray-700 text-white font-bold py-3 rounded hover:bg-gray-800 transition">
@@ -303,6 +306,14 @@ app.get('/login', (c) => {
                 </div>
 
             </div>
+
+            {/* 2. Optional: Auto-focus the input box if the URL contains #code */}
+            <script dangerouslySetInnerHTML={{ __html: `
+                if (window.location.hash === '#code') {
+                    const el = document.getElementById('code-input');
+                    if (el) el.focus();
+                }
+            `}} />
         </Layout>
     )
 })
