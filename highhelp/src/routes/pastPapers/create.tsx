@@ -4,6 +4,7 @@ import { getUser, logAction } from '../../utils'
 import { canUploadPastPaper } from '../../permissions'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
+import { buildPrompt, PromptBox, PROMPT_COPY_SCRIPT } from './aiImport'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -15,6 +16,9 @@ app.get('/past-papers/create', async (c) => {
 
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: currentYear - 1990 + 1 }, (_, i) => currentYear - i);
+
+    const existingTopics = await c.env.DB.prepare('SELECT name FROM topics WHERE subject = ? ORDER BY name ASC').bind(subject).all<{ name: string }>();
+    const aiPrompt = buildPrompt(subject, existingTopics.results.map(t => t.name));
 
     return c.html(
         <Layout title={`Add Paper - ${subjectLabel(subject)}`} user={user}>
@@ -106,6 +110,8 @@ app.get('/past-papers/create', async (c) => {
                         </div>
                     </div>
 
+                    <PromptBox prompt={aiPrompt} id="ai-prompt-create" />
+
                     <form action="/past-papers/create-with-ai" method="post" enctype="multipart/form-data" id="ai-import-form" class="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-xl border border-purple-200 dark:border-purple-800/40 space-y-4">
                         <input type="hidden" name="subject" value={subject} />
 
@@ -170,6 +176,7 @@ app.get('/past-papers/create', async (c) => {
 
                 <script dangerouslySetInnerHTML={{
                     __html: `
+                    ${PROMPT_COPY_SCRIPT}
                     let segmentCount = 1;
                     document.getElementById('add-segment-btn').addEventListener('click', () => {
                         const div = document.createElement('div');

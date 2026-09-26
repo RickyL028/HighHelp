@@ -5,6 +5,7 @@ import { getUser, loginRedirect, logAction } from '../../utils'
 import { canUploadPastPaper, canCreateTopic, PermissionLevel } from '../../permissions'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
+import { buildPrompt, PromptBox, PROMPT_COPY_SCRIPT } from './aiImport'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -75,6 +76,10 @@ app.get('/past-papers/paper/:id', async (c) => {
     const canEdit = canEditSubject && (!paper.is_locked || canUnlock);
 
     const canManageTopics = user && user.permission_level >= PermissionLevel.ADMIN;
+
+    const canViewAiError = user.permission_level >= PermissionLevel.ADMIN;
+
+    const aiPrompt = buildPrompt(paper.subject, (allTopics.results as any[]).map((t: any) => t.name));
 
 
 
@@ -179,6 +184,8 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                 Provide a valid JSON object with a <code>questions</code> array matching the AI extraction format — either by file or paste.
                                             </div>
 
+                                            <PromptBox prompt={aiPrompt} id="ai-prompt-import-json" />
+
                                             <div class="flex justify-end gap-3 mt-6">
                                                 <button type="button" onclick="document.getElementById('import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:underline">Cancel</button>
                                                 <button class="text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
@@ -211,6 +218,8 @@ app.get('/past-papers/paper/:id', async (c) => {
                                                     <span class="block text-xs mt-1 text-gray-400 dark:text-neutral-500">Supports HSC-format past papers</span>
                                                 </div>
                                             </div>
+
+                                            <PromptBox prompt={aiPrompt} id="ai-prompt-view-import" />
 
                                             <div class="flex justify-end gap-3 mt-6">
                                                 <button type="button" onclick="document.getElementById('ai-import-modal').close()" class="px-4 py-2 text-gray-600 dark:text-neutral-400 font-bold hover:underline">Cancel</button>
@@ -322,7 +331,9 @@ app.get('/past-papers/paper/:id', async (c) => {
         <div class="flex-1">
             <p class="font-bold text-red-700 dark:text-red-300 text-sm">AI Import Failed</p>
             <p class="text-red-600 dark:text-red-400 text-xs mt-0.5 font-mono">
-                {paper.ai_error || 'An unknown error occurred.'}
+                {canViewAiError
+                    ? (paper.ai_error || 'An unknown error occurred.')
+                    : 'An unknown error occurred. Contact an admin for details.'}
             </p>
         </div>
         <form action={`/past-papers/paper/${paper.id}/clear-ai-status`} method="post">
@@ -692,6 +703,7 @@ app.get('/past-papers/paper/:id', async (c) => {
                 }
 
                 // AI Import PDF feedback
+                ${PROMPT_COPY_SCRIPT}
                 const aiViewInput = document.getElementById('ai-view-pdf-input');
                 const aiViewLabel = document.getElementById('ai-view-pdf-label');
                 if (aiViewInput) {

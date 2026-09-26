@@ -16,7 +16,7 @@ const AI_CONFIG = {
 };
 
 
-function buildPrompt(subject: string, existingTopics: string[]): string {
+export function buildPrompt(subject: string, existingTopics: string[]): string {
     const topicsList = existingTopics.length > 0
         ? `The following topics already exist for this subject in the database:\n${existingTopics.map(t => `- ${t}`).join('\n')}\n\nYou MUST choose from the topics above when categorising. If none fit, you may suggest a new topic name, but prefer existing ones.`
         : `No topics exist yet for this subject. Create appropriate topic names based on the HSC syllabus for "${subject}".`;
@@ -106,6 +106,43 @@ If and if only the subject is English advanced (ignore otherwise)
 - If essay: you MUST include the PRESCRIBED TEXT AT THE START in BRACKETS e.g. "[William Shakespeare - Hamlet] How does ... "
 `;
 }
+
+export function PromptBox({ prompt, id }: { prompt: string; id: string }) {
+    return (
+        <details class="mt-3 rounded-lg border border-gray-200 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-900/50">
+            <summary class="cursor-pointer select-none px-3 py-2 text-xs font-bold text-blue-700 dark:text-blue-300">
+                Show AI prompt — copy &amp; paste it into your own AI
+            </summary>
+            <div class="px-3 pb-3 space-y-2">
+                <p class="text-[11px] text-gray-500 dark:text-neutral-400">
+                    This is the exact prompt used by the AI PDF import. Paste it into your AI along with the paper PDF, then paste the JSON result below.
+                </p>
+                <button type="button" data-copy-prompt={id} class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">Copy prompt</button>
+                <pre id={id} class="max-h-64 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-relaxed font-mono text-gray-700 dark:text-neutral-300 bg-white dark:bg-neutral-950 border border-gray-200 dark:border-neutral-800 rounded p-3">{prompt}</pre>
+            </div>
+        </details>
+    )
+}
+
+export const PROMPT_COPY_SCRIPT = `
+                document.querySelectorAll('[data-copy-prompt]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const pre = document.getElementById(btn.getAttribute('data-copy-prompt'));
+                        if (!pre) return;
+                        const done = () => {
+                            const original = btn.textContent;
+                            btn.textContent = 'Copied!';
+                            setTimeout(() => { btn.textContent = original; }, 1500);
+                        };
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(pre.textContent).then(done).catch(() => { window.prompt('Copy the prompt below:', pre.textContent); });
+                        } else {
+                            window.prompt('Copy the prompt below:', pre.textContent);
+                        }
+                    });
+                });
+`;
+
 
 interface AIQuestion {
     section_label: string;
