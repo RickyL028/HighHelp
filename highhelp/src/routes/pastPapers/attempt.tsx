@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getUser, formatDate } from '../../utils'
+import { getUser, loginRedirect, formatDate } from '../../utils'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 import {
@@ -33,7 +33,7 @@ const parseMcqOptions = (text: string | null): { stem: string; options: Record<s
 
 app.get('/past-papers/attempt/:id', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const qId = c.req.param('id')
     const mode = c.req.query('mode');
@@ -457,7 +457,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
 // Save Attempt
 app.post('/past-papers/attempt/:id/save', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const qId = c.req.param('id')
     const body = await c.req.parseBody()

@@ -1,7 +1,7 @@
 
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getUser, logAction } from '../../utils'
+import { getUser, loginRedirect, logAction } from '../../utils'
 import { canUploadPastPaper, canCreateTopic, PermissionLevel } from '../../permissions'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
@@ -11,7 +11,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/past-papers/paper/:id', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     const paperId = c.req.param('id')
     const paper = await c.env.DB.prepare('SELECT * FROM papers WHERE id = ?').bind(paperId).first<any>();
     if (!paper) return c.notFound();

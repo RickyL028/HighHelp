@@ -2,14 +2,14 @@ import { Hono } from 'hono'
 import { html } from 'hono/html'
 import { Bindings } from '../types'
 import { Layout } from '../layout'
-import { getUser } from '../utils'
+import { getUser, loginRedirect } from '../utils'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/atar', async (c) => {
   const user = await getUser(c)
 
-  if (!user) return c.redirect('/login')
+  if (!user) return c.redirect(loginRedirect(c))
   // Query submissions for the logged-in user
   const userSubmissionsRes = await c.env.DB.prepare(
       'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'
@@ -596,7 +596,7 @@ app.get('/atar', async (c) => {
 // ... (keep previous imports and app setup)
 app.get('/atar/leaderboard', async (c) => {
   const user = await getUser(c)
-  if (!user) return c.redirect('/login')
+  if (!user) return c.redirect(loginRedirect(c))
 
   const userSubmissionsRes = await c.env.DB.prepare(
       'SELECT * FROM atar_submissions WHERE user_id = ? AND is_deleted = 0 ORDER BY created_at DESC'

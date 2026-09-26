@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser } from '../utils'
+import { getUser, loginRedirect } from '../utils'
 import { Bindings } from '../types'
 import { TimetableLayout } from '../components/timetable/TimetableLayout'
 import { TimetableCore } from '../components/timetable/TimetableCore'
@@ -16,7 +16,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     return c.html(
         <Layout title="Classes" user={user}>

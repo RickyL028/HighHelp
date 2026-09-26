@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
 import { Bindings } from '../types'
-import { getUser } from '../utils'
+import { getUser, loginRedirect } from '../utils'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -9,7 +9,7 @@ app.get('/points', async (c) => {
 	const user = await getUser(c)
 
 	if (!user) {
-		return c.redirect('/login')
+		return c.redirect(loginRedirect(c))
 	}
 
 	return c.html(

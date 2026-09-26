@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags, getFruitPermission, formatDate } from '../utils'
+import { getUser, loginRedirect, renderTags, getFruitPermission, formatDate } from '../utils'
 import { subjectLabel } from '../constants'
 import { Bindings, User } from '../types'
 
@@ -8,7 +8,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/profile', async (c) => {
     const user = await getUser(c) as User | null
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     let userTags: Record<string, number> = {};
     try {
@@ -99,7 +99,7 @@ app.get('/profile', async (c) => {
 
 app.post('/profile', async (c) => {
     const user = await getUser(c) as User | null
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const body = await c.req.parseBody()
     const action = body['action']
@@ -148,7 +148,7 @@ app.post('/profile', async (c) => {
 
 app.get('/profile/contributions', async (c) => {
     const user = await getUser(c) as User | null
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const { results: myResources } = await c.env.DB.prepare('SELECT * FROM resources WHERE uploader_id = ? ORDER BY created_at DESC').bind(user.id).all();
     const { results: myAnnouncements } = await c.env.DB.prepare('SELECT * FROM announcements WHERE author_id = ? ORDER BY created_at DESC').bind(user.id).all();

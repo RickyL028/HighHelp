@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags, updatePoints, logAction, formatDate } from '../utils'
+import { getUser, loginRedirect, renderTags, updatePoints, logAction, formatDate } from '../utils'
 import { canPostGeneral, canViewDeleted, canCommentModeration } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 import { SubjectBadge, SubjectIcon } from '../components/SubjectBadge'
@@ -246,7 +246,7 @@ return c.html(
 // Create Post Page
 app.get('/forum/create', async (c) => {
 const user = await getUser(c)
-if (!user) return c.redirect('/login')
+if (!user) return c.redirect(loginRedirect(c))
 const date = new Date().toISOString();
 
 const preselectedSubject = c.req.query('subject') || ""
@@ -292,7 +292,7 @@ return c.html(
 // Handle Create Post
 app.post('/forum', async (c) => {
 const user = await getUser(c)
-if (!user) return c.redirect('/login')
+if (!user) return c.redirect(loginRedirect(c))
 
 
 if (!canPostGeneral(user)) return c.text("You are muted.", 403);
@@ -444,7 +444,7 @@ return c.html(
 // Add Comment
 app.post('/forum/comment', async (c) => {
 const user = await getUser(c)
-if (!user) return c.redirect('/login')
+if (!user) return c.redirect(loginRedirect(c))
 
 const body = await c.req.parseBody()
 const postId = body['post_id'] as string
@@ -469,7 +469,7 @@ return c.redirect(`/forum/post/${postId}`)
 
 app.post('/forum/post/:id/delete', async (c) => {
 const user = await getUser(c)
-if (!user) return c.redirect('/login')
+if (!user) return c.redirect(loginRedirect(c))
 const id = c.req.param('id')
 
 const post = await c.env.DB.prepare('SELECT * FROM posts WHERE id = ?').bind(id).first() as any;
@@ -488,7 +488,7 @@ return c.redirect(`/forum?subject=${encodeURIComponent(post?.subject || '')}`);
 
 app.post('/forum/comment/:id/delete', async (c) => {
 const user = await getUser(c)
-if (!user) return c.redirect('/login')
+if (!user) return c.redirect(loginRedirect(c))
 const id = c.req.param('id')
 
 

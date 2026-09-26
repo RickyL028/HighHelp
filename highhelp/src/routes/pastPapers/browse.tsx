@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getUser, parseTopicHierarchy, topicHierarchyKey } from '../../utils'
+import { getUser, loginRedirect, parseTopicHierarchy, topicHierarchyKey } from '../../utils'
 import { canUploadPastPaper, PermissionLevel } from '../../permissions'
 import { SubjectSelector } from '../../components/SubjectSelector'
 import { subjectLabel } from '../../constants'
@@ -218,7 +218,7 @@ app.get('/past-papers/rows', async (c) => {
 
 app.get('/past-papers', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const subject = c.req.query('subject')
     const tab = c.req.query('tab') || 'browse';
@@ -868,7 +868,7 @@ app.get('/past-papers', async (c) => {
         )
 
     } else if (tab === 'review') {
-        if (!user) return c.redirect('/login')
+        if (!user) return c.redirect(loginRedirect(c))
 
         const query = `
             SELECT q.*, p.school_name, p.academic_year, 

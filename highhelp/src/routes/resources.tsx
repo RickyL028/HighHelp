@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getSortedSubjects, getUser, renderTags, updatePoints, logAction, formatDate } from '../utils'
+import { getSortedSubjects, getUser, loginRedirect, renderTags, updatePoints, logAction, formatDate } from '../utils'
 import { canUploadResource, canViewDeleted, canModerateSubject } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 import { SubjectBadge, SubjectIcon } from '../components/SubjectBadge'
@@ -494,7 +494,7 @@ app.get('/resources', async (c) => {
 app.post('/resources', async (c) => {
     try {
         const user = await getUser(c)
-        if (!user) return c.redirect('/login')
+        if (!user) return c.redirect(loginRedirect(c))
 
         const body = await c.req.parseBody()
         const title = body['title'] as string
@@ -537,7 +537,7 @@ app.post('/resources', async (c) => {
 
 app.post('/resources/:id/delete', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     const id = c.req.param('id')
 
     const resource = await c.env.DB.prepare('SELECT * FROM resources WHERE id = ?').bind(id).first() as any;
@@ -555,7 +555,7 @@ app.post('/resources/:id/delete', async (c) => {
 
 app.get('/resources/:id/edit', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     const id = c.req.param('id')
 
     const resource = await c.env.DB.prepare('SELECT * FROM resources WHERE id = ?').bind(id).first() as any;
@@ -623,7 +623,7 @@ app.get('/resources/:id/edit', async (c) => {
 app.post('/resources/:id/edit', async (c) => {
     try {
         const user = await getUser(c)
-        if (!user) return c.redirect('/login')
+        if (!user) return c.redirect(loginRedirect(c))
         const id = c.req.param('id')
 
         const resource = await c.env.DB.prepare('SELECT * FROM resources WHERE id = ?').bind(id).first() as any;
@@ -690,7 +690,7 @@ const parseRangeHeader = (header: string | undefined): R2Range | undefined => {
 app.get('/download/*', async (c) => {
     try {
         const user = await getUser(c)
-        if (!user) return c.redirect('/login')
+        if (!user) return c.redirect(loginRedirect(c))
 
         const path = c.req.path;
         const prefix = '/download/';

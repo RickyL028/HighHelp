@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, renderTags, logAction, formatDate } from '../utils'
+import { getUser, loginRedirect, renderTags, logAction, formatDate } from '../utils'
 import { canPostAnnouncement, canViewDeleted, canModerateSubject } from '../permissions'
 import { ANNOUNCEMENT_SUBJECTS, subjectLabel } from '../constants'
 import { Bindings } from '../types'
@@ -203,7 +203,7 @@ app.get('/announcements', async (c) => {
 
 app.post('/announcements', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     const body = await c.req.parseBody()
     const title = body['title'] as string
     const subject = body['subject'] as string
@@ -281,7 +281,7 @@ app.get('/announcements/:id', async (c) => {
 
 app.post('/announcements/:id/delete', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const id = Number(c.req.param('id'));
 

@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
-import { getUser, updatePoints, renderTags, logAction, formatDate } from '../utils'
+import { getUser, loginRedirect, updatePoints, renderTags, logAction, formatDate } from '../utils'
 import { canPostGeneral, canViewDeleted, canCommentModeration } from '../permissions'
 import { SubjectSelector } from '../components/SubjectSelector'
 import { SubjectBadge, SubjectIcon } from '../components/SubjectBadge'
@@ -13,7 +13,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 app.get('/essays', async (c) => {
 
     const user = await getUser(c) as User | null
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     if (user && Number(user.permission_level) === 0) return c.redirect('/about#application')
     const subject = c.req.query('subject')
 
@@ -249,7 +249,7 @@ app.get('/essays', async (c) => {
 
 app.get('/essays/create', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     if (Number(user.permission_level) === 0) return c.redirect('/about#application')
 
 
@@ -337,7 +337,7 @@ app.get('/essays/create', async (c) => {
 
 app.post('/essays', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     if (user.points < -2) {
         return c.text("Insufficient points", 403)
@@ -552,7 +552,7 @@ app.get('/essays/view/:id', async (c) => {
 // Feedback
 app.post('/essays/feedback', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const body = await c.req.parseBody()
     const essayId = body['essay_id'] as string
@@ -579,7 +579,7 @@ export default app
 
 app.post('/essays/view/:id/delete', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     const id = c.req.param('id')
 
 
@@ -597,7 +597,7 @@ app.post('/essays/view/:id/delete', async (c) => {
 
 app.post('/essays/feedback/:id/delete', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     const id = c.req.param('id')
 
     const comment = await c.env.DB.prepare('SELECT * FROM essay_comments WHERE id = ?').bind(id).first() as any;

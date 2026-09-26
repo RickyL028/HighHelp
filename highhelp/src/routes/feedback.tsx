@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
 import { Bindings } from '../types'
-import { getUser, formatDate, logAction } from '../utils'
+import { getUser, loginRedirect, formatDate, logAction } from '../utils'
 import { PermissionLevel } from '../permissions'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -160,7 +160,7 @@ app.get('/feedback', async (c) => {
 // Submit page
 app.get('/feedback/submit', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     if (Number(user.permission_level) < PermissionLevel.VERIFIED) {
         return c.redirect('/about')
     }
@@ -215,7 +215,7 @@ app.get('/feedback/submit', async (c) => {
 // Handle submission
 app.post('/feedback/submit', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     if (Number(user.permission_level) < PermissionLevel.VERIFIED) return c.text('Unauthorised', 403)
 
     const body = await c.req.parseBody()

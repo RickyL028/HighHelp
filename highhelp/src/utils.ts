@@ -109,6 +109,58 @@ export async function getSessionUserId(c: any): Promise<number | null> {
     }
 }
 
+// A post-login return target. Only same-origin relative paths made of URL-safe
+// characters are accepted, so a crafted `?next=` can neither bounce a freshly
+// authenticated user off-site nor break out of the markup the target is
+// interpolated into.
+export function safeNext(next: unknown): string | null {
+    if (typeof next !== 'string') return null;
+    const value = next.trim();
+    if (!value.startsWith('/')) return null;
+    if (value.startsWith('//') || value.startsWith('/\\')) return null;
+    if (!/^[A-Za-z0-9\-._~%!$&'()*+,;=:@/?#[\]]*$/.test(value)) return null;
+    // Never loop back into the auth flow itself
+    if (/^\/(login|logout|code-login)(\/|\?|$)/.test(value)) return null;
+    if (value.startsWith('/api/auth')) return null;
+    return value;
+}
+
+// The same-origin page that made the current request, if any. Used as the
+// return target for plain "/login" links so a user who clicks one while sitting
+// on a page lands back on that page.
+export function refererTarget(c: any): string | null {
+    const referer = c.req.header('referer');
+    if (!referer) return null;
+    try {
+        const from = new URL(referer);
+        if (from.host !== new URL(c.req.url).host) return null;
+        return safeNext(from.pathname + from.search);
+    } catch (e) {
+        return null;
+    }
+}
+
+// The page the user was trying to reach when they got bounced to /login.
+// A GET knows its own target; other methods (form posts, fetches) fall back to
+// the same-origin page that made the request.
+function returnTarget(c: any): string | null {
+    const current = new URL(c.req.url);
+
+    if (c.req.method === 'GET') {
+        return safeNext(current.pathname + current.search);
+    }
+
+    return refererTarget(c);
+}
+
+// Login URL that remembers where the user was headed, so they land back there
+// after authenticating. `fallback` is used when the request gives us nothing
+// usable (e.g. a POST with no same-origin referer).
+export function loginRedirect(c: any, fallback: string = '/'): string {
+    const target = returnTarget(c) ?? safeNext(fallback) ?? '/';
+    return target === '/' ? '/login' : `/login?next=${encodeURIComponent(target)}`;
+}
+
 const userCache = new WeakMap<object, any>();
 
 export async function getUser(c: any) {

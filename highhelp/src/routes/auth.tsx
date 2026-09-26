@@ -2,12 +2,49 @@ import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { Layout } from '../layout'
 import { Bindings } from '../types'
-import { createSessionCookie, buildUserTags, extractTimetableSubjects } from '../utils'
+import { createSessionCookie, buildUserTags, extractTimetableSubjects, safeNext, refererTarget } from '../utils'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+const LOGIN_NEXT_COOKIE = 'login_next';
+const LOGIN_NEXT_TTL = 60 * 10; // 10 minutes
+
 function isLocalDev(c: any): boolean {
     return c.env.LOCAL_DEV === true || c.env.LOCAL_DEV === 'true';
+}
+
+// Resolves the post-login target, stashes it in a short-lived cookie so it
+// survives the off-site OAuth round trip, and returns it. Anything that isn't a
+// safe same-origin relative path is discarded.
+function setNext(c: any, raw: unknown): string {
+    const target = safeNext(raw) ?? '/';
+
+    if (target === '/') {
+        deleteCookie(c, LOGIN_NEXT_COOKIE, { path: '/' });
+    } else {
+        setCookie(c, LOGIN_NEXT_COOKIE, target, {
+            path: '/',
+            httpOnly: true,
+            secure: !isLocalDev(c),
+            maxAge: LOGIN_NEXT_TTL,
+            sameSite: 'Lax'
+        });
+    }
+
+    return target;
+}
+
+// Preferred over the cookie when a form carried the target itself.
+function postedNext(c: any, raw: unknown): string {
+    return safeNext(raw) ?? safeNext(getCookie(c, LOGIN_NEXT_COOKIE)) ?? '/';
+}
+
+function clearNext(c: any) {
+    deleteCookie(c, LOGIN_NEXT_COOKIE, { path: '/' });
+}
+
+function loginHref(target: string): string {
+    return target === '/' ? '/login' : `/login?next=${encodeURIComponent(target)}`;
 }
 
 function portalCreds(c: any) {
@@ -33,6 +70,10 @@ app.get('/api/auth/login', (c) => {
     if (!clientId || !redirectUri) {
         return c.text('Configuration Error: Missing Client ID or Redirect URI', 500);
     }
+
+    // Carry the return target across the portal round trip. A missing `next`
+    // clears any stale one, so a plain re-auth link returns to the home page.
+    setNext(c, c.req.query('next'));
 
     // random state
     const state = Math.random().toString(36).substring(7);
@@ -178,6 +219,10 @@ app.get('/api/auth/callback', async (c) => {
             sameSite: 'Lax'
         });
 
+        // Send the user back to whatever they were trying to reach
+        const next = postedNext(c, undefined);
+        clearNext(c);
+
         // Return HTML to save to localStorage and redirect
         return c.html(`
             <!DOCTYPE html>
@@ -204,7 +249,7 @@ app.get('/api/auth/callback', async (c) => {
                         };
                         localStorage.setItem('studentData', JSON.stringify(studentData));
                         localStorage.setItem('tokenRefreshedAt', String(Date.now()));
-                        window.location.href = '/';
+                        window.location.href = ${JSON.stringify(next)};
                     } catch (e) {
                         console.error('Error saving data', e);
                         document.body.innerHTML = '<p style="color:red">Error saving session data. Please try again or contact support.</p>';
@@ -220,6 +265,9 @@ app.get('/api/auth/callback', async (c) => {
 })
 
 app.get('/login', (c) => {
+    // An explicit `?next` (from a guard) wins; otherwise fall back to the page
+    // the visitor came from so plain "Login" links also return them to it.
+    const next = setNext(c, c.req.query('next') ?? refererTarget(c));
     return c.html(
         <Layout title="Login">
             <div class="flex flex-col">
@@ -228,7 +276,7 @@ app.get('/login', (c) => {
                     <h2 class="text-2xl font-bold mb-6 text-gray-800">Student Portal Login</h2>
                     <p class="text-gray-600 mb-6 text-center">Log in with your school account.</p>
 
-                    <a href="/api/auth/login" class="w-3/4 bg-blue-600 text-white font-bold py-3 mb-6 rounded text-center hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2">
+                    <a href={`/api/auth/login?next=${encodeURIComponent(next)}`} class="w-3/4 bg-blue-600 text-white font-bold py-3 mb-6 rounded text-center hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2">
                         <span>Log In with Student Portal</span>
                     </a>
                     <p class="text-gray-600 mb-6 text-center"></p>
@@ -238,6 +286,7 @@ app.get('/login', (c) => {
                     <h2 class="text-2xl font-bold mb-4 text-gray-800">Code</h2>
                     
                     <form action="/code-login" method="post" class="w-3/4 max-w-sm space-y-4">
+                        <input type="hidden" name="next" value={next} />
                         <input type="text" name="code" required
                             class="block w-full rounded-md border-gray-300 shadow-sm p-3 border text-center text-lg tracking-widest font-mono uppercase"
                             placeholder="" maxLength={20} />
@@ -256,6 +305,7 @@ app.post('/login', async (c) => {
     const body = await c.req.parseBody()
     const email = body['email'] as string
     const password = body['password'] as string
+    const next = postedNext(c, body['next'])
 
     const user = await c.env.DB.prepare('SELECT * FROM users WHERE email = ? AND password = ?').bind(email, password).first()
 
@@ -269,13 +319,14 @@ app.post('/login', async (c) => {
             maxAge: 60 * 60 * 24 * 7,
             sameSite: 'Lax'
         });
-        return c.redirect('/')
+        clearNext(c);
+        return c.redirect(next)
     } else {
         return c.html(
             <Layout title="Login Error">
                 <div class="p-4 bg-red-100 text-red-700 rounded text-center">
                     <p>Invalid email or password.</p>
-                    <a href="/login" class="underline mt-2 inline-block">Try Again</a>
+                    <a href={loginHref(next)} class="underline mt-2 inline-block">Try Again</a>
                 </div>
             </Layout>
         )
@@ -285,13 +336,14 @@ app.post('/login', async (c) => {
 app.post('/code-login', async (c) => {
     const body = await c.req.parseBody()
     const code = (body['code'] as string || '').trim()
+    const next = postedNext(c, body['next'])
 
     if (!code) {
         return c.html(
             <Layout title="Code Login Error">
                 <div class="p-4 bg-red-100 text-red-700 rounded text-center max-w-md mx-auto mt-8">
                     <p>Please enter a login code.</p>
-                    <a href="/login" class="underline mt-2 inline-block">Try Again</a>
+                    <a href={loginHref(next)} class="underline mt-2 inline-block">Try Again</a>
                 </div>
             </Layout>
         )
@@ -309,13 +361,14 @@ app.post('/code-login', async (c) => {
             maxAge: 60 * 60 * 24 * 7,
             sameSite: 'Lax'
         });
-        return c.redirect('/')
+        clearNext(c);
+        return c.redirect(next)
     } else {
         return c.html(
             <Layout title="Code Login Error">
                 <div class="p-4 bg-red-100 text-red-700 rounded text-center max-w-md mx-auto mt-8">
                     <p>Invalid login code.</p>
-                    <a href="/login" class="underline mt-2 inline-block">Try Again</a>
+                    <a href={loginHref(next)} class="underline mt-2 inline-block">Try Again</a>
                 </div>
             </Layout>
         )

@@ -1,7 +1,7 @@
 
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getUser } from '../../utils'
+import { getUser, loginRedirect } from '../../utils'
 import { Bindings } from '../../types'
 import { PastPaperTabs } from './tabs'
 import { subjectLabel } from '../../constants'
@@ -19,7 +19,7 @@ const getPage = (key?: string) => {
 
 app.get('/mock-exams', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const subject = c.req.query('subject')
     if (!subject) {
@@ -115,7 +115,7 @@ app.get('/mock-exams', async (c) => {
 
 app.get('/mock-exams/create', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     const subject = c.req.query('subject')
 
     const sections = await c.env.DB.prepare(`
@@ -247,7 +247,7 @@ app.get('/mock-exams/create', async (c) => {
 
 app.post('/mock-exams/create-auto', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const body = await c.req.parseBody({ all: true })
     const subject = body['subject'] as string
@@ -410,7 +410,7 @@ app.post('/mock-exams/create-auto', async (c) => {
 
 app.post('/mock-exams/create-manual', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const body = await c.req.parseBody({ all: true })
     const subject = body['subject'] as string
@@ -452,7 +452,7 @@ app.post('/mock-exams/create-manual', async (c) => {
 
 app.get('/mock-exams/:id', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     const examId = c.req.param('id')
 
     const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ?`).bind(examId).first<any>()
@@ -627,7 +627,7 @@ app.get('/mock-exams/:id', async (c) => {
 
 app.post('/mock-exams/:id/finish', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     const examId = c.req.param('id')
     const body = await c.req.parseBody()
 
@@ -664,7 +664,7 @@ app.post('/mock-exams/:id/progress', async (c) => {
 
 app.get('/mock-exams/:id/mark', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     const examId = c.req.param('id')
 
     const exam = await c.env.DB.prepare(`SELECT * FROM mock_exams WHERE id = ?`).bind(examId).first<any>()
@@ -816,7 +816,7 @@ app.get('/mock-exams/:id/mark', async (c) => {
 
 app.post('/mock-exams/:id/submit-marks', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
     const examId = c.req.param('id')
     const body = await c.req.parseBody()
 

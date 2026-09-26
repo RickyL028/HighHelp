@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { Layout } from '../../layout'
-import { getUser } from '../../utils'
+import { getUser, loginRedirect } from '../../utils'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
@@ -17,7 +17,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/past-papers/batch/view', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const source = c.req.query('source') || 'paper'
     const paperId = c.req.query('paper_id')
@@ -569,7 +569,7 @@ async function generateExamPdf(questions: any[], bucket: any): Promise<Uint8Arra
 
 app.post('/past-papers/batch/export-pdf', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     const body = await c.req.parseBody({ all: true })
     let questionIdsRaw = body['question_ids']

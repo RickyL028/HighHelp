@@ -1,13 +1,13 @@
 import { Hono } from 'hono'
 import { Layout } from '../layout'
 import { Bindings } from '../types'
-import { getUser } from '../utils'
+import { getUser, loginRedirect } from '../utils'
 import { PermissionLevel } from '../permissions'
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.post('/about/verify', async (c) => {
     const user = await getUser(c)
-    if (!user) return c.redirect('/login')
+    if (!user) return c.redirect(loginRedirect(c))
 
     if (Number(user.permission_level) === PermissionLevel.DEFAULT) {
         await c.env.DB.prepare('UPDATE users SET permission_level = ? WHERE id = ?')
