@@ -47,10 +47,23 @@ export type NeighborOrder = {
     direction: 'ASC' | 'DESC'
 }[]
 
+export type NeighborQuery = { sql: string; params: any[] }
+
 export type NeighborQueries = {
-    position: { sql: string; params: any[] }
-    previous: { sql: string; params: any[] }
-    next: { sql: string; params: any[] }
+    position: NeighborQuery
+    previous: NeighborQuery
+    next: NeighborQuery
+}
+
+// One row of the question-picker window, as returned by `buildNeighborWindowQuery`.
+export type NeighborWindowRow = {
+    id: number
+    school_name: string | null
+    academic_year: number | null
+    section_label: string | null
+    question_number: string | null
+    marks: number | null
+    is_completed: number | null
 }
 
 const cleanText = (value: string | undefined, maxLength = 160) => (value || '').trim().slice(0, maxLength)
@@ -217,6 +230,7 @@ export function buildPaperWhere(userId: number, paperId: number): PracticeWhere 
     return {
         from: `
             FROM exam_questions q
+            JOIN papers p ON q.paper_id = p.id
             LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
         `,
         where: 'WHERE q.paper_id = ? AND q.is_deleted = 0',
@@ -445,6 +459,42 @@ export function buildNeighborQueries(base: PracticeWhere, order: NeighborOrder, 
             `,
             params: [...base.params, ...after.params]
         }
+    }
+}
+
+// Columns the question picker needs: identity, the source details shown on hover, and
+// completion state. The review-attempt table is only joined in review mode, so the completion
+// expression is chosen per source rather than assumed.
+export const neighborWindowColumns = (reviewAttempts = false) => `
+    q.id, p.school_name, p.academic_year, q.section_label, q.question_number, q.marks,
+    COALESCE(${reviewAttempts ? 'ura.is_completed, ua.is_completed' : 'ua.is_completed'}, 0) AS is_completed
+`
+
+/**
+ * Fetches the questions immediately before or after the current one, in navigation order,
+ * so a question picker can offer a window of neighbours without loading each one at a time.
+ * "before" rows are returned nearest-first, which the caller reverses into sort order.
+ */
+export function buildNeighborWindowQuery(
+    base: PracticeWhere,
+    order: NeighborOrder,
+    keys: any[],
+    side: 'before' | 'after',
+    limit: number,
+    options: { reviewAttempts?: boolean } = {}
+): NeighborQuery {
+    const predicate = comparisonPredicate(order, keys, side)
+
+    return {
+        sql: `
+            SELECT ${neighborWindowColumns(options.reviewAttempts)}
+            ${base.from}
+            ${base.where}
+            AND ${predicate.sql}
+            ORDER BY ${orderClause(order, side === 'before')}
+            LIMIT ?
+        `,
+        params: [...base.params, ...predicate.params, limit]
     }
 }
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildNavigationPlan,
 	buildNeighborQueries,
+	buildNeighborWindowQuery,
 	buildPaperWhere,
 	buildPracticeCountQuery,
 	buildPracticeListQuery,
@@ -260,6 +261,58 @@ describe('buildNeighborQueries', () => {
 		// year DESC + ordering ASC means "before" is a strictly greater year
 		expect(queries.next.sql).toContain('p.academic_year < ?');
 		expect(queries.previous.sql).toContain('p.academic_year > ?');
+	});
+});
+
+describe('buildNeighborWindowQuery', () => {
+	const order = practiceNeighborOrder('school_asc');
+	const keys = ['SBHS', 3, 42];
+
+	it('binds the base clause, the neighbour predicate and the limit in SQL text order', () => {
+		const base = buildPracticeWhere(7, 'Mathematics', baseFilters);
+		const query = buildNeighborWindowQuery(base, order, keys, 'after', 20);
+		expect(query.params.slice(0, 2)).toEqual([7, 'Mathematics']);
+		expect(query.params.slice(2, 8)).toEqual(['SBHS', 'SBHS', 3, 'SBHS', 3, 42]);
+		expect(query.params[8]).toBe(20);
+	});
+
+	it('walks forwards in sort order for the questions after the current one', () => {
+		const base = buildPracticeWhere(7, 'Mathematics', baseFilters);
+		const query = buildNeighborWindowQuery(base, order, keys, 'after', 10);
+		expect(query.sql).toContain('ORDER BY p.school_name ASC');
+		expect(query.sql).toContain('LIMIT ?');
+	});
+
+	it('walks backwards in reverse order for the questions before the current one', () => {
+		const base = buildPracticeWhere(7, 'Mathematics', baseFilters);
+		const query = buildNeighborWindowQuery(base, order, keys, 'before', 9);
+		expect(query.sql).toContain('ORDER BY p.school_name DESC');
+	});
+
+	it('selects the fields the question picker labels and tooltips need', () => {
+		const base = buildPracticeWhere(7, 'Mathematics', baseFilters);
+		const query = buildNeighborWindowQuery(base, order, keys, 'after', 20);
+		for (const column of ['q.id', 'p.school_name', 'p.academic_year', 'q.section_label', 'q.question_number', 'q.marks']) {
+			expect(query.sql).toContain(column);
+		}
+		expect(query.sql).toContain('COALESCE(ua.is_completed, 0) AS is_completed');
+	});
+
+	it('resolves the school and year of paper questions by joining papers', () => {
+		const base = buildPaperWhere(7, 55);
+		const query = buildNeighborWindowQuery(base, paperNeighborOrder, [0, 42], 'after', 20);
+		expect(base.from).toContain('JOIN papers p');
+		expect(query.sql).toContain('p.school_name');
+		expect(query.params[0]).toBe(7);
+		expect(query.params[1]).toBe(55);
+	});
+
+	it('prefers the review attempt for completion in review mode', () => {
+		const base = buildReviewWhere(7, 'Mathematics');
+		const query = buildNeighborWindowQuery(base, reviewNeighborOrder, ['2024-05-01 00:00:00', 42], 'before', 9, { reviewAttempts: true });
+		expect(base.from).toContain('user_review_attempts');
+		expect(query.sql).toContain('COALESCE(ura.is_completed, ua.is_completed, 0) AS is_completed');
+		expect(query.sql).toContain('ORDER BY ua.created_at ASC');
 	});
 });
 
