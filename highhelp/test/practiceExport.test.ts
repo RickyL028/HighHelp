@@ -25,7 +25,7 @@ const baseFilters: PracticeFilters = {
 	section: '',
 	marksMin: null,
 	marksMax: null,
-	sort: 'school_asc'
+	sort: 'year_asc'
 };
 
 const baseRow: PracticeExportRow = {

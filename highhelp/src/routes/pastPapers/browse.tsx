@@ -614,9 +614,10 @@ app.get('/past-papers', async (c) => {
                     <label class="text-xs text-gray-400 dark:text-neutral-500 uppercase tracking-wide flex items-center gap-1.5">
                         Sort
                         <select id="af-sort" class="bg-transparent border-b border-gray-300 dark:border-neutral-600 focus:outline-none focus:border-blue-500 dark:bg-transparent dark:text-white py-0.5 pr-1 text-sm">
-                            <option value="school_asc" selected={sort == 'school_asc'}>School A-Z</option>
-                            <option value="year_desc" selected={sort == 'year_desc'}>Year (Newest)</option>
-                            <option value="year_asc" selected={sort == 'year_asc'}>Year (Oldest)</option>
+                            <option value="year_asc" selected={sort === 'year_asc'}>Year (Oldest first)</option>
+                            <option value="year_desc" selected={sort === 'year_desc'}>Year (Newest first)</option>
+                            <option value="question_asc" selected={sort === 'question_asc'}>Question # (Lowest first)</option>
+                            <option value="question_desc" selected={sort === 'question_desc'}>Question # (Highest first)</option>
                         </select>
                     </label>
                     <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice${mode ? '&mode=' + mode : ''}`} class="text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline">reset</a>

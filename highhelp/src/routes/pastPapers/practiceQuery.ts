@@ -2,7 +2,14 @@ import { getTopicIdsForHierarchy } from '../../utils'
 
 export const PRACTICE_PAGE_SIZE = 50
 
-export type PracticeSort = 'school_asc' | 'year_desc' | 'year_asc'
+export type PracticeSort = 'year_asc' | 'year_desc' | 'question_asc' | 'question_desc'
+
+export const DEFAULT_PRACTICE_SORT: PracticeSort = 'year_asc'
+
+const PRACTICE_SORTS: readonly string[] = ['year_asc', 'year_desc', 'question_asc', 'question_desc']
+
+export const isPracticeSort = (value: string | undefined | null): value is PracticeSort =>
+    !!value && PRACTICE_SORTS.includes(value)
 
 export type RawPracticeFilters = {
     topic: string
@@ -89,7 +96,7 @@ export function readRawPracticeFilters(query: (key: string) => string | undefine
         section: cleanText(query('section'), 80),
         marksMin: cleanText(query('marks_min'), 20),
         marksMax: cleanText(query('marks_max'), 20),
-        sort: sortValue === 'year_desc' || sortValue === 'year_asc' ? sortValue : 'school_asc'
+        sort: isPracticeSort(sortValue) ? sortValue : DEFAULT_PRACTICE_SORT
     }
 }
 
@@ -198,32 +205,52 @@ export function buildPracticeWhere(userId: number, subject: string, filters: Pra
     return { from, where: `WHERE ${conditions.join(' AND ')}`, params }
 }
 
+// `question_number` is free text ("1", "12", "32a", "A1", "b", "ii"), so ordering by it means
+// ordering by the number it starts with. The cast has to happen in SQL for the ORDER BY and in
+// JS for the keyset predicate, so both sides are pinned to the one expression and one mirror
+// function below; `questionNumberKey` is verified against SQLite in the test suite.
+const QUESTION_NUMBER_KEY = 'IFNULL(CAST(q.question_number AS INTEGER), 0)'
+const QUESTION_NUMBER_TIEBREAK = 'q.question_number COLLATE NOCASE'
+
+/** JS mirror of `CAST(x AS INTEGER)`: leading integer, truncated at the first non-digit, 0 when there is none. */
+export const questionNumberKey = (value: string | null | undefined) => {
+    const parsed = parseInt(String(value ?? '').trim(), 10)
+    return Number.isFinite(parsed) ? parsed : 0
+}
+
+/**
+ * Every practice sort is defined once, as its ordered list of keys. The plain ORDER BY string is
+ * rendered from the same list, so the list page and the keyset neighbour lookups on the attempt
+ * page cannot drift apart.
+ */
+const practiceOrderParts = (sort: PracticeSort): NeighborOrder => {
+    if (sort === 'year_desc' || sort === 'year_asc') {
+        return [
+            { expression: 'p.academic_year', direction: sort === 'year_desc' ? 'DESC' : 'ASC' },
+            { expression: 'IFNULL(q.ordering_index, 0)', direction: 'ASC' },
+            { expression: 'q.id', direction: 'ASC' }
+        ]
+    }
+
+    // Every Q1 across every paper, then every Q2: the number leads, and the year breaks ties so
+    // repeated numbers stay grouped by paper year rather than by insertion order.
+    const direction = sort === 'question_desc' ? 'DESC' : 'ASC'
+    return [
+        { expression: QUESTION_NUMBER_KEY, direction },
+        { expression: QUESTION_NUMBER_TIEBREAK, direction },
+        { expression: 'p.academic_year', direction },
+        { expression: 'q.id', direction }
+    ]
+}
+
 export function practiceOrder(sort: PracticeSort) {
-    if (sort === 'year_desc') return 'p.academic_year DESC, IFNULL(q.ordering_index, 0) ASC, q.id ASC'
-    if (sort === 'year_asc') return 'p.academic_year ASC, IFNULL(q.ordering_index, 0) ASC, q.id ASC'
-    return 'p.school_name ASC, IFNULL(q.ordering_index, 0) ASC, q.id ASC'
+    return practiceOrderParts(sort)
+        .map(part => `${part.expression} ${part.direction}`)
+        .join(', ')
 }
 
 export function practiceNeighborOrder(sort: PracticeSort): NeighborOrder {
-    if (sort === 'year_desc') {
-        return [
-            { expression: 'p.academic_year', direction: 'DESC' },
-            { expression: 'IFNULL(q.ordering_index, 0)', direction: 'ASC' },
-            { expression: 'q.id', direction: 'ASC' }
-        ]
-    }
-    if (sort === 'year_asc') {
-        return [
-            { expression: 'p.academic_year', direction: 'ASC' },
-            { expression: 'IFNULL(q.ordering_index, 0)', direction: 'ASC' },
-            { expression: 'q.id', direction: 'ASC' }
-        ]
-    }
-    return [
-        { expression: 'p.school_name', direction: 'ASC' },
-        { expression: 'IFNULL(q.ordering_index, 0)', direction: 'ASC' },
-        { expression: 'q.id', direction: 'ASC' }
-    ]
+    return practiceOrderParts(sort)
 }
 
 export function buildPaperWhere(userId: number, paperId: number): PracticeWhere {
@@ -273,22 +300,29 @@ export type NeighborKeyRow = {
     id: number
     school_name: string
     academic_year: number
+    question_number: string | null
     ordering_index: number | null
     created_at?: string | null
 }
 
 export function practiceNeighborKeys(sort: PracticeSort, row: NeighborKeyRow): any[] {
+    if (sort === 'question_desc' || sort === 'question_asc') {
+        return [questionNumberKey(row.question_number), row.question_number, row.academic_year, row.id];
+    }
     const ordering = row.ordering_index ?? 0;
-    if (sort === 'year_desc' || sort === 'year_asc') return [row.academic_year, ordering, row.id];
-    return [row.school_name, ordering, row.id];
+    return [row.academic_year, ordering, row.id];
 }
 
-// Row property backing each practice sort key, in the same order as `practiceNeighborKeys`.
-// Kept alongside the keys so the coupling to the ORDER BY expressions stays testable.
-export const practiceNeighborKeyFields: Record<PracticeSort, string[]> = {
-    school_asc: ['school_name', 'ordering_index', 'id'],
+// Where each practice sort key comes from on the current row, in the same order as
+// `practiceNeighborKeys` and `practiceOrderParts`. `question_number_key` is the derived numeric
+// key, not a column, so the list page and the navigation plan stay checkable against each other.
+export type NeighborKeySource = 'academic_year' | 'ordering_index' | 'id' | 'question_number' | 'question_number_key'
+
+export const practiceNeighborKeyFields: Record<PracticeSort, NeighborKeySource[]> = {
+    year_asc: ['academic_year', 'ordering_index', 'id'],
     year_desc: ['academic_year', 'ordering_index', 'id'],
-    year_asc: ['academic_year', 'ordering_index', 'id']
+    question_asc: ['question_number_key', 'question_number', 'academic_year', 'id'],
+    question_desc: ['question_number_key', 'question_number', 'academic_year', 'id']
 }
 
 export type NavigationPlanInput =
@@ -394,6 +428,12 @@ export function buildPracticeCountQuery(userId: number, subject: string, filters
     }
 }
 
+/**
+ * Keyset comparison for an ordered key list: one OR-branch per key, each pinning the keys before
+ * it and then stepping that key forward (or back). The result is a single expression, and callers
+ * that append it to a WHERE must keep it parenthesised — SQLite binds AND tighter than OR, so a
+ * bare `AND <this>` would let the later OR-branches escape the base filters.
+ */
 function comparisonPredicate(order: NeighborOrder, keys: any[], side: 'before' | 'after') {
     const branches: string[] = []
     const params: any[] = []
@@ -413,7 +453,7 @@ function comparisonPredicate(order: NeighborOrder, keys: any[], side: 'before' |
         branches.push(`(${equalities.join(' AND ')})`)
     })
 
-    return { sql: `(${branches.join(' OR ')})`, params }
+    return { sql: branches.length ? `(${branches.join(' OR ')})` : '0', params }
 }
 
 function orderClause(order: NeighborOrder, reverse = false) {
@@ -442,7 +482,7 @@ export function buildNeighborQueries(base: PracticeWhere, order: NeighborOrder, 
                 SELECT q.id
                 ${base.from}
                 ${base.where}
-                AND ${before.sql}
+                AND (${before.sql})
                 ORDER BY ${orderClause(order, true)}
                 LIMIT 1
             `,
@@ -453,7 +493,7 @@ export function buildNeighborQueries(base: PracticeWhere, order: NeighborOrder, 
                 SELECT q.id
                 ${base.from}
                 ${base.where}
-                AND ${after.sql}
+                AND (${after.sql})
                 ORDER BY ${orderClause(order)}
                 LIMIT 1
             `,
@@ -490,7 +530,7 @@ export function buildNeighborWindowQuery(
             SELECT ${neighborWindowColumns(options.reviewAttempts)}
             ${base.from}
             ${base.where}
-            AND ${predicate.sql}
+            AND (${predicate.sql})
             ORDER BY ${orderClause(order, side === 'before')}
             LIMIT ?
         `,

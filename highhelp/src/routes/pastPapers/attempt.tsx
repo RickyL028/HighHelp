@@ -4,9 +4,11 @@ import { getUser, loginRedirect, formatDate } from '../../utils'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
 import {
+    DEFAULT_PRACTICE_SORT,
     buildNavigationPlan,
     buildNeighborQueries,
     buildNeighborWindowQuery,
+    isPracticeSort,
     readRawPracticeFilters,
     resolvePracticeFilters,
     type NeighborWindowRow
@@ -531,7 +533,8 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
     const filterSection = c.req.query('section');
     const filterMarksMin = c.req.query('marks_min');
     const filterMarksMax = c.req.query('marks_max');
-    const sort = c.req.query('sort') || 'school_asc';
+    const sortValue = c.req.query('sort');
+    const sort = isPracticeSort(sortValue) ? sortValue : DEFAULT_PRACTICE_SORT;
 
     const params = new URLSearchParams({
         source: source || '',
