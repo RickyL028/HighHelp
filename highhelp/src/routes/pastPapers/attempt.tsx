@@ -20,13 +20,55 @@ const app = new Hono<{ Bindings: Bindings }>()
 const PICKER_BEFORE = 9;
 const PICKER_AFTER = 10;
 
-// Source line shown when hovering a picker chip, e.g. "SBHS 2024 · Section A Q3 · 4 marks".
+// Source line shown when hovering a picker chip, e.g. "SBHS 2024 · Section A Q3 · 3 of 4 marks".
 const questionSourceLabel = (row: NeighborWindowRow) => {
     const paper = [row.school_name, row.academic_year].filter(Boolean).join(' ');
     const location = [row.section_label, row.question_number ? `Q${row.question_number}` : ''].filter(Boolean).join(' ');
-    const marks = Number(row.marks) > 0 ? `${row.marks} mark${Number(row.marks) === 1 ? '' : 's'}` : '';
+    const max = Number(row.marks) || 0;
+    const awarded = Number(row.marks_awarded) || 0;
+    const marks =
+        max <= 0 ? '' : awarded > 0 ? `${awarded} of ${max} ${max === 1 ? 'mark' : 'marks'}` : `${max} mark${max === 1 ? '' : 's'}`;
     return [paper, location, marks].filter(Boolean).join(' · ') || 'Question';
 };
+
+// A chip is labelled by what the question is rather than by its slot in the run, because a
+// position number tells you nothing about the question you are about to land on. Colour then
+// carries the result: full marks green, part marks orange, untouched neutral.
+const chipLabel = (row: NeighborWindowRow) => {
+    if (row.question_type === 'multiple_choice') return 'C';
+    const max = Number(row.marks) || 0;
+    // A dash rather than a zero: no mark value was recorded, so there is nothing to score against.
+    return max > 0 ? String(max) : '–';
+};
+
+const chipResult = (row: NeighborWindowRow): 'full' | 'partial' | 'untouched' => {
+    const max = Number(row.marks) || 0;
+    const awarded = Number(row.marks_awarded) || 0;
+    if (max <= 0) return 'untouched';
+    if (awarded >= max) return 'full';
+    return awarded > 0 ? 'partial' : 'untouched';
+};
+
+const CHIP_RESULT_CLASS = {
+    full: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/60 text-green-700 dark:text-green-400 hover:border-green-400',
+    partial:
+        'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/60 text-amber-700 dark:text-amber-400 hover:border-amber-400',
+    untouched: 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 text-gray-600 dark:text-neutral-400 hover:border-blue-400 hover:text-blue-600'
+} as const;
+
+// Non-interactive marker for the questions the cached window does not cover. Not a link: the ids
+// for that stretch were never fetched, and faking a jump target would be worse than saying so.
+const overflowChip = (count: number, side: 'before' | 'after') => (
+    <span
+        data-tip={`${count} more question${count === 1 ? '' : 's'} ${side}`}
+        class="shrink-0 w-7 h-7 flex items-center justify-center rounded text-xs font-bold text-gray-400 dark:text-neutral-500 border border-dashed border-gray-300 dark:border-neutral-700 select-none"
+    >
+        <span aria-hidden="true">…</span>
+        <span class="sr-only">
+            {count} more question{count === 1 ? '' : 's'} {side}
+        </span>
+    </span>
+);
 
 // Split MCQ question_text into stem + option texts (options are stored inline, e.g. "(A) Use cost centres")
 const parseMcqOptions = (text: string | null): { stem: string; options: Record<string, string> | null } => {
@@ -204,12 +246,18 @@ app.get('/past-papers/attempt/:id', async (c) => {
                 section_label: qRow.section_label,
                 question_number: qRow.question_number,
                 marks: qRow.marks,
-                is_completed: answerRevealed ? 1 : 0,
+                question_type: qRow.question_type,
+                marks_awarded: Number(attempt?.marks_awarded) || 0,
                 position
             },
             ...afterRows.map((row, index) => ({ ...row, position: position + 1 + index }))
         ]
         : [];
+
+    // The window only ever holds a slice of the run, so the picker says how many questions sit
+    // beyond each edge rather than implying the bar is the whole set.
+    const firstPosition = pickerRows.length > 0 ? pickerRows[0].position : 0;
+    const lastPosition = pickerRows.length > 0 ? pickerRows[pickerRows.length - 1].position : 0;
 
     // Everything the client needs to mark an answer or restore state after a swap.
     const attemptConfig = {
@@ -218,7 +266,10 @@ app.get('/past-papers/attempt/:id', async (c) => {
         isMcq: q.question_type === 'multiple_choice',
         correctAnswer: q.mc_answer || '',
         maxMarks: Number(q.marks) || 0,
-        prefetch: pickerRows.map(row => row.id).filter(id => id !== currentId)
+        prefetch: pickerRows.map(row => row.id).filter(id => id !== currentId),
+        // The two questions either side of this one are what you jump to next, so the client warms
+        // them first rather than the far edge of the window.
+        adjacent: [nextId, prevId].filter((id): id is number => id != null)
     };
 
     const parsed = q.question_type === 'multiple_choice' ? parseMcqOptions(q.question_text) : { stem: q.question_text, options: null };
@@ -231,6 +282,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                 <div class="flex items-center gap-2 mb-2 shrink-0">
                     
                     <div id="attempt-picker" class="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto">
+                        {firstPosition > 1 && overflowChip(firstPosition - 1, 'before')}
                         {pickerRows.map(row => {
                             const isCurrent = row.id === currentId;
                             const source = questionSourceLabel(row);
@@ -242,18 +294,15 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                     data-tip={source}
                                     aria-label={`Question ${row.position} of ${total}: ${source}`}
                                     aria-current={isCurrent ? 'true' : undefined}
-                                    class={`shrink-0 w-7 h-7 flex items-center justify-center rounded text-xs font-bold border transition-colors ${
-                                        isCurrent
-                                            ? 'bg-blue-600 border-blue-600 text-white'
-                                            : Number(row.is_completed)
-                                                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/60 text-green-700 dark:text-green-400 hover:border-green-400'
-                                                : 'bg-white dark:bg-neutral-800 border-gray-200 dark:border-neutral-700 text-gray-600 dark:text-neutral-400 hover:border-blue-400 hover:text-blue-600'
-                                    }`}
+                                    class={`shrink-0 w-7 h-7 flex items-center justify-center rounded text-xs font-bold border transition-colors ${CHIP_RESULT_CLASS[chipResult(
+                                        row
+                                    )]} ${isCurrent ? 'ring-2 ring-blue-500' : ''}`}
                                 >
-                                    {row.position}
+                                    {chipLabel(row)}
                                 </a>
                             );
                         })}
+                        {lastPosition < total && overflowChip(total - lastPosition, 'after')}
                     </div>
                 </div>
             )}
@@ -473,7 +522,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
     if (c.req.query('partial')) return c.html(<>{content}</>);
 
     return c.html(
-        <Layout title={`Question - ${subjectLabel(q.subject)}`} user={user} latex={true}>
+        <Layout title={`Question - ${subjectLabel(q.subject)}`} user={user} latex={true} pdfCrop={true}>
             <div class="w-full h-[calc(100vh-3rem)] flex flex-col p-2 max-w-[120rem] mx-auto">
                 <div id="attempt-root" class="flex-1 min-h-0 flex flex-col">
                     {content}
@@ -565,6 +614,10 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
 const ATTEMPT_CLIENT_SCRIPT = `
 (function() {
     var PREFETCH_CONCURRENCY = 3;
+    // Images are pulled in alongside the fragments, but only for the questions nearest the one
+    // being read, and only a few at a time: a full window of scans is far more than anyone needs.
+    var ASSET_CONCURRENCY = 2;
+    var ASSET_WARM_LIMIT = 8;
     var root = document.getElementById('attempt-root');
     if (!root) return;
 
@@ -572,6 +625,10 @@ const ATTEMPT_CLIENT_SCRIPT = `
     var inflight = {};
     var queue = [];
     var active = 0;
+    var warmed = {};
+    var assetQueue = [];
+    var assetActive = 0;
+    var assetWarmCount = 0;
     var state = readConfig(root);
 
     var tip = document.createElement('div');
@@ -601,7 +658,7 @@ const ATTEMPT_CLIENT_SCRIPT = `
         if (inflight[id]) return inflight[id];
         inflight[id] = fetch(partialUrl(id), { headers: { 'X-Requested-With': 'highhelp-partial' } })
             .then(function(res) { return res.ok ? res.text() : Promise.reject(new Error('bad status')); })
-            .then(function(html) { cache[id] = html; delete inflight[id]; return html; })
+            .then(function(html) { cache[id] = html; delete inflight[id]; warmAssets(html); return html; })
             .catch(function() { delete inflight[id]; return null; });
         return inflight[id];
     }
@@ -617,13 +674,57 @@ const ATTEMPT_CLIENT_SCRIPT = `
         }
     }
 
-    // Warm the rest of the picker window in navigation order, so the questions either side of
-    // the current one are already in the cache by the time they are wanted.
-    function prefetch() {
+    function slowConnection() {
         var connection = navigator.connection;
-        if (connection && (connection.saveData || connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g')) return;
+        return !!(connection && (connection.saveData || connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g'));
+    }
+
+    // A cached fragment holds its pictures as markup only: nothing downloads until the fragment
+    // is swapped into the document, so the pane you land on is briefly blank where a scan should
+    // be. Requesting the same URLs through Image() now puts them in the HTTP cache, and the
+    // /download responses carry a day-long max-age, so the swap renders them from memory.
+    // Template content is inert, so parsing a fragment here costs nothing on the network.
+    function warmAssets(html) {
+        if (slowConnection() || assetWarmCount >= ASSET_WARM_LIMIT) return;
+        var holder = document.createElement('template');
+        holder.innerHTML = html;
+        holder.content.querySelectorAll('img[src]').forEach(function(img) {
+            var src = img.getAttribute('src') || '';
+            if (src.charAt(0) !== '/' || warmed[src]) return;
+            warmed[src] = true;
+            assetQueue.push(src);
+        });
+        pumpAssets();
+    }
+
+    function pumpAssets() {
+        while (assetActive < ASSET_CONCURRENCY && assetQueue.length) {
+            if (assetWarmCount >= ASSET_WARM_LIMIT) { assetQueue.length = 0; return; }
+            var src = assetQueue.shift();
+            assetActive += 1;
+            assetWarmCount += 1;
+            var img = new Image();
+            img.onload = img.onerror = function() {
+                assetActive -= 1;
+                pumpAssets();
+            };
+            img.src = src;
+        }
+    }
+
+    // Warm the rest of the picker window, starting with the questions either side of the current
+    // one since those are what you jump to next, then working outwards in navigation order.
+    function prefetch() {
+        if (slowConnection()) return;
+        var adjacent = state.adjacent || [];
         queue = (state.prefetch || []).filter(function(id) { return !cache[id] && !inflight[id]; });
         if (!queue.length) return;
+        // Array#sort is stable, so equal ranks keep navigation order.
+        queue.sort(function(a, b) {
+            var ai = adjacent.indexOf(a);
+            var bi = adjacent.indexOf(b);
+            return (ai === -1 ? adjacent.length : ai) - (bi === -1 ? adjacent.length : bi);
+        });
         if (window.requestIdleCallback) window.requestIdleCallback(pump, { timeout: 3000 });
         else setTimeout(pump, 300);
     }

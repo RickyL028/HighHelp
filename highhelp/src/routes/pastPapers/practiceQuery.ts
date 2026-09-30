@@ -70,7 +70,8 @@ export type NeighborWindowRow = {
     section_label: string | null
     question_number: string | null
     marks: number | null
-    is_completed: number | null
+    question_type: string | null
+    marks_awarded: number | null
 }
 
 const cleanText = (value: string | undefined, maxLength = 160) => (value || '').trim().slice(0, maxLength)
@@ -277,9 +278,9 @@ export function buildReviewWhere(userId: number, subject: string): PracticeWhere
             JOIN papers p ON q.paper_id = p.id
             JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             LEFT JOIN (
-                SELECT question_id, is_completed
+                SELECT question_id, is_completed, marks_awarded
                 FROM (
-                    SELECT question_id, is_completed,
+                    SELECT question_id, is_completed, marks_awarded,
                            ROW_NUMBER() OVER (PARTITION BY question_id ORDER BY created_at DESC, id DESC) AS rn
                     FROM user_review_attempts
                     WHERE user_id = ?
@@ -502,12 +503,12 @@ export function buildNeighborQueries(base: PracticeWhere, order: NeighborOrder, 
     }
 }
 
-// Columns the question picker needs: identity, the source details shown on hover, and
-// completion state. The review-attempt table is only joined in review mode, so the completion
-// expression is chosen per source rather than assumed.
+// Columns the question picker needs: identity, the source details shown on hover, and the marks
+// the chip is labelled and coloured by. The review-attempt table is only joined in review mode,
+// so its column is only read when it is there.
 export const neighborWindowColumns = (reviewAttempts = false) => `
-    q.id, p.school_name, p.academic_year, q.section_label, q.question_number, q.marks,
-    COALESCE(${reviewAttempts ? 'ura.is_completed, ua.is_completed' : 'ua.is_completed'}, 0) AS is_completed
+    q.id, p.school_name, p.academic_year, q.section_label, q.question_number, q.marks, q.question_type,
+    ${reviewAttempts ? 'ura.marks_awarded, ua.marks_awarded' : 'ua.marks_awarded'} AS marks_awarded
 `
 
 /**

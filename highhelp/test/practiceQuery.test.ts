@@ -390,7 +390,16 @@ describe('buildNeighborWindowQuery', () => {
 		for (const column of ['q.id', 'p.school_name', 'p.academic_year', 'q.section_label', 'q.question_number', 'q.marks']) {
 			expect(query.sql).toContain(column);
 		}
-		expect(query.sql).toContain('COALESCE(ua.is_completed, 0) AS is_completed');
+		expect(query.sql).toContain('q.question_type');
+		// a chip shows "C" for a multiple choice question, its mark value otherwise, and is only
+		// green when the awarded marks reach that value
+		expect(query.sql).toContain('ua.marks_awarded AS marks_awarded');
+	});
+
+	it('reads the awarded marks from the review attempt when reviewing', () => {
+		const base = buildReviewWhere(7, 'Mathematics');
+		const query = buildNeighborWindowQuery(base, reviewNeighborOrder, ['2024-05-01 00:00:00', 42], 'after', 20, { reviewAttempts: true });
+		expect(query.sql).toContain('ura.marks_awarded, ua.marks_awarded AS marks_awarded');
 	});
 
 	it('resolves the school and year of paper questions by joining papers', () => {
@@ -402,12 +411,19 @@ describe('buildNeighborWindowQuery', () => {
 		expect(query.params[1]).toBe(55);
 	});
 
-	it('prefers the review attempt for completion in review mode', () => {
+	it('prefers the review attempt for the awarded marks in review mode', () => {
 		const base = buildReviewWhere(7, 'Mathematics');
 		const query = buildNeighborWindowQuery(base, reviewNeighborOrder, ['2024-05-01 00:00:00', 42], 'before', 9, { reviewAttempts: true });
 		expect(base.from).toContain('user_review_attempts');
-		expect(query.sql).toContain('COALESCE(ura.is_completed, ua.is_completed, 0) AS is_completed');
+		expect(query.sql).toContain('ura.marks_awarded, ua.marks_awarded AS marks_awarded');
 		expect(query.sql).toContain('ORDER BY ua.created_at ASC');
+	});
+
+	it('projects the review marks into the alias the window query reads', () => {
+		// the latest-review subquery only exposes the columns it selects, so reading a column it
+		// does not project fails the whole request
+		const base = buildReviewWhere(7, 'Mathematics');
+		expect(base.from).toContain('SELECT question_id, is_completed, marks_awarded');
 	});
 });
 
