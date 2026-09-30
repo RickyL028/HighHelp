@@ -10,12 +10,21 @@ import {
     PRACTICE_PAGE_SIZE,
     RawPracticeFilters,
     buildPracticeCountQuery,
+    buildPracticeExportUrl,
     buildPracticeListQuery,
     buildPracticeRowsUrl,
     buildPracticeSectionTypeQuery,
     readRawPracticeFilters,
     resolvePracticeFilters
 } from './practiceQuery'
+import {
+    EXPORT_ROW_LIMIT,
+    PracticeExportRow,
+    buildPracticeExport,
+    buildPracticeExportQueries,
+    cleanExportSearch,
+    exportFilename
+} from './practiceExport'
 const app = new Hono<{ Bindings: Bindings }>()
 
 // Split MCQ question_text into stem + option texts (options are stored inline, e.g. "(A) Use cost centres")
@@ -213,6 +222,35 @@ app.get('/past-papers/rows', async (c) => {
         html,
         hasMore: listResult.results.length > PRACTICE_PAGE_SIZE,
         nextOffset: offset + rows.length
+    });
+});
+
+app.get('/past-papers/export-json', async (c) => {
+    const user = await getUser(c);
+    if (!user) return c.json({ error: 'Unauthorized' }, 401);
+
+    const subject = c.req.query('subject') || '';
+    if (!subject) return c.json({ error: 'Unknown subject' }, 400);
+
+    const raw = readRawPracticeFilters(key => c.req.query(key));
+    const filters = await resolvePracticeFilters(c.env.DB, subject, raw);
+    const search = cleanExportSearch(c.req.query('q'));
+    const { list, count } = buildPracticeExportQueries(user.id, subject, filters, search);
+    const [listResult, countResult] = await c.env.DB.batch([
+        c.env.DB.prepare(list.sql).bind(...list.params),
+        c.env.DB.prepare(count.sql).bind(...count.params)
+    ]);
+
+    const rows = (listResult.results as PracticeExportRow[]) || [];
+    const totalMatching = Number((countResult.results[0] as { total: number } | undefined)?.total || 0);
+    const exportedAt = new Date().toISOString();
+    const payload = buildPracticeExport(subject, rows, { rawFilters: raw, search, exportedAt, totalMatching });
+
+    return new Response(JSON.stringify(payload, null, 2), {
+        headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Content-Disposition': `attachment; filename="${exportFilename(subject, exportedAt)}"`
+        }
     });
 });
 
@@ -583,6 +621,7 @@ app.get('/past-papers', async (c) => {
                     </label>
                     <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice${mode ? '&mode=' + mode : ''}`} class="text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline">reset</a>
                     <a href={`/past-papers/batch/view?source=practice&subject=${encodeURIComponent(subject)}&school=${encodeURIComponent(filterSchool || '')}&topic=${filterTopicId}&topic_group=${encodeURIComponent(filterTopicGroup || '')}&year=${encodeURIComponent(filterYear || '')}&status=${encodeURIComponent(filterStatus || '')}&sort=${encodeURIComponent(sort)}&type=${encodeURIComponent(filterType || '')}&section=${encodeURIComponent(filterSection || '')}&marks_min=${encodeURIComponent(filterMarksMin || '')}&marks_max=${encodeURIComponent(filterMarksMax || '')}`} class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Batch Mode</a>
+                    <a id="practice-export-json" href={buildPracticeExportUrl(subject, rawFilters)} title={`Download every question matching these filters as JSON, in the AI import format (up to ${EXPORT_ROW_LIMIT} questions)`} class="text-amber-600 dark:text-amber-400 font-bold hover:underline">Export JSON</a>
                 </div>
 
                 <script dangerouslySetInnerHTML={{ __html: `
@@ -731,6 +770,18 @@ app.get('/past-papers', async (c) => {
                         searchInput.addEventListener('input', applySearch);
                         searchInput.addEventListener('keydown', function(e) {
                             if (e.key === 'Enter') { e.preventDefault(); applySearch(); }
+                        });
+                    }
+
+                    var exportLink = document.getElementById('practice-export-json');
+                    if (exportLink && searchInput) {
+                        exportLink.addEventListener('click', function(e) {
+                            var term = searchInput.value.trim();
+                            if (!term) return;
+                            e.preventDefault();
+                            var url = new URL(exportLink.getAttribute('href'), window.location.origin);
+                            url.searchParams.set('q', term);
+                            window.location.href = url.toString();
                         });
                     }
 

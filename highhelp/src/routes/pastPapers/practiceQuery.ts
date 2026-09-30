@@ -530,3 +530,12 @@ export function buildPracticeRowsUrl(subject: string, raw: RawPracticeFilters, m
     })
     return `/past-papers/rows?${params.toString()}`
 }
+
+export function buildPracticeExportUrl(subject: string, raw: RawPracticeFilters, search = '') {
+    const params = new URLSearchParams({ subject })
+    const values: Record<string, string> = { ...practiceUrlFilters(raw), q: search }
+    Object.entries(values).forEach(([key, value]) => {
+        if (value) params.set(key, value)
+    })
+    return `/past-papers/export-json?${params.toString()}`
+}
