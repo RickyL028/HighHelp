@@ -219,6 +219,35 @@ export const questionNumberKey = (value: string | null | undefined) => {
     return Number.isFinite(parsed) ? parsed : 0
 }
 
+export const UNSORTED_SECTION_LABEL = 'Unsorted'
+
+/** Section labels are "I", "II", "A", "1" — sort by the leading number so II does not precede I. */
+export const sectionNumber = (value: string) => {
+    const match = value.match(/\d+/);
+    return match ? parseInt(match[0], 10) : NaN;
+};
+
+/**
+ * The list and batch views present the flat `practiceOrder` result as section blocks, so both must
+ * bucket identically or a batch started from the list reorders the questions. Order of the sections
+ * is numeric where possible and alphabetical otherwise; rows inside a section keep the SQL order.
+ */
+export const groupBySection = <T extends { section_label?: string | null }>(rows: T[]): [string, T[]][] => {
+    const grouped = new Map<string, T[]>();
+    for (const row of rows) {
+        const key = (row.section_label || '').trim() || UNSORTED_SECTION_LABEL;
+        const current = grouped.get(key) || [];
+        current.push(row);
+        grouped.set(key, current);
+    }
+    return Array.from(grouped.entries()).sort(([a], [b]) => {
+        const aNumber = sectionNumber(a);
+        const bNumber = sectionNumber(b);
+        if (!Number.isNaN(aNumber) && !Number.isNaN(bNumber)) return aNumber - bNumber;
+        return a.localeCompare(b);
+    });
+};
+
 /**
  * Every practice sort is defined once, as its ordered list of keys. The plain ORDER BY string is
  * rendered from the same list, so the list page and the keyset neighbour lookups on the attempt
@@ -390,7 +419,7 @@ export function buildBatchPracticeQuery(userId: number, subject: string, filters
         sql: `
             SELECT q.id, q.paper_id, q.section_label, q.segment_label, q.question_number,
                    q.question_type, q.marks, q.question_text, q.question_image_key, q.answer_image_key,
-                   q.stimulus_image_key, q.stimulus_text, q.mc_answer,
+                   q.answer_text, q.stimulus_image_key, q.stimulus_text, q.mc_answer,
                    p.subject, p.school_name, p.academic_year,
                    ua.response_content AS ua_response,
                    ua.selected_option AS ua_selected,

@@ -8,6 +8,7 @@ import {
     BATCH_PAGE_LIMIT,
     buildBatchPracticeQuery,
     buildPracticeCountQuery,
+    groupBySection,
     practiceUrlFilters,
     readRawPracticeFilters,
     resolvePracticeFilters
@@ -101,6 +102,14 @@ app.get('/past-papers/batch/view', async (c) => {
     const totalCount = questions.length
     const pct = totalCount > 0 ? Math.round(completedCount / totalCount * 100) : 0
 
+    // The practice list buckets the flat `practiceOrder` result into section blocks, so a batch
+    // started from it has to use the same bucketing or the questions arrive in a different order.
+    // The review queue and a single paper already arrive in the order they should be worked in.
+    const entries = (source === 'practice' ? groupBySection(questions) : [[null, questions]] as [string | null, any[]][])
+        .flatMap(([sectionLabel, sectionQuestions]) =>
+            sectionQuestions.map((question, index) => ({ sectionLabel: index === 0 ? sectionLabel : null, question }))
+        )
+
     return c.html(
         <Layout title={`Batch Attempt - ${headerTitle}`} user={user} latex={true}>
             <div class="mx-auto max-w-4xl">
@@ -143,7 +152,7 @@ app.get('/past-papers/batch/view', async (c) => {
                 </div>
 
                 <div class="pb-8" id="questions-container">
-                    {questions.map((q: any) => {
+                    {entries.map(({ sectionLabel, question: q }) => {
                         const hasAttempt = q.ua_updated != null
                         const attempt = hasAttempt ? {
                             response_content: q.ua_response,
@@ -158,117 +167,122 @@ app.get('/past-papers/batch/view', async (c) => {
                         const sourceLine = `${q.school_name && source !== 'paper' ? `${q.school_name} ${q.academic_year} — ` : ''}${q.section_label} Q${q.question_number}`
 
                         return (
-                            <QuestionShell
-                                id={`q-${q.id}`}
-                                marks={q.marks}
-                                header={
-                                    <QuestionMeta source={sourceLine}>
-                                        {q.question_type === 'multiple_choice' && (
-                                            <span class="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">MCQ</span>
-                                        )}
-                                        <span id={`q-status-${q.id}`} class={`ml-auto text-xs font-bold px-2 py-0.5 rounded ${attempt?.is_completed ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20' : hasAttempt ? 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20' : ''}`}>
-                                            {attempt?.is_completed ? '✓ Done' : hasAttempt ? 'Saved' : ''}
-                                        </span>
-                                    </QuestionMeta>
-                                }
-                            >
-                                {hasStimulus && (
-                                    <div class="bg-gray-50 dark:bg-neutral-900/40 p-3 rounded-lg">
-                                        {q.stimulus_text && (
-                                            <div class="text-gray-700 dark:text-neutral-300 whitespace-pre-wrap font-serif italic text-[15px] leading-relaxed">
-                                                {q.stimulus_text}
-                                            </div>
-                                        )}
-                                        {q.stimulus_image_key && (
-                                            q.stimulus_image_key.startsWith('pdf_crop:') ? (
-                                                <pdf-crop pdf-url={`/download/papers/${q.paper_id}.pdf`} crop-data={q.stimulus_image_key.replace('pdf_crop:', '')}></pdf-crop>
+                            <>
+                                {sectionLabel !== null && (
+                                    <h2 class="text-xl font-bold text-gray-900 dark:text-white mt-10 mb-3 pb-2 border-b border-gray-200 dark:border-neutral-700">{sectionLabel}</h2>
+                                )}
+                                <QuestionShell
+                                    id={`q-${q.id}`}
+                                    marks={q.marks}
+                                    header={
+                                        <QuestionMeta source={sourceLine}>
+                                            {q.question_type === 'multiple_choice' && (
+                                                <span class="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">MCQ</span>
+                                            )}
+                                            <span id={`q-status-${q.id}`} class={`ml-auto text-xs font-bold px-2 py-0.5 rounded ${attempt?.is_completed ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20' : hasAttempt ? 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20' : ''}`}>
+                                                {attempt?.is_completed ? '✓ Done' : hasAttempt ? 'Saved' : ''}
+                                            </span>
+                                        </QuestionMeta>
+                                    }
+                                >
+                                    {hasStimulus && (
+                                        <div class="bg-gray-50 dark:bg-neutral-900/40 p-3 rounded-lg">
+                                            {q.stimulus_text && (
+                                                <div class="text-gray-700 dark:text-neutral-300 whitespace-pre-wrap font-serif italic text-[15px] leading-relaxed">
+                                                    {q.stimulus_text}
+                                                </div>
+                                            )}
+                                            {q.stimulus_image_key && (
+                                                q.stimulus_image_key.startsWith('pdf_crop:') ? (
+                                                    <pdf-crop pdf-url={`/download/papers/${q.paper_id}.pdf`} crop-data={q.stimulus_image_key.replace('pdf_crop:', '')}></pdf-crop>
+                                                ) : (
+                                                    <img src={`/download/${q.stimulus_image_key}`} class="w-full h-auto object-contain bg-white dark:bg-neutral-900 rounded" />
+                                                )
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {q.question_text ? (
+                                        <div class="text-gray-900 dark:text-neutral-100 whitespace-pre-wrap font-serif text-lg leading-snug">
+                                            {q.question_text}
+                                        </div>
+                                    ) : q.question_image_key ? (
+                                        <img src={`/download/${q.question_image_key}`} class="w-full h-auto object-contain rounded bg-white dark:bg-neutral-900" />
+                                    ) : null}
+
+                                    {q.question_type === 'multiple_choice' ? (
+                                        <div class="flex gap-2" id={`mcq-${q.id}`}>
+                                            {['A', 'B', 'C', 'D'].map(opt => (
+                                                <label class="cursor-pointer flex-1">
+                                                    <input type="radio" name={`sel-${q.id}`} value={opt} class="peer sr-only" checked={attempt?.selected_option === opt} />
+                                                    <div class="text-center py-2 border dark:border-neutral-600 rounded bg-white dark:bg-neutral-800 peer-checked:bg-blue-600 peer-checked:border-blue-600 peer-checked:text-white text-gray-700 dark:text-neutral-300 font-bold transition-none">
+                                                        {opt}
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <textarea id={`resp-${q.id}`}
+                                            class="w-full min-h-[6rem] p-3 border dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 text-sm focus:ring-1 focus:ring-blue-500 outline-none resize-y rounded"
+                                            placeholder="Type your answer here..."
+                                        >{attempt?.response_content || ''}</textarea>
+                                    )}
+
+                                    <div id={`ans-${q.id}`} style={answerRevealed ? '' : 'display:none'}>
+                                        <div class="bg-green-50 dark:bg-green-900/10 p-3 rounded-lg space-y-3">
+                                            {q.mc_answer && (
+                                                <div class="text-xl font-black text-green-700 dark:text-green-400">{q.mc_answer}</div>
+                                            )}
+                                            {q.answer_text ? (
+                                                <div class="text-green-900 dark:text-green-300 whitespace-pre-wrap text-[15px] font-medium leading-relaxed">
+                                                    {q.answer_text}
+                                                </div>
+                                            ) : q.answer_image_key ? (
+                                                <img src={`/download/${q.answer_image_key}`} class="w-full object-contain bg-white dark:bg-neutral-900 rounded" />
                                             ) : (
-                                                <img src={`/download/${q.stimulus_image_key}`} class="w-full h-auto object-contain bg-white dark:bg-neutral-900 rounded" />
-                                            )
-                                        )}
-                                    </div>
-                                )}
+                                                <span class="text-green-600/60 dark:text-green-500/50 italic text-sm">No marking guideline provided.</span>
+                                            )}
 
-                                {q.question_text ? (
-                                    <div class="text-gray-900 dark:text-neutral-100 whitespace-pre-wrap font-serif text-lg leading-snug">
-                                        {q.question_text}
-                                    </div>
-                                ) : q.question_image_key ? (
-                                    <img src={`/download/${q.question_image_key}`} class="w-full h-auto object-contain rounded bg-white dark:bg-neutral-900" />
-                                ) : null}
-
-                                {q.question_type === 'multiple_choice' ? (
-                                    <div class="flex gap-2" id={`mcq-${q.id}`}>
-                                        {['A', 'B', 'C', 'D'].map(opt => (
-                                            <label class="cursor-pointer flex-1">
-                                                <input type="radio" name={`sel-${q.id}`} value={opt} class="peer sr-only" checked={attempt?.selected_option === opt} />
-                                                <div class="text-center py-2 border dark:border-neutral-600 rounded bg-white dark:bg-neutral-800 peer-checked:bg-blue-600 peer-checked:border-blue-600 peer-checked:text-white text-gray-700 dark:text-neutral-300 font-bold transition-none">
-                                                    {opt}
+                                            <div class="pt-2 border-t border-green-200/60 dark:border-green-800/50">
+                                                <div class="flex items-center gap-2 mb-2">
+                                                    <span class="text-sm font-bold text-gray-700 dark:text-neutral-300">Award Marks:</span>
+                                                    <input type="hidden" id={`marks-${q.id}`} value={attempt?.marks_awarded ?? 0} />
+                                                    <div class="flex gap-1">
+                                                        {Array.from({ length: (Number(q.marks) || 0) + 1 }, (_, m) => (
+                                                            <button type="button"
+                                                                class={`mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors ${Number(attempt?.marks_awarded ?? 0) === m ? 'text-blue-700 dark:text-blue-400 underline' : 'text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline'}`}
+                                                                onclick={`setMark(${q.id}, ${m}); saveQuestion(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(mode || '')})`}
+                                                                >{m}</button>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </label>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <textarea id={`resp-${q.id}`}
-                                        class="w-full min-h-[6rem] p-3 border dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 text-sm focus:ring-1 focus:ring-blue-500 outline-none resize-y rounded"
-                                        placeholder="Type your answer here..."
-                                    >{attempt?.response_content || ''}</textarea>
-                                )}
-
-                                <div id={`ans-${q.id}`} style={answerRevealed ? '' : 'display:none'}>
-                                    <div class="bg-green-50 dark:bg-green-900/10 p-3 rounded-lg space-y-3">
-                                        {q.mc_answer && (
-                                            <div class="text-xl font-black text-green-700 dark:text-green-400">{q.mc_answer}</div>
-                                        )}
-                                        {q.answer_text ? (
-                                            <div class="text-green-900 dark:text-green-300 whitespace-pre-wrap text-[15px] font-medium leading-relaxed">
-                                                {q.answer_text}
+                                                <textarea id={`notes-${q.id}`}
+                                                    class="w-full h-10 p-2 border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-neutral-100 outline-none focus:ring-1 focus:ring-blue-500 resize-none rounded"
+                                                    placeholder="Marker notes (optional)..."
+                                                >{attempt?.marker_notes || ''}</textarea>
                                             </div>
-                                        ) : q.answer_image_key ? (
-                                            <img src={`/download/${q.answer_image_key}`} class="w-full object-contain bg-white dark:bg-neutral-900 rounded" />
-                                        ) : (
-                                            <span class="text-green-600/60 dark:text-green-500/50 italic text-sm">No marking guideline provided.</span>
-                                        )}
-
-                                        <div class="pt-2 border-t border-green-200/60 dark:border-green-800/50">
-                                            <div class="flex items-center gap-2 mb-2">
-                                                <span class="text-sm font-bold text-gray-700 dark:text-neutral-300">Award Marks:</span>
-                                                <input type="hidden" id={`marks-${q.id}`} value={attempt?.marks_awarded ?? 0} />
-                                                <div class="flex gap-1">
-                                                    {Array.from({ length: (Number(q.marks) || 0) + 1 }, (_, m) => (
-                                                        <button type="button"
-                                                            class={`mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors ${Number(attempt?.marks_awarded ?? 0) === m ? 'text-blue-700 dark:text-blue-400 underline' : 'text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline'}`}
-                                                            onclick={`setMark(${q.id}, ${m}); saveQuestion(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(mode || '')})`}
-                                                            >{m}</button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <textarea id={`notes-${q.id}`}
-                                                class="w-full h-10 p-2 border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-neutral-100 outline-none focus:ring-1 focus:ring-blue-500 resize-none rounded"
-                                                placeholder="Marker notes (optional)..."
-                                            >{attempt?.marker_notes || ''}</textarea>
                                         </div>
                                     </div>
-                                </div>
 
-                                {!answerRevealed && (
-                                    <button type="button" id={`reveal-${q.id}`}
-                                        class="w-full text-gray-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-semibold hover:underline transition-colors"
-                                        onclick={`checkAnswer(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(q.mc_answer || '')}, ${Number(q.marks) || 0}, ${JSON.stringify(mode || '')})`}
-                                    >
-                                        Check Answer
-                                    </button>
-                                )}
+                                    {!answerRevealed && (
+                                        <button type="button" id={`reveal-${q.id}`}
+                                            class="w-full text-gray-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-semibold hover:underline transition-colors"
+                                            onclick={`checkAnswer(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(q.mc_answer || '')}, ${Number(q.marks) || 0}, ${JSON.stringify(mode || '')})`}
+                                        >
+                                            Check Answer
+                                        </button>
+                                    )}
 
-                                <div class="flex justify-end">
-                                    <button type="button" id={`save-btn-${q.id}`}
-                                        onclick={`saveQuestion(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(mode || '')})`}
-                                        class="px-4 py-1.5 text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline transition-colors"
-                                    >
-                                        Save
-                                    </button>
-                                </div>
-                            </QuestionShell>
+                                    <div class="flex justify-end">
+                                        <button type="button" id={`save-btn-${q.id}`}
+                                            onclick={`saveQuestion(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(mode || '')})`}
+                                            class="px-4 py-1.5 text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline transition-colors"
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                </QuestionShell>
+                            </>
                         )
                     })}
                 </div>

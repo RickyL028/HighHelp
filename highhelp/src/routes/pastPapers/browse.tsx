@@ -9,11 +9,13 @@ import { PastPaperTabs } from './tabs'
 import {
     PRACTICE_PAGE_SIZE,
     RawPracticeFilters,
+    UNSORTED_SECTION_LABEL,
     buildPracticeCountQuery,
     buildPracticeExportUrl,
     buildPracticeListQuery,
     buildPracticeRowsUrl,
     buildPracticeSectionTypeQuery,
+    groupBySection,
     readRawPracticeFilters,
     resolvePracticeFilters
 } from './practiceQuery'
@@ -72,26 +74,7 @@ type PracticeRow = {
 
 type McqContent = { stem: string; options: Record<string, string> | null }
 
-const sectionNumber = (value: string) => {
-    const match = value.match(/\d+/);
-    return match ? parseInt(match[0], 10) : NaN;
-};
-
-const groupPracticeRows = (rows: PracticeRow[]) => {
-    const grouped = new Map<string, PracticeRow[]>();
-    for (const row of rows) {
-        const key = (row.section_label || '').trim() || 'Unsorted';
-        const current = grouped.get(key) || [];
-        current.push(row);
-        grouped.set(key, current);
-    }
-    return Array.from(grouped.entries()).sort(([a], [b]) => {
-        const aNumber = sectionNumber(a);
-        const bNumber = sectionNumber(b);
-        if (!Number.isNaN(aNumber) && !Number.isNaN(bNumber)) return aNumber - bNumber;
-        return a.localeCompare(b);
-    });
-};
+const groupPracticeRows = (rows: PracticeRow[]) => groupBySection(rows);
 
 const renderPracticeRow = (row: PracticeRow, parsed: McqContent, practiceQueryString: string, mode: string | undefined, hasMcq: boolean) => {
     const attemptUrl = `/past-papers/attempt/${row.id}?${practiceQueryString}`;
@@ -530,7 +513,7 @@ app.get('/past-papers', async (c) => {
         const mcqSections = new Set(
             (sectionTypesResult.results as { section_label: string; has_mcq: number }[])
                 .filter(row => row.has_mcq)
-                .map(row => (row.section_label || '').trim() || 'Unsorted')
+                .map(row => (row.section_label || '').trim() || UNSORTED_SECTION_LABEL)
         );
         const practiceRows = (questions.results as PracticeRow[]).slice(0, PRACTICE_PAGE_SIZE);
         const totalQuestions = Number((countResult.results[0] as { total: number })?.total || 0);

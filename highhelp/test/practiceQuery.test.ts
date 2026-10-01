@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+	BATCH_PAGE_LIMIT,
+	UNSORTED_SECTION_LABEL,
+	buildBatchPracticeQuery,
 	buildNavigationPlan,
 	buildNeighborQueries,
 	buildNeighborWindowQuery,
@@ -8,6 +11,7 @@ import {
 	buildPracticeListQuery,
 	buildPracticeWhere,
 	buildReviewWhere,
+	groupBySection,
 	paperNeighborOrder,
 	practiceNeighborKeyFields,
 	practiceNeighborKeys,
@@ -272,6 +276,48 @@ describe('buildPracticeCountQuery', () => {
 		const count = buildPracticeCountQuery(7, 'Mathematics', baseFilters);
 		expect(count.sql).toContain('COUNT(*)');
 		expect(count.sql).not.toContain('LIMIT');
+	});
+});
+
+describe('buildBatchPracticeQuery', () => {
+	it('projects every column the batch answer panel renders, including the text guideline', () => {
+		const batch = buildBatchPracticeQuery(7, 'Mathematics', baseFilters);
+		expect(batch.sql).not.toContain('q.*');
+		expect(batch.sql).toContain('q.answer_text');
+		expect(batch.sql).toContain('q.answer_image_key');
+		expect(batch.sql).toContain('q.mc_answer');
+	});
+
+	it('orders by the active practice sort so the batch matches the list', () => {
+		const batch = buildBatchPracticeQuery(7, 'Mathematics', { ...baseFilters, sort: 'question_desc' });
+		expect(batch.sql).toContain(`ORDER BY ${practiceOrder('question_desc')}`);
+		expect(batch.sql).not.toContain('OFFSET');
+		expect(batch.params.slice(-1)).toEqual([BATCH_PAGE_LIMIT]);
+	});
+});
+
+describe('groupBySection', () => {
+	const row = (section_label: string | null, id: number) => ({ id, section_label });
+
+	it('buckets rows by section and orders the sections numerically, not alphabetically', () => {
+		const grouped = groupBySection([row('II', 1), row('I', 2), row('X', 3), row('II', 4)]);
+		expect(grouped.map(([key]) => key)).toEqual(['I', 'II', 'X']);
+		expect(grouped.map(([, rows]) => rows.map(r => r.id))).toEqual([[2], [1, 4], [3]]);
+	});
+
+	it('falls back to alphabetical order when a section carries no number', () => {
+		expect(groupBySection([row('B', 1), row('A', 2), row('3', 3)]).map(([key]) => key)).toEqual(['3', 'A', 'B']);
+	});
+
+	it('labels blank sections the same way the list does', () => {
+		expect(groupBySection([row(null, 1), row('   ', 2), row('I', 3)]).map(([key]) => key)).toEqual([
+			'I',
+			UNSORTED_SECTION_LABEL
+		]);
+	});
+
+	it('returns nothing for no rows', () => {
+		expect(groupBySection([])).toEqual([]);
 	});
 });
 

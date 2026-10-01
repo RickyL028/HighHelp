@@ -111,6 +111,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                ura.selected_option as ura_selected,
                ura.marks_awarded as ura_marks,
                ura.is_completed as ura_completed,
+               ura.marker_notes as ura_notes,
                ura.created_at as ura_updated
         FROM exam_questions q
         JOIN papers p ON q.paper_id = p.id
@@ -148,7 +149,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
     const pdfUrl = `/download/papers/${q.paper_id}.pdf${stimCoords?.page ? `#page=${stimCoords.page}` : ''}`;
 
     if (mode === 'review') {
-        originalAttempt = { marks_awarded: qRow.ua_marks };
+        originalAttempt = { marks_awarded: qRow.ua_marks, marker_notes: qRow.ua_notes };
         if (qRow.ura_updated) {
             attempt = {
                 response_content: qRow.ura_response,
@@ -156,7 +157,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                 marks_awarded: qRow.ura_marks,
                 is_completed: qRow.ura_completed,
                 updated_at: qRow.ura_updated, // Map to updated_at for UI standardization
-                marker_notes: ''
+                marker_notes: qRow.ura_notes || ''
             };
         }
     } else {
@@ -429,6 +430,17 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
                     {/* Answer Section */}
                     <div id="answer-section" style={answerRevealed ? '' : 'display:none'} class="p-4 bg-green-50/30 dark:bg-green-900/10 flex-1 flex flex-col gap-4">
+                        {mode === 'review' && originalAttempt?.marker_notes && (
+                            <div class="rounded-sm border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-900/20 p-3">
+                                <div class="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-1">
+                                    What your marker noted on your first attempt
+                                </div>
+                                <div class="text-amber-900 dark:text-amber-200 whitespace-pre-wrap text-sm leading-relaxed">
+                                    {originalAttempt.marker_notes}
+                                </div>
+                            </div>
+                        )}
+
                         <div>
                             {q.mc_answer && (
                                 <div class="text-xl font-black text-green-700 dark:text-green-400 mb-2">{q.mc_answer}</div>
@@ -555,9 +567,9 @@ app.post('/past-papers/attempt/:id/save', async (c) => {
 
     if (mode === 'review') {
         await c.env.DB.prepare(`
-            INSERT INTO user_review_attempts (user_id, question_id, response_content, selected_option, marks_awarded, is_completed, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `).bind(user.id, qId, response, selected, marks, (marks === parseInt(body['max_marks'] as string || '100') || action === 'complete') ? 1 : 0).run();
+            INSERT INTO user_review_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).bind(user.id, qId, response, selected, marks, notes, (marks === parseInt(body['max_marks'] as string || '100') || action === 'complete') ? 1 : 0).run();
     } else {
         await c.env.DB.prepare(`
             INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, updated_at)
