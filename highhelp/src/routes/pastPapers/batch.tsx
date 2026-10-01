@@ -17,6 +17,11 @@ import { QuestionMeta, QuestionShell } from './questionShell'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// Mirrors the fallback in the batch save handler so the score denominator matches the marks the
+// server actually awards. `exam_questions.marks` is nullable and papers do contain unmarked items.
+const UNMARKED_MAX_MARKS = 100
+const maxMarksOf = (q: { marks?: number | null }) => parseInt(String(q.marks ?? ''), 10) || UNMARKED_MAX_MARKS
+
 app.get('/past-papers/batch/view', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect(loginRedirect(c))
@@ -98,9 +103,27 @@ app.get('/past-papers/batch/view', async (c) => {
         return c.text('Missing required parameters', 400)
     }
 
-    const completedCount = questions.filter((q: any) => q.ua_completed === 1).length
     const totalCount = questions.length
-    const pct = totalCount > 0 ? Math.round(completedCount / totalCount * 100) : 0
+
+    // "Completed" in the database means full marks (`isComplete = marks >= maxMarks`), so counting it
+    // as progress only credits questions that were answered perfectly. Progress here is therefore split
+    // into the three things a marker actually reports: how much was attempted, how often the attempted
+    // work was fully correct, and how much of the available marks that work earned.
+    const attemptedQuestions = questions.filter((q: any) => q.ua_updated != null)
+    const attemptedCount = attemptedQuestions.length
+    const attemptedPossible = attemptedQuestions.reduce((sum: number, q: any) => sum + maxMarksOf(q), 0)
+    const attemptedAwarded = attemptedQuestions.reduce((sum: number, q: any) => sum + (Number(q.ua_marks) || 0), 0)
+    const fullMarkCount = attemptedQuestions.filter((q: any) => {
+        const max = maxMarksOf(q)
+        return max > 0 && (Number(q.ua_marks) || 0) >= max
+    }).length
+    const attemptedPct = totalCount > 0 ? Math.round((attemptedCount / totalCount) * 100) : 0
+    const accuracyPct = attemptedCount > 0 ? Math.round((fullMarkCount / attemptedCount) * 100) : 0
+    const markPct = attemptedPossible > 0 ? Math.round((attemptedAwarded / attemptedPossible) * 100) : 0
+
+    // Seeded into the client so a save can re-derive the stats without refetching the whole batch.
+    // Each entry is a [questionId, [attempted, marksAwarded, maxMarks]] pair, i.e. Map entry shape.
+    const initialStats = questions.map((q: any) => [q.id, [q.ua_updated != null ? 1 : 0, Number(q.ua_marks) || 0, maxMarksOf(q)]])
 
     // The practice list buckets the flat `practiceOrder` result into section blocks, so a batch
     // started from it has to use the same bucketing or the questions arrive in a different order.
@@ -139,15 +162,37 @@ app.get('/past-papers/batch/view', async (c) => {
                     </div>
                 </div>
 
-                <div class="mb-6 pb-4 border-b border-gray-200 dark:border-neutral-800">
-                    <div class="flex justify-between items-center mb-1.5">
-                        <span class="text-sm font-medium text-gray-600 dark:text-neutral-400">
-                            Progress: <span id="batch-completed">{completedCount}</span>/{totalCount} completed
-                        </span>
-                        <span id="batch-pct" class="text-sm font-bold text-blue-600 dark:text-blue-400">{pct}%</span>
+                <div class="mb-5 pb-4 border-b border-gray-200 dark:border-neutral-800">
+                    <div class="flex items-start justify-between gap-4">
+                        {/* Grid rather than flex so the three columns share a baseline; every cell has a
+                            label, a value and a sub-line, otherwise the shorter cell floats out of line. */}
+                        <dl class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 flex-1">
+                            <div>
+                                <dt class="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-neutral-500">Attempted</dt>
+                                <dd class="text-sm font-bold text-gray-900 dark:text-neutral-100 leading-tight">
+                                    <span id="stat-attempted">{attemptedCount}</span><span class="font-medium text-gray-400 dark:text-neutral-600">/{totalCount}</span>
+                                </dd>
+                                <dd class="text-[11px] text-gray-400 dark:text-neutral-600 leading-tight"><span id="stat-remaining">{totalCount - attemptedCount}</span> remaining</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-neutral-500">Accuracy</dt>
+                                <dd class="text-sm font-bold text-gray-900 dark:text-neutral-100 leading-tight">
+                                    <span id="stat-accuracy">{accuracyPct}</span><span class="font-medium text-gray-400 dark:text-neutral-600">%</span>
+                                </dd>
+                                <dd class="text-[11px] text-gray-400 dark:text-neutral-600 leading-tight"><span id="stat-full-marks">{fullMarkCount}</span> of <span id="stat-attempted-2">{attemptedCount}</span> full marks</dd>
+                            </div>
+                            <div>
+                                <dt class="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-neutral-500">Marks</dt>
+                                <dd class="text-sm font-bold text-gray-900 dark:text-neutral-100 leading-tight">
+                                    <span id="stat-awarded">{attemptedAwarded}</span><span class="font-medium text-gray-400 dark:text-neutral-600">/{attemptedPossible}</span>
+                                </dd>
+                                <dd class="text-[11px] text-gray-400 dark:text-neutral-600 leading-tight"><span id="stat-mark-pct">{markPct}</span>% of attempted</dd>
+                            </div>
+                        </dl>
+                        <span id="batch-pct" class="text-sm font-bold text-blue-600 dark:text-blue-400 shrink-0">{attemptedPct}%</span>
                     </div>
-                    <div class="w-full bg-gray-200 dark:bg-neutral-700 rounded-full h-1.5 overflow-hidden">
-                        <div id="batch-progress-bar" class="bg-blue-600 h-1.5 rounded-full transition-all" style={`width: ${pct}%`}></div>
+                    <div class="w-full bg-gray-200 dark:bg-neutral-700 rounded-full h-1.5 overflow-hidden mt-3">
+                        <div id="batch-progress-bar" class="bg-blue-600 h-1.5 rounded-full transition-all" style={`width: ${attemptedPct}%`}></div>
                     </div>
                 </div>
 
@@ -299,8 +344,31 @@ app.get('/past-papers/batch/view', async (c) => {
                     document.body.appendChild(f); f.submit();
                 }
 
-                let batchCompleted = ${completedCount};
-                const batchTotal = ${totalCount};
+                let batchTotal = ${totalCount};
+                // qid -> [attempted, marksAwarded, maxMarks], kept in sync from the save response so
+                // every stat below is derived from one place rather than tracked as separate counters.
+                const batchStats = new Map(${JSON.stringify(initialStats)});
+
+                function renderBatchStats() {
+                    let attempted = 0, awarded = 0, possible = 0, full = 0;
+                    batchStats.forEach(([isAttempted, marks, max]) => {
+                        if (!isAttempted) return;
+                        attempted++;
+                        awarded += marks;
+                        possible += max;
+                        if (max > 0 && marks >= max) full++;
+                    });
+                    const pct = batchTotal > 0 ? attempted / batchTotal * 100 : 0;
+                    document.getElementById('stat-attempted').textContent = attempted;
+                    document.getElementById('stat-attempted-2').textContent = attempted;
+                    document.getElementById('stat-remaining').textContent = batchTotal - attempted;
+                    document.getElementById('stat-full-marks').textContent = full;
+                    document.getElementById('stat-accuracy').textContent = attempted > 0 ? Math.round(full / attempted * 100) : 0;
+                    document.getElementById('stat-awarded').textContent = awarded;
+                    document.getElementById('stat-mark-pct').textContent = possible > 0 ? Math.round(awarded / possible * 100) : 0;
+                    document.getElementById('batch-progress-bar').style.width = pct + '%';
+                    document.getElementById('batch-pct').textContent = Math.round(pct) + '%';
+                }
 
                 function setMark(qid, m) {
                     const input = document.getElementById('marks-' + qid);
@@ -360,9 +428,7 @@ app.get('/past-papers/batch/view', async (c) => {
                             }, 2000);
 
                             const status = document.getElementById('q-status-' + qid);
-                            const wasDone = status.textContent === '✓ Done';
-                            if (d.is_completed && !wasDone) batchCompleted++;
-                            else if (!d.is_completed && wasDone) batchCompleted--;
+                            batchStats.set(Number(qid), [1, d.marks_awarded, d.max_marks]);
 
                             if (d.is_completed) {
                                 status.textContent = '✓ Done';
@@ -372,10 +438,7 @@ app.get('/past-papers/batch/view', async (c) => {
                                 status.className = 'ml-auto text-xs font-bold px-2 py-0.5 rounded text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20';
                             }
 
-                            document.getElementById('batch-completed').textContent = batchCompleted;
-                            const pct = batchTotal > 0 ? batchCompleted / batchTotal * 100 : 0;
-                            document.getElementById('batch-progress-bar').style.width = pct + '%';
-                            document.getElementById('batch-pct').textContent = Math.round(pct) + '%';
+                            renderBatchStats();
                         }
                     } catch (e) {
                         btn.textContent = 'Error!';
@@ -401,7 +464,7 @@ app.post('/past-papers/batch/save', async (c) => {
     const q = await c.env.DB.prepare('SELECT marks, question_type, mc_answer FROM exam_questions WHERE id = ?').bind(qId).first<any>()
     if (!q) return c.json({ success: false, error: 'Question not found' }, 404)
 
-    const maxMarks = parseInt(q.marks) || 100
+    const maxMarks = maxMarksOf(q)
     let marks = parseInt((body['marks_awarded'] as string) || '0')
 
     if (q.question_type === 'multiple_choice' && selected && q.mc_answer) {
@@ -412,9 +475,9 @@ app.post('/past-papers/batch/save', async (c) => {
 
     if (mode === 'review') {
         await c.env.DB.prepare(`
-            INSERT INTO user_review_attempts (user_id, question_id, response_content, selected_option, marks_awarded, is_completed, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `).bind(user.id, qId, response, selected, marks, isComplete).run()
+            INSERT INTO user_review_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `).bind(user.id, qId, response, selected, marks, notes, isComplete).run();
     } else {
         await c.env.DB.prepare(`
             INSERT INTO user_question_attempts (user_id, question_id, response_content, selected_option, marks_awarded, marker_notes, is_completed, updated_at)
@@ -429,7 +492,7 @@ app.post('/past-papers/batch/save', async (c) => {
         `).bind(user.id, qId, response, selected, marks, notes, isComplete, isComplete).run()
     }
 
-    return c.json({ success: true, id: qId, is_completed: isComplete })
+    return c.json({ success: true, id: qId, is_completed: isComplete, marks_awarded: marks, max_marks: maxMarks })
 })
 
 async function generateExamPdf(questions: any[], bucket: any): Promise<Uint8Array> {
