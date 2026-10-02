@@ -3,7 +3,6 @@ import { Layout } from '../layout'
 import {
 	getUser,
 	loginRedirect,
-	renderTags,
 	logAction,
 	formatDate,
 	safeNext,
@@ -132,27 +131,31 @@ async function readProposal(c: any, db: D1Database, viewerTagsJson: string | nul
 	};
 }
 
-const STATUS_META: Record<string, { label: string; badge: string }> = {
-	pending: { label: 'Pending review', badge: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' },
-	published: { label: 'Published', badge: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' },
-	rejected: { label: 'Rejected', badge: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300' },
+const STATUS_META: Record<string, { label: string; text: string }> = {
+	pending: { label: 'Pending review', text: 'text-amber-600 dark:text-amber-400' },
+	published: { label: 'Published', text: 'text-gray-500 dark:text-neutral-400' },
+	rejected: { label: 'Rejected', text: 'text-red-600 dark:text-red-400' },
 }
 
-const StatusPill = ({ status }: { status: string }) => {
+const StatusLabel = ({ status }: { status: string }) => {
 	const meta = STATUS_META[status] || STATUS_META.pending;
-	return (
-		<span class={`inline-block px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${meta.badge}`}>{meta.label}</span>
-	);
+	return <span class={`text-[11px] font-bold uppercase tracking-wider ${meta.text}`}>{meta.label}</span>;
 }
 
+// Outlined chips rather than filled pills, so the audience reads as quiet metadata sitting under
+// the title instead of a row of buttons.
 const AudienceChips = ({ targets, labelFor }: { targets: string[]; labelFor: (key: string) => string }) => (
-	<div class="flex flex-wrap gap-1.5">
-		{targets.map(t => (
-			<span class="inline-block bg-gray-100 dark:bg-neutral-900 text-gray-600 dark:text-neutral-300 px-2 py-0.5 rounded-full text-xs font-semibold">
+	<span class="inline">
+		{targets.map((t, i) => (
+			<span
+				class={`inline-block bg-transparent text-gray-600 dark:text-neutral-300 text-xs px-2 py-0.5 rounded font-bold border border-gray-300 dark:border-neutral-700 align-middle ${
+					i > 0 ? 'ml-1' : ''
+				}`}
+			>
 				{t === EVERYONE ? 'Everyone' : labelFor(t)}
 			</span>
 		))}
-	</div>
+	</span>
 )
 
 const ReactionButton = ({ ann, back }: { ann: any; back: string }) => (
@@ -162,13 +165,18 @@ const ReactionButton = ({ ann, back }: { ann: any; back: string }) => (
 			type="submit"
 			title={ann.reacted ? 'Remove your reaction' : 'React with a thumbs up'}
 			aria-pressed={ann.reacted ? 'true' : 'false'}
-			class={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border transition-colors ${
-				ann.reacted
-					? 'bg-blue-600 dark:bg-blue-600 border-blue-600 text-white'
-					: 'bg-white dark:bg-neutral-800 border-gray-300 dark:border-neutral-700 text-gray-600 dark:text-neutral-300 hover:bg-gray-50 dark:hover:bg-neutral-700'
+			class={`inline-flex items-center gap-1 text-sm font-bold transition-colors hover:underline ${
+				ann.reacted ? 'text-blue-700 dark:text-blue-400' : 'text-gray-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400'
 			}`}
 		>
-			<span aria-hidden="true">👍</span>
+			<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M14 9V5a3 3 0 00-3-3L7 11v11h11.28a2 2 0 002-1.72l1.38-9a2 2 0 00-2-2H14zM7 11H4a2 2 0 00-2 2v6a2 2 0 002 2h3"
+				></path>
+			</svg>
 			<span>{Number(ann.reaction_count || 0)}</span>
 		</button>
 	</form>
@@ -176,58 +184,81 @@ const ReactionButton = ({ ann, back }: { ann: any; back: string }) => (
 
 const authorName = (a: any) => (a.first_name ? `${a.first_name} ${a.last_name}` : 'Unknown');
 
+// A surface rather than an outlined card: background only, no border and no shadow, which is the
+// app's established card pair (see forum/essays). The whole card opens the announcement via a
+// stretched link overlay; the reaction form and the per-tab action sit above it on z-10 so they
+// stay independently clickable.
+//
+// Every card is the same height: the title clamps to two lines, the preview to two, the target
+// chips and the action row are always rendered, and min-h plus flex-1 bottom-aligns the action
+// row so the thumbs-up and the edit/review link sit on the same line across the whole list.
 const AnnouncementCard = ({
 	a,
 	user,
 	labelFor,
 	showStatus,
 	back,
+	extraAction,
 }: {
 	a: any;
 	user: User | null;
 	labelFor: (key: string) => string;
 	showStatus?: boolean;
 	back: string;
+	extraAction?: { href: string; label: string };
 }) => (
-	<div class={`bg-white dark:bg-neutral-800 rounded-xl border border-gray-300 dark:border-neutral-700 shadow-sm p-5 ${a.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/10' : ''}`}>
-		<div class="flex flex-wrap items-start justify-between gap-3 mb-2">
-			<h2 class="text-xl font-bold text-gray-900 dark:text-white leading-snug">
-				<a href={`/announcements/${a.id}`} class="hover:text-blue-700 dark:hover:text-blue-400 transition-colors">{a.title}</a>
-			</h2>
-			{showStatus && <StatusPill status={a.status} />}
-		</div>
+	<article class="relative flex flex-col min-h-[10rem] rounded-lg bg-white dark:bg-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors px-4 py-3">
+		<a href={`/announcements/${a.id}`} class="absolute inset-0 z-0" aria-label={a.title}></a>
 
-		<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-neutral-400 mb-3">
-			<span class="local-date" data-timestamp={a.published_at || a.created_at}>{formatDate(a.published_at || a.created_at)}</span>
-			<span class="text-gray-300 dark:text-neutral-700">•</span>
-			<span class="flex items-center">
-				{authorName(a)}
-				<span class="ml-1" dangerouslySetInnerHTML={{ __html: renderTags(a.author_tags) }}></span>
-			</span>
-			{a.is_deleted && <span class="font-bold text-red-600 dark:text-red-400 uppercase">Deleted</span>}
-		</div>
-
-		<div class="mb-3">
-			<AudienceChips targets={parseTargets(a.target_tags)} labelFor={labelFor} />
-		</div>
-
-<div
-			class="text-gray-700 dark:text-neutral-300 text-sm line-clamp-3 leading-relaxed mb-4"
-			dangerouslySetInnerHTML={{ __html: renderMarkdown(a.content) }}
-		/>
-
-		{a.status === 'rejected' && a.review_feedback && a.author_id === user?.id && (
-			<div class="mb-4 rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/10 px-4 py-3">
-				<p class="text-xs font-bold uppercase tracking-wide text-red-600 dark:text-red-400 mb-1">Reviewer feedback</p>
-				<p class="text-sm text-red-800 dark:text-red-200 whitespace-pre-wrap">{a.review_feedback}</p>
+		<div class="relative z-10 pointer-events-none flex-1">
+			<div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+				<h2 class="text-lg font-bold text-gray-900 dark:text-white leading-snug line-clamp-2">{a.title}</h2>
+				<div class="flex items-center gap-3">
+					{showStatus && <StatusLabel status={a.status} />}
+					{showStatus && a.is_deleted && <span class="text-[11px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Deleted</span>}
+				</div>
 			</div>
-		)}
 
-		<div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 dark:border-neutral-700/50 pt-3">
-			{a.status === 'published' && !a.is_deleted && user ? <ReactionButton ann={a} back={back} /> : <span></span>}
-			<a href={`/announcements/${a.id}`} class="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">Open</a>
+			<div class="mt-1.5">
+				<AudienceChips targets={parseTargets(a.target_tags)} labelFor={labelFor} />
+			</div>
+
+			<p class="mt-1 text-xs text-gray-500 dark:text-neutral-400 flex flex-wrap items-center gap-x-2 gap-y-1">
+				<span class="local-date" data-timestamp={a.published_at || a.created_at}>
+					{formatDate(a.published_at || a.created_at)}
+				</span>
+				<span>by</span>
+				<span class="text-gray-700 dark:text-neutral-200">{authorName(a)}</span>
+			</p>
+
+			<div class="mt-2 text-gray-800 dark:text-neutral-200 text-sm line-clamp-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: renderMarkdown(a.content) }} />
 		</div>
-	</div>
+
+		<div class="relative z-10 pointer-events-none mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm min-h-[1.25rem]">
+			{a.status === 'rejected' && a.review_feedback && a.author_id === user?.id && (
+				<span class="text-red-700 dark:text-red-300 text-xs">
+					<b class="font-bold uppercase tracking-wider">Rejected:</b> {a.review_feedback}
+				</span>
+			)}
+			<span class="flex-grow"></span>
+			{a.status === 'published' && !a.is_deleted && user && (
+				<span class="pointer-events-auto inline-flex">
+					<ReactionButton ann={a} back={back} />
+				</span>
+			)}
+			{extraAction && (
+				<>
+					{(a.status === 'published' && !a.is_deleted && user) && <span class="text-gray-300 dark:text-neutral-700">|</span>}
+					<a
+						href={extraAction.href}
+						class="pointer-events-auto text-gray-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
+					>
+						{extraAction.label}
+					</a>
+				</>
+			)}
+		</div>
+	</article>
 )
 
 const Tabs = ({ active, reviewCount, showReview }: { active: string; reviewCount: number; showReview: boolean }) => {
@@ -237,21 +268,27 @@ const Tabs = ({ active, reviewCount, showReview }: { active: string; reviewCount
 		...(showReview ? [{ id: 'pending', label: `Pending Review${reviewCount ? ` (${reviewCount})` : ''}`, href: '/announcements?tab=pending' }] : []),
 	];
 
+	// Plain links separated by rules, the way the batch toolbar separates its actions. The active
+	// one is distinguished by weight and colour rather than a filled pill.
 	return (
-		<div class="border-b border-gray-200 dark:border-neutral-700 mb-8">
-			<nav class="-mb-px flex space-x-8">
-				{tabs.map(t => (
+		<nav class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm pb-2 border-b border-gray-200 dark:border-neutral-800">
+			{tabs.map((t, i) => (
+				<>
+					{i > 0 && <span class="text-gray-300 dark:text-neutral-700">|</span>}
 					<a
 						href={t.href}
-						class={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-							active === t.id ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200 hover:border-gray-300 dark:hover:border-neutral-600'
+						aria-current={active === t.id ? 'page' : undefined}
+						class={`transition-colors ${
+							active === t.id
+								? 'text-blue-600 dark:text-blue-400 font-bold'
+								: 'text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white'
 						}`}
 					>
 						{t.label}
 					</a>
-				))}
-			</nav>
-		</div>
+				</>
+			))}
+		</nav>
 	);
 }
 
@@ -270,117 +307,108 @@ const ProposalForm = ({
 	action: string;
 	submitLabel: string;
 }) => (
-	<div class="bg-white dark:bg-neutral-800 rounded-xl border border-gray-300 dark:border-neutral-700 shadow-sm mb-8 overflow-hidden">
-		{error && (
-			<div class="bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-900/30 px-8 py-3 text-sm font-medium text-red-700 dark:text-red-400">
-				{error}
-			</div>
-		)}
-		<form action={action} method="post" class="p-8 space-y-6">
-			<div>
-				<label class="block text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-1">Title</label>
-				<input
-					type="text"
-					name="title"
-					required
-					maxLength={TITLE_MAX}
-					value={values.title || ''}
-					class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-					placeholder="Announcement title e.g. Chemistry lab moved to B12"
-				/>
-			</div>
+	// Fields sit directly on the page background, separated by hairlines. Only the inputs keep
+	// borders -- they need an edge to show where the click target is.
+	<form action={action} method="post" class="max-w-2xl">
+		{error && <p class="mb-4 text-sm font-bold text-red-600 dark:text-red-400">{error}</p>}
 
-			<fieldset>
-				<legend class="block text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-1">Target audience</legend>
-				<p class="text-xs text-gray-500 dark:text-neutral-400 mb-3">
-					Everyone who carries at least one of the selected tags will see this once it is approved.
-				</p>
-				<div class="space-y-4 max-h-72 overflow-y-auto pr-1">
-					{AUDIENCE_GROUPS.map(group => {
-						const groupOptions = options.filter(o => o.group === group);
-						if (groupOptions.length === 0) return null;
-						return (
-							<div>
-								<p class="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-neutral-500 mb-2">{group}</p>
-								<div class="flex flex-wrap gap-x-5 gap-y-2">
-									{groupOptions.map(o => (
-										<label class="flex items-center gap-2 cursor-pointer text-sm">
-											<input
-												type="checkbox"
-												name="targets"
-												value={o.key}
-												checked={selected.includes(o.key)}
-												class="rounded border-gray-300 dark:border-neutral-600"
-											/>
-											<span class="text-gray-700 dark:text-neutral-300">{o.label}</span>
-										</label>
-									))}
-								</div>
+		<div class="pb-5">
+			<label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-2">Title</label>
+			<input
+				type="text"
+				name="title"
+				required
+				maxLength={TITLE_MAX}
+				value={values.title || ''}
+				class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+				placeholder="Announcement title e.g. Chemistry lab moved to B12"
+			/>
+		</div>
+
+		<fieldset class="pb-5">
+			<legend class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-1">Target audience</legend>
+			<p class="text-xs text-gray-500 dark:text-neutral-400 mb-3">
+				Everyone who carries at least one of the selected tags will see this once it is approved.
+			</p>
+			<div class="space-y-4 max-h-72 overflow-y-auto pr-1">
+				{AUDIENCE_GROUPS.map(group => {
+					const groupOptions = options.filter(o => o.group === group);
+					if (groupOptions.length === 0) return null;
+					return (
+						<div>
+							<p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-neutral-500 mb-2">{group}</p>
+							<div class="flex flex-wrap gap-x-5 gap-y-2">
+								{groupOptions.map(o => (
+									<label class="flex items-center gap-2 cursor-pointer text-sm">
+										<input
+											type="checkbox"
+											name="targets"
+											value={o.key}
+											checked={selected.includes(o.key)}
+											class="rounded border-gray-300 dark:border-neutral-600"
+										/>
+										<span class="text-gray-700 dark:text-neutral-300">{o.label}</span>
+									</label>
+								))}
 							</div>
-						);
-					})}
-				</div>
-			</fieldset>
-
-			<div>
-				<label class="block text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-1">Content</label>
-				<textarea
-					name="content"
-					rows={6}
-					required
-					maxLength={CONTENT_MAX}
-					class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y"
-					placeholder="Write your message here..."
-				>
-					{values.content || ''}
-				</textarea>
-				<p class="text-xs text-gray-500 dark:text-neutral-400 mt-1">
-					Markdown supported: <code class="px-1 rounded bg-gray-100 dark:bg-neutral-900">**bold**</code>,{' '}
-					<code class="px-1 rounded bg-gray-100 dark:bg-neutral-900">*italic*</code>,{' '}
-					<code class="px-1 rounded bg-gray-100 dark:bg-neutral-900">- lists</code>,{' '}
-					<code class="px-1 rounded bg-gray-100 dark:bg-neutral-900"># headings</code>, links and{' '}
-					<code class="px-1 rounded bg-gray-100 dark:bg-neutral-900">code blocks</code>.
-				</p>
+						</div>
+					);
+				})}
 			</div>
+		</fieldset>
 
-			<div>
-				<label class="block text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-1">Additional needs</label>
-				<p class="text-xs text-gray-500 dark:text-neutral-400 mb-2">
-					Anything you need from the reviewers, e.g. a poster printed or a link checked. Only you and the reviewers can see this.
-				</p>
-				<textarea
-					name="private_note"
-					rows={3}
-					maxLength={NOTE_MAX}
-					class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y"
-					placeholder="Optional. Only visible to you and the admins reviewing this."
-				>
-					{values.private_note || ''}
-				</textarea>
-			</div>
+		<div class="pb-5">
+			<label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-2">Content</label>
+			<textarea
+				name="content"
+				rows={6}
+				required
+				maxLength={CONTENT_MAX}
+				class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y"
+				placeholder="Write your message here..."
+			>
+				{values.content || ''}
+			</textarea>
+			<p class="text-xs text-gray-400 dark:text-neutral-500 mt-1">
+				Markdown supported: <code>**bold**</code>, <code>*italic*</code>, <code>- lists</code>, <code># headings</code>, links and <code>code blocks</code>.
+			</p>
+		</div>
 
-			<div class="flex justify-end border-t border-gray-100 dark:border-neutral-800 pt-4">
-				<button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm">
-					{submitLabel}
-				</button>
-			</div>
-		</form>
-	</div>
+		<div class="pb-5">
+			<label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-1">Additional needs</label>
+			<p class="text-xs text-gray-500 dark:text-neutral-400 mb-2">
+				Anything you need from the reviewers, e.g. a poster printed or a link checked. Only you and the reviewers can see this.
+			</p>
+			<textarea
+				name="private_note"
+				rows={3}
+				maxLength={NOTE_MAX}
+				class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y"
+				placeholder="Optional. Only visible to you and the admins reviewing this."
+			>
+				{values.private_note || ''}
+			</textarea>
+		</div>
+
+		<div class="flex justify-end pt-4 border-t border-gray-200 dark:border-neutral-800">
+			<button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors rounded-lg">
+				{submitLabel}
+			</button>
+		</div>
+	</form>
 )
 
 const proposalPage = (c: any, user: User, opts: { options: AudienceOption[]; values?: any; error?: string; action: string; submitLabel: string; heading: string }) =>
 	c.html(
 		<Layout title="Propose an Announcement" user={user}>
-			<div class="max-w-3xl mx-auto py-8 px-4 sm:px-6">
-				<div class="mb-6">
-					<a href="/announcements?tab=mine" class="text-blue-600 dark:text-blue-400 hover:underline text-sm font-medium">
-						&larr; Back to My Proposals
-					</a>
-					<h1 class="text-3xl font-bold text-gray-900 dark:text-white mt-2">{opts.heading}</h1>
-					<p class="text-sm text-gray-600 dark:text-neutral-400 mt-2">
-						Your proposal starts as pending. An admin reviews it before it reaches your audience.
-					</p>
-				</div>
+			<div class="max-w-3xl mx-auto">
+				<a href="/announcements?tab=mine" class="text-sm text-blue-600 dark:text-blue-400 hover:underline transition-colors inline-block mb-4">
+					&larr; Back to My Proposals
+				</a>
+				<h1 class="text-2xl font-medium text-gray-900 dark:text-white leading-snug">{opts.heading}</h1>
+				<p class="text-sm text-gray-600 dark:text-neutral-400 mt-2 mb-6">
+					Your proposal starts as pending. An admin reviews it before it reaches your audience.
+				</p>
 				<ProposalForm
 					options={opts.options}
 					selected={(opts.values?.targets || []) as string[]}
@@ -468,11 +496,14 @@ app.get('/announcements', async (c) => {
 
 	return c.html(
 		<Layout title="Announcements" user={user}>
-			<div class="max-w-4xl mx-auto py-8 px-4 sm:px-6">
-				<header class="flex flex-wrap items-center justify-between gap-4 mb-6">
-					<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Announcements</h1>
+			{/* Layout supplies max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8 py-8, so this page adds only a
+				width cap and centring. max-w-6xl matches the resource view page, which keeps the
+				announcements column consistent with the rest of the wide content pages. */}
+			<div class="max-w-6xl mx-auto">
+				<header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-3">
+					<h1 class="text-2xl font-medium text-gray-900 dark:text-white leading-snug">Announcements</h1>
 					{canPostGeneral(user) && (
-						<a href="/announcements/new" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg transition-colors shadow-sm">
+						<a href="/announcements/new" class="text-sm text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
 							Propose an Announcement
 						</a>
 					)}
@@ -481,19 +512,20 @@ app.get('/announcements', async (c) => {
 				<Tabs active={tab} reviewCount={pendingCount ? Number(pendingCount.n) : 0} showReview={isReviewer} />
 
 				{tab === 'feed' && (
-					<div class="space-y-6">
+					<div>
 						{!canPostGeneral(user) && (
-							<div class="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 p-4 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 mb-6">
-								You are muted and cannot propose announcements.
-							</div>
+							<p class="mt-3 text-sm text-red-600 dark:text-red-400">You are muted and cannot propose announcements.</p>
 						)}
 
+						{/* Underlined links rather than toggle pills -- the same shape as the batch toolbar's filters. */}
 						{chips.length > 1 && (
-							<div class="flex flex-wrap gap-2 mb-6">
+							<div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 mb-4 text-sm">
 								<a
 									href="/announcements"
-									class={`px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm transition-all ${
-										!activeAudience ? 'bg-blue-600 text-white' : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-900'
+									class={`pb-0.5 transition-colors ${
+										!activeAudience
+											? 'text-blue-600 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
+											: 'text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white border-b border-transparent hover:border-gray-300 dark:hover:border-neutral-600'
 									}`}
 								>
 									All
@@ -501,80 +533,74 @@ app.get('/announcements', async (c) => {
 								{chips.map(chip => (
 									<a
 										href={`/announcements?audience=${encodeURIComponent(chip.key)}`}
-										class={`px-3 py-1.5 rounded-lg text-sm font-medium shadow-sm transition-all ${
+										class={`pb-0.5 transition-colors ${
 											activeAudience === chip.key
-												? 'bg-blue-600 text-white'
-												: 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 border border-gray-200 dark:border-neutral-700 hover:bg-gray-50 dark:hover:bg-neutral-900'
+												? 'text-blue-600 dark:text-blue-400 font-bold border-b-2 border-blue-600 dark:border-blue-400'
+												: 'text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-white border-b border-transparent hover:border-gray-300 dark:hover:border-neutral-600'
 										}`}
 									>
-										{labelFor(chip.key)} <span class="opacity-60">{chip.count}</span>
+										{labelFor(chip.key)} <span class="text-gray-400 dark:text-neutral-500">{chip.count}</span>
 									</a>
 								))}
 							</div>
 						)}
 
 						{results && results.length > 0 ? (
-							results.map((a: any) => <AnnouncementCard a={a} user={user} labelFor={labelFor} back={back} />)
-						) : (
-							<div class="text-center py-12 text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800/50 rounded-xl border border-dashed border-gray-300 dark:border-neutral-700">
-								<p class="font-semibold text-gray-600 dark:text-neutral-300">No announcements for you yet.</p>
-								<p class="text-sm mt-2">
-									Announcements are targeted by tag. Tick the subjects you care about in your profile to widen what you see.
-								</p>
+							<div class="space-y-2 mt-4">
+								{results.map((a: any) => (
+									<AnnouncementCard a={a} user={user} labelFor={labelFor} back={back} />
+								))}
 							</div>
+						) : (
+							<p class="py-10 text-center text-sm italic text-gray-400 dark:text-neutral-500">
+								No announcements for you yet. Announcements are targeted by tag — tick the subjects you care about in your profile to widen
+								what you see.
+							</p>
 						)}
 					</div>
 				)}
 
 				{tab === 'mine' && (
-					<div class="space-y-4">
+					<div>
 						{!canPostGeneral(user) && (
-							<div class="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 p-4 rounded-lg text-sm font-medium text-red-700 dark:text-red-400">
-								You are muted and cannot propose announcements.
-							</div>
+							<p class="mt-3 text-sm text-red-600 dark:text-red-400">You are muted and cannot propose announcements.</p>
 						)}
 						{results && results.length > 0 ? (
-							results.map((a: any) => (
-								<div>
-									<AnnouncementCard a={a} user={user} labelFor={labelFor} showStatus back={back} />
-									{a.status !== 'published' && (
-										<a
-											href={`/announcements/${a.id}/edit`}
-											class="inline-block mt-2 ml-1 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-										>
-											Edit proposal
-										</a>
-									)}
-								</div>
-							))
-						) : (
-							<div class="text-center py-12 text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800/50 rounded-xl border border-dashed border-gray-300 dark:border-neutral-700">
-								You have not proposed any announcements yet.
+							<div class="space-y-2 mt-4">
+								{results.map((a: any) => (
+									<AnnouncementCard
+										a={a}
+										user={user}
+										labelFor={labelFor}
+										showStatus
+										back={back}
+										extraAction={a.status !== 'published' ? { href: `/announcements/${a.id}/edit`, label: 'edit' } : undefined}
+									/>
+								))}
 							</div>
+						) : (
+							<p class="py-10 text-center text-sm italic text-gray-400 dark:text-neutral-500">You have not proposed any announcements yet.</p>
 						)}
 					</div>
 				)}
 
 				{tab === 'pending' && (
-					<div class="space-y-4">
+					<div>
 						{results && results.length > 0 ? (
-							results.map((a: any) => (
-								<div>
-									<AnnouncementCard a={a} user={user} labelFor={labelFor} showStatus back={back} />
-									<div class="mt-2 ml-1 flex flex-wrap gap-2">
-										<a
-											href={`/announcements/${a.id}`}
-											class="inline-block text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-										>
-											Review
-										</a>
-									</div>
-								</div>
-							))
-						) : (
-							<div class="text-center py-12 text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800/50 rounded-xl border border-dashed border-gray-300 dark:border-neutral-700">
-								The queue is empty. Nothing to review.
+							<div class="space-y-2 mt-4">
+								{results.map((a: any) => (
+									<AnnouncementCard
+										a={a}
+										user={user}
+										labelFor={labelFor}
+										showStatus
+										back={back}
+										extraAction={{ href: `/announcements/${a.id}`, label: 'review' }}
+									/>
+								))}
 							</div>
+						) : (
+							<p class="py-10 text-center text-sm italic text-gray-400 dark:text-neutral-500">The queue is empty. Nothing to review.</p>
 						)}
 					</div>
 				)}
@@ -664,115 +690,175 @@ app.get('/announcements/:id', async (c) => {
 	const canEdit = isAuthor && (ann.status === 'pending' || ann.status === 'rejected');
 	const canDelete = isReviewer || (isAuthor && ann.status !== 'published');
 
+	// The sidebar index is exactly the set the feed would show this viewer, so the two views can
+	// never disagree. Reviewers see every published announcement, as on the feed.
+	const { results: indexRows } = await c.env.DB
+		.prepare(`
+			${VIEWER_TAGS_CTE}
+			SELECT a.id, a.title, a.published_at, a.created_at
+			FROM announcements a
+			WHERE a.status = 'published' AND a.is_deleted = 0${isReviewer ? '' : ` AND ${announcementAudienceMatch(VIEWER_TAGS_EXPR)}`}
+			ORDER BY COALESCE(a.published_at, a.created_at) DESC
+			LIMIT 60
+		`)
+		.bind(user?.tags ?? '{}')
+		.all<{ id: number; title: string; published_at: string | null; created_at: string }>();
+
+	// A proposal or a deleted post is not in the published set, but the reader is still looking at
+	// it -- splice it in at the top so the index shows where they actually are.
+	const indexItems: { id: number; title: string; published_at: string | null; created_at: string }[] = [...(indexRows || [])];
+	if (!indexItems.some(r => Number(r.id) === Number(id))) {
+		indexItems.unshift({ id: Number(id), title: ann.title, published_at: ann.published_at, created_at: ann.created_at });
+	}
+
 	return c.html(
 		<Layout title={ann.title} user={user}>
-			<div class="mx-auto max-w-3xl px-4 sm:px-6 py-8">
-				<a href={ann.status === 'published' ? '/announcements' : '/announcements?tab=mine'} class="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1 font-medium transition-colors mb-4">
-					&larr; Back to announcements
-				</a>
+			{/* Same two-column frame as the About page: index on the left, content on the right. */}
+			<div class="flex flex-col md:flex-row gap-8">
+				<aside class="md:w-64 flex-shrink-0">
+					<div class="sticky top-8">
+						
+						<a
+							href={ann.status === 'published' ? '/announcements' : '/announcements?tab=mine'}
+							class="block text-sm text-blue-600 dark:text-blue-400 hover:underline transition-colors mb-4"
+						>
+							&larr; Back
+						</a>
+						<ul class="text-sm max-h-[60vh] overflow-y-auto pr-1 space-y-2">
+							{indexItems.map(item => {
+								const isCurrent = Number(item.id) === Number(id);
+								return (
+									<li class={isCurrent ? 'border-l-2 border-blue-500 dark:border-blue-400 pl-2' : 'border-l-2 border-transparent pl-2'}>
+										<a
+											href={`/announcements/${item.id}`}
+											aria-current={isCurrent ? 'page' : undefined}
+											class={`block leading-snug transition-colors ${
+												isCurrent
+													? 'font-bold text-gray-900 dark:text-white'
+													: 'text-gray-600 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400'
+											}`}
+										>
+											{item.title}
+										</a>
+										<span class="text-[11px] text-gray-400 dark:text-neutral-500 local-date" data-timestamp={item.published_at || item.created_at}>
+											{formatDate(item.published_at || item.created_at)}
+										</span>
+									</li>
+								);
+							})}
+						</ul>
+					</div>
+				</aside>
 
-				<div class={`bg-white dark:bg-neutral-800 rounded-2xl border border-gray-200 dark:border-neutral-700 overflow-hidden mb-6 shadow-sm ${ann.is_deleted ? 'border-red-500 bg-red-50 dark:bg-red-900/10' : ''}`}>
-					<div class="p-8 border-b border-gray-100 dark:border-neutral-700/50">
-						{ann.is_deleted && <span class="text-xs font-bold text-red-600 dark:text-red-400 uppercase mb-4 block tracking-widest">Deleted</span>}
-						<div class="flex flex-wrap items-center gap-3 mb-5">
-							<StatusPill status={ann.status} />
-							<span class="text-gray-400 dark:text-neutral-500 text-sm font-mono local-date" data-timestamp={ann.published_at || ann.created_at} data-format="datetime">
-								{formatDate(ann.published_at || ann.created_at)}
-							</span>
-						</div>
-						<h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white mb-5 leading-tight tracking-tight">{ann.title}</h1>
-						<div class="mb-6">
-							<AudienceChips targets={targets} labelFor={labelFor} />
-						</div>
-						<div
-						class="text-gray-800 dark:text-neutral-200 leading-relaxed text-lg"
-						dangerouslySetInnerHTML={{ __html: renderMarkdown(ann.content) }}
-					/>
+				<main class="flex-1 max-w-3xl min-w-0">
+					<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+						<StatusLabel status={ann.status} />
+						{ann.is_deleted && <span class="text-[11px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Deleted</span>}
+						<span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-neutral-500 local-date" data-timestamp={ann.published_at || ann.created_at} data-format="datetime">
+							{formatDate(ann.published_at || ann.created_at)}
+						</span>
 					</div>
 
-					<div class="bg-gray-50 dark:bg-neutral-900/50 px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-						<div class="text-sm text-gray-600 dark:text-neutral-400 flex items-center">
-							<span class="font-bold mr-2 text-gray-900 dark:text-neutral-100">Proposed by:</span> {authorName(ann)}
-							<span class="ml-2" dangerouslySetInnerHTML={{ __html: renderTags(ann.author_tags) }}></span>
-						</div>
-						{ann.status === 'published' && !ann.is_deleted && user && <ReactionButton ann={ann} back={`/announcements/${ann.id}`} />}
-					</div>
-				</div>
+					<h1 class="mt-1 text-4xl font-extrabold text-gray-900 dark:text-white leading-tight">{ann.title}</h1>
 
-				{/* The "additional needs" note: author and reviewers only. */}
-				{(isAuthor || isReviewer) && ann.private_note && (
-					<div class="bg-purple-50 dark:bg-purple-900/15 border border-purple-200 dark:border-purple-900/40 rounded-xl p-5 mb-6">
-						<p class="text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300 mb-2">Additional needs</p>
-						<p class="text-sm text-purple-900 dark:text-purple-100 whitespace-pre-wrap">{ann.private_note}</p>
+					<div class="mt-2">
+						<AudienceChips targets={targets} labelFor={labelFor} />
 					</div>
-				)}
 
-				{/* Rejection feedback belongs to the proposer alone, and only while it is rejected. */}
-				{isAuthor && ann.status === 'rejected' && ann.review_feedback && (
-					<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 rounded-xl p-5 mb-6">
-						<p class="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400 mb-2">Reviewer feedback</p>
-						<p class="text-sm text-red-900 dark:text-red-100 whitespace-pre-wrap">{ann.review_feedback}</p>
-						{ann.reviewed_at && (
-							<p class="text-xs text-red-600 dark:text-red-400 mt-2 local-date" data-timestamp={ann.reviewed_at}>
-								{formatDate(ann.reviewed_at)} &middot; {ann.reviewer_first_name ? `${ann.reviewer_first_name} ${ann.reviewer_last_name}` : 'Unknown'}
+					<p class="mt-2 text-gray-700 dark:text-neutral-300 leading-relaxed flex flex-wrap items-center gap-x-2 gap-y-1">
+						<span>Proposed by</span>
+						<span>{authorName(ann)}</span>
+						<span class="local-date" data-timestamp={ann.published_at || ann.created_at} data-format="datetime">
+							&middot; {formatDate(ann.published_at || ann.created_at)}
+						</span>
+					</p>
+
+					<hr class="border-gray-200 dark:border-neutral-800 my-4" />
+
+					<div class="text-gray-700 dark:text-neutral-300 leading-relaxed" dangerouslySetInnerHTML={{ __html: renderMarkdown(ann.content) }} />
+
+					<hr class="border-gray-200 dark:border-neutral-800 my-4" />
+
+					{/* The "additional needs" note: author and reviewers only. */}
+					{(isAuthor || isReviewer) && ann.private_note && (
+						<section class="mb-4">
+							<h2 class="text-1xl font-bold mt-4 mb-1">Additional needs</h2>
+							<p class="text-gray-700 dark:text-neutral-300 leading-relaxed whitespace-pre-wrap">{ann.private_note}</p>
+						</section>
+					)}
+
+					{/* Rejection feedback belongs to the proposer alone, and only while it is rejected. */}
+					{isAuthor && ann.status === 'rejected' && ann.review_feedback && (
+						<section class="mb-4">
+							<h2 class="text-1xl font-bold mt-4 mb-1 text-red-600 dark:text-red-400">Reviewer feedback</h2>
+							<p class="text-gray-700 dark:text-neutral-300 leading-relaxed whitespace-pre-wrap">{ann.review_feedback}</p>
+							{ann.reviewed_at && (
+								<p class="text-xs text-gray-400 dark:text-neutral-500 mt-1 local-date" data-timestamp={ann.reviewed_at}>
+									{formatDate(ann.reviewed_at)} &middot; {ann.reviewer_first_name ? `${ann.reviewer_first_name} ${ann.reviewer_last_name}` : 'Unknown'}
+								</p>
+							)}
+						</section>
+					)}
+
+					{isReviewer && ann.status === 'pending' && !ann.is_deleted && (
+						<section class="mb-4">
+							<h2 class="text-1xl font-bold mt-4 mb-1">Review this proposal</h2>
+							<p class="text-sm text-gray-500 dark:text-neutral-400 mb-3">
+								Feedback is optional. It is shown to the proposer if you reject, and they can then edit and resubmit.
 							</p>
-						)}
-					</div>
-				)}
-
-				{isReviewer && ann.status === 'pending' && !ann.is_deleted && (
-					<div class="bg-white dark:bg-neutral-800 rounded-2xl border border-blue-200 dark:border-blue-900/50 shadow-sm p-6 mb-6">
-						<h2 class="text-lg font-bold text-gray-900 dark:text-white mb-1">Review this proposal</h2>
-<p class="text-sm text-gray-500 dark:text-neutral-400 mb-5">Feedback is optional. It is shown to the proposer if you reject, and they can then edit and resubmit.</p>
-						<form action={`/announcements/${ann.id}/review`} method="post" class="space-y-4">
-							<div>
-								<label class="block text-sm font-semibold text-gray-700 dark:text-neutral-300 mb-1">Feedback</label>
+							<form action={`/announcements/${ann.id}/review`} method="post">
 								<textarea
 									name="feedback"
 									rows={4}
 									maxLength={NOTE_MAX}
-									class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y"
+									class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y"
 									placeholder="Optional. Why it was rejected, and what would make it approvable..."
 								></textarea>
-							</div>
-							<div class="flex flex-wrap gap-3 justify-end">
-								<button
-									type="submit"
-									name="action"
-									value="reject"
-									class="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm"
-								>
-									Reject
-								</button>
-								<button
-									type="submit"
-									name="action"
-									value="accept"
-									class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-2.5 rounded-lg transition-colors shadow-sm"
-								>
-									Accept &amp; publish
-								</button>
-							</div>
-						</form>
-					</div>
-				)}
+								<div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
+									<button
+										type="submit"
+										name="action"
+										value="reject"
+										class="text-sm font-bold text-red-600 dark:text-red-400 hover:underline transition-colors"
+									>
+										Reject
+									</button>
+									<span class="text-gray-300 dark:text-neutral-700">|</span>
+									<button
+										type="submit"
+										name="action"
+										value="accept"
+										class="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline transition-colors"
+									>
+										Accept &amp; publish
+									</button>
+								</div>
+							</form>
+						</section>
+					)}
 
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<div class="flex flex-wrap gap-4">
+				{(canEdit || canDelete) && (
+					<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
 						{canEdit && (
-							<a href={`/announcements/${ann.id}/edit`} class="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">
+							<a href={`/announcements/${ann.id}/edit`} class="text-gray-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors">
 								Edit &amp; resubmit
 							</a>
 						)}
+						{canEdit && canDelete && <span class="text-gray-300 dark:text-neutral-700">|</span>}
 						{canDelete && (
 							<form action={`/announcements/${ann.id}/delete`} method="post" class="inline">
-								<button type="submit" class="text-sm font-bold text-red-600 dark:text-red-400 hover:underline" onclick="return confirm('Delete this announcement?')">
+								<button
+									type="submit"
+									class="text-gray-500 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:underline transition-colors"
+									onclick="return confirm('Delete this announcement?')"
+								>
 									Delete
 								</button>
 							</form>
 						)}
 					</div>
-				</div>
+				)}
+				</main>
 			</div>
 		</Layout>
 	);
