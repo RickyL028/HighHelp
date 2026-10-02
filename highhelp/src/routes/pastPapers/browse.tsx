@@ -282,15 +282,17 @@ app.get('/past-papers', async (c) => {
 
     if (tab === 'browse') {
         const topicCounts = await c.env.DB.prepare(`
-            SELECT t.id, t.name, COUNT(DISTINCT q.id) AS question_count
+            SELECT t.id, t.name, COUNT(DISTINCT q.id) AS question_count,
+                   COUNT(DISTINCT CASE WHEN ua.is_completed = 1 THEN q.id END) AS completed_count
             FROM topics t
             JOIN question_topics qt ON qt.topic_id = t.id
             JOIN exam_questions q ON q.id = qt.question_id AND q.is_deleted = 0
             JOIN papers p ON p.id = q.paper_id
+            LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
             WHERE p.subject = ? AND t.subject = p.subject
             GROUP BY t.id, t.name
             ORDER BY t.name COLLATE NOCASE
-        `).bind(subject).all();
+        `).bind(user.id, subject).all();
 
         const topicMap = new Map<string, any>();
         for (const topic of topicCounts.results as any[]) {
@@ -298,10 +300,12 @@ app.get('/past-papers', async (c) => {
             if (!hierarchy.topic) continue;
 
             const key = topicHierarchyKey(hierarchy.topic);
-            const group = topicMap.get(key) || { name: hierarchy.topic, questionCount: 0, topicIds: [], subtopics: [] };
+            const group = topicMap.get(key) || { name: hierarchy.topic, questionCount: 0, completedCount: 0, topicIds: [], subtopics: [] };
             const questionCount = Number(topic.question_count) || 0;
+            const completedCount = Number(topic.completed_count) || 0;
+            group.completedCount += completedCount;
             group.topicIds.push(topic.id);
-            if (hierarchy.subtopic) group.subtopics.push({ id: topic.id, name: hierarchy.subtopic, questionCount });
+            if (hierarchy.subtopic) group.subtopics.push({ id: topic.id, name: hierarchy.subtopic, questionCount, completedCount });
             topicMap.set(key, group);
         }
 
@@ -329,20 +333,31 @@ app.get('/past-papers', async (c) => {
                            CAST(json_extract(value, '$.id') AS INTEGER) AS topic_id
                     FROM json_each(?)
                 )
-                SELECT th.topic, COUNT(DISTINCT q.id) AS question_count
+                SELECT th.topic, COUNT(DISTINCT q.id) AS question_count,
+                       COUNT(DISTINCT CASE WHEN ua.is_completed = 1 THEN q.id END) AS completed_count
                 FROM topic_hierarchy th
                 JOIN question_topics qt ON qt.topic_id = th.topic_id
                 JOIN exam_questions q ON q.id = qt.question_id AND q.is_deleted = 0
                 JOIN papers p ON p.id = q.paper_id
                 JOIN topics t ON t.id = th.topic_id AND t.subject = p.subject
+                LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
                 WHERE p.subject = ?
                 GROUP BY th.topic
-            `).bind(topicHierarchy, subject)
+            `).bind(topicHierarchy, user.id, subject)
         ]);
 
-        const totalByTopic = new Map((topicTotals.results as any[]).map(row => [topicHierarchyKey(row.topic), Number(row.question_count) || 0]));
+        // A question tagged with both a topic and one of its subtopics appears twice in the hierarchy
+        // join, so the group totals come from this deduped query rather than the per-topic rows.
+        const totalsByTopic = new Map(
+            (topicTotals.results as any[]).map(row => [
+                topicHierarchyKey(row.topic),
+                { questionCount: Number(row.question_count) || 0, completedCount: Number(row.completed_count) || 0 }
+            ])
+        );
         for (const group of topicGroups) {
-            group.questionCount = totalByTopic.get(topicHierarchyKey(group.name)) || 0;
+            const totals = totalsByTopic.get(topicHierarchyKey(group.name));
+            group.questionCount = totals?.questionCount || 0;
+            group.completedCount = totals?.completedCount || 0;
         }
 
         // Group papers by school name; each school's papers are already ordered by year DESC
@@ -400,6 +415,12 @@ app.get('/past-papers', async (c) => {
                                         </a>
                                         <span class="ml-1 text-sm font-medium text-gray-500 dark:text-neutral-400">
                                             {group.questionCount} question{group.questionCount === 1 ? '' : 's'}
+                                            {group.completedCount > 1 && (
+                                            <>
+                                                <span class="text-gray-300 dark:text-neutral-600"> · </span>
+                                                <span class="font-bold text-gray-800 dark:text-neutral-200">{group.completedCount}</span> completed
+                                            </>
+                                        )}
                                         </span>
                                     </h2>
                                 </div>
@@ -412,6 +433,11 @@ app.get('/past-papers', async (c) => {
                                                 </h3>
                                                 <div class="flex items-center justify-between gap-3 mt-3 text-xs text-gray-500 dark:text-neutral-400 font-mono border-t border-gray-100 dark:border-neutral-700 pt-2">
                                                     <span>{subtopic.questionCount} question{subtopic.questionCount === 1 ? '' : 's'}</span>
+                                                    {subtopic.completedCount > 1 && (
+                                                        <span class="text-gray-700 dark:text-neutral-300">
+                                                            <span class="font-bold text-gray-800 dark:text-neutral-200">{subtopic.completedCount}</span> completed
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </a>
                                         ))}
