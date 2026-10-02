@@ -14,13 +14,22 @@ import {
     resolvePracticeFilters
 } from './practiceQuery'
 import { QuestionMeta, QuestionShell } from './questionShell'
+import { parseStimulusCoordinates } from './practiceExport'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-// Mirrors the fallback in the batch save handler so the score denominator matches the marks the
-// server actually awards. `exam_questions.marks` is nullable and papers do contain unmarked items.
+// `exam_questions.marks` is nullable, so every place that turns a row into a mark ceiling has to
+// agree on the fallback. A multiple-choice item is a single answer, so an unmarked MCQ is worth 1
+// rather than the essay fallback. Previously the mark buttons and the client-side auto-award used
+// `marks || 0`, which offered no buttons and silently scored a correct MCQ as 0, while this figure
+// said 100 — so the header total and the marks actually recorded disagreed.
 const UNMARKED_MAX_MARKS = 100
-const maxMarksOf = (q: { marks?: number | null }) => parseInt(String(q.marks ?? ''), 10) || UNMARKED_MAX_MARKS
+const UNMARKED_MCQ_MARKS = 1
+const maxMarksOf = (q: { marks?: number | null; question_type?: string | null }) => {
+    const parsed = parseInt(String(q.marks ?? ''), 10)
+    if (Number.isFinite(parsed) && parsed > 0) return parsed
+    return q.question_type === 'multiple_choice' ? UNMARKED_MCQ_MARKS : UNMARKED_MAX_MARKS
+}
 
 app.get('/past-papers/batch/view', async (c) => {
     const user = await getUser(c)
@@ -53,7 +62,7 @@ app.get('/past-papers/batch/view', async (c) => {
 
     } else if (source === 'review' && subject) {
         const query = `
-            SELECT q.*, p.subject, p.school_name, p.academic_year, p.id as paper_id,
+            SELECT q.*, p.subject, p.school_name, p.academic_year, p.reference_link, p.id as paper_id,
                    group_concat(t.name, ', ') as topic_names,
                    ua.response_content as ua_response,
                    ua.selected_option as ua_selected,
@@ -79,7 +88,7 @@ app.get('/past-papers/batch/view', async (c) => {
 
     } else if (paperId) {
         const query = `
-            SELECT q.*, p.subject, p.school_name, p.academic_year, p.id as paper_id,
+            SELECT q.*, p.subject, p.school_name, p.academic_year, p.reference_link, p.id as paper_id,
                    ua.response_content as ua_response,
                    ua.selected_option as ua_selected,
                    ua.marks_awarded as ua_marks,
@@ -209,7 +218,25 @@ app.get('/past-papers/batch/view', async (c) => {
 
                         const answerRevealed = !!attempt?.is_completed
                         const hasStimulus = !!(q.stimulus_text || q.stimulus_image_key)
-                        const sourceLine = `${q.school_name && source !== 'paper' ? `${q.school_name} ${q.academic_year} — ` : ''}${q.section_label} Q${q.question_number}`
+                        const showSource = !!q.school_name && source !== 'paper'
+                        // The school and year link out to the paper's reference PDF, but only when one was
+                        // actually uploaded — `papers.reference_link` is set on upload and left null
+                        // otherwise, so it doubles as the "has a PDF" flag.
+                        //
+                        // A cropped stimulus records the page it came from inside its `pdf_crop:` key, so
+                        // when there is one the link deep-links to that page rather than the top of the
+                        // paper, and the page is named so the jump does not look arbitrary.
+                        const stimulusPage = parseStimulusCoordinates(q.stimulus_image_key)?.page
+                            ?? parseStimulusCoordinates(q.question_image_key)?.page
+                            ?? null
+                        const sourceLink = showSource && q.reference_link
+                            ? {
+                                text: `${q.school_name} ${q.academic_year}${stimulusPage ? ` (Page ${stimulusPage})` : ''}`,
+                                href: `${String(q.reference_link).split('#')[0]}${stimulusPage ? `#page=${stimulusPage}` : ''}`
+                            }
+                            : null
+                        const questionRef = `${q.section_label} Q${q.question_number}`
+                        const sourceLine = sourceLink || !showSource ? questionRef : `${q.school_name} ${q.academic_year} — ${questionRef}`
 
                         return (
                             <>
@@ -218,9 +245,9 @@ app.get('/past-papers/batch/view', async (c) => {
                                 )}
                                 <QuestionShell
                                     id={`q-${q.id}`}
-                                    marks={q.marks}
+                                    marks={maxMarksOf(q)}
                                     header={
-                                        <QuestionMeta source={sourceLine}>
+                                        <QuestionMeta source={sourceLine} sourceLink={sourceLink}>
                                             {q.question_type === 'multiple_choice' && (
                                                 <span class="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">MCQ</span>
                                             )}
@@ -293,7 +320,7 @@ app.get('/past-papers/batch/view', async (c) => {
                                                     <span class="text-sm font-bold text-gray-700 dark:text-neutral-300">Award Marks:</span>
                                                     <input type="hidden" id={`marks-${q.id}`} value={attempt?.marks_awarded ?? 0} />
                                                     <div class="flex gap-1">
-                                                        {Array.from({ length: (Number(q.marks) || 0) + 1 }, (_, m) => (
+                                                        {Array.from({ length: maxMarksOf(q) + 1 }, (_, m) => (
                                                             <button type="button"
                                                                 class={`mk-${q.id} min-w-[2rem] px-2 py-0.5 text-sm font-bold transition-colors ${Number(attempt?.marks_awarded ?? 0) === m ? 'text-blue-700 dark:text-blue-400 underline' : 'text-gray-600 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline'}`}
                                                                 onclick={`setMark(${q.id}, ${m}); saveQuestion(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(mode || '')})`}
@@ -312,7 +339,7 @@ app.get('/past-papers/batch/view', async (c) => {
                                     {!answerRevealed && (
                                         <button type="button" id={`reveal-${q.id}`}
                                             class="w-full text-gray-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 text-sm font-semibold hover:underline transition-colors"
-                                            onclick={`checkAnswer(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(q.mc_answer || '')}, ${Number(q.marks) || 0}, ${JSON.stringify(mode || '')})`}
+                                            onclick={`checkAnswer(${q.id}, ${JSON.stringify(q.question_type === 'multiple_choice' ? 'mcq' : 'text')}, ${JSON.stringify(q.mc_answer || '')}, ${maxMarksOf(q)}, ${JSON.stringify(mode || '')})`}
                                         >
                                             Check Answer
                                         </button>

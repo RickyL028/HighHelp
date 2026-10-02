@@ -420,7 +420,7 @@ export function buildBatchPracticeQuery(userId: number, subject: string, filters
             SELECT q.id, q.paper_id, q.section_label, q.segment_label, q.question_number,
                    q.question_type, q.marks, q.question_text, q.question_image_key, q.answer_image_key,
                    q.answer_text, q.stimulus_image_key, q.stimulus_text, q.mc_answer,
-                   p.subject, p.school_name, p.academic_year,
+                   p.subject, p.school_name, p.academic_year, p.reference_link,
                    ua.response_content AS ua_response,
                    ua.selected_option AS ua_selected,
                    ua.marks_awarded AS ua_marks,

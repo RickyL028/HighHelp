@@ -20,18 +20,26 @@ const PdfIcon = () => (
 export const QuestionMeta = ({
     label,
     source,
+    sourceLink,
     pdfUrl,
     pdfPage,
     children
 }: {
     label?: string
     source?: string
+    sourceLink?: { text: string; href: string } | null
     pdfUrl?: string
     pdfPage?: string | null
     children?: Slot
 }) => (
     <div class="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
         {label && <span class="text-[11px] font-bold uppercase tracking-widest text-gray-400 dark:text-neutral-500">{label}</span>}
+        {sourceLink && (
+            <a href={sourceLink.href} target="_blank" rel="noreferrer" title="Open the source paper PDF" class="text-sm font-semibold text-blue-700 dark:text-blue-400 hover:underline transition-colors">
+                {sourceLink.text}
+            </a>
+        )}
+        {sourceLink && source && <span class="text-gray-300 dark:text-neutral-600">—</span>}
         {source && <span class="text-sm font-semibold text-gray-600 dark:text-neutral-300">{source}</span>}
         {pdfUrl && (
             <a href={pdfUrl} target="_blank" rel="noreferrer" class="inline-flex items-center gap-1 text-xs font-bold text-red-700 dark:text-red-400 hover:underline transition-colors">
