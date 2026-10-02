@@ -94,20 +94,21 @@ app.get('/about', async (c) => {
                     <section id="announcements" class="mb-12 scroll-mt-20">
                         <h2 class="text-2xl font-bold mb-4">Announcements</h2>
                         <p class="text-gray-700 dark:text-neutral-300 leading-relaxed">
-                            This feature will be reworked very soon.
-
-                            <br></br>
-                            
                             These are usually significant updates within a subject (e.g. release/change in notification) - or within our cohort (e.g. school events). Surprisingly this is the most wanted feature, according to the survey.
 
-                            <h3 class="text-1xl font-bold mt-4 mb-1">Requirements</h3>
-                            All users receive identical announcements. However, we did limit access of posting announcements to avoid unnecessary chaos. Students interested in posting announcements can fill out a form at the end of this page :P
+                            <h3 class="text-1xl font-bold mt-4 mb-1">Proposing</h3>
+                            Anyone can propose an announcement. You pick the audience it targets from your tags - a subject you take, your year group, or everyone - and add an "additional needs" note that only you and the reviewers can read.
+                            <br></br>
+                            Your proposal stays pending until an admin reviews it. If it is rejected you get their feedback and can edit and resubmit it.
+
+                            <h3 class="text-1xl font-bold mt-4 mb-1">Reading</h3>
+                            An announcement only appears for the users carrying one of its target tags, and a red dot on the Announcements tab tells you when something new has landed. Reviewers also get a red dot while proposals are waiting in the queue. Anyone can leave a thumbs up.
+
+                            <h3 class="text-1xl font-bold mt-4 mb-1">Formatting</h3>
+                            Announcement bodies support Markdown, so you can use **bold**, *italics*, lists, headings, links and code blocks.
 
                             <h3 class="text-1xl font-bold mt-4 mb-1">Guidelines</h3>
                             No misinformation or spamming
-                            
-
-
                         </p>
                     </section>
                     <section id="pp" class="mb-12 scroll-mt-20">

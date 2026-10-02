@@ -9,6 +9,13 @@ export interface User {
     created_at: string;
     tags?: string | null;
     points: number; // Defaults to 0 but actually +2 because logic change
+    // Computed by getUser, not real columns.
+    // unread_announcements: published announcements matching this user's tags that are newer
+    // than their last visit to /announcements. Drives the nav red dot.
+    // pending_announcements: proposals waiting for review. Also drives the nav red dot, but
+    // only reviewers act on it, so the layout gates it on the permission level.
+    unread_announcements?: number;
+    pending_announcements?: number;
 }
 
 export interface Topic {

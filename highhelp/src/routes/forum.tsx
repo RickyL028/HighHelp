@@ -6,7 +6,7 @@ import { SubjectSelector } from '../components/SubjectSelector'
 import { SubjectBadge, SubjectIcon } from '../components/SubjectBadge'
 
 import { Bindings, User } from '../types'
-import { ANNOUNCEMENT_SUBJECTS, subjectLabel } from '../constants'
+import { SUBJECTS, subjectLabel } from '../constants'
 
 const app = new Hono<{ Bindings: Bindings }>()
 interface PostDetail {
@@ -269,7 +269,7 @@ return c.html(
                     <label class="block text-sm font-bold text-gray-700 dark:text-neutral-300 mb-1">Subject</label>
                     <select name="subject" required class="w-full rounded-md border-gray-300 dark:border-neutral-600 shadow-sm p-3 border focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-neutral-700 dark:text-white">
                         <option value="" disabled selected={!preselectedSubject}>Select a Subject</option>
-                        {ANNOUNCEMENT_SUBJECTS.map(s => (
+                        {SUBJECTS.map(s => (
                             <option value={s} selected={s === preselectedSubject}>{subjectLabel(s)}</option>
                         ))}
                     </select>

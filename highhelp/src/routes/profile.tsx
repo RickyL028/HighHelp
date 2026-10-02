@@ -151,7 +151,7 @@ app.get('/profile/contributions', async (c) => {
     if (!user) return c.redirect(loginRedirect(c))
 
     const { results: myResources } = await c.env.DB.prepare('SELECT * FROM resources WHERE uploader_id = ? ORDER BY created_at DESC').bind(user.id).all();
-    const { results: myAnnouncements } = await c.env.DB.prepare('SELECT * FROM announcements WHERE author_id = ? ORDER BY created_at DESC').bind(user.id).all();
+    const { results: myAnnouncements } = await c.env.DB.prepare('SELECT * FROM announcements WHERE author_id = ? AND is_deleted = 0 ORDER BY created_at DESC').bind(user.id).all();
 
     return c.html(
         <Layout title="My Contributions" user={user}>
@@ -191,22 +191,36 @@ app.get('/profile/contributions', async (c) => {
                     <section>
                         <h2 class="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-800 dark:text-neutral-100">
                             <span class="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-400 text-sm px-2 py-1 rounded-full">{myAnnouncements?.length || 0}</span>
-                            Announcements Posted
+                            Announcements Proposed
                         </h2>
                         {myAnnouncements?.length === 0 ? (
                             <div class="bg-gray-50 dark:bg-neutral-900/50 border border-dashed border-gray-300 dark:border-neutral-700 rounded-xl p-6 text-center text-gray-500 dark:text-neutral-400">
-                                You haven't posted any announcements yet.
+                                You haven't proposed any announcements yet.
                             </div>
                         ) : (
                             <div class="grid grid-cols-1 gap-4">
                                 {myAnnouncements?.map((a: any) => (
-                                    <div class="bg-white dark:bg-neutral-800 p-4 rounded-xl border border-gray-300 dark:border-neutral-700 hover:border-purple-500 dark:hover:border-purple-400 transition-colors shadow-sm">
-                                        <div class="flex justify-between">
+                                    <a href={`/announcements/${a.id}`} class="bg-white dark:bg-neutral-800 p-4 rounded-xl border border-gray-300 dark:border-neutral-700 hover:border-purple-500 dark:hover:border-purple-400 transition-colors shadow-sm">
+                                        <div class="flex items-start justify-between gap-3">
                                             <h3 class="font-bold text-gray-800 dark:text-neutral-100">{a.title}</h3>
-                                            <span class="text-xs text-gray-400 dark:text-neutral-500">{formatDate(a.created_at)}</span>
+                                            <span class={`shrink-0 px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${
+                                                a.status === 'published'
+                                                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                                                    : a.status === 'rejected'
+                                                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300'
+                                                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                                            }`}>
+                                                {a.status === 'published' ? 'Published' : a.status === 'rejected' ? 'Rejected' : 'Pending'}
+                                            </span>
                                         </div>
                                         <p class="text-sm text-gray-600 dark:text-neutral-300 mt-1 line-clamp-1">{a.content}</p>
-                                    </div>
+                                        {a.status === 'rejected' && a.review_feedback && (
+                                            <p class="text-xs text-red-600 dark:text-red-400 mt-2 line-clamp-2">
+                                                <span class="font-bold uppercase">Feedback:</span> {a.review_feedback}
+                                            </p>
+                                        )}
+                                        <p class="text-xs text-gray-400 dark:text-neutral-500 mt-2">{formatDate(a.published_at || a.created_at)}</p>
+                                    </a>
                                 ))}
                             </div>
                         )}

@@ -25,11 +25,9 @@ export function canUploadResource(user: User): boolean {
     return true;
 }
 
-export function canPostAnnouncement(user: User, subject: string): boolean {
-    const level = Number(user.permission_level);
-    if (level >= PermissionLevel.GLOBAL_MOD) return true;
-    if (level < PermissionLevel.SUBJECT_ANNOUNCER) return false;
-    return true;
+export function canReviewAnnouncements(user: User): boolean {
+    // The pending queue and its accept/reject actions.
+    return Number(user.permission_level) >= PermissionLevel.ADMIN;
 }
 
 export function canUploadPastPaper(user: User, subject: string): boolean {

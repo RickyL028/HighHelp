@@ -163,14 +163,76 @@ export function loginRedirect(c: any, fallback: string = '/'): string {
 
 const userCache = new WeakMap<object, any>();
 
+// SQL fragment that reports whether an announcement's target audience matches the viewer.
+// `a` must be in scope (an `announcements` row); `viewerTags` is any SQL expression yielding
+// the viewer's `users.tags` JSON -- a `u.tags` column, or `(SELECT tags FROM viewer)`.
+//
+// Audience keys are namespaced so both sides can be compared as plain strings:
+//   'all'             -> everyone
+//   'tag:<name>'      -> the viewer has that Visibility Tag on their profile
+//   'year:<value>'    -> the viewer's Year tag equals <value>
+// The tag key is wrapped in double quotes because subject names contain spaces, dots and
+// parentheses, which SQLite's JSON path parser would otherwise read as path syntax.
+//
+// The match is on the key *existing*, not on its value: buildUserTags() creates a key for every
+// subject a student has on their portal timetable, so `{"Physics Yr11": 0}` means "takes
+// Physics, hasn't ticked the profile box". The 0/1 is display state (renderTags only shows the
+// ticked ones), so a 0 still counts as a match.
+export const announcementAudienceMatch = (viewerTags: string) => `
+    EXISTS (
+        SELECT 1 FROM json_each(a.target_tags) je
+        WHERE je.value = 'all'
+           OR (je.value LIKE 'tag:%' AND json_type(${viewerTags}, '$."' || substr(je.value, 5) || '"') IS NOT NULL)
+           OR (je.value LIKE 'year:%' AND json_extract(${viewerTags}, '$.Year') = substr(je.value, 6))
+    )`;
+
+// The same predicate, reading the viewer's tags from a CTE that takes them as a single bound
+// value. D1 counts parameter *occurrences*, so a named parameter may not be repeated in one
+// statement -- which is exactly what the predicate above does with `viewerTags`.
+export const VIEWER_TAGS_CTE = `WITH viewer AS (SELECT ? AS tags)`;
+export const VIEWER_TAGS_EXPR = `(SELECT tags FROM viewer)`;
+
+// Viewer tags plus viewer id in one CTE, so a query can bind everything positionally and in a
+// fixed order: viewer tags first, viewer id second.
+export const VIEWER_CTE = `WITH viewer AS (SELECT ? AS tags), me AS (SELECT ? AS id)`;
+export const VIEWER_ID_EXPR = `(SELECT id FROM me)`;
+
 export async function getUser(c: any) {
     if (userCache.has(c)) return userCache.get(c);
     const userId = await getSessionUserId(c);
     const user = userId
-        ? await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(userId).first()
+        ? await c.env.DB.prepare(`
+            SELECT u.*,
+                (SELECT COUNT(*) FROM announcements a
+                  WHERE a.status = 'published'
+                    AND a.is_deleted = 0
+                    AND COALESCE(a.published_at, a.created_at) > COALESCE(ars.last_read_at, '1970-01-01 00:00:00')
+                    AND ${announcementAudienceMatch('u.tags')}
+                ) AS unread_announcements,
+                (SELECT COUNT(*) FROM announcements pa
+                  WHERE pa.status = 'pending' AND pa.is_deleted = 0
+                ) AS pending_announcements
+            FROM users u
+            LEFT JOIN announcement_read_state ars ON ars.user_id = u.id
+            WHERE u.id = ?`).bind(userId).first()
         : null;
     userCache.set(c, user);
     return user;
+}
+
+// Mark everything the user can see as read. Called by the announcement routes after the
+// badge count has already been computed for this request, so the red dot stays lit on the
+// page that cleared it and disappears on the next navigation.
+export async function markAnnouncementsRead(db: D1Database, userId: number) {
+    try {
+        await db.prepare(`
+            INSERT INTO announcement_read_state (user_id, last_read_at)
+            VALUES (?, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id) DO UPDATE SET last_read_at = CURRENT_TIMESTAMP
+        `).bind(userId).run();
+    } catch (e) {
+        console.error('Failed to mark announcements read', e);
+    }
 }
 
 // sort subjects based on the requested priority

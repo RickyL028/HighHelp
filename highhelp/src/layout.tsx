@@ -1,5 +1,6 @@
 import { html } from 'hono/html'
 import { isExternalUser } from './utils'
+import { canReviewAnnouncements } from './permissions'
 
 // Recursively checks the hono/jsx node graph for a <pdf-crop> element.
 // props.children is a JSX node (or array of nodes), never a string, so a
@@ -26,6 +27,17 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
 	const mobileTab = (href: string, label: string) => external
 		? html`<span class="block px-4 py-2.5 text-base font-medium whitespace-nowrap text-gray-100/30 cursor-not-allowed select-none" title="${disabledTitle}" aria-disabled="true">${label}</span>`
 		: html`<a href="${href}" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">${label}</a>`;
+
+	// Announcements carries a red dot when there is something new waiting on that tab: either a
+	// published announcement in the user's audience they have not seen yet, or -- for reviewers
+	// only -- a proposal sitting in the queue. getUser counts both, so the dot costs no extra
+	// work here and appears on every page.
+	const unread = Number((props.user as any)?.unread_announcements || 0);
+	const pending = props.user && canReviewAnnouncements(props.user) ? Number((props.user as any)?.pending_announcements || 0) : 0;
+	const announcementsDot = (reason: string) => html`<span class="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-[#4E342E] dark:ring-neutral-950" title="${reason}"></span>`;
+	const dot = unread > 0 ? announcementsDot(unread === 1 ? '1 unread announcement' : `${unread} unread announcements`) : pending > 0 ? announcementsDot(pending === 1 ? '1 announcement waiting for review' : `${pending} announcements waiting for review`) : '';
+	const announcementsTab = (href: string) => html`<a href="${href}" class="relative inline-flex items-center hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Announcements${dot}</a>`;
+	const mobileAnnouncementsTab = (href: string) => html`<a href="${href}" class="relative flex items-center gap-2 text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Announcements${dot}</a>`;
 
   return html`
     <!DOCTYPE html>
@@ -368,6 +380,7 @@ ${props.latex ? html`
                     
                     <a href="/resources" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Resources</a>
                     <a href="/past-papers" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Past Papers</a>
+                    ${announcementsTab('/announcements')}
                     ${desktopTab('/attendance', 'Attendance')}
                     <a href="/leaderboard" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Leaderboard</a>
                     
@@ -381,7 +394,6 @@ ${props.latex ? html`
                       </button>
                       <div class="absolute left-0 top-full pt-1 w-44 hidden z-50" id="more-menu">
                         <div class="bg-white dark:bg-neutral-800 rounded-md shadow-lg py-1 border border-gray-200 dark:border-neutral-700">
-                          <a href="/announcements" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">Announcements</a>
                           <a href="/forum" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">Q&A</a>
                           <a href="/essays" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">Essays</a>
                           <a href="/about" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">About</a>
@@ -463,6 +475,7 @@ ${props.latex ? html`
               
               <a href="/resources" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Resources</a>
               <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Past Papers</a>
+              ${mobileAnnouncementsTab('/announcements')}
               ${mobileTab('/attendance', 'Attendance')}
               <a href="/leaderboard" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Leaderboard</a>
               <a href="/atar" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">ATAR</a>
@@ -474,7 +487,6 @@ ${props.latex ? html`
                   <svg class="h-4 w-4 fill-current transition-transform group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                 </summary>
                 <div class="pl-4 space-y-1">
-                  <a href="/announcements" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Announcements</a>
                   <a href="/forum" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Q&A</a>
                   <a href="/essays" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Essays</a>
                   <a href="/about" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">About</a>

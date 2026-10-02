@@ -31,8 +31,6 @@ export const SUBJECTS = [
     "Other",
 ] as const;
 
-export const ANNOUNCEMENT_SUBJECTS = ["All", ...SUBJECTS] as const;
-
 // The canonical subject key (as stored in the DB / used in ?subject= filters) may differ from
 // what we render in the UI. Bare names (the cohort's prior-year subjects) display with an
 // explicit "(Y11)" suffix; already-suffixed and special catch-all values are left untouched.
