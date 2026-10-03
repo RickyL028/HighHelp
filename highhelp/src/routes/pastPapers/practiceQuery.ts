@@ -436,6 +436,52 @@ export function buildBatchPracticeQuery(userId: number, subject: string, filters
     }
 }
 
+/**
+ * The Review tab lists the questions worth revisiting: anything attempted without full marks, plus
+ * anything the user wrote a note on — a note is a deliberate flag even when the marks were full.
+ * Both the original attempt and the review attempt count as "has a note". Whitespace-only notes are
+ * treated as empty, and NULLIF(TRIM(...)) keeps the predicate index-friendly rather than comparing
+ * against a bare ''.
+ *
+ * `user_question_attempts` is UNIQUE(user_id, question_id), so one join row per question is
+ * guaranteed and no GROUP BY is needed. The earlier version joined question_topics purely to
+ * group_concat the topic names, which multiplied rows and required collapsing them again.
+ */
+export const reviewQueuePredicate = `
+              AND (
+                  ua.marks_awarded < q.marks
+                  OR ua.marks_awarded IS NULL
+                  OR NULLIF(TRIM(COALESCE(ua.marker_notes, '')), '') IS NOT NULL
+                  OR NULLIF(TRIM(COALESCE(ura.marker_notes, '')), '') IS NOT NULL
+              )
+`
+
+export function buildReviewQueueQuery(userId: number, subject: string) {
+    return {
+        sql: `
+            SELECT q.*, p.school_name, p.academic_year,
+                   ua.marks_awarded AS original_marks,
+                   ua.created_at AS original_attempt_date,
+                   ua.marker_notes AS original_notes,
+                   ura.marks_awarded AS review_marks,
+                   ura.marker_notes AS review_notes,
+                   ura.is_completed AS review_completed
+            FROM exam_questions q
+            JOIN papers p ON q.paper_id = p.id
+            JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+            LEFT JOIN user_review_attempts ura ON q.id = ura.question_id AND ura.user_id = ?
+                AND ura.id = (
+                    SELECT MAX(id) FROM user_review_attempts WHERE question_id = q.id AND user_id = ?
+                )
+            WHERE p.subject = ?
+              AND q.is_deleted = 0
+            ${reviewQueuePredicate}
+            ORDER BY ua.created_at DESC
+        `,
+        params: [userId, userId, userId, subject]
+    }
+}
+
 export function buildPracticeSectionTypeQuery(userId: number, subject: string, filters: PracticeFilters) {
     const { from, where, params } = buildPracticeWhere(userId, subject, filters)
     return {

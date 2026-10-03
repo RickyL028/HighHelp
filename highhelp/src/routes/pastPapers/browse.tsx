@@ -15,6 +15,7 @@ import {
     buildPracticeListQuery,
     buildPracticeRowsUrl,
     buildPracticeSectionTypeQuery,
+    buildReviewQueueQuery,
     groupBySection,
     readRawPracticeFilters,
     resolvePracticeFilters
@@ -151,6 +152,121 @@ const renderPracticeSections = (rows: PracticeRow[], practiceQueryString: string
             </section>
         );
     });
+};
+
+type ReviewRow = {
+    id: number
+    section_label: string | null
+    question_number: string | null
+    question_type: string | null
+    marks: number | null
+    question_text: string | null
+    question_image_key: string | null
+    school_name: string
+    academic_year: number
+    original_marks: number | null
+    review_marks: number | null
+    review_completed: number | null
+    original_notes: string | null
+    review_notes: string | null
+}
+
+const REVIEW_ATTEMPT_URL = (id: number) => `/past-papers/attempt/${id}?mode=review&source=review`
+
+// The review queue is presented as the same section-grouped table as Practice Questions, so a student
+// scanning for a question recognises the columns. The marks cell shows the original score that put the
+// question in the queue, and adds the review score once one exists — the queue is keyed off the
+// original attempt, so hiding it would lose the reason the row is listed at all.
+const renderReviewRow = (row: ReviewRow) => {
+    const attemptUrl = REVIEW_ATTEMPT_URL(row.id);
+    const parsed = parseMcqOptions(row.question_text);
+    const max = row.marks;
+    const isReviewComplete = !!row.review_completed || (row.review_marks != null && row.review_marks === max);
+    const hasReview = row.review_marks != null;
+    const notes = row.review_notes || row.original_notes || '';
+    const marksTone = (value: number | null) =>
+        value != null && max != null && value >= max
+            ? 'text-green-600 dark:text-green-400'
+            : 'text-red-600 dark:text-red-400';
+
+    return (
+        <tr onclick={`window.location.href=${JSON.stringify(attemptUrl)}`}
+            class="review-row border-b border-gray-100 dark:border-neutral-800 align-top cursor-pointer transition-colors hover:bg-blue-50 dark:hover:bg-neutral-800/60">
+            <td class="py-2.5 pr-3 whitespace-nowrap font-medium text-gray-900 dark:text-white" title={row.school_name}>{abbreviateSchool(row.school_name)}</td>
+            <td class="py-2.5 pr-3 whitespace-nowrap text-gray-600 dark:text-neutral-400">{row.academic_year}</td>
+            <td class="py-2.5 pr-3 whitespace-nowrap font-mono text-xs text-gray-500 dark:text-neutral-400" title={isReviewComplete ? 'Review completed' : 'To review'}>
+                {isReviewComplete && <span class="text-green-600 dark:text-green-400 mr-1">✓</span>}
+                {row.question_number || '?'}
+            </td>
+            <td class="py-2.5 pr-3 text-gray-800 dark:text-neutral-200 leading-snug">
+                {parsed.options || row.question_type === 'multiple_choice' ? (
+                    parsed.stem || <span class="italic text-gray-400 dark:text-neutral-500">(see paper image)</span>
+                ) : row.question_text ? (
+                    <span class="whitespace-pre-wrap">{row.question_text}</span>
+                ) : row.question_image_key ? (
+                    <span class="italic text-blue-600 dark:text-blue-400">[image question]</span>
+                ) : (
+                    <span class="italic text-gray-400 dark:text-neutral-500">—</span>
+                )}
+            </td>
+            <td class="py-2.5 pr-3 whitespace-nowrap text-right">
+                <span class={`font-bold ${marksTone(row.original_marks)}`}>{row.original_marks ?? 0}/{max ?? '?'}</span>
+                {hasReview && (
+                    <div class="text-[11px] text-gray-500 dark:text-neutral-400">
+                        review <span class={`font-bold ${marksTone(row.review_marks)}`}>{row.review_marks}/{max ?? '?'}</span>
+                    </div>
+                )}
+            </td>
+            <td class="py-2.5 pr-2 text-sm text-gray-600 dark:text-neutral-300" title={notes}>
+                {notes
+                    ? <span class="line-clamp-2 whitespace-pre-wrap">{notes}</span>
+                    : <span class="italic text-gray-400 dark:text-neutral-500">—</span>}
+            </td>
+        </tr>
+    );
+};
+
+const renderReviewSections = (rows: ReviewRow[]) => {
+    if (rows.length === 0) {
+        return (
+            <div class="text-center py-12 text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-dashed border-gray-300 dark:border-neutral-700">
+                Great work! You have no questions to review.
+            </div>
+        );
+    }
+
+    return groupBySection(rows).map(([sectionKey, sectionRows]) => (
+        <section data-review-section={sectionKey} class="mb-12">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-3 pb-2 border-b border-gray-200 dark:border-neutral-700">{sectionKey}</h2>
+            <div class="overflow-x-auto review-table">
+                {/* table-fixed so the colgroup is authoritative: `max-w` on a <td> is ignored by the
+                    auto table layout, which would have let the freed space leak into Paper/Year/#. */}
+                <table class="w-full min-w-[960px] table-fixed text-sm">
+                    <colgroup>
+                        <col class="w-[5%]" />
+                        <col class="w-[6%]" />
+                        <col class="w-[5%]" />
+                        <col class="w-[55%]" />
+                        <col class="w-[5%]" />
+                        <col class="w-[22%]" />
+                    </colgroup>
+                    <thead>
+                        <tr class="text-left text-[11px] uppercase tracking-wider text-gray-500 dark:text-neutral-400 border-b-2 border-gray-200 dark:border-neutral-700">
+                            <th class="py-2 pr-3 font-bold">Paper</th>
+                            <th class="py-2 pr-3 font-bold">Year</th>
+                            <th class="py-2 pr-3 font-bold">#</th>
+                            <th class="py-2 pr-3 font-bold">Question</th>
+                            <th class="py-2 pr-3 font-bold text-right">Marks</th>
+                            <th class="py-2 pr-2 font-bold">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {sectionRows.map(row => renderReviewRow(row))}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    ));
 };
 
 const buildPracticeQueryString = (raw: RawPracticeFilters, mode: string | undefined) => {
@@ -931,30 +1047,8 @@ app.get('/past-papers', async (c) => {
     } else if (tab === 'review') {
         if (!user) return c.redirect(loginRedirect(c))
 
-        const query = `
-            SELECT q.*, p.school_name, p.academic_year, 
-                   group_concat(t.name, ', ') as topic_names,
-                   ua.marks_awarded as original_marks,
-                   ua.created_at as original_attempt_date,
-                   ura.marks_awarded as review_marks,
-                   ura.is_completed as review_completed
-            FROM exam_questions q
-            JOIN papers p ON q.paper_id = p.id
-            JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
-            LEFT JOIN user_review_attempts ura ON q.id = ura.question_id AND ura.user_id = ? 
-                AND ura.id = (
-                    SELECT MAX(id) FROM user_review_attempts WHERE question_id = q.id AND user_id = ?
-                )
-            LEFT JOIN question_topics qt ON q.id = qt.question_id
-            LEFT JOIN topics t ON qt.topic_id = t.id
-            WHERE p.subject = ?
-              AND q.is_deleted = 0
-              AND (ua.marks_awarded < q.marks OR ua.marks_awarded IS NULL)
-            GROUP BY q.id
-            ORDER BY ua.created_at DESC
-        `;
-
-        const questions = await c.env.DB.prepare(query).bind(user?.id, user?.id, user?.id, subject).all();
+        const { sql, params } = buildReviewQueueQuery(user.id, subject);
+        const questions = await c.env.DB.prepare(sql).bind(...params).all();
 
         content = (
             <div>
@@ -962,49 +1056,9 @@ app.get('/past-papers', async (c) => {
                     <h1 class="text-3xl font-bold dark:text-white">Review Queue</h1>
                     <a href={`/past-papers/batch/view?source=review&subject=${encodeURIComponent(subject)}&mode=review`} class="text-emerald-600 dark:text-emerald-400 font-bold text-sm hover:underline">Batch Review</a>
                 </div>
-                <p class="text-gray-600 dark:text-neutral-400 mb-8">Questions you didn't get full marks on. Review and retry them to master the content.</p>
+                <p class="text-gray-600 dark:text-neutral-400 mb-8">Questions you didn't get full marks on, plus any you left a note on. Review and retry them to master the content.</p>
 
-                <div class="space-y-4">
-                    {questions.results.length === 0 ? (
-                        <div class="text-center py-12 text-gray-500 dark:text-neutral-400 bg-gray-50 dark:bg-neutral-800 rounded-lg border border-dashed border-gray-300 dark:border-neutral-700">
-                            Great work! You have no questions to review.
-                        </div>
-                    ) : (
-                        questions.results.map((q: any) => {
-                            const isReviewCompleted = !!q.review_completed || (q.review_marks != null && q.review_marks === q.marks);
-                            const reviewStatus = isReviewCompleted
-                                ? <span class="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-xs px-2 py-1 rounded font-bold uppercase">Review Completed</span>
-                                : <span class="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs px-2 py-1 rounded font-bold uppercase">To Review</span>;
-
-                            return (
-                                <a href={`/past-papers/attempt/${q.id}?mode=review&source=review`} class="block bg-white dark:bg-neutral-800 p-4 rounded border border-gray-300 dark:border-neutral-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors group">
-                                    <div class="flex justify-between items-start">
-                                        <div class="flex gap-4">
-                                            <div>
-                                                <div class="flex items-center gap-2 mb-1">
-                                                    <span class="font-bold text-sm text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400">{q.school_name} {q.academic_year}</span>
-                                                    <span class="text-gray-400 dark:text-neutral-500 text-xs font-mono">| {q.section_label} {q.question_number}</span>
-                                                    {reviewStatus}
-                                                </div>
-                                                <div class="text-xs text-gray-500 dark:text-neutral-400 flex gap-2">
-                                                    <span class="capitalize">{q.question_type ? q.question_type.replace('_', ' ') : '-'}</span>
-                                                    <span class="text-gray-300 dark:text-neutral-600">•</span>
-                                                    <span class="font-medium text-gray-600 dark:text-neutral-300">{q.topic_names || 'No topic'}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="text-xs text-gray-500 dark:text-neutral-400 mb-1">Original Score</div>
-                                            <span class="text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded">
-                                                {q.original_marks || 0}/{q.marks}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </a>
-                            );
-                        })
-                    )}
-                </div>
+                {renderReviewSections(questions.results as unknown as ReviewRow[])}
             </div>
         );
     }

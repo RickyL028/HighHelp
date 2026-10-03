@@ -10,6 +10,7 @@ import {
 	buildPracticeCountQuery,
 	buildPracticeListQuery,
 	buildPracticeWhere,
+	buildReviewQueueQuery,
 	buildReviewWhere,
 	groupBySection,
 	paperNeighborOrder,
@@ -579,5 +580,62 @@ describe('buildReviewWhere', () => {
 		expect(base.from).toContain('ROW_NUMBER() OVER');
 		expect(base.where).toContain('ua.marks_awarded < q.marks');
 		expect(base.params).toEqual([7, 7, 'Mathematics']);
+	});
+});
+
+describe('buildReviewQueueQuery', () => {
+	it('projects the original score and the latest review attempt with its marker notes', () => {
+		const { sql } = buildReviewQueueQuery(7, 'Mathematics');
+		expect(sql).toContain('ua.marks_awarded AS original_marks');
+		expect(sql).toContain('ua.marker_notes AS original_notes');
+		expect(sql).toContain('ura.marks_awarded AS review_marks');
+		expect(sql).toContain('ura.marker_notes AS review_notes');
+		expect(sql).toContain('ura.is_completed AS review_completed');
+	});
+
+	it('pins the review attempt to the most recent row for that user and question', () => {
+		const { sql } = buildReviewQueueQuery(7, 'Mathematics');
+		expect(sql).toContain('SELECT MAX(id) FROM user_review_attempts');
+		expect(sql).toContain('AND ura.user_id = ?');
+	});
+
+	it('lists questions attempted without full marks, newest attempt first', () => {
+		const { sql } = buildReviewQueueQuery(7, 'Mathematics');
+		expect(sql).toContain('ua.marks_awarded < q.marks');
+		expect(sql).toContain('ORDER BY ua.created_at DESC');
+	});
+
+	it('also queues any question carrying a note, even at full marks', () => {
+		const { sql } = buildReviewQueueQuery(7, 'Mathematics');
+		// A note is a deliberate flag, so it queues independently of the mark comparison rather than
+		// narrowing it -- the predicate must be a disjunction, not marks AND notes.
+		expect(sql).toContain('NULLIF(TRIM(COALESCE(ua.marker_notes, \'\')), \'\') IS NOT NULL');
+		expect(sql).toContain('NULLIF(TRIM(COALESCE(ura.marker_notes, \'\')), \'\') IS NOT NULL');
+		expect(sql).not.toContain('ua.marks_awarded < q.marks AND');
+		expect(sql).not.toContain('q.marks AND NULLIF');
+	});
+
+	it('treats a whitespace-only note as no note', () => {
+		const { sql } = buildReviewQueueQuery(7, 'Mathematics');
+		expect(sql).toContain('TRIM(COALESCE(ua.marker_notes');
+		expect(sql).not.toMatch(/marker_notes\s*(!=|<>)\s*''/);
+	});
+
+	it('excludes soft-deleted questions and scopes to the subject', () => {
+		const { sql } = buildReviewQueueQuery(7, 'Mathematics');
+		expect(sql).toContain('q.is_deleted = 0');
+		expect(sql).toContain('p.subject = ?');
+	});
+
+	it('returns one row per question without needing a GROUP BY', () => {
+		const { sql } = buildReviewQueueQuery(7, 'Mathematics');
+		// user_question_attempts is UNIQUE(user_id, question_id); the topic joins that previously
+		// forced a GROUP BY are gone, so a stray GROUP BY would only hide a row multiplication bug.
+		expect(sql).not.toContain('GROUP BY');
+		expect(sql).not.toContain('question_topics');
+	});
+
+	it('scopes every user id and the subject to the bound params', () => {
+		expect(buildReviewQueueQuery(7, 'Mathematics').params).toEqual([7, 7, 7, 'Mathematics']);
 	});
 });
