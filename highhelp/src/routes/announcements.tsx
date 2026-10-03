@@ -139,7 +139,7 @@ const STATUS_META: Record<string, { label: string; text: string }> = {
 
 const StatusLabel = ({ status }: { status: string }) => {
 	const meta = STATUS_META[status] || STATUS_META.pending;
-	return <span class={`text-[11px] font-bold uppercase tracking-wider ${meta.text}`}>{meta.label}</span>;
+	return <span class={`text-[11px] font-bold  tracking-wider ${meta.text}`}>{meta.label}</span>;
 }
 
 // Outlined chips rather than filled pills, so the audience reads as quiet metadata sitting under
@@ -192,6 +192,19 @@ const authorName = (a: any) => (a.first_name ? `${a.first_name} ${a.last_name}` 
 // Every card is the same height: the title clamps to two lines, the preview to two, the target
 // chips and the action row are always rendered, and min-h plus flex-1 bottom-aligns the action
 // row so the thumbs-up and the edit/review link sit on the same line across the whole list.
+// Plain-text preview: markdown rendered into a line-clamp looks broken (headings, lists, code),
+// so flatten it to a sentence or two instead. JSX escapes it for us.
+const excerpt = (md: string, max = 200) => {
+	const text = String(md || '')
+		.replace(/```[\s\S]*?```/g, ' ')
+		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+		.replace(/^[#>\-*+\s]+/gm, '')
+		.replace(/[*_`~]/g, '')
+		.replace(/\s+/g, ' ')
+		.trim();
+	return text.length > max ? text.slice(0, max).trimEnd() + '…' : text;
+};
+
 const AnnouncementCard = ({
 	a,
 	user,
@@ -206,60 +219,65 @@ const AnnouncementCard = ({
 	showStatus?: boolean;
 	back: string;
 	extraAction?: { href: string; label: string };
-}) => (
-	<article class="relative flex flex-col min-h-[10rem] rounded-lg bg-white dark:bg-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-colors px-4 py-3">
-		<a href={`/announcements/${a.id}`} class="absolute inset-0 z-0" aria-label={a.title}></a>
+}) => {
+	const targets = parseTargets(a.target_tags).map(t => (t === EVERYONE ? 'Everyone' : labelFor(t)));
+	const canReact = a.status === 'published' && !a.is_deleted && !!user;
+	const rejectedNote = a.status === 'rejected' && a.review_feedback && a.author_id === user?.id;
 
-		<div class="relative z-10 pointer-events-none flex-1">
-			<div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
-				<h2 class="text-lg font-bold text-gray-900 dark:text-white leading-snug line-clamp-2">{a.title}</h2>
-				<div class="flex items-center gap-3">
+	return (
+		<article class="group relative rounded-lg bg-white dark:bg-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-700/70 transition-colors pl-5 pr-4 py-4">
+			{/* Accent bar: invisible until hover, so the list stays calm. */}
+			<span class="absolute left-0 top-3 bottom-3 w-0.5 rounded-full bg-transparent group-hover:bg-blue-500 dark:group-hover:bg-blue-400 transition-colors"></span>
+
+			{/* One quiet meta line: audience on the left, date on the right. */}
+			<div class="flex items-center justify-between gap-4 text-xs text-gray-500 dark:text-neutral-400">
+				<span class="truncate font-bold  tracking-wider">{targets.join(' · ') || 'Everyone'}</span>
+				<span class="flex items-center gap-3 shrink-0">
 					{showStatus && <StatusLabel status={a.status} />}
-					{showStatus && a.is_deleted && <span class="text-[11px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Deleted</span>}
-				</div>
+					{showStatus && a.is_deleted && (
+						<span class="text-[11px] font-bold  tracking-wider text-red-600 dark:text-red-400">Deleted</span>
+					)}
+					<span class="local-date" data-timestamp={a.published_at || a.created_at}>
+						{formatDate(a.published_at || a.created_at)}
+					</span>
+				</span>
 			</div>
 
-			<div class="mt-1.5">
-				<AudienceChips targets={parseTargets(a.target_tags)} labelFor={labelFor} />
-			</div>
+			{/* Stretched link: the ::after covers the whole card; interactive bits sit above on z-10. */}
+			<h2 class="mt-1.5 text-lg font-bold leading-snug text-gray-900 dark:text-white">
+				<a href={`/announcements/${a.id}`} class="after:absolute after:inset-0 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+					{a.title}
+				</a>
+			</h2>
 
-			<p class="mt-1 text-xs text-gray-500 dark:text-neutral-400 flex flex-wrap items-center gap-x-2 gap-y-1">
-				<span class="local-date" data-timestamp={a.published_at || a.created_at}>
-					{formatDate(a.published_at || a.created_at)}
-				</span>
-				<span>by</span>
-				<span class="text-gray-700 dark:text-neutral-200">{authorName(a)}</span>
-			</p>
+			<p class="mt-1 text-sm leading-relaxed text-gray-600 dark:text-neutral-300 line-clamp-2">{excerpt(a.content)}</p>
 
-			<div class="mt-2 text-gray-800 dark:text-neutral-200 text-sm line-clamp-2 leading-relaxed" dangerouslySetInnerHTML={{ __html: renderMarkdown(a.content) }} />
-		</div>
-
-		<div class="relative z-10 pointer-events-none mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm min-h-[1.25rem]">
-			{a.status === 'rejected' && a.review_feedback && a.author_id === user?.id && (
-				<span class="text-red-700 dark:text-red-300 text-xs">
-					<b class="font-bold uppercase tracking-wider">Rejected:</b> {a.review_feedback}
-				</span>
+			{rejectedNote && (
+				<p class="mt-2 text-xs text-red-700 dark:text-red-300">
+					<b class="font-bold  tracking-wider">Rejected:</b> {a.review_feedback}
+				</p>
 			)}
-			<span class="flex-grow"></span>
-			{a.status === 'published' && !a.is_deleted && user && (
-				<span class="pointer-events-auto inline-flex">
-					<ReactionButton ann={a} back={back} />
-				</span>
-			)}
-			{extraAction && (
-				<>
-					{(a.status === 'published' && !a.is_deleted && user) && <span class="text-gray-300 dark:text-neutral-700">|</span>}
+
+			<div class="mt-3 flex items-center gap-3 text-sm">
+				<span class="text-xs text-gray-500 dark:text-neutral-400">{authorName(a)}</span>
+				<span class="flex-grow"></span>
+				{canReact && (
+					<span class="relative z-10 inline-flex">
+						<ReactionButton ann={a} back={back} />
+					</span>
+				)}
+				{extraAction && (
 					<a
 						href={extraAction.href}
-						class="pointer-events-auto text-gray-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
+						class="relative z-10 text-gray-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
 					>
 						{extraAction.label}
 					</a>
-				</>
-			)}
-		</div>
-	</article>
-)
+				)}
+			</div>
+		</article>
+	);
+};
 
 const Tabs = ({ active, reviewCount, showReview }: { active: string; reviewCount: number; showReview: boolean }) => {
 	const tabs = [
@@ -313,7 +331,7 @@ const ProposalForm = ({
 		{error && <p class="mb-4 text-sm font-bold text-red-600 dark:text-red-400">{error}</p>}
 
 		<div class="pb-5">
-			<label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-2">Title</label>
+			<label class="block text-xs font-bold  tracking-wider text-gray-500 dark:text-neutral-400 mb-2">Title</label>
 			<input
 				type="text"
 				name="title"
@@ -321,14 +339,14 @@ const ProposalForm = ({
 				maxLength={TITLE_MAX}
 				value={values.title || ''}
 				class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-				placeholder="Announcement title e.g. Chemistry lab moved to B12"
+				placeholder="Announcement title"
 			/>
 		</div>
 
 		<fieldset class="pb-5">
-			<legend class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-1">Target audience</legend>
+			<legend class="block text-xs font-bold  tracking-wider text-gray-500 dark:text-neutral-400 mb-1">Target audience</legend>
 			<p class="text-xs text-gray-500 dark:text-neutral-400 mb-3">
-				Everyone who carries at least one of the selected tags will see this once it is approved.
+				Everyone who carries at least one of the selected tags will see this.
 			</p>
 			<div class="space-y-4 max-h-72 overflow-y-auto pr-1">
 				{AUDIENCE_GROUPS.map(group => {
@@ -336,7 +354,7 @@ const ProposalForm = ({
 					if (groupOptions.length === 0) return null;
 					return (
 						<div>
-							<p class="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-neutral-500 mb-2">{group}</p>
+							<p class="text-[11px] font-bold  tracking-wider text-gray-400 dark:text-neutral-500 mb-2">{group}</p>
 							<div class="flex flex-wrap gap-x-5 gap-y-2">
 								{groupOptions.map(o => (
 									<label class="flex items-center gap-2 cursor-pointer text-sm">
@@ -358,24 +376,22 @@ const ProposalForm = ({
 		</fieldset>
 
 		<div class="pb-5">
-			<label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-2">Content</label>
+			<label class="block text-xs font-bold  tracking-wider text-gray-500 dark:text-neutral-400 mb-2">Content</label>
 			<textarea
 				name="content"
 				rows={6}
 				required
 				maxLength={CONTENT_MAX}
 				class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 dark:bg-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y"
-				placeholder="Write your message here..."
+				placeholder="Body Text... You can use markdown formatting like ## for subheadings *text* for italics **text** for bold."
 			>
 				{values.content || ''}
 			</textarea>
-			<p class="text-xs text-gray-400 dark:text-neutral-500 mt-1">
-				Markdown supported: <code>**bold**</code>, <code>*italic*</code>, <code>- lists</code>, <code># headings</code>, links and <code>code blocks</code>.
-			</p>
+			
 		</div>
 
 		<div class="pb-5">
-			<label class="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-1">Additional needs</label>
+			<label class="block text-xs font-bold  tracking-wider text-gray-500 dark:text-neutral-400 mb-1">Additional needs</label>
 			<p class="text-xs text-gray-500 dark:text-neutral-400 mb-2">
 				Anything you need from the reviewers, e.g. a poster printed or a link checked. Only you and the reviewers can see this.
 			</p>
@@ -407,7 +423,7 @@ const proposalPage = (c: any, user: User, opts: { options: AudienceOption[]; val
 				</a>
 				<h1 class="text-2xl font-medium text-gray-900 dark:text-white leading-snug">{opts.heading}</h1>
 				<p class="text-sm text-gray-600 dark:text-neutral-400 mt-2 mb-6">
-					Your proposal starts as pending. An admin reviews it before it reaches your audience.
+					What you wanna say to your classmates..?
 				</p>
 				<ProposalForm
 					options={opts.options}
@@ -753,8 +769,8 @@ app.get('/announcements/:id', async (c) => {
 				<main class="flex-1 max-w-3xl min-w-0">
 					<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
 						<StatusLabel status={ann.status} />
-						{ann.is_deleted && <span class="text-[11px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Deleted</span>}
-						<span class="text-[11px] font-bold uppercase tracking-wider text-gray-400 dark:text-neutral-500 local-date" data-timestamp={ann.published_at || ann.created_at} data-format="datetime">
+						{ann.is_deleted && <span class="text-[11px] font-bold  tracking-wider text-red-600 dark:text-red-400">Deleted</span>}
+						<span class="text-[11px] font-bold  tracking-wider text-gray-400 dark:text-neutral-500 local-date" data-timestamp={ann.published_at || ann.created_at} data-format="datetime">
 							{formatDate(ann.published_at || ann.created_at)}
 						</span>
 					</div>
@@ -766,7 +782,7 @@ app.get('/announcements/:id', async (c) => {
 					</div>
 
 					<p class="mt-2 text-gray-700 dark:text-neutral-300 leading-relaxed flex flex-wrap items-center gap-x-2 gap-y-1">
-						<span>Proposed by</span>
+						<span>From</span>
 						<span>{authorName(ann)}</span>
 						<span class="local-date" data-timestamp={ann.published_at || ann.created_at} data-format="datetime">
 							&middot; {formatDate(ann.published_at || ann.created_at)}
