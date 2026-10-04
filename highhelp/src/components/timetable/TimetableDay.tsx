@@ -6,6 +6,32 @@ export const TimetableDay = html`
     let _scanInWeekCache = {};
     let _scanInFetchPromises = {};
 
+    function isPastDate(dateStr) {
+        if (!dateStr) return false;
+        const d = new Date(dateStr + 'T12:00:00');
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        d.setHours(0,0,0,0);
+        return d < today;
+    }
+
+    let _notesCache = {};
+    let _notesPromises = {};
+    async function fetchNotesCached(dateStr, force = false) {
+        if (!force && _notesCache[dateStr] && (Date.now() - _notesCache[dateStr].ts < 120000)) return _notesCache[dateStr].data;
+        if (!force && _notesPromises[dateStr]) return _notesPromises[dateStr];
+        const p = (async () => {
+            try {
+                const res = await fetch('/timetable/notes?date=' + dateStr);
+                const j = await res.json().catch(() => ({ notes: [] }));
+                _notesCache[dateStr] = { ts: Date.now(), data: j };
+                return j;
+            } catch (e) { return { notes: [] }; }
+        })();
+        _notesPromises[dateStr] = p;
+        try { return await p; } finally { delete _notesPromises[dateStr]; }
+    }
+
     // Returns { from, to, key } for the Mon-Sun week containing dateStr. key = Monday's date string.
     function getWeekRange(dateStr) {
         const d = new Date(dateStr + 'T12:00:00');
@@ -31,7 +57,8 @@ export const TimetableDay = html`
 
         if (!forceFetch) {
             const cached = _scanInWeekCache[key];
-            if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+            const weekPast = isPastDate(key);
+            if (cached && (weekPast || (Date.now() - cached.timestamp < CACHE_TTL))) {
                 console.log('[scan-in] serving from memory cache', key);
                 return cached.data;
             }
@@ -589,10 +616,10 @@ export const TimetableDay = html`
         // Render immediately using local/cached base timetable arrays
         buildUI(null, [], []);
 
-        // Compute date window for clipboard sessions (±14 days centered on currentDateStr)
+        // Compute date window for clipboard sessions (±7 days centered on currentDateStr)
         const [_y, _m, _d] = currentDateStr.split('-').map(Number);
-        const _dAfter = new Date(_y, _m - 1, _d); _dAfter.setDate(_dAfter.getDate() - 14);
-        const _dBefore = new Date(_y, _m - 1, _d); _dBefore.setDate(_dBefore.getDate() + 14);
+        const _dAfter = new Date(_y, _m - 1, _d); _dAfter.setDate(_dAfter.getDate() - 7);
+        const _dBefore = new Date(_y, _m - 1, _d); _dBefore.setDate(_dBefore.getDate() + 7);
         const sessionsDateAfter = _dAfter.toISOString().split('T')[0];
         const sessionsDateBefore = _dBefore.toISOString().split('T')[0];
 
@@ -616,6 +643,14 @@ export const TimetableDay = html`
                 attachScanInBadge();
             }
         }).catch(() => {});
+        if (window.prefetchTimetableAround) {
+            const doPref = () => window.prefetchTimetableAround(currentDateStr);
+            if ('requestIdleCallback' in window) {
+                try { requestIdleCallback(doPref, { timeout: 500 }); } catch (e) { setTimeout(doPref, 150); }
+            } else {
+                setTimeout(doPref, 150);
+            }
+        }
 
         // Capture snapshot to prevent overwriting if user has navigated away or changed date
         const snapshotDate = currentDateStr;
@@ -628,26 +663,35 @@ export const TimetableDay = html`
         // --- 4. BACKGROUND PASS (Asynchronous Fetch & Update) ---
         // Fetch fresh data in the background and re-render quietly when they arrive
         try {
-            const [apiData, clipboardEvents, clipboardSessions, notesRes] = await Promise.all([
-                fetchDayData(currentDateStr, shouldForceFetch),
-                fetchCalendarData(currentDateStr, shouldForceFetch),
-                fetchClipboardSessions(shouldForceFetch, sessionsDateAfter, sessionsDateBefore),
-                fetch('/timetable/notes?date=' + currentDateStr).then(res => res.json()).catch(() => ({ notes: [] }))
-            ]);
-            
-            // If the user has changed view or date while we were fetching, Don't overwrite the DOM
-            if (currentDateStr !== snapshotDate || currentView !== snapshotView) {
-                return;
-            }
+            const apiDataPromise = fetchDayData(currentDateStr, shouldForceFetch);
+            const clipboardEventsPromise = fetchCalendarData(currentDateStr, shouldForceFetch);
+            const clipboardSessionsPromise = fetchClipboardSessions(shouldForceFetch, sessionsDateAfter, sessionsDateBefore);
+            const notesPromise = fetchNotesCached(currentDateStr, shouldForceFetch);
 
-            const dayNotes = notesRes?.notes || [];
-            
-            const sessionsForDate = getClipboardSessionsForDate(clipboardSessions, currentDateStr);
-            // clipboardEvents from fetchCalendarData already excludes internal-api.clipboard.app/ feeds (filtered in TimetableCore fetchCalendarData)
-            const mergedClipboard = [...sessionsForDate, ...(clipboardEvents || [])];
-            
-            // Final Render: Overwrite DOM structure seamlessly with real-time data
-            buildUI(apiData, mergedClipboard, dayNotes);
+            let latestApiData = null;
+            let latestClipboardEvents = [];
+            let latestClipboardSessions = null;
+            let latestDayNotes = [];
+
+            const tryRender = () => {
+                if (currentDateStr !== snapshotDate || currentView !== snapshotView) return;
+                const sessionsForDate = latestClipboardSessions ? getClipboardSessionsForDate(latestClipboardSessions, currentDateStr) : [];
+                const mergedClipboard = [...sessionsForDate, ...(latestClipboardEvents || [])];
+                buildUI(latestApiData, mergedClipboard, latestDayNotes);
+            };
+
+            let bgAuthError = null;
+            apiDataPromise.then(data => { latestApiData = data; tryRender(); }).catch(e => { if (e && e.message === 'AUTH_EXPIRED') bgAuthError = e; });
+            clipboardEventsPromise.then(events => { latestClipboardEvents = events || []; tryRender(); }).catch(() => {});
+            clipboardSessionsPromise.then(sessions => { latestClipboardSessions = sessions; tryRender(); }).catch(() => {});
+            notesPromise.then(notesRes => { latestDayNotes = (notesRes && notesRes.notes) || []; tryRender(); }).catch(() => {});
+
+            await Promise.allSettled([apiDataPromise, clipboardEventsPromise, clipboardSessionsPromise, notesPromise]);
+
+            if (bgAuthError && currentDateStr === snapshotDate && currentView === snapshotView) {
+                const errContainer = document.getElementById('timetable-list');
+                if (errContainer) errContainer.innerHTML = '<div class="text-center py-12 text-red-500 dark:text-red-400 font-medium"><a href="/api/auth/login" class="underline">Log in again</a> to sync.</div>';
+            }
 
             // Pre-fetch next weekday in the background (no force — let cache work)
             if (shouldForceFetch) {
@@ -667,6 +711,24 @@ export const TimetableDay = html`
                     const nextStr = \`\${ny}-\${nm}-\${nd}\`;
                     fetchDayData(nextStr, false);
                     fetchCalendarData(nextStr, false);
+                    fetchScanIns(nextStr, false);
+                }
+                const prevDay = new Date(y, m - 1, d);
+                let ptries = 0;
+                while (ptries < 7) {
+                    prevDay.setDate(prevDay.getDate() - 1);
+                    const pdw = prevDay.getDay();
+                    if (pdw !== 0) break;
+                    ptries++;
+                }
+                if (ptries < 7) {
+                    const py = prevDay.getFullYear();
+                    const pm = String(prevDay.getMonth() + 1).padStart(2, '0');
+                    const pd = String(prevDay.getDate()).padStart(2, '0');
+                    const prevStr = py + '-' + pm + '-' + pd;
+                    fetchDayData(prevStr, false);
+                    fetchCalendarData(prevStr, false);
+                    fetchScanIns(prevStr, false);
                 }
             }
             

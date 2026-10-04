@@ -120,6 +120,15 @@ export const TimetableCore = html`
 
     const CACHE_TTL = 300000; // 5 minutes (adjustable)
 
+    function isPastDate(dateStr) {
+        if (!dateStr) return false;
+        const d = new Date(dateStr + 'T12:00:00');
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        d.setHours(0,0,0,0);
+        return d < today;
+    }
+
     let currentDateStr = new URLSearchParams(window.location.search).get('date') || getInitialDate();
     const hashView = window.location.hash.replace('#', '');
     const validViews = ['day', 'cycle', 'notices', 'events', 'exams', 'config'];
@@ -264,7 +273,7 @@ export const TimetableCore = html`
                     const cachedObj = JSON.parse(cachedRaw);
                     cachedData = cachedObj.data || cachedObj;
                     const now = new Date().getTime();
-                    if (!forceFetch && cachedObj.timestamp && (now - cachedObj.timestamp < CACHE_TTL)) { 
+                    if ((!forceFetch && cachedObj.timestamp && (now - cachedObj.timestamp < CACHE_TTL)) || isPastDate(date)) {
                         if (cachedData && (cachedData.status === 'OK' || cachedData.timetable)) {
                              if (cachedData.bells) {
                                 bellCache[date] = cachedData.bells.map(b => ({
@@ -347,14 +356,14 @@ export const TimetableCore = html`
     function getCachedCalendarWeek(key) {
         if (_calendarWeekCache[key]) {
             const cached = _calendarWeekCache[key];
-            if (Date.now() - cached.timestamp < CACHE_TTL) return cached.events;
+            if (isPastDate(key) || (Date.now() - cached.timestamp < CACHE_TTL)) return cached.events;
             delete _calendarWeekCache[key];
         }
         try {
             const raw = localStorage.getItem('calendarWeek_' + key);
             if (raw) {
                 const cached = JSON.parse(raw);
-                if (cached.timestamp && (Date.now() - cached.timestamp < CACHE_TTL)) {
+                if (cached.timestamp && (isPastDate(key) || (Date.now() - cached.timestamp < CACHE_TTL))) {
                     _calendarWeekCache[key] = cached;
                     return cached.events;
                 }
@@ -437,12 +446,12 @@ export const TimetableCore = html`
 
             if (urls.length === 0) return [];
 
-            // Compute a range: 7 days before to 14 days after the requested date
+            // Compute a range: 3 days before to 7 days after the requested date
             const d = new Date(date + 'T12:00:00');
             const fromDate = new Date(d);
-            fromDate.setDate(fromDate.getDate() - 7);
+            fromDate.setDate(fromDate.getDate() - 3);
             const toDate = new Date(d);
-            toDate.setDate(toDate.getDate() + 14);
+            toDate.setDate(toDate.getDate() + 7);
             const fromStr = fromDate.toISOString().split('T')[0];
             const toStr = toDate.toISOString().split('T')[0];
             
@@ -507,7 +516,8 @@ export const TimetableCore = html`
 
         const cacheKey = _clipboardCacheKey(dateAfter, dateBefore);
         const now = Date.now();
-        if (!forceFetch && _clipboardSessionsCache[cacheKey] && (now - _clipboardSessionsTimestamps[cacheKey] < CLIPBOARD_SESSIONS_TTL)) {
+        const rangeEndPast = dateBefore && isPastDate(dateBefore);
+        if (!forceFetch && _clipboardSessionsCache[cacheKey] && (rangeEndPast || (now - _clipboardSessionsTimestamps[cacheKey] < CLIPBOARD_SESSIONS_TTL))) {
             console.log('[clipboard-sessions] serving from memory cache', cacheKey);
             return _clipboardSessionsCache[cacheKey];
         }
@@ -518,7 +528,7 @@ export const TimetableCore = html`
                 const raw = localStorage.getItem('clipboardSessionsCache_' + cacheKey);
                 if (raw) {
                     const cached = JSON.parse(raw);
-                    if (cached.timestamp && (now - cached.timestamp < CLIPBOARD_SESSIONS_TTL) && cached.data) {
+                    if (cached.timestamp && (rangeEndPast || (now - cached.timestamp < CLIPBOARD_SESSIONS_TTL)) && cached.data) {
                         console.log('[clipboard-sessions] serving from localStorage', cacheKey);
                         _clipboardSessionsCache[cacheKey] = cached.data;
                         _clipboardSessionsTimestamps[cacheKey] = cached.timestamp;
@@ -600,13 +610,14 @@ export const TimetableCore = html`
 
     function getCachedClipboardSessions(dateAfter = undefined, dateBefore = undefined) {
         const cacheKey = _clipboardCacheKey(dateAfter, dateBefore);
+        const rangeEndPast = dateBefore && isPastDate(dateBefore);
         if (_clipboardSessionsCache[cacheKey]) return _clipboardSessionsCache[cacheKey];
         try {
             const raw = localStorage.getItem('clipboardSessionsCache_' + cacheKey);
             if (raw) {
                 const cached = JSON.parse(raw);
                 const now = Date.now();
-                if (cached.timestamp && (now - cached.timestamp < CLIPBOARD_SESSIONS_TTL) && cached.data) {
+                if (cached.timestamp && (rangeEndPast || (now - cached.timestamp < CLIPBOARD_SESSIONS_TTL)) && cached.data) {
                     _clipboardSessionsCache[cacheKey] = cached.data;
                     _clipboardSessionsTimestamps[cacheKey] = cached.timestamp;
                     return cached.data;
@@ -879,5 +890,28 @@ export const TimetableCore = html`
         style.textContent = '@keyframes loading-bar-indeterminate{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}.animate-loading-bar{animation:loading-bar-indeterminate 1.2s ease-in-out infinite}';
         document.head.appendChild(style);
     })();
+
+    window.prefetchTimetableAround = function(baseDateStr) {
+        if (!baseDateStr) return;
+        try {
+            const parts = baseDateStr.split('-').map(Number);
+            const y = parts[0], m = parts[1], d = parts[2];
+            const collect = (dir) => {
+                const out = [];
+                const step = dir > 0 ? 1 : -1;
+                for (let i = 1; out.length < 2 && i < 10; i++) {
+                    const t = new Date(y, m - 1, d);
+                    t.setDate(t.getDate() + (step * i));
+                    if (t.getDay() === 0) continue;
+                    out.push(t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'));
+                }
+                return out;
+            };
+            collect(1).concat(collect(-1)).forEach(ds => {
+                fetchDayData(ds, false);
+                fetchCalendarData(ds, false);
+            });
+        } catch (e) {}
+    };
 
 </script>`
