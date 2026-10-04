@@ -616,12 +616,11 @@ export const TimetableDay = html`
         // Render immediately using local/cached base timetable arrays
         buildUI(null, [], []);
 
-        // Compute date window for clipboard sessions (±7 days centered on currentDateStr)
-        const [_y, _m, _d] = currentDateStr.split('-').map(Number);
-        const _dAfter = new Date(_y, _m - 1, _d); _dAfter.setDate(_dAfter.getDate() - 7);
-        const _dBefore = new Date(_y, _m - 1, _d); _dBefore.setDate(_dBefore.getDate() + 7);
-        const sessionsDateAfter = _dAfter.toISOString().split('T')[0];
-        const sessionsDateBefore = _dBefore.toISOString().split('T')[0];
+        // Clipboard sessions use the week-aligned window (Mon-Sun of the viewed week),
+        // so navigating within a week reuses one cache entry instead of refetching per date.
+        const _clipWeek = getClipboardWeekWindow(currentDateStr);
+        const sessionsDateAfter = _clipWeek.after;
+        const sessionsDateBefore = _clipWeek.before;
 
         // --- 3. STALE PASS (Cached Render) ---
         // If we have any cached data from previous sessions, show it immediately

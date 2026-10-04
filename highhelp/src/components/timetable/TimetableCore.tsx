@@ -261,9 +261,12 @@ export const TimetableCore = html`
         return null;
     }
 
+    const DAY_MIN_REFETCH_MS = 60000; // even forced refetches are skipped if fetched within the last minute
+    let _dayDataLastFetch = {};
+
     async function fetchDayData(date, forceFetch = false) {
         if (!studentData?.accessToken) return null;
-        if (pendingFetches[date] && !forceFetch) return pendingFetches[date];
+        if (pendingFetches[date]) return pendingFetches[date];
 
         const fetchPromise = (async () => {
             const cachedRaw = localStorage.getItem('todayData_' + date);
@@ -273,7 +276,8 @@ export const TimetableCore = html`
                     const cachedObj = JSON.parse(cachedRaw);
                     cachedData = cachedObj.data || cachedObj;
                     const now = new Date().getTime();
-                    if ((!forceFetch && cachedObj.timestamp && (now - cachedObj.timestamp < CACHE_TTL)) || isPastDate(date)) {
+                    const recentlyFetched = (now - (_dayDataLastFetch[date] || 0) < DAY_MIN_REFETCH_MS);
+                    if ((!forceFetch && cachedObj.timestamp && (now - cachedObj.timestamp < CACHE_TTL)) || isPastDate(date) || recentlyFetched) {
                         if (cachedData && (cachedData.status === 'OK' || cachedData.timetable)) {
                              if (cachedData.bells) {
                                 bellCache[date] = cachedData.bells.map(b => ({
@@ -313,6 +317,7 @@ export const TimetableCore = html`
                     if (data && (data.status === 'OK' || data.timetable)) {
                         const cacheObj = { timestamp: new Date().getTime(), data: data };
                         localStorage.setItem('todayData_' + date, JSON.stringify(cacheObj));
+                        _dayDataLastFetch[date] = Date.now();
                         if (data.bells && data.bells.length > 0) {
                             bellCache[date] = data.bells.map(b => ({
                                 period: b.period || b.bell,  
@@ -334,12 +339,13 @@ export const TimetableCore = html`
             return data || cachedData;
         })();
 
-        if (!forceFetch) pendingFetches[date] = fetchPromise;
-        try { return await fetchPromise; } finally { if (!forceFetch) delete pendingFetches[date]; }
+        pendingFetches[date] = fetchPromise;
+        try { return await fetchPromise; } finally { if (pendingFetches[date] === fetchPromise) delete pendingFetches[date]; }
     }
 
     let _calendarWeekCache = {};
     let _calendarFetchPromises = {};
+    const CAL_MIN_REFETCH_MS = 60000;
 
     function getWeekRange(dateStr) {
         const d = new Date(dateStr + 'T12:00:00');
@@ -351,6 +357,11 @@ export const TimetableCore = html`
         sunday.setDate(monday.getDate() + 6);
         const fmt = (dt) => \`\${dt.getFullYear()}-\${String(dt.getMonth() + 1).padStart(2, '0')}-\${String(dt.getDate()).padStart(2, '0')}\`;
         return { from: fmt(monday), to: fmt(sunday), key: fmt(monday) };
+    }
+
+    function getClipboardWeekWindow(dateStr) {
+        const { from, to } = getWeekRange(dateStr);
+        return { after: from, before: to };
     }
 
     function getCachedCalendarWeek(key) {
@@ -416,6 +427,7 @@ export const TimetableCore = html`
     async function fetchCalendarData(date, forceFetch = false) {
         const { key: weekKey } = getWeekRange(date);
 
+        if (_calendarFetchPromises[weekKey]) return _calendarFetchPromises[weekKey];
         if (!forceFetch) {
             const cached = getCachedCalendarWeek(weekKey);
             if (cached) {
@@ -424,7 +436,14 @@ export const TimetableCore = html`
                     return d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) === date;
                 });
             }
-            if (_calendarFetchPromises[weekKey]) return _calendarFetchPromises[weekKey];
+        } else {
+            const recent = _calendarWeekCache[weekKey];
+            if (recent && (Date.now() - recent.timestamp < CAL_MIN_REFETCH_MS)) {
+                return recent.events.filter(e => {
+                    const d = new Date(e.start || e.startDateTime);
+                    return d.toLocaleDateString('en-CA', { timeZone: 'Australia/Sydney' }) === date;
+                });
+            }
         }
 
         const fetchPromise = (async () => {
@@ -495,13 +514,15 @@ export const TimetableCore = html`
             }
         })();
 
-        if (!forceFetch) _calendarFetchPromises[weekKey] = fetchPromise;
-        try { return await fetchPromise; } finally { if (!forceFetch) delete _calendarFetchPromises[weekKey]; }
+        _calendarFetchPromises[weekKey] = fetchPromise;
+        try { return await fetchPromise; } finally { if (_calendarFetchPromises[weekKey] === fetchPromise) delete _calendarFetchPromises[weekKey]; }
     }
 
     let _clipboardSessionsCache = {};       // keyed by "dateAfter_dateBefore" or "global"
     let _clipboardSessionsTimestamps = {};  // keyed the same way
+    let _clipboardFetchPromises = {};
     const CLIPBOARD_SESSIONS_TTL = 604800000; // 7 days
+    const SESSION_MIN_REFETCH_MS = 300000; // 5 minutes — even forced refetches wait this long
 
     function _clipboardCacheKey(dateAfter, dateBefore) {
         return (dateAfter || '') + '_' + (dateBefore || '');
@@ -517,7 +538,9 @@ export const TimetableCore = html`
         const cacheKey = _clipboardCacheKey(dateAfter, dateBefore);
         const now = Date.now();
         const rangeEndPast = dateBefore && isPastDate(dateBefore);
-        if (!forceFetch && _clipboardSessionsCache[cacheKey] && (rangeEndPast || (now - _clipboardSessionsTimestamps[cacheKey] < CLIPBOARD_SESSIONS_TTL))) {
+        if (_clipboardFetchPromises[cacheKey]) return _clipboardFetchPromises[cacheKey];
+        const sessionsRecentlyFetched = (now - (_clipboardSessionsTimestamps[cacheKey] || 0) < SESSION_MIN_REFETCH_MS);
+        if ((!forceFetch || sessionsRecentlyFetched) && _clipboardSessionsCache[cacheKey] && (rangeEndPast || (now - _clipboardSessionsTimestamps[cacheKey] < CLIPBOARD_SESSIONS_TTL))) {
             console.log('[clipboard-sessions] serving from memory cache', cacheKey);
             return _clipboardSessionsCache[cacheKey];
         }
@@ -528,7 +551,7 @@ export const TimetableCore = html`
                 const raw = localStorage.getItem('clipboardSessionsCache_' + cacheKey);
                 if (raw) {
                     const cached = JSON.parse(raw);
-                    if (cached.timestamp && (rangeEndPast || (now - cached.timestamp < CLIPBOARD_SESSIONS_TTL)) && cached.data) {
+                    if (((!forceFetch || (now - cached.timestamp < SESSION_MIN_REFETCH_MS)) && (rangeEndPast || (now - cached.timestamp < CLIPBOARD_SESSIONS_TTL))) && cached.data) {
                         console.log('[clipboard-sessions] serving from localStorage', cacheKey);
                         _clipboardSessionsCache[cacheKey] = cached.data;
                         _clipboardSessionsTimestamps[cacheKey] = cached.timestamp;
@@ -538,6 +561,7 @@ export const TimetableCore = html`
             } catch(e) {}
         }
 
+        const fetchPromise = (async () => {
         try {
             showLoadingBar();
             const context = new Date().getFullYear().toString();
@@ -606,6 +630,10 @@ export const TimetableCore = html`
         } finally {
             hideLoadingBar();
         }
+        })();
+
+        _clipboardFetchPromises[cacheKey] = fetchPromise;
+        try { return await fetchPromise; } finally { if (_clipboardFetchPromises[cacheKey] === fetchPromise) delete _clipboardFetchPromises[cacheKey]; }
     }
 
     function getCachedClipboardSessions(dateAfter = undefined, dateBefore = undefined) {
@@ -899,7 +927,7 @@ export const TimetableCore = html`
             const collect = (dir) => {
                 const out = [];
                 const step = dir > 0 ? 1 : -1;
-                for (let i = 1; out.length < 2 && i < 10; i++) {
+                for (let i = 1; out.length < 3 && i < 10; i++) {
                     const t = new Date(y, m - 1, d);
                     t.setDate(t.getDate() + (step * i));
                     if (t.getDay() === 0) continue;
@@ -911,6 +939,14 @@ export const TimetableCore = html`
                 fetchDayData(ds, false);
                 fetchCalendarData(ds, false);
             });
+            const _wk = getWeekRange(baseDateStr);
+            fetchClipboardSessions(false, _wk.from, _wk.to);
+            const _nxm = new Date(_wk.from + 'T12:00:00');
+            _nxm.setDate(_nxm.getDate() + 7);
+            const _nxs = new Date(_nxm);
+            _nxs.setDate(_nxm.getDate() + 6);
+            const _f = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+            fetchClipboardSessions(false, _f(_nxm), _f(_nxs));
         } catch (e) {}
     };
 
