@@ -25,7 +25,7 @@ app.get('/profile', async (c) => {
         <Layout title="Profile" user={user}>
             <div class="max-w-2xl mx-auto py-10 px-4">
                 <header class="mb-8">
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Profile Settings</h1>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Profile Settings</h1>
                     
                 </header>
 

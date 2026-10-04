@@ -117,7 +117,7 @@ app.get('/feedback', async (c) => {
                 <div class="flex items-center justify-between mb-6">
                     <h1 class="text-3xl font-bold text-gray-900 dark:text-white">What if...</h1>
                     {user && Number(user.permission_level) >= PermissionLevel.VERIFIED ? (
-                        <a href="/feedback/submit" class="bg-[#633200] hover:bg-[#b05800] text-white px-4 py-2 rounded font-bold transition-colors text-sm">
+                        <a href="/feedback/submit" class="bg-primary hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors text-sm">
                             + Submit
                         </a>
                     ) : null}
@@ -171,7 +171,7 @@ app.get('/feedback/submit', async (c) => {
                 <a href="/feedback" class="text-blue-600 dark:text-blue-400 hover:underline text-sm mb-6 inline-block">← Back</a>
 
                 <div class="bg-white dark:bg-neutral-800 rounded border border-gray-200 dark:border-neutral-700 p-6">
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Submit a suggestion</h1>
+                    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-1">Submit a suggestion</h1>
 
 
                     <form action="/feedback/submit" method="post" class="space-y-5">

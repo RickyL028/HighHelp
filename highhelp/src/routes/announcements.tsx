@@ -421,7 +421,7 @@ const proposalPage = (c: any, user: User, opts: { options: AudienceOption[]; val
 				<a href="/announcements?tab=mine" class="text-sm text-blue-600 dark:text-blue-400 hover:underline transition-colors inline-block mb-4">
 					&larr; Back to My Proposals
 				</a>
-				<h1 class="text-2xl font-medium text-gray-900 dark:text-white leading-snug">{opts.heading}</h1>
+				<h1 class="text-3xl font-bold text-gray-900 dark:text-white">{opts.heading}</h1>
 				<p class="text-sm text-gray-600 dark:text-neutral-400 mt-2 mb-6">
 					What you wanna say to your classmates..?
 				</p>
@@ -517,7 +517,7 @@ app.get('/announcements', async (c) => {
 				announcements column consistent with the rest of the wide content pages. */}
 			<div class="max-w-6xl mx-auto">
 				<header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-3">
-					<h1 class="text-2xl font-medium text-gray-900 dark:text-white leading-snug">Announcements</h1>
+					<h1 class="text-3xl font-bold text-gray-900 dark:text-white">Announcements</h1>
 					{canPostGeneral(user) && (
 						<a href="/announcements/new" class="text-sm text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
 							Propose an Announcement

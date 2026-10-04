@@ -14,7 +14,7 @@ app.get('/', async (c) => {
             <div class="max-w-5xl mx-auto pt-6 pb-16 px-4 md:px-6">
                 <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
                     <div>
-                        <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Attendance</h1>
+                        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Attendance</h1>
                         <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">(clipboard) absences & pre-explained</p>
                     </div>
                     <div class="flex items-center gap-3">

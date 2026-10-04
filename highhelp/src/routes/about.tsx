@@ -51,7 +51,7 @@ app.get('/about', async (c) => {
 
 
                 <main class="flex-1 max-w-3xl">
-                    <h1 class="text-4xl font-extrabold mb-8">About HighHelp</h1>
+                    <h1 class="text-3xl font-bold mb-8">About HighHelp</h1>
                     <p class="text-gray-700 dark:text-neutral-300 leading-relaxed mb-12 dark:text-neutral-300">
                         [Last Updated: 13 Sep 2026] <br></br>
                         On this page, you will find information and guidelines for each section of this website. 

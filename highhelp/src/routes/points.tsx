@@ -400,7 +400,7 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 								'<div>' +
 									'<div class="flex justify-between items-center mb-1">' +
 										'<span class="text-xs font-medium dark:text-white">' + esc(cat) + nomLabel + '</span>' +
-										'<span class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-700 dark:text-white font-mono">' + adjusted + '</span>' +
+										'<span class="text-xs font-semibold px-2 py-0.5 rounded bg-gray-200 dark:bg-neutral-700 dark:text-white">' + adjusted + '</span>' +
 									'</div>' +
 									'<div class="relative w-full h-2.5 bg-gray-200 dark:bg-neutral-700 rounded-full overflow-hidden">' +
 										(pct > 0 ? '<div class="absolute inset-y-0 left-0 ' + barColor + ' rounded-full transition-all" style="width:' + pct + '%"></div>' : '') +
@@ -801,7 +801,7 @@ root.innerHTML = '<div class="text-center py-12"><p class="text-gray-500 dark:te
 										'</div>' +
 										'<div class="text-xs text-gray-500 dark:text-neutral-400 mt-0.5">' + esc(a.category) + '</div>' +
 									'</td>' +
-									'<td class="px-4 py-3 text-right"><span class="text-sm font-mono ' + houseClass + '">' + a.housePoints + '</span></td>' +
+									'<td class="px-4 py-3 text-right"><span class="text-sm ' + houseClass + '">' + a.housePoints + '</span></td>' +
 								'</tr>';
 							}).join('');
 
@@ -936,7 +936,7 @@ function renderBlazer(root, data) {
         var additional = safeEsc(nomination.name || '');
 
         return '<tr class="hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors">' +
-            '<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-neutral-400 font-mono">' + dateLabel + '</td>' +
+            '<td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-neutral-400">' + dateLabel + '</td>' +
             '<td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">' + activityName + '</td>' +
             
             '<td class="px-4 py-3 text-sm text-gray-500 dark:text-neutral-400">' + additional + '</td>' +
@@ -1222,8 +1222,8 @@ function renderBlazer(root, data) {
 						var chips = planState.planned.filter(function(p) { return p.matchedCategory === cat; });
 						var nomsLabel = cd.noms > 0 ? '<span class="text-xs font-medium text-blue-600 dark:text-blue-400 ml-1">x' + cd.noms + '</span>' : '';
 						var ptsLabel = cd.plannedPoints > 0
-							? '<span class="text-xs font-mono dark:text-white">' + cd.points + ' + <span class="text-blue-500 dark:text-blue-400">' + cd.plannedPoints + '</span> = ' + cd.totalPoints + '</span>'
-							: '<span class="text-xs font-mono dark:text-white">' + cd.points + '</span>';
+							? '<span class="text-xs dark:text-white">' + cd.points + ' + <span class="text-blue-500 dark:text-blue-400">' + cd.plannedPoints + '</span> = ' + cd.totalPoints + '</span>'
+							: '<span class="text-xs dark:text-white">' + cd.points + '</span>';
 
 						var chipsHtml = chips.map(function(p) {
 							return '<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">' +
@@ -1335,7 +1335,7 @@ function renderBlazer(root, data) {
 											'<div class="text-xs text-gray-500 dark:text-neutral-400">' + esc(a.category) + '</div>' +
 										'</div>' +
 										'<div class="shrink-0 text-right">' +
-											'<div class="text-sm font-mono text-blue-600 dark:text-blue-400">+' + a.points + '</div>' +
+											'<div class="text-sm text-blue-600 dark:text-blue-400">+' + a.points + '</div>' +
 										'</div>' +
 									'</div>' +
 								'</div>';

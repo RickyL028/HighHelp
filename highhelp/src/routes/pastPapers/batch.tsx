@@ -330,7 +330,7 @@ app.get('/past-papers/batch/view', async (c) => {
                                                 </div>
                                                 <textarea id={`notes-${q.id}`}
                                                     class="w-full h-10 p-2 border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-neutral-100 outline-none focus:ring-1 focus:ring-blue-500 resize-none rounded"
-                                                    placeholder="Marker notes (optional)..."
+                                                    placeholder="Notes (optional)... [This question will appear in Review tab if you leave an input]"
                                                 >{attempt?.marker_notes || ''}</textarea>
                                             </div>
                                         </div>

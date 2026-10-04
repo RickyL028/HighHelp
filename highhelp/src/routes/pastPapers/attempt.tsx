@@ -491,7 +491,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                             <textarea
                                 name="marker_notes"
                                 class="w-full h-12 p-2 border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-sm text-gray-900 dark:text-neutral-100 outline-none focus:ring-1 focus:ring-blue-500 resize-none rounded-sm"
-                                placeholder="Marker notes (optional)..."
+                                placeholder="Notes (optional)... [This question will appear in Review tab if you leave an input]"
                             >{attempt?.marker_notes || ''}</textarea>
                         </div>
                     </div>
