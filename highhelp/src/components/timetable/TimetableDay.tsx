@@ -243,6 +243,8 @@ export const TimetableDay = html`
 
         // 1. Extract the rendering logic into a reusable function
         function buildUI(apiData, clipboardEvents, dayNotes) {
+            // Lets break-event edits redraw from the last data without refetching
+            window.rerenderDayFast = () => { if (currentView === 'day') buildUI(apiData, clipboardEvents, dayNotes); };
             container.innerHTML = '';
             
             if (!apiData && (!dayInfo || !daysData[dayInfo.dayNumber])) {
@@ -458,6 +460,8 @@ export const TimetableDay = html`
                                     \${notesPreviewHtml}
                                 </div>
                         </div>\`;
+                } else if (getBreakSlot(bell)) {
+                    innerHtml = renderBreakSlotHtml(bell, currentDateStr);
                 } else {
                     if (bell.period === 'EoD') return;
                     innerHtml = \`
@@ -605,6 +609,7 @@ export const TimetableDay = html`
             }
 
             attachHoverEffects();
+            attachBreakEventHandlers(container, currentDateStr);
 
             // Attach scan-in badge click handler (badge is rendered by ticker in bt-details)
             attachScanInBadge();

@@ -12,6 +12,7 @@ import { TimetableModal } from '../components/timetable/TimetableModal'
 import { TimetableNotices } from '../components/timetable/TimetableNotices'
 import { TimetableEvents } from '../components/timetable/TimetableEvents'
 import { TimetableCalendar } from '../components/timetable/TimetableCalendar'
+import { TimetableBreakEvents } from '../components/timetable/TimetableBreakEvents'
 const app = new Hono<{ Bindings: Bindings }>()
 
 app.get('/', async (c) => {
@@ -29,6 +30,7 @@ app.get('/', async (c) => {
                 {TimetableCycle}
                 {TimetableConfig}
                 {TimetableModal}
+                {TimetableBreakEvents}
                 {TimetableNotices}
                 {TimetableEvents}
                 {TimetableCalendar}
