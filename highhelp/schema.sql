@@ -14,7 +14,10 @@ CREATE TABLE users (
   role TEXT DEFAULT 'student',
   permission_level INTEGER DEFAULT 0,
   tags TEXT, -- JSON string or comma-separated list
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  -- Nav red-dot switches, set on the profile page.
+  notify_announcements INTEGER NOT NULL DEFAULT 1,
+  notify_questions INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE resources (
@@ -77,8 +80,11 @@ CREATE TABLE posts (
   author_id INTEGER,
   subject TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_deleted BOOLEAN DEFAULT 0,
   FOREIGN KEY (author_id) REFERENCES users(id)
 );
+
+CREATE INDEX idx_posts_type_created ON posts (type, created_at);
 
 CREATE TABLE comments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,7 +92,15 @@ CREATE TABLE comments (
   content TEXT NOT NULL,
   author_id INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_deleted BOOLEAN DEFAULT 0,
   FOREIGN KEY (author_id) REFERENCES users(id)
+);
+
+-- Drives the red dot on Q&A (see forumRelevance.ts).
+CREATE TABLE forum_read_state (
+  user_id INTEGER PRIMARY KEY,
+  last_read_at TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 CREATE TABLE papers (

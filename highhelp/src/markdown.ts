@@ -133,3 +133,16 @@ export function renderMarkdown(md: string | null | undefined): string {
 
 	return out.join('');
 }
+
+// Plain-text preview: markdown rendered into a line-clamp looks broken (headings, lists, code),
+// so flatten it to a sentence or two instead. The result is plain text; JSX escapes it.
+export const markdownExcerpt = (md: string | null | undefined, max = 200): string => {
+	const text = String(md || '')
+		.replace(/```[\s\S]*?```/g, ' ')
+		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+		.replace(/^[#>\-*+\s]+/gm, '')
+		.replace(/[*_`~]/g, '')
+		.replace(/\s+/g, ' ')
+		.trim();
+	return text.length > max ? text.slice(0, max).trimEnd() + '…' : text;
+};

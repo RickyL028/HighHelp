@@ -8,6 +8,9 @@ export interface User {
     permission_level: number;
     created_at: string;
     tags?: string | null;
+    // Nav red-dot switches (profile page). 1 = on.
+    notify_announcements?: number;
+    notify_questions?: number;
     points: number; // Defaults to 0 but actually +2 because logic change
     // Computed by getUser, not real columns.
     // unread_announcements: published announcements matching this user's tags that are newer
@@ -16,6 +19,10 @@ export interface User {
     // only reviewers act on it, so the layout gates it on the permission level.
     unread_announcements?: number;
     pending_announcements?: number;
+    // unread_questions: Q&A questions in this user's subjects (see forumRelevance.ts), by someone
+    // else, newer than forum_last_read_at -- their last visit to the Q&A feed. Drives the Q&A dot.
+    unread_questions?: number;
+    forum_last_read_at?: string | null;
 }
 
 export interface Topic {

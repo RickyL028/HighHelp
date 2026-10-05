@@ -6,6 +6,21 @@ import { Bindings, User } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
+// A switch-styled checkbox. Changing it submits its form straight away; <noscript> keeps a Save button.
+const NotificationToggle = ({ name, label, hint, checked }: { name: string; label: string; hint: string; checked: boolean }) => (
+    <label class="flex items-center justify-between gap-4 py-3 cursor-pointer">
+        <span>
+            <span class="block text-sm text-gray-700 dark:text-neutral-300">{label}</span>
+            <span class="block text-xs text-gray-500 dark:text-neutral-400 mt-0.5">{hint}</span>
+        </span>
+        <span class="relative inline-flex shrink-0">
+            <input type="checkbox" name={name} value="1" checked={checked} class="peer sr-only" onchange="this.form.submit()" />
+            <span class="w-9 h-5 rounded-full bg-gray-300 dark:bg-neutral-700 peer-checked:bg-blue-600 transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-2 dark:peer-focus-visible:ring-offset-neutral-900"></span>
+            <span class="absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform peer-checked:translate-x-4"></span>
+        </span>
+    </label>
+)
+
 app.get('/profile', async (c) => {
     const user = await getUser(c) as User | null
     if (!user) return c.redirect(loginRedirect(c))
@@ -84,6 +99,32 @@ app.get('/profile', async (c) => {
                         )}
                     </div>
 
+                    {/* Notifications */}
+                    <div class="bg-gray-50 dark:bg-neutral-900 p-6 rounded-lg">
+                        <h2 class="text-sm font-semibold mb-1 text-gray-900 dark:text-white">Notifications</h2>
+                        <p class="text-xs text-gray-500 dark:text-neutral-400">Choose which tabs show a red dot when there's something new.</p>
+                        <form action="/profile" method="post" class="mt-2 divide-y divide-gray-200 dark:divide-neutral-800">
+                            <input type="hidden" name="action" value="update_notifications" />
+                            <NotificationToggle
+                                name="notify_announcements"
+                                label="Announcements"
+                                hint="New announcements aimed at you."
+                                checked={user.notify_announcements !== 0}
+                            />
+                            <NotificationToggle
+                                name="notify_questions"
+                                label="Q&A"
+                                hint="New questions in the subjects on your profile."
+                                checked={!!user.notify_questions}
+                            />
+                            <noscript>
+                                <button type="submit" class="mt-3 text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 transition">
+                                    Save
+                                </button>
+                            </noscript>
+                        </form>
+                    </div>
+
                     {/* Navigation */}
                     <div class="pt-4">
                         <a href="/profile/contributions" class="text-sm text-blue-600 hover:underline">
@@ -138,6 +179,13 @@ app.post('/profile', async (c) => {
         return c.redirect('/profile')
     }
 
+
+    if (action === 'update_notifications') {
+        // Unchecked boxes aren't submitted, so a missing field means "off".
+        await c.env.DB.prepare('UPDATE users SET notify_announcements = ?, notify_questions = ? WHERE id = ?')
+            .bind(body['notify_announcements'] === '1' ? 1 : 0, body['notify_questions'] === '1' ? 1 : 0, user.id).run();
+        return c.redirect('/profile')
+    }
 
     if (action === 'change_password') {
         // TODO: change password

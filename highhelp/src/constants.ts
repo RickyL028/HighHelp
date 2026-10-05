@@ -34,7 +34,8 @@ export const SUBJECTS = [
 // The canonical subject key (as stored in the DB / used in ?subject= filters) may differ from
 // what we render in the UI. Bare names (the cohort's prior-year subjects) display with an
 // explicit "(Y11)" suffix; already-suffixed and special catch-all values are left untouched.
-const YEAR_SUFFIX = /\((?:HSC|Y1[0-9])\)$/;
+// Tag-named keys ("Physics Yr11", used by newer Q&A questions) already carry their year.
+const YEAR_SUFFIX = /\((?:HSC|Y1[0-9])\)$| Yr[0-9]{2}$/;
 const SPECIAL_SUBJECTS = new Set(['All', 'General', 'Other']);
 export const subjectLabel = (key: string) =>
     SPECIAL_SUBJECTS.has(key) || YEAR_SUFFIX.test(key) ? key : `${key} (Y11)`;

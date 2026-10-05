@@ -35,9 +35,43 @@ export const Layout = (props: { title: string; children: any; user?: any; hideFo
 	const unread = Number((props.user as any)?.unread_announcements || 0);
 	const pending = props.user && canReviewAnnouncements(props.user) ? Number((props.user as any)?.pending_announcements || 0) : 0;
 	const announcementsDot = (reason: string) => html`<span class="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-[#4E342E] dark:ring-neutral-950" title="${reason}"></span>`;
-	const dot = unread > 0 ? announcementsDot(unread === 1 ? '1 unread announcement' : `${unread} unread announcements`) : pending > 0 ? announcementsDot(pending === 1 ? '1 announcement waiting for review' : `${pending} announcements waiting for review`) : '';
-	const announcementsTab = (href: string) => html`<a href="${href}" class="relative inline-flex items-center hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Announcements${dot}</a>`;
-	const mobileAnnouncementsTab = (href: string) => html`<a href="${href}" class="relative flex items-center gap-2 text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Announcements${dot}</a>`;
+	const announcementsReason = unread > 0 ? (unread === 1 ? '1 unread announcement' : `${unread} unread announcements`) : pending > 0 ? (pending === 1 ? '1 announcement waiting for review' : `${pending} announcements waiting for review`) : '';
+	const dot = announcementsReason ? announcementsDot(announcementsReason) : '';
+	// A top-level tab that can carry one of those dots.
+	const dottedTab = (href: string, label: string, tabDot: unknown) => html`<a href="${href}" class="relative inline-flex items-center hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">${label}${tabDot}</a>`;
+	const mobileDottedTab = (href: string, label: string, tabDot: unknown) => html`<a href="${href}" class="relative flex items-center gap-2 text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">${label}${tabDot}</a>`;
+
+	// Q&A gets the same dot for questions in the user's subjects, posted by someone else since they
+	// last opened the Q&A feed (see forumRelevance.ts). It is a top-level tab so the dot is visible.
+	const unreadQuestions = Number((props.user as any)?.unread_questions || 0);
+	const questionsReason = unreadQuestions > 0 ? (unreadQuestions === 1 ? '1 new question in your subjects' : `${unreadQuestions} new questions in your subjects`) : '';
+	const qaDot = questionsReason ? announcementsDot(questionsReason) : '';
+
+	// Tabs after Timetable / Resources / Past Papers fold into the More menu one at a time, from the
+	// right, as the desktop bar runs out of room. Each is rendered twice from groupedTabs below --
+	// flat in .nav-flat and as a menu item -- and the script after </nav> decides how many fit.
+	const menuItemClass = 'block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700';
+	const menuDot = (reason: string) => reason ? html`<span class="inline-block ml-1.5 w-2 h-2 rounded-full bg-red-500 align-middle" title="${reason}"></span>` : '';
+	const menuTab = (href: string, label: string, reason = '') => html`<a href="${href}" class="${menuItemClass}">${label}${menuDot(reason)}</a>`;
+	// Portal-backed tabs keep the External greying inside the menu too.
+	const menuPortalTab = (href: string, label: string) => external
+		? html`<span class="block px-4 py-2 text-sm text-gray-400/60 dark:text-neutral-500/60 cursor-not-allowed select-none" title="${disabledTitle}" aria-disabled="true">${label}</span>`
+		: menuTab(href, label);
+	const linkTab = (href: string, label: string) => html`<a href="${href}" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">${label}</a>`;
+
+	// In bar order; the last one folds first.
+	const groupedTabs = [
+		{ flat: dottedTab('/announcements', 'Announcements', dot), menu: menuTab('/announcements', 'Announcements', announcementsReason), reason: announcementsReason },
+		{ flat: desktopTab('/attendance', 'Attendance'), menu: menuPortalTab('/attendance', 'Attendance'), reason: '' },
+		{ flat: linkTab('/leaderboard', 'Leaderboard'), menu: menuTab('/leaderboard', 'Leaderboard'), reason: '' },
+		{ flat: linkTab('/atar', 'ATAR'), menu: menuTab('/atar', 'ATAR'), reason: '' },
+		{ flat: dottedTab('/forum', 'Q&A', qaDot), menu: menuTab('/forum', 'Q&A', questionsReason), reason: questionsReason },
+		{ flat: desktopTab('/points', 'Points'), menu: menuPortalTab('/points', 'Points'), reason: '' },
+		{ flat: linkTab('/feedback', 'Hmmm..!'), menu: menuTab('/feedback', 'Hmmm..!'), reason: '' },
+	];
+	// The More button carries a dot while a tab with one is folded inside it; the script shows it.
+	const foldedReason = groupedTabs.map(t => t.reason).filter(Boolean).join(', ');
+	const moreDot = foldedReason ? html`<span class="nav-more-dot">${announcementsDot(foldedReason)}</span>` : '';
 
   return html`
     <!DOCTYPE html>
@@ -369,10 +403,10 @@ ${props.latex ? html`
             ${props.noScroll ? html`<style>html,body{overflow:hidden!important;height:100%}</style>` : ''}
           </head>
       <body class="bg-background dark:bg-neutral-900 text-gray-800 dark:text-gray-200 min-h-screen flex flex-col transition-colors duration-300">
-        <nav class="bg-primary dark:bg-neutral-950 text-white shadow-lg">
+        <nav id="site-nav" class="bg-primary dark:bg-neutral-950 text-white shadow-lg">
           <div class="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-14">
-              <div class="flex items-center">
+            <div class="flex items-center justify-between h-14" data-nav-row>
+              <div class="flex items-center" data-nav-left>
                 <a href="/home" class="font-bold text-xl tracking-tight">HighHelp</a>
                 <div class="hidden md:block">
                     <div class="ml-6 lg:ml-10 flex items-center gap-1 lg:gap-2 whitespace-nowrap">
@@ -380,21 +414,19 @@ ${props.latex ? html`
                     
                     <a href="/resources" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Resources</a>
                     <a href="/past-papers" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Past Papers</a>
-                    ${announcementsTab('/announcements')}
-                    ${desktopTab('/attendance', 'Attendance')}
-                    <a href="/leaderboard" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Leaderboard</a>
-                    
-                    <a href="/atar" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">ATAR</a>
-                    ${desktopTab('/points', 'Points')}
-                    <a href="/feedback" class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Hmmm..!</a>
+                    <div class="nav-flat"><div class="nav-flat-inner flex items-center gap-1 lg:gap-2">
+                      ${groupedTabs.map(t => html`<div class="flex" data-nav-item data-has-dot="${t.reason ? '1' : '0'}">${t.flat}</div>`)}
+                    </div></div>
                     <div class="relative" id="more-dropdown">
-                      <button class="hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1">
+                      <button class="relative hover:bg-[#633200] dark:hover:bg-neutral-800 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1">
                         More
                         <svg class="h-3 w-3 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        ${moreDot}
                       </button>
                       <div class="absolute left-0 top-full pt-1 w-44 hidden z-50" id="more-menu">
                         <div class="bg-white dark:bg-neutral-800 rounded-md shadow-lg py-1 border border-gray-200 dark:border-neutral-700">
-                          <a href="/forum" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">Q&A</a>
+                          ${groupedTabs.map(t => html`<div data-nav-fold-item>${t.menu}</div>`)}
+                          <div class="nav-fold-divider border-t border-gray-100 dark:border-neutral-700 my-1"></div>
                           <a href="/essays" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">Essays</a>
                           <a href="/about" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-neutral-700">About</a>
                         </div>
@@ -403,7 +435,7 @@ ${props.latex ? html`
                   </div>
                 </div>
               </div>
-              <div class="hidden md:block">
+              <div class="hidden md:block" data-nav-right>
                 <div class="ml-4 flex items-center md:ml-6 text-sm font-medium gap-4">
                   <!-- Theme Toggle Button -->
                   <button id="theme-toggle" class="p-2 rounded-full hover:bg-[#633200] dark:hover:bg-neutral-800 transition-colors focus:outline-none" aria-label="Toggle dark mode">
@@ -475,10 +507,11 @@ ${props.latex ? html`
               
               <a href="/resources" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Resources</a>
               <a href="/past-papers" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Past Papers</a>
-              ${mobileAnnouncementsTab('/announcements')}
+              ${mobileDottedTab('/announcements', 'Announcements', dot)}
               ${mobileTab('/attendance', 'Attendance')}
               <a href="/leaderboard" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Leaderboard</a>
               <a href="/atar" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">ATAR</a>
+              ${mobileDottedTab('/forum', 'Q&A', qaDot)}
               ${mobileTab('/points', 'Points')}
               <a href="/feedback" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Hmmm..!</a>
               <details class="group">
@@ -487,7 +520,6 @@ ${props.latex ? html`
                   <svg class="h-4 w-4 fill-current transition-transform group-open:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                 </summary>
                 <div class="pl-4 space-y-1">
-                  <a href="/forum" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Q&A</a>
                   <a href="/essays" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">Essays</a>
                   <a href="/about" class="text-gray-100 hover:bg-[#633200] dark:hover:bg-neutral-800 block px-4 py-2.5 rounded-md text-base font-medium whitespace-nowrap">About</a>
                 </div>
@@ -526,6 +558,66 @@ ${props.latex ? html`
             </div>
           </div>
         </nav>
+        <style>
+          /* Folded tabs stay laid out (hidden, clipped off the end) so the bar can always be measured. */
+          #site-nav .nav-flat { overflow-x: clip; overflow-y: visible; }
+          #site-nav .nav-flat-inner { width: max-content; position: relative; }
+          #site-nav [data-nav-fold-item], #site-nav .nav-fold-divider, #site-nav .nav-more-dot { display: none; }
+        </style>
+        <script>
+          (function () {
+            var nav = document.getElementById('site-nav');
+            var row = nav && nav.querySelector('[data-nav-row]');
+            var left = nav && nav.querySelector('[data-nav-left]');
+            var right = nav && nav.querySelector('[data-nav-right]');
+            var flat = nav && nav.querySelector('.nav-flat');
+            var inner = nav && nav.querySelector('.nav-flat-inner');
+            if (!row || !left || !right || !flat || !inner) return;
+            var items = Array.prototype.slice.call(inner.querySelectorAll('[data-nav-item]'));
+            var menuItems = Array.prototype.slice.call(nav.querySelectorAll('[data-nav-fold-item]'));
+            var divider = nav.querySelector('.nav-fold-divider');
+            var moreDot = nav.querySelector('.nav-more-dot');
+
+            // Always re-applied, even for the same count: the tabs widen once fonts and styles load.
+            function show(count) {
+              // Clip the bar just past the last tab that fits (+6px so its red dot isn't cut off).
+              flat.style.width = count === items.length ? '' : (count ? items[count - 1].offsetLeft + items[count - 1].offsetWidth + 6 : 0) + 'px';
+              var dotFolded = false;
+              items.forEach(function (item, i) {
+                var folded = i >= count;
+                item.style.visibility = folded ? 'hidden' : '';
+                item.inert = folded;
+                if (menuItems[i]) menuItems[i].style.display = folded ? 'block' : '';
+                if (folded && item.getAttribute('data-has-dot') === '1') dotFolded = true;
+              });
+              if (divider) divider.style.display = count < items.length ? 'block' : '';
+              if (moreDot) moreDot.style.display = dotFolded ? 'inline' : '';
+            }
+
+            function fit() {
+              // Below md the desktop bar is hidden behind the hamburger menu.
+              if (getComputedStyle(right).display === 'none') return show(items.length);
+              var room = row.clientWidth - right.getBoundingClientRect().width - 24
+                - (left.getBoundingClientRect().width - flat.getBoundingClientRect().width);
+              var count = 0;
+              while (count < items.length && items[count].offsetLeft + items[count].offsetWidth <= room) count++;
+              show(count);
+            }
+
+            fit();
+            // Re-check when the window resizes, when Tailwind/fonts finish styling the tabs, and when
+            // the right side changes width (e.g. "Add to Dock" appearing). Folding never resizes an
+            // observed element, so this can't loop.
+            if (window.ResizeObserver) {
+              var ro = new ResizeObserver(fit);
+              ro.observe(row); ro.observe(right); ro.observe(inner);
+            } else {
+              window.addEventListener('resize', fit);
+            }
+            window.addEventListener('load', fit);
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+          })();
+        </script>
         <script>
             // Mobile menu toggle
             document.addEventListener('DOMContentLoaded', () => {

@@ -1,5 +1,6 @@
 import { getCookie } from 'hono/cookie'
 import { SUBJECTS } from './constants'
+import { forumRelevanceMatch } from './forumRelevance'
 
 export const PRIORITY_STANDARD = [
     "Mathematics 3U (HSC)",
@@ -203,17 +204,27 @@ export async function getUser(c: any) {
     const user = userId
         ? await c.env.DB.prepare(`
             SELECT u.*,
-                (SELECT COUNT(*) FROM announcements a
+                -- The two unread counts only run when the user has that notification switched on.
+                CASE WHEN u.notify_announcements THEN (SELECT COUNT(*) FROM announcements a
                   WHERE a.status = 'published'
                     AND a.is_deleted = 0
                     AND COALESCE(a.published_at, a.created_at) > COALESCE(ars.last_read_at, '1970-01-01 00:00:00')
                     AND ${announcementAudienceMatch('u.tags')}
-                ) AS unread_announcements,
+                ) ELSE 0 END AS unread_announcements,
                 (SELECT COUNT(*) FROM announcements pa
                   WHERE pa.status = 'pending' AND pa.is_deleted = 0
-                ) AS pending_announcements
+                ) AS pending_announcements,
+                CASE WHEN u.notify_questions THEN (SELECT COUNT(*) FROM posts p
+                  WHERE p.type = 'question'
+                    AND p.is_deleted = 0
+                    AND p.author_id IS NOT u.id
+                    AND p.created_at > COALESCE(frs.last_read_at, u.created_at, '1970-01-01 00:00:00')
+                    AND ${forumRelevanceMatch('p.subject', 'u.tags')}
+                ) ELSE 0 END AS unread_questions,
+                COALESCE(frs.last_read_at, u.created_at) AS forum_last_read_at
             FROM users u
             LEFT JOIN announcement_read_state ars ON ars.user_id = u.id
+            LEFT JOIN forum_read_state frs ON frs.user_id = u.id
             WHERE u.id = ?`).bind(userId).first()
         : null;
     userCache.set(c, user);
@@ -232,6 +243,19 @@ export async function markAnnouncementsRead(db: D1Database, userId: number) {
         `).bind(userId).run();
     } catch (e) {
         console.error('Failed to mark announcements read', e);
+    }
+}
+
+// Same idea for Q&A: clears the red dot for new questions in the user's subjects.
+export async function markQuestionsRead(db: D1Database, userId: number) {
+    try {
+        await db.prepare(`
+            INSERT INTO forum_read_state (user_id, last_read_at)
+            VALUES (?, CURRENT_TIMESTAMP)
+            ON CONFLICT (user_id) DO UPDATE SET last_read_at = CURRENT_TIMESTAMP
+        `).bind(userId).run();
+    } catch (e) {
+        console.error('Failed to mark questions read', e);
     }
 }
 

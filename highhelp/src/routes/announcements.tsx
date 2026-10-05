@@ -15,7 +15,7 @@ import {
 } from '../utils'
 import { canPostGeneral, canReviewAnnouncements, canViewDeleted } from '../permissions'
 import { SUBJECTS, subjectLabel } from '../constants'
-import { renderMarkdown } from '../markdown'
+import { renderMarkdown, markdownExcerpt as excerpt } from '../markdown'
 import { Bindings, User } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -192,19 +192,6 @@ const authorName = (a: any) => (a.first_name ? `${a.first_name} ${a.last_name}` 
 // Every card is the same height: the title clamps to two lines, the preview to two, the target
 // chips and the action row are always rendered, and min-h plus flex-1 bottom-aligns the action
 // row so the thumbs-up and the edit/review link sit on the same line across the whole list.
-// Plain-text preview: markdown rendered into a line-clamp looks broken (headings, lists, code),
-// so flatten it to a sentence or two instead. JSX escapes it for us.
-const excerpt = (md: string, max = 200) => {
-	const text = String(md || '')
-		.replace(/```[\s\S]*?```/g, ' ')
-		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-		.replace(/^[#>\-*+\s]+/gm, '')
-		.replace(/[*_`~]/g, '')
-		.replace(/\s+/g, ' ')
-		.trim();
-	return text.length > max ? text.slice(0, max).trimEnd() + '…' : text;
-};
-
 const AnnouncementCard = ({
 	a,
 	user,
