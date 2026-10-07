@@ -444,12 +444,6 @@ ${props.latex ? html`
                   </button>
                   ${props.user ? html`
   <div class="flex items-center">
-    <button id="install-button" class="hidden items-center space-x-1 bg-[#633200] border border-white/20 hover:bg-[#b05800] px-3 py-1.5 rounded-md text-white text-xs font-semibold transition-all mr-6 group">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 group-hover:bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
-        <span>Add to Dock</span>
-    </button>
   <div class="relative group">
       <button class="flex items-center space-x-2 text-white hover:text-blue-100 focus:outline-none py-2">
           <span>Hello, ${props.user.first_name}</span>
@@ -470,12 +464,6 @@ ${props.latex ? html`
   </div>
 ` : html`
   <div class="flex items-center">
-    <button id="install-button" class="hidden items-center space-x-1 bg-[#633200] border border-white/20 hover:bg-[#b05800] px-3 py-1.5 rounded-md text-white text-xs font-semibold transition-all mr-6 group">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 group-hover:bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
-        <span>Add to Dock</span>
-    </button>
     <a href="/login" class="bg-[#633200] hover:bg-[#b05800] px-3 py-2 rounded-md">Login</a>
   </div>
 `}
@@ -530,14 +518,6 @@ ${props.latex ? html`
               </button>
             </div>
             <div class="pt-4 pb-4 border-t border-gray-700">
-              <div class="px-5 mb-4">
-                  <button id="mobile-install-button" class="hidden w-full items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-md text-white font-medium transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    <span>Add to Dock</span>
-                  </button>
-              </div>
               ${props.user ? html`
                 <div class="flex items-center px-5">
                     <div class="ml-3">
@@ -606,7 +586,7 @@ ${props.latex ? html`
 
             fit();
             // Re-check when the window resizes, when Tailwind/fonts finish styling the tabs, and when
-            // the right side changes width (e.g. "Add to Dock" appearing). Folding never resizes an
+            // the right side changes width. Folding never resizes an
             // observed element, so this can't loop.
             if (window.ResizeObserver) {
               var ro = new ResizeObserver(fit);
@@ -915,63 +895,6 @@ ${props.latex ? html`
                         .catch(err => console.error('Global sync error:', err));
                     } catch(e) { console.error(e); }
                 })();
-
-                // PWA Installation
-                let deferredPrompt;
-                const installBtn = document.getElementById('install-button');
-                const mobileInstallBtn = document.getElementById('mobile-install-button');
-
-                // Detect if it's Safari on macOS/iOS
-                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
-
-                if (!isStandalone && isSafari) {
-                    // For Safari, we can't trigger the prompt, but we can show the button 
-                    // and provide instructions when clicked.
-                    if (installBtn) {
-                        installBtn.classList.remove('hidden');
-                        installBtn.classList.add('flex');
-                    }
-                    if (mobileInstallBtn) {
-                        mobileInstallBtn.classList.remove('hidden');
-                        mobileInstallBtn.classList.add('flex');
-                    }
-                }
-
-                window.addEventListener('beforeinstallprompt', (e) => {
-                    e.preventDefault();
-                    deferredPrompt = e;
-                    if (installBtn) {
-                        installBtn.classList.remove('hidden');
-                        installBtn.classList.add('flex');
-                    }
-                    if (mobileInstallBtn) {
-                        mobileInstallBtn.classList.remove('hidden');
-                        mobileInstallBtn.classList.add('flex');
-                    }
-                });
-
-                const triggerInstall = async () => {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        const { outcome } = await deferredPrompt.userChoice;
-                        if (outcome === 'accepted') {
-                            if (installBtn) installBtn.classList.add('hidden');
-                            if (mobileInstallBtn) mobileInstallBtn.classList.add('hidden');
-                        }
-                        deferredPrompt = null;
-                    } else if (isSafari) {
-                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                        if (isIOS) {
-                            alert('To add to Home Screen: tap the Share button and select "Add to Home Screen".');
-                        } else {
-                            alert('To add to Dock: go to File > Add to Dock... in the Safari menu bar.');
-                        }
-                    }
-                };
-
-                if (installBtn) installBtn.addEventListener('click', triggerInstall);
-                if (mobileInstallBtn) mobileInstallBtn.addEventListener('click', triggerInstall);
 
                 // Service Worker Registration
                 if ('serviceWorker' in navigator) {
