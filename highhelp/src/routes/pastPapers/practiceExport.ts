@@ -1,19 +1,13 @@
-import { buildPracticeWhere, practiceOrder, practiceUrlFilters, type PracticeFilters, type RawPracticeFilters } from './practiceQuery'
+import { buildPracticeSearchClause, buildPracticeWhere, practiceOrder, practiceUrlFilters, type PracticeFilters, type RawPracticeFilters } from './practiceQuery'
+
+// The search clause now lives with the other practice filters; re-exported for existing callers.
+export { buildPracticeSearchClause }
 
 export const EXPORT_ROW_LIMIT = 2000
 
 const TOPIC_SEPARATOR = '||'
 
 const QUESTION_TYPES = ['multiple_choice', 'short_answer', 'extended_response'] as const
-
-const SEARCHABLE_COLUMNS = [
-    'p.school_name',
-    'p.academic_year',
-    'q.section_label',
-    'q.question_number',
-    'q.question_text',
-    'q.question_type'
-]
 
 export type QuestionType = (typeof QUESTION_TYPES)[number]
 
@@ -107,19 +101,8 @@ export function toExportedQuestion(row: PracticeExportRow): ExportedQuestion {
     }
 }
 
-const escapeLike = (term: string) => term.replace(/[\\%_]/g, '\\$&')
-
 export function cleanExportSearch(term: string | undefined): string {
     return (term || '').trim().slice(0, 120)
-}
-
-export function buildPracticeSearchClause(term: string) {
-    const trimmed = (term || '').trim()
-    if (!trimmed) return { sql: '', params: [] as any[] }
-    return {
-        sql: `AND (${SEARCHABLE_COLUMNS.map(column => `${column} LIKE ? ESCAPE '\\'`).join(' OR ')})`,
-        params: SEARCHABLE_COLUMNS.map(() => `%${escapeLike(trimmed)}%`)
-    }
 }
 
 export function buildPracticeExportQueries(userId: number, subject: string, filters: PracticeFilters, search = '') {

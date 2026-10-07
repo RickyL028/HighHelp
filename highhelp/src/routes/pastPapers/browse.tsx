@@ -25,7 +25,6 @@ import {
     PracticeExportRow,
     buildPracticeExport,
     buildPracticeExportQueries,
-    cleanExportSearch,
     exportFilename
 } from './practiceExport'
 const app = new Hono<{ Bindings: Bindings }>()
@@ -83,10 +82,9 @@ const renderPracticeRow = (row: PracticeRow, parsed: McqContent, practiceQuerySt
     const clickAction = mode === 'select'
         ? `const cb = document.querySelector('input[name="question_ids"][value="${row.id}"]'); if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change', { bubbles: true })); }`
         : `window.location.href=${JSON.stringify(attemptUrl)}`;
-    const searchText = `${row.school_name} ${row.academic_year} ${row.section_label} ${row.question_number} ${row.question_text || ''} ${row.question_type || ''}`.toLowerCase();
 
     return (
-        <tr data-question-id={row.id} data-search-text={searchText} onclick={clickAction}
+        <tr data-question-id={row.id} onclick={clickAction}
             class={`practice-row border-b border-gray-100 dark:border-neutral-800 align-top cursor-pointer transition-colors ${isIncomplete ? 'opacity-60' : 'hover:bg-blue-50 dark:hover:bg-neutral-800/60'}`}>
             {mode === 'select' && (
                 <td class="py-2.5 pr-2" onclick="event.stopPropagation()">
@@ -281,7 +279,8 @@ const buildPracticeQueryString = (raw: RawPracticeFilters, mode: string | undefi
         status: raw.status,
         marks_min: raw.marksMin,
         marks_max: raw.marksMax,
-        sort: raw.sort
+        sort: raw.sort,
+        q: raw.search
     };
     if (mode) params.set('mode', mode);
     Object.entries(values).forEach(([key, value]) => {
@@ -333,8 +332,8 @@ app.get('/past-papers/export-json', async (c) => {
 
     const raw = readRawPracticeFilters(key => c.req.query(key));
     const filters = await resolvePracticeFilters(c.env.DB, subject, raw);
-    const search = cleanExportSearch(c.req.query('q'));
-    const { list, count } = buildPracticeExportQueries(user.id, subject, filters, search);
+    // ?q= arrives through the filters (raw.search), like on the list page.
+    const { list, count } = buildPracticeExportQueries(user.id, subject, filters);
     const [listResult, countResult] = await c.env.DB.batch([
         c.env.DB.prepare(list.sql).bind(...list.params),
         c.env.DB.prepare(count.sql).bind(...count.params)
@@ -343,7 +342,7 @@ app.get('/past-papers/export-json', async (c) => {
     const rows = (listResult.results as PracticeExportRow[]) || [];
     const totalMatching = Number((countResult.results[0] as { total: number } | undefined)?.total || 0);
     const exportedAt = new Date().toISOString();
-    const payload = buildPracticeExport(subject, rows, { rawFilters: raw, search, exportedAt, totalMatching });
+    const payload = buildPracticeExport(subject, rows, { rawFilters: raw, exportedAt, totalMatching });
 
     return new Response(JSON.stringify(payload, null, 2), {
         headers: {
@@ -638,6 +637,7 @@ app.get('/past-papers', async (c) => {
         const filterMarksMin = rawFilters.marksMin;
         const filterMarksMax = rawFilters.marksMax;
         const sort = rawFilters.sort;
+        const search = rawFilters.search;
         const practiceQueryString = buildPracticeQueryString(rawFilters, mode);
 
         const listQuery = buildPracticeListQuery(user.id, subject, filters, PRACTICE_PAGE_SIZE + 1, 0);
@@ -669,11 +669,12 @@ app.get('/past-papers', async (c) => {
                 {/* Flat appendable filter bar */}
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6 text-sm">
                     <div class="relative w-full md:flex-[2] md:min-w-[16rem] md:max-w-md">
-                        <input type="text" id="practice-search" placeholder="Search questions…  (⏎ apply)" class="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm" />
+                        <input type="text" id="practice-search" value={search} placeholder="Search all questions…  (⏎ apply)" class="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm" />
                         <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
 
                     {([
+                        ['search', search],
                         ['school', filterSchool],
                         ['topic', filterTopicLabel],
                         ['topic group', filterTopicGroup],
@@ -684,7 +685,7 @@ app.get('/past-papers', async (c) => {
                         ['marks ≥', filterMarksMin],
                         ['marks ≤', filterMarksMax]
                     ] as Array<[string, string]>).filter(([, v]) => v).map(([k, v]) => {
-                        const removeKey = k === 'topic group' ? 'topic_group' : k.startsWith('marks') ? (k.endsWith('≥') ? 'marks_min' : 'marks_max') : k;
+                        const removeKey = k === 'search' ? 'q' : k === 'topic group' ? 'topic_group' : k.startsWith('marks') ? (k.endsWith('≥') ? 'marks_min' : 'marks_max') : k;
                         const chipUrl = (() => {
                             const p = new URLSearchParams();
                             p.set('subject', subject); p.set('tab', 'practice');
@@ -692,7 +693,7 @@ app.get('/past-papers', async (c) => {
                             const vals: Record<string, string> = {
                                 school: filterSchool || '', topic: filterTopic || '', topic_group: filterTopicGroup || '', year: filterYear || '',
                                 section: filterSection || '', type: filterType || '', status: filterStatus || '',
-                                marks_min: filterMarksMin || '', marks_max: filterMarksMax || ''
+                                marks_min: filterMarksMin || '', marks_max: filterMarksMax || '', q: search || ''
                             };
                             delete vals[removeKey];
                             if (sort) p.set('sort', sort);
@@ -746,7 +747,7 @@ app.get('/past-papers', async (c) => {
                         </select>
                     </label>
                     <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice${mode ? '&mode=' + mode : ''}`} class="text-gray-500 dark:text-neutral-400 hover:text-gray-900 dark:hover:text-neutral-200 hover:underline">reset</a>
-                    <a href={`/past-papers/batch/view?source=practice&subject=${encodeURIComponent(subject)}&school=${encodeURIComponent(filterSchool || '')}&topic=${filterTopicId}&topic_group=${encodeURIComponent(filterTopicGroup || '')}&year=${encodeURIComponent(filterYear || '')}&status=${encodeURIComponent(filterStatus || '')}&sort=${encodeURIComponent(sort)}&type=${encodeURIComponent(filterType || '')}&section=${encodeURIComponent(filterSection || '')}&marks_min=${encodeURIComponent(filterMarksMin || '')}&marks_max=${encodeURIComponent(filterMarksMax || '')}`} class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Batch Mode</a>
+                    <a href={`/past-papers/batch/view?source=practice&subject=${encodeURIComponent(subject)}&school=${encodeURIComponent(filterSchool || '')}&topic=${filterTopicId}&topic_group=${encodeURIComponent(filterTopicGroup || '')}&year=${encodeURIComponent(filterYear || '')}&status=${encodeURIComponent(filterStatus || '')}&sort=${encodeURIComponent(sort)}&type=${encodeURIComponent(filterType || '')}&section=${encodeURIComponent(filterSection || '')}&marks_min=${encodeURIComponent(filterMarksMin || '')}&marks_max=${encodeURIComponent(filterMarksMax || '')}${search ? `&q=${encodeURIComponent(search)}` : ''}`} class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Batch Mode</a>
                     <a id="practice-export-json" href={buildPracticeExportUrl(subject, rawFilters)} title={`Download every question matching these filters as JSON, in the AI import format (up to ${EXPORT_ROW_LIMIT} questions)`} class="text-amber-600 dark:text-amber-400 font-bold hover:underline">Export JSON</a>
                 </div>
 
@@ -865,50 +866,21 @@ app.get('/past-papers', async (c) => {
                     var loadMoreBtn = document.getElementById('practice-load-more');
                     var loading = false;
 
-                    function allRows() {
-                        return Array.prototype.slice.call(document.querySelectorAll('.practice-row'));
-                    }
-
-                    function applySearch() {
-                        var term = searchInput ? searchInput.value.toLowerCase().trim() : '';
-                        var visibleCount = 0;
-                        allRows().forEach(function(row) {
-                            var searchText = (row.getAttribute('data-search-text') || '').toLowerCase();
-                            var matches = !term || searchText.includes(term);
-                            if (matches) {
-                                visibleCount++;
-                                row.classList.remove('hidden');
-                            } else {
-                                row.classList.add('hidden');
-                            }
-                        });
-                        if (visibleCountEl) visibleCountEl.textContent = term ? visibleCount : allRows().length;
-                        if (sections) {
-                            Array.prototype.forEach.call(sections.querySelectorAll('[data-practice-section]'), function(section) {
-                                var visible = section.querySelectorAll('.practice-row:not(.hidden)').length;
-                                if (term) section.style.display = visible === 0 ? 'none' : '';
-                                else section.style.removeProperty('display');
-                            });
-                        }
-                    }
-
+                    // Search runs in SQL across the whole subject (?q=), like the other filters, so the
+                    // count, "Load 50 more", Batch Mode and Export all see the same matching set.
                     if (searchInput) {
-                        searchInput.addEventListener('input', applySearch);
                         searchInput.addEventListener('keydown', function(e) {
-                            if (e.key === 'Enter') { e.preventDefault(); applySearch(); }
+                            if (e.key !== 'Enter') return;
+                            e.preventDefault();
+                            var p = new URLSearchParams(window.location.search);
+                            var term = searchInput.value.trim();
+                            if (term) p.set('q', term); else p.delete('q');
+                            window.location.href = '/past-papers?' + p.toString();
                         });
                     }
 
-                    var exportLink = document.getElementById('practice-export-json');
-                    if (exportLink && searchInput) {
-                        exportLink.addEventListener('click', function(e) {
-                            var term = searchInput.value.trim();
-                            if (!term) return;
-                            e.preventDefault();
-                            var url = new URL(exportLink.getAttribute('href'), window.location.origin);
-                            url.searchParams.set('q', term);
-                            window.location.href = url.toString();
-                        });
+                    function updateVisibleCount() {
+                        if (visibleCountEl) visibleCountEl.textContent = document.querySelectorAll('.practice-row').length;
                     }
 
                     function appendSections(html) {
@@ -955,7 +927,7 @@ app.get('/past-papers', async (c) => {
                                 var data = await res.json();
                                 if (data.html) appendSections(data.html);
                                 if (typeof window.highhelpRestorePracticeSelection === 'function') window.highhelpRestorePracticeSelection();
-                                applySearch();
+                                updateVisibleCount();
                                 if (data.hasMore) {
                                     loadMoreBtn.dataset.nextOffset = String(data.nextOffset);
                                     loadMoreBtn.disabled = false;
@@ -972,8 +944,6 @@ app.get('/past-papers', async (c) => {
                             }
                         });
                     }
-
-                    applySearch();
                 })();
                 `}} />
 

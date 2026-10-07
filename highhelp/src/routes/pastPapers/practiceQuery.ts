@@ -22,6 +22,8 @@ export type RawPracticeFilters = {
     marksMin: string
     marksMax: string
     sort: PracticeSort
+    // Free-text search (?q=), matched in SQL across the whole subject like every other filter.
+    search: string
 }
 
 export type PracticeFilters = {
@@ -37,6 +39,7 @@ export type PracticeFilters = {
     marksMin: number | null
     marksMax: number | null
     sort: PracticeSort
+    search?: string
 }
 
 export type PracticeWhere = {
@@ -76,6 +79,33 @@ export type NeighborWindowRow = {
 
 const cleanText = (value: string | undefined, maxLength = 160) => (value || '').trim().slice(0, maxLength)
 
+// The columns the practice search matches: what a row shows (school, year, section, number,
+// question text) plus the question type.
+const SEARCHABLE_COLUMNS = [
+    'p.school_name',
+    'p.academic_year',
+    'q.section_label',
+    'q.question_number',
+    'q.question_text',
+    'q.question_type'
+]
+
+const escapeLike = (term: string) => term.replace(/[\\%_]/g, '\\$&')
+
+const practiceSearchCondition = (term: string) => {
+    const trimmed = (term || '').trim()
+    if (!trimmed) return null
+    return {
+        sql: `(${SEARCHABLE_COLUMNS.map(column => `${column} LIKE ? ESCAPE '\\'`).join(' OR ')})`,
+        params: SEARCHABLE_COLUMNS.map(() => `%${escapeLike(trimmed)}%`)
+    }
+}
+
+export function buildPracticeSearchClause(term: string) {
+    const condition = practiceSearchCondition(term)
+    return condition ? { sql: `AND ${condition.sql}`, params: condition.params } : { sql: '', params: [] as any[] }
+}
+
 const parseMarks = (value: string) => {
     if (!/^\d+(?:\.\d+)?$/.test(value)) return null
     const parsed = Number(value)
@@ -97,7 +127,8 @@ export function readRawPracticeFilters(query: (key: string) => string | undefine
         section: cleanText(query('section'), 80),
         marksMin: cleanText(query('marks_min'), 20),
         marksMax: cleanText(query('marks_max'), 20),
-        sort: isPracticeSort(sortValue) ? sortValue : DEFAULT_PRACTICE_SORT
+        sort: isPracticeSort(sortValue) ? sortValue : DEFAULT_PRACTICE_SORT,
+        search: cleanText(query('q'), 120)
     }
 }
 
@@ -134,7 +165,8 @@ export async function resolvePracticeFilters(db: D1Database, subject: string, ra
         section: raw.section,
         marksMin,
         marksMax,
-        sort: raw.sort
+        sort: raw.sort,
+        search: raw.search
     }
 }
 
@@ -191,6 +223,11 @@ export function buildPracticeWhere(userId: number, subject: string, filters: Pra
     if (filters.marksMax !== null) {
         conditions.push('q.marks <= ?')
         params.push(filters.marksMax)
+    }
+    const search = practiceSearchCondition(filters.search || '')
+    if (search) {
+        conditions.push(search.sql)
+        params.push(...search.params)
     }
     if (filters.status === 'done') {
         conditions.push('ua.is_completed = 1')
@@ -625,7 +662,8 @@ export function practiceUrlFilters(raw: RawPracticeFilters): Record<string, stri
         type: raw.type,
         section: raw.section,
         marks_min: raw.marksMin,
-        marks_max: raw.marksMax
+        marks_max: raw.marksMax,
+        q: raw.search
     }
 }
 
@@ -649,7 +687,7 @@ export function buildPracticeRowsUrl(subject: string, raw: RawPracticeFilters, m
 
 export function buildPracticeExportUrl(subject: string, raw: RawPracticeFilters, search = '') {
     const params = new URLSearchParams({ subject })
-    const values: Record<string, string> = { ...practiceUrlFilters(raw), q: search }
+    const values: Record<string, string> = { ...practiceUrlFilters(raw), ...(search ? { q: search } : {}) }
     Object.entries(values).forEach(([key, value]) => {
         if (value) params.set(key, value)
     })

@@ -1,3 +1,4 @@
+import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import {
 	BATCH_PAGE_LIMIT,
@@ -61,6 +62,12 @@ describe('readRawPracticeFilters', () => {
 		expect(rawFrom({ status: 'nonsense' }).status).toBe('');
 		expect(rawFrom({ type: 'multiple_choice' }).type).toBe('multiple_choice');
 		expect(rawFrom({ type: 'essay' }).type).toBe('');
+	});
+
+	it('reads the search term from ?q=, trimmed and bounded', () => {
+		expect(rawFrom({ q: '  projectile motion  ' }).search).toBe('projectile motion');
+		expect(rawFrom({}).search).toBe('');
+		expect(rawFrom({ q: 'x'.repeat(500) }).search).toHaveLength(120);
 	});
 
 	it('trims and bounds free-text filters', () => {
@@ -166,6 +173,19 @@ describe('buildPracticeWhere', () => {
 		expect(where).toContain('q.marks <= ?');
 		expect(where).toContain('(ua.is_completed IS NULL OR ua.is_completed = 0)');
 		expect(params).toEqual([7, 'Mathematics', 'SBHS', '2024', 'short_answer', 'Section A', 2, 8]);
+	});
+
+	it('matches the search term in SQL across every searchable column, after the other filters', () => {
+		const { where, params } = buildPracticeWhere(7, 'Mathematics', { ...baseFilters, school: 'SBHS', search: '  50%_off ' });
+		for (const column of ['p.school_name', 'p.academic_year', 'q.section_label', 'q.question_number', 'q.question_text', 'q.question_type']) {
+			expect(where).toContain(`${column} LIKE ? ESCAPE`);
+		}
+		// LIKE wildcards in the term are escaped so they match literally.
+		expect(params).toEqual([7, 'Mathematics', 'SBHS', ...Array(6).fill('%50\\%\\_off%')]);
+	});
+
+	it('adds nothing for a blank search', () => {
+		expect(buildPracticeWhere(7, 'Mathematics', { ...baseFilters, search: '   ' })).toEqual(buildPracticeWhere(7, 'Mathematics', baseFilters));
 	});
 
 	it('scopes to a single paper when asked', () => {
@@ -637,5 +657,51 @@ describe('buildReviewQueueQuery', () => {
 
 	it('scopes every user id and the subject to the bound params', () => {
 		expect(buildReviewQueueQuery(7, 'Mathematics').params).toEqual([7, 7, 7, 'Mathematics']);
+	});
+});
+
+// The bug this guards: search used to filter only the 50 rows already on the page. It is now part
+// of the WHERE clause, so a match anywhere in the subject is found and counted.
+describe('practice search against D1', () => {
+	const setup = async () => {
+		await env.DB.batch([
+			env.DB.prepare('CREATE TABLE IF NOT EXISTS papers (id INTEGER PRIMARY KEY, subject TEXT, school_name TEXT, academic_year INTEGER)'),
+			env.DB.prepare(`CREATE TABLE IF NOT EXISTS exam_questions (id INTEGER PRIMARY KEY, paper_id INTEGER, section_label TEXT, segment_label TEXT,
+				question_number TEXT, question_type TEXT, marks REAL, question_text TEXT, question_image_key TEXT, ordering_index INTEGER, is_deleted INTEGER DEFAULT 0)`),
+			env.DB.prepare('CREATE TABLE IF NOT EXISTS user_question_attempts (question_id INTEGER, user_id INTEGER, is_completed INTEGER, marks_awarded REAL)'),
+			env.DB.prepare('CREATE TABLE IF NOT EXISTS question_topics (question_id INTEGER, topic_id INTEGER)'),
+			env.DB.prepare('DELETE FROM exam_questions'),
+			env.DB.prepare('DELETE FROM papers'),
+			env.DB.prepare(`INSERT INTO papers (id, subject, school_name, academic_year) VALUES (1, 'Physics', 'SBHS', 2020), (2, 'Chemistry', 'SBHS', 2020)`),
+		]);
+		const inserts = [];
+		for (let i = 1; i <= 60; i++) {
+			const text = i === 60 ? 'Calculate the projectile range' : `Filler question ${i}`;
+			inserts.push(env.DB.prepare('INSERT INTO exam_questions (id, paper_id, section_label, question_number, question_type, marks, question_text, ordering_index) VALUES (?, 1, ?, ?, ?, 2, ?, ?)')
+				.bind(i, 'I', String(i), 'short_answer', text, i));
+		}
+		// Same keyword in another subject must not leak in.
+		inserts.push(env.DB.prepare(`INSERT INTO exam_questions (id, paper_id, section_label, question_number, question_type, marks, question_text, ordering_index) VALUES (61, 2, 'I', '1', 'short_answer', 2, 'projectile', 1)`));
+		await env.DB.batch(inserts);
+	};
+
+	it('finds a match beyond the first page and counts it', async () => {
+		await setup();
+		const filters = { ...baseFilters, search: 'PROJECTILE' };
+		const list = buildPracticeListQuery(7, 'Physics', filters, 51, 0);
+		const count = buildPracticeCountQuery(7, 'Physics', filters);
+		const [listResult, countResult] = await env.DB.batch([
+			env.DB.prepare(list.sql).bind(...list.params),
+			env.DB.prepare(count.sql).bind(...count.params),
+		]);
+		expect((listResult.results as { id: number }[]).map(r => r.id)).toEqual([60]);
+		expect((countResult.results[0] as { total: number }).total).toBe(1);
+	});
+
+	it('still pages through everything without a search', async () => {
+		await setup();
+		const count = buildPracticeCountQuery(7, 'Physics', baseFilters);
+		const result = await env.DB.prepare(count.sql).bind(...count.params).first<{ total: number }>();
+		expect(result?.total).toBe(60);
 	});
 });
