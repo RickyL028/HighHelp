@@ -556,8 +556,7 @@ app.get('/announcements', async (c) => {
 							</div>
 						) : (
 							<p class="py-10 text-center text-sm italic text-gray-400 dark:text-neutral-500">
-								No announcements for you yet. Announcements are targeted by tag — tick the subjects you care about in your profile to widen
-								what you see.
+								No announcements for you yet. 
 							</p>
 						)}
 					</div>
