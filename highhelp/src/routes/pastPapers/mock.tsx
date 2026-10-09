@@ -6,6 +6,9 @@ import { Bindings } from '../../types'
 import { PastPaperTabs } from './tabs'
 import { QuestionMeta, QuestionShell } from './questionShell'
 import { subjectLabel } from '../../constants'
+import { AnswerInput, DrawingPreview, WorkingPad, type DrawingFieldProps } from '../../components/DrawingField'
+import { mockDrawingContext, mockDrawingUrls } from './drawingDoc'
+import { copyDrawing } from './drawings'
 const app = new Hono<{ Bindings: Bindings }>()
 
 
@@ -469,17 +472,23 @@ app.get('/mock-exams/:id', async (c) => {
     const totalMarks = stats?.total_marks || 0;
     const isOwner = user && user.id === exam.user_id;
 
+    // Handwritten answers belong to whoever sat the exam: only they can draw, and only until it is finished.
+    const mockContext = mockDrawingContext(Number(exam.id))
+    const canDraw = isOwner && exam.status !== 'completed'
+
     const questions = await c.env.DB.prepare(`
-                SELECT q.*, mq.ordering_index, mq.response_content, mq.selected_option, p.school_name, p.academic_year, p.paper_type
+                SELECT q.*, mq.ordering_index, mq.response_content, mq.selected_option, p.school_name, p.academic_year, p.paper_type,
+                       ad.updated_at AS drawing_updated
                 FROM mock_exam_questions mq
                 JOIN exam_questions q ON mq.question_id = q.id
                 JOIN papers p ON q.paper_id = p.id
+                LEFT JOIN answer_drawings ad ON ad.question_id = q.id AND ad.user_id = ? AND ad.context = ?
                 WHERE mq.mock_exam_id = ?
                 ORDER BY mq.ordering_index ASC
-                `).bind(examId).all()
+                `).bind(exam.user_id, mockContext, examId).all()
 
     return c.html(
-        <Layout title={`${exam.exam_name}`} user={user} hideFooter latex={true}>
+        <Layout title={`${exam.exam_name}`} user={user} hideFooter latex={true} drawing={true}>
             <div class="fixed top-0 left-0 w-full bg-white dark:bg-neutral-900 shadow-md z-50 px-6 py-3 flex justify-between items-center border-b dark:border-neutral-800 transition-colors">
                 <div>
                     <h1 class="font-bold text-lg dark:text-white">{exam.exam_name}</h1>
@@ -517,6 +526,12 @@ app.get('/mock-exams/:id', async (c) => {
                     
                     const stimPage = getPage(q.stimulus_image_key) || getPage(q.question_image_key);
                     const pdfUrl = `/download/papers/${q.paper_id}.pdf${stimPage ? `#page=${stimPage}` : ''}`;
+                    const drawing: DrawingFieldProps = {
+                        ...mockDrawingUrls(Number(exam.id), Number(q.id)),
+                        version: q.drawing_updated ?? null,
+                        title: `${exam.exam_name || 'Mock exam'} — Question ${i + 1}`,
+                        questionSource: `#q-${q.id} [data-drawing-question]`
+                    };
                     
                     return (
                         <QuestionShell
@@ -532,17 +547,17 @@ app.get('/mock-exams/:id', async (c) => {
                             }
                         >
                             {q.question_text ? (
-                                <div class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap font-serif text-lg leading-relaxed">
+                                <div class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap font-serif text-lg leading-relaxed" data-drawing-question>
                                     {q.question_text}
                                 </div>
                             ) : (
                                 q.question_image_key && (
-                                    <img src={`/download/${q.question_image_key}`} class="max-w-full rounded bg-white dark:bg-neutral-900" />
+                                    <img src={`/download/${q.question_image_key}`} class="max-w-full rounded bg-white dark:bg-neutral-900" data-drawing-question />
                                 )
                             )}
 
                             {(q.stimulus_text || q.stimulus_image_key) && (
-                                <div class="bg-gray-50 dark:bg-neutral-900/40 p-4 rounded-lg">
+                                <div class="bg-gray-50 dark:bg-neutral-900/40 p-4 rounded-lg" data-drawing-question>
                                     <p class="text-[11px] font-bold text-gray-500 dark:text-neutral-400 uppercase tracking-wider mb-2">Stimulus</p>
                                     {q.stimulus_text ? (
                                         <div class="text-gray-700 dark:text-neutral-300 italic border-l-2 border-blue-400 dark:border-blue-600 pl-4 whitespace-pre-wrap">
@@ -560,7 +575,7 @@ app.get('/mock-exams/:id', async (c) => {
                             {q.question_type === 'multiple_choice' ? (
                                 <div>
                                     <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400 mb-2">Select an option</label>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3" data-drawing-question>
                                         {['A', 'B', 'C', 'D'].map(opt => (
                                             <label class="cursor-pointer">
                                                 <input type="radio" name={`option_${q.id}`} value={opt} checked={q.selected_option === opt} class="peer hidden" />
@@ -570,9 +585,25 @@ app.get('/mock-exams/:id', async (c) => {
                                             </label>
                                         ))}
                                     </div>
+                                    {canDraw ? (
+                                        <div class="mt-3">
+                                            <WorkingPad drawing={drawing} activation="tap" />
+                                        </div>
+                                    ) : isOwner && (
+                                        <div class="mt-3">
+                                            <DrawingPreview svgUrl={drawing.svgUrl} version={drawing.version} caption="Working" />
+                                        </div>
+                                    )}
                                 </div>
+                            ) : canDraw ? (
+                                <AnswerInput drawing={drawing} hasText={!!String(q.response_content || '').trim()} activation="tap">
+                                    <textarea name={`response_${q.id}`} placeholder="Type your answer here..." class="w-full h-40 p-4 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">{q.response_content || ''}</textarea>
+                                </AnswerInput>
                             ) : (
-                                <textarea name={`response_${q.id}`} placeholder="Type your answer here..." class="w-full h-40 p-4 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">{q.response_content || ''}</textarea>
+                                <>
+                                    <textarea name={`response_${q.id}`} placeholder="Type your answer here..." class="w-full h-40 p-4 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500">{q.response_content || ''}</textarea>
+                                    {isOwner && <DrawingPreview svgUrl={drawing.svgUrl} version={drawing.version} caption="Handwritten answer" />}
+                                </>
                             )}
                         </QuestionShell>
                     )
@@ -610,6 +641,21 @@ app.get('/mock-exams/:id', async (c) => {
                     }, 1000);
                  `}} />
             )}
+
+            {canDraw && (
+                // Drawings autosave on their own timer, so let any save still in flight land before the exam is submitted.
+                <script dangerouslySetInnerHTML={{
+                    __html: `
+                    document.getElementById('exam-form').addEventListener('submit', function (event) {
+                        if (!window.HighHelpDrawing) return;
+                        event.preventDefault();
+                        var form = event.target;
+                        window.HighHelpDrawing.flushAll().then(function (saved) {
+                            if (saved || confirm('A drawing has not been saved yet. Finish the exam anyway?')) form.submit();
+                        });
+                    });
+                 `}} />
+            )}
         </Layout>
     )
 })
@@ -618,6 +664,12 @@ app.post('/mock-exams/:id/finish', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect(loginRedirect(c))
     const examId = c.req.param('id')
+
+    // Only the student who sat the exam can submit its answers.
+    const exam = await c.env.DB.prepare('SELECT user_id FROM mock_exams WHERE id = ?').bind(examId).first<{ user_id: number }>()
+    if (!exam) return c.notFound()
+    if (exam.user_id !== user.id) return c.text('Unauthorised', 403)
+
     const body = await c.req.parseBody()
 
     const examQuestions = await c.env.DB.prepare(`SELECT question_id FROM mock_exam_questions WHERE mock_exam_id = ?`).bind(examId).all()
@@ -672,14 +724,16 @@ app.get('/mock-exams/:id/mark', async (c) => {
 
     const questions = await c.env.DB.prepare(`
                 SELECT q.*, mq.ordering_index, mq.response_content, mq.selected_option, p.school_name, p.academic_year, p.paper_type,
-                ua.marks_awarded as existing_marks, ua.marker_notes, ua.is_completed
+                ua.marks_awarded as existing_marks, ua.marker_notes, ua.is_completed,
+                ad.updated_at AS drawing_updated
                 FROM mock_exam_questions mq
                 JOIN exam_questions q ON mq.question_id = q.id
                 JOIN papers p ON q.paper_id = p.id
                 LEFT JOIN user_question_attempts ua ON q.id = ua.question_id AND ua.user_id = ?
+                LEFT JOIN answer_drawings ad ON ad.question_id = q.id AND ad.user_id = ? AND ad.context = ?
                 WHERE mq.mock_exam_id = ?
                 ORDER BY mq.ordering_index ASC
-                `).bind(exam.user_id, examId).all()
+                `).bind(exam.user_id, exam.user_id, mockDrawingContext(Number(exam.id)), examId).all()
 
     return c.html(
         <Layout title={`Marking - ${exam.exam_name}`} user={user} latex={true}>
@@ -696,6 +750,8 @@ app.get('/mock-exams/:id/mark', async (c) => {
                     {questions.results.map((q: any, i: number) => {
                         const stimPage = getPage(q.stimulus_image_key) || getPage(q.question_image_key);
                         const pdfUrl = `/download/papers/${q.paper_id}.pdf${stimPage ? `#page=${stimPage}` : ''}`;
+                        // Drawings are only served to their owner, so nobody else gets a broken image.
+                        const showDrawing = isOwner && !!q.drawing_updated;
                         
 
                         return (
@@ -734,9 +790,18 @@ app.get('/mock-exams/:id/mark', async (c) => {
                                                 <div class="font-medium text-gray-900 dark:text-gray-100">
                                                     Selected Option: <span class="font-bold bg-white dark:bg-neutral-800 px-3 py-1 border border-gray-300 dark:border-neutral-600 rounded ml-2">{q.selected_option || 'None'}</span>
                                                 </div>
-                                            ) : (
+                                            ) : (q.response_content || !showDrawing) && (
                                                 <div class="whitespace-pre-wrap text-gray-900 dark:text-gray-200 bg-white dark:bg-neutral-800 p-4 border border-gray-200 dark:border-neutral-700 rounded min-h-[100px]">
                                                     {q.response_content || <span class="italic text-gray-500 dark:text-neutral-500">No response provided.</span>}
+                                                </div>
+                                            )}
+                                            {showDrawing && (
+                                                <div class="mt-3">
+                                                    <DrawingPreview
+                                                        svgUrl={mockDrawingUrls(Number(exam.id), Number(q.id)).svgUrl}
+                                                        version={q.drawing_updated}
+                                                        caption={q.question_type === 'multiple_choice' ? 'Working' : 'Handwritten answer'}
+                                                    />
                                                 </div>
                                             )}
                                         </div>
@@ -801,6 +866,18 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
     const user = await getUser(c)
     if (!user) return c.redirect(loginRedirect(c))
     const examId = c.req.param('id')
+
+    // Marks are written to the submitter's own practice attempts, so only the student who sat the exam can submit them.
+    const exam = await c.env.DB.prepare('SELECT id, user_id FROM mock_exams WHERE id = ?').bind(examId).first<{ id: number; user_id: number }>()
+    if (!exam) return c.notFound()
+    if (exam.user_id !== user.id) return c.text('Unauthorised', 403)
+
+    const mockContext = mockDrawingContext(Number(exam.id))
+    const drawn = await c.env.DB.prepare('SELECT question_id FROM answer_drawings WHERE user_id = ? AND context = ?')
+        .bind(user.id, mockContext)
+        .all<{ question_id: number }>()
+    const drawnQuestions = new Set(drawn.results.map(row => Number(row.question_id)))
+
     const body = await c.req.parseBody()
 
     const examQuestions = await c.env.DB.prepare(`
@@ -838,6 +915,10 @@ app.post('/mock-exams/:id/submit-marks', async (c) => {
                 q.response_content || null, 
                 q.selected_option || null
             ).run()
+            // The handwriting goes across with the typed response, replacing any practice drawing.
+            if (drawnQuestions.has(Number(q.question_id))) {
+                await copyDrawing(c.env, user.id, Number(q.question_id), mockContext, 'practice')
+            }
         }
     }
 

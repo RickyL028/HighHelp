@@ -15,6 +15,8 @@ import {
 } from './practiceQuery'
 import { QuestionMeta, QuestionShell } from './questionShell'
 import { parseStimulusCoordinates } from './practiceExport'
+import { AnswerInput, WorkingPad, type DrawingFieldProps } from '../../components/DrawingField'
+import { attemptDrawingUrls, drawingContextForMode } from './drawingDoc'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -114,6 +116,14 @@ app.get('/past-papers/batch/view', async (c) => {
 
     const totalCount = questions.length
 
+    // Which questions already have a drawing in this context. Read on its own so the shared practice
+    // query, whose SQL the tests pin, stays as it is.
+    const drawingContext = drawingContextForMode(mode)
+    const drawingRows = await c.env.DB.prepare('SELECT question_id, updated_at FROM answer_drawings WHERE user_id = ? AND context = ?')
+        .bind(user.id, drawingContext)
+        .all<{ question_id: number; updated_at: string }>()
+    const drawingVersions = new Map(drawingRows.results.map(row => [Number(row.question_id), row.updated_at]))
+
     // "Completed" in the database means full marks (`isComplete = marks >= maxMarks`), so counting it
     // as progress only credits questions that were answered perfectly. Progress here is therefore split
     // into the three things a marker actually reports: how much was attempted, how often the attempted
@@ -143,7 +153,7 @@ app.get('/past-papers/batch/view', async (c) => {
         )
 
     return c.html(
-        <Layout title={`Batch Attempt - ${headerTitle}`} user={user} latex={true}>
+        <Layout title={`Batch Attempt - ${headerTitle}`} user={user} latex={true} drawing={true}>
             <div class="mx-auto max-w-4xl">
 
                 <div class="mb-4 flex items-center justify-between">
@@ -237,6 +247,12 @@ app.get('/past-papers/batch/view', async (c) => {
                             : null
                         const questionRef = `${q.section_label} Q${q.question_number}`
                         const sourceLine = sourceLink || !showSource ? questionRef : `${q.school_name} ${q.academic_year} — ${questionRef}`
+                        const drawing: DrawingFieldProps = {
+                            ...attemptDrawingUrls(Number(q.id), drawingContext),
+                            version: drawingVersions.get(Number(q.id)) ?? null,
+                            title: `${q.school_name} ${q.academic_year} — ${questionRef}`,
+                            questionSource: `#q-${q.id} [data-drawing-question]`
+                        }
 
                         return (
                             <>
@@ -258,7 +274,7 @@ app.get('/past-papers/batch/view', async (c) => {
                                     }
                                 >
                                     {hasStimulus && (
-                                        <div class="bg-gray-50 dark:bg-neutral-900/40 p-3 rounded-lg">
+                                        <div class="bg-gray-50 dark:bg-neutral-900/40 p-3 rounded-lg" data-drawing-question>
                                             {q.stimulus_text && (
                                                 <div class="text-gray-700 dark:text-neutral-300 whitespace-pre-wrap font-serif italic text-[15px] leading-relaxed">
                                                     {q.stimulus_text}
@@ -275,29 +291,34 @@ app.get('/past-papers/batch/view', async (c) => {
                                     )}
 
                                     {q.question_text ? (
-                                        <div class="text-gray-900 dark:text-neutral-100 whitespace-pre-wrap font-serif text-lg leading-snug">
+                                        <div class="text-gray-900 dark:text-neutral-100 whitespace-pre-wrap font-serif text-lg leading-snug" data-drawing-question>
                                             {q.question_text}
                                         </div>
                                     ) : q.question_image_key ? (
-                                        <img src={`/download/${q.question_image_key}`} class="w-full h-auto object-contain rounded bg-white dark:bg-neutral-900" />
+                                        <img src={`/download/${q.question_image_key}`} class="w-full h-auto object-contain rounded bg-white dark:bg-neutral-900" data-drawing-question />
                                     ) : null}
 
                                     {q.question_type === 'multiple_choice' ? (
-                                        <div class="flex gap-2" id={`mcq-${q.id}`}>
-                                            {['A', 'B', 'C', 'D'].map(opt => (
-                                                <label class="cursor-pointer flex-1">
-                                                    <input type="radio" name={`sel-${q.id}`} value={opt} class="peer sr-only" checked={attempt?.selected_option === opt} />
-                                                    <div class="text-center py-2 border dark:border-neutral-600 rounded bg-white dark:bg-neutral-800 peer-checked:bg-blue-600 peer-checked:border-blue-600 peer-checked:text-white text-gray-700 dark:text-neutral-300 font-bold transition-none">
-                                                        {opt}
-                                                    </div>
-                                                </label>
-                                            ))}
-                                        </div>
+                                        <>
+                                            <div class="flex gap-2" id={`mcq-${q.id}`} data-drawing-question>
+                                                {['A', 'B', 'C', 'D'].map(opt => (
+                                                    <label class="cursor-pointer flex-1">
+                                                        <input type="radio" name={`sel-${q.id}`} value={opt} class="peer sr-only" checked={attempt?.selected_option === opt} />
+                                                        <div class="text-center py-2 border dark:border-neutral-600 rounded bg-white dark:bg-neutral-800 peer-checked:bg-blue-600 peer-checked:border-blue-600 peer-checked:text-white text-gray-700 dark:text-neutral-300 font-bold transition-none">
+                                                            {opt}
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            <WorkingPad drawing={drawing} activation="tap" />
+                                        </>
                                     ) : (
-                                        <textarea id={`resp-${q.id}`}
-                                            class="w-full min-h-[6rem] p-3 border dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 text-sm focus:ring-1 focus:ring-blue-500 outline-none resize-y rounded"
-                                            placeholder="Type your answer here..."
-                                        >{attempt?.response_content || ''}</textarea>
+                                        <AnswerInput drawing={drawing} hasText={!!String(attempt?.response_content || '').trim()} activation="tap">
+                                            <textarea id={`resp-${q.id}`}
+                                                class="w-full min-h-[6rem] p-3 border dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 text-sm focus:ring-1 focus:ring-blue-500 outline-none resize-y rounded"
+                                                placeholder="Type your answer here..."
+                                            >{attempt?.response_content || ''}</textarea>
+                                        </AnswerInput>
                                     )}
 
                                     <div id={`ans-${q.id}`} style={answerRevealed ? '' : 'display:none'}>

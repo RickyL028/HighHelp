@@ -157,6 +157,21 @@ CREATE TABLE user_question_attempts (
     UNIQUE(user_id, question_id)
 );
 
+-- Handwritten answers. The SVG lives in R2 at drawings/q<question_id>/u<user_id>/<context>.svg;
+-- context is 'practice', 'review' or 'mock-<mock_exam_id>'.
+CREATE TABLE answer_drawings (
+    user_id INTEGER NOT NULL,
+    question_id INTEGER NOT NULL,
+    context TEXT NOT NULL,
+    byte_size INTEGER NOT NULL DEFAULT 0,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, question_id, context),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (question_id) REFERENCES exam_questions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_answer_drawings_question ON answer_drawings(question_id);
+
 CREATE TABLE class_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,

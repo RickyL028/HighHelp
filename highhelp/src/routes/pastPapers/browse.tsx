@@ -27,6 +27,7 @@ import {
     buildPracticeExportQueries,
     exportFilename
 } from './practiceExport'
+import { drawingObjectKey, type DrawingContext } from './drawingDoc'
 const app = new Hono<{ Bindings: Bindings }>()
 
 // Split MCQ question_text into stem + option texts (options are stored inline, e.g. "(A) Use cost centres")
@@ -1081,7 +1082,13 @@ app.post('/past-papers/paper/:id/delete', async (c) => {
     // Delete all related records securely with batching
     const subquery = 'SELECT id FROM exam_questions WHERE paper_id = ?';
 
+    // Handwritten answers live in R2, so their keys have to be read before the rows go.
+    const drawings = await c.env.DB.prepare(`SELECT user_id, question_id, context FROM answer_drawings WHERE question_id IN (${subquery})`)
+        .bind(paperId)
+        .all<{ user_id: number; question_id: number; context: DrawingContext }>();
+
     await c.env.DB.batch([
+        c.env.DB.prepare(`DELETE FROM answer_drawings WHERE question_id IN (${subquery})`).bind(paperId),
         c.env.DB.prepare(`DELETE FROM user_question_attempts WHERE question_id IN (${subquery})`).bind(paperId),
         c.env.DB.prepare(`DELETE FROM user_review_attempts WHERE question_id IN (${subquery})`).bind(paperId),
         c.env.DB.prepare(`DELETE FROM mock_exam_questions WHERE question_id IN (${subquery})`).bind(paperId),
@@ -1089,6 +1096,16 @@ app.post('/past-papers/paper/:id/delete', async (c) => {
         c.env.DB.prepare('DELETE FROM exam_questions WHERE paper_id = ?').bind(paperId),
         c.env.DB.prepare('DELETE FROM papers WHERE id = ?').bind(paperId)
     ]);
+
+    // R2 takes at most 1000 keys per delete. Done after the response so a large paper doesn't hold up the redirect.
+    const drawingKeys = drawings.results.map(row => drawingObjectKey(row.question_id, row.user_id, row.context));
+    if (drawingKeys.length > 0) {
+        c.executionCtx.waitUntil((async () => {
+            for (let i = 0; i < drawingKeys.length; i += 1000) {
+                await c.env.BUCKET.delete(drawingKeys.slice(i, i + 1000));
+            }
+        })());
+    }
 
     return c.redirect(subject ? `/past-papers?subject=${encodeURIComponent(subject)}&tab=browse` : '/past-papers');
 });

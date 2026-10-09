@@ -8,6 +8,7 @@ import attemptApp from './attempt'
 import batchApp from './batch'
 import mockApp from './mock'
 import aiImportApp from './aiImport'
+import drawingsApp from './drawings'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -18,5 +19,6 @@ app.route('/', attemptApp)
 app.route('/', batchApp)
 app.route('/past-papers', mockApp)
 app.route('/', aiImportApp)
+app.route('/', drawingsApp)
 
 export default app

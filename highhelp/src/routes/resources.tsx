@@ -7,6 +7,7 @@ import { SubjectBadge, SubjectIcon } from '../components/SubjectBadge'
 import { subjectLabel } from '../constants'
 
 import { Bindings } from '../types'
+import { DRAWING_KEY_PREFIX } from './pastPapers/drawingDoc'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -695,6 +696,9 @@ app.get('/download/*', async (c) => {
         const path = c.req.path;
         const prefix = '/download/';
         const key = path.slice(prefix.length);
+        // Handwritten answers are private to their owner and have their own checked route
+        // (pastPapers/drawings.tsx); this route hands any key to any signed-in user.
+        if (key.replace(/^\/+/, '').startsWith(DRAWING_KEY_PREFIX)) return c.text('File not found', 404);
         const rangeHeader = c.req.header('range');
         const range = parseRangeHeader(rangeHeader);
         const object = await c.env.BUCKET.get(key, {

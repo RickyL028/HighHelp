@@ -3,6 +3,8 @@ import { Layout } from '../../layout'
 import { getUser, loginRedirect, formatDate } from '../../utils'
 import { subjectLabel } from '../../constants'
 import { Bindings } from '../../types'
+import { AnswerInput, DrawingPreview, WorkingPad, type DrawingFieldProps } from '../../components/DrawingField'
+import { attemptDrawingUrls, drawingContextForMode } from './drawingDoc'
 import {
     DEFAULT_PRACTICE_SORT,
     buildNavigationPlan,
@@ -95,6 +97,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
 
     const qId = c.req.param('id')
     const mode = c.req.query('mode');
+    const drawingContext = drawingContextForMode(mode);
 
     // OPTIMIZATION 1: Fetch question and user attempts in a single DB round-trip
     const qRow = await c.env.DB.prepare(`
@@ -112,7 +115,9 @@ app.get('/past-papers/attempt/:id', async (c) => {
                ura.marks_awarded as ura_marks,
                ura.is_completed as ura_completed,
                ura.marker_notes as ura_notes,
-               ura.created_at as ura_updated
+               ura.created_at as ura_updated,
+               ad.updated_at as drawing_updated,
+               pad.updated_at as practice_drawing_updated
         FROM exam_questions q
         JOIN papers p ON q.paper_id = p.id
         LEFT JOIN question_topics qt ON q.id = qt.question_id
@@ -123,9 +128,11 @@ app.get('/past-papers/attempt/:id', async (c) => {
             WHERE user_id = ? AND question_id = ?
             ORDER BY created_at DESC LIMIT 1
         ) ura ON q.id = ura.question_id
+        LEFT JOIN answer_drawings ad ON ad.question_id = q.id AND ad.user_id = ? AND ad.context = ?
+        LEFT JOIN answer_drawings pad ON pad.question_id = q.id AND pad.user_id = ? AND pad.context = 'practice'
         WHERE q.id = ?
         GROUP BY q.id
-    `).bind(user.id, user.id, qId, qId).first<any>();
+    `).bind(user.id, user.id, qId, user.id, drawingContext, user.id, qId).first<any>();
 
     if (!qRow) return c.notFound();
 
@@ -276,6 +283,15 @@ app.get('/past-papers/attempt/:id', async (c) => {
     const parsed = q.question_type === 'multiple_choice' ? parseMcqOptions(q.question_text) : { stem: q.question_text, options: null };
     const mcqOptions = parsed.options;
 
+    // Handwritten answer (or MCQ working) for this attempt, plus the first attempt's for review mode.
+    const drawing: DrawingFieldProps = {
+        ...attemptDrawingUrls(Number(q.id), drawingContext),
+        version: qRow.drawing_updated ?? null,
+        title: `${q.school_name} ${q.academic_year} — ${q.section_label} Q${q.question_number}`,
+        questionSource: '#attempt-root [data-drawing-question]'
+    };
+    const practiceDrawingUrls = attemptDrawingUrls(Number(q.id), 'practice');
+
     const content = (
         <>
             {/* Question Picker */}
@@ -353,7 +369,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                 {/* Left Pane */}
                 {hasStimulus && (
                     <div class="w-full lg:w-1/2 flex flex-col bg-slate-50/50 dark:bg-slate-900/30 overflow-y-auto lg:border-r border-gray-200 dark:border-neutral-800 border-b lg:border-b-0">
-                        <div class="p-4">
+                        <div class="p-4" data-drawing-question>
                             {q.stimulus_text && (
                                 <div class="text-gray-800 dark:text-neutral-200 whitespace-pre-wrap font-serif italic mb-4 text-[15px] leading-relaxed">
                                     {q.stimulus_text}
@@ -384,7 +400,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     )}
 
                     {/* Question Content */}
-                    <div class="relative p-4 pt-6 bg-white dark:bg-neutral-900 shrink-0 border-b dark:border-neutral-800">
+                    <div class="relative p-4 pt-6 bg-white dark:bg-neutral-900 shrink-0 border-b dark:border-neutral-800" data-drawing-question>
                         <span class="absolute top-2 right-3 text-xs font-bold bg-gray-100 dark:bg-neutral-800 text-gray-700 dark:text-neutral-300 px-2 py-0.5 rounded-full border border-gray-200 dark:border-neutral-700">
                             {q.marks} mark{q.marks === 1 ? '' : 's'}
                         </span>
@@ -400,21 +416,28 @@ app.get('/past-papers/attempt/:id', async (c) => {
                     {/* Response Input */}
                     <div class="p-4 bg-gray-50/50 dark:bg-neutral-800/30 shrink-0 border-b dark:border-neutral-800">
                         {q.question_type === 'multiple_choice' ? (
-                            <div class="flex flex-col gap-2">
-                                {['A', 'B', 'C', 'D'].map(opt => (
-                                    <label class="cursor-pointer flex items-center gap-3 border dark:border-neutral-600 rounded-sm bg-white dark:bg-neutral-800 px-3 py-2.5 has-[:checked]:border-blue-600 has-[:checked]:ring-1 has-[:checked]:ring-blue-600 transition-colors">
-                                        <input type="radio" name="selected_option" value={opt} class="peer sr-only" checked={attempt?.selected_option === opt} />
-                                        <span class="w-7 h-7 shrink-0 flex items-center justify-center rounded-full border border-gray-300 dark:border-neutral-600 font-bold text-sm text-gray-700 dark:text-neutral-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 peer-checked:text-white transition-colors">{opt}</span>
-                                        <span class="text-sm text-gray-800 dark:text-neutral-200">{mcqOptions?.[opt] || ''}</span>
-                                    </label>
-                                ))}
-                            </div>
+                            <>
+                                <div class="flex flex-col gap-2" data-drawing-question>
+                                    {['A', 'B', 'C', 'D'].map(opt => (
+                                        <label class="cursor-pointer flex items-center gap-3 border dark:border-neutral-600 rounded-sm bg-white dark:bg-neutral-800 px-3 py-2.5 has-[:checked]:border-blue-600 has-[:checked]:ring-1 has-[:checked]:ring-blue-600 transition-colors">
+                                            <input type="radio" name="selected_option" value={opt} class="peer sr-only" checked={attempt?.selected_option === opt} />
+                                            <span class="w-7 h-7 shrink-0 flex items-center justify-center rounded-full border border-gray-300 dark:border-neutral-600 font-bold text-sm text-gray-700 dark:text-neutral-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 peer-checked:text-white transition-colors">{opt}</span>
+                                            <span class="text-sm text-gray-800 dark:text-neutral-200">{mcqOptions?.[opt] || ''}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                <div class="mt-3">
+                                    <WorkingPad drawing={drawing} />
+                                </div>
+                            </>
                         ) : (
-                            <textarea
-                                name="response_content"
-                                class="w-full min-h-[12rem] p-3 border dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 text-sm focus:ring-1 focus:ring-blue-500 outline-none resize-y rounded-sm"
-                                placeholder="Type your answer here..."
-                            >{attempt?.response_content || ''}</textarea>
+                            <AnswerInput drawing={drawing} hasText={!!String(attempt?.response_content || '').trim()}>
+                                <textarea
+                                    name="response_content"
+                                    class="w-full min-h-[12rem] p-3 border dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-neutral-100 text-sm focus:ring-1 focus:ring-blue-500 outline-none resize-y rounded-sm"
+                                    placeholder="Type your answer here..."
+                                >{attempt?.response_content || ''}</textarea>
+                            </AnswerInput>
                         )}
 
                         {!answerRevealed && (
@@ -439,6 +462,14 @@ app.get('/past-papers/attempt/:id', async (c) => {
                                     {originalAttempt.marker_notes}
                                 </div>
                             </div>
+                        )}
+
+                        {mode === 'review' && (
+                            <DrawingPreview
+                                svgUrl={practiceDrawingUrls.svgUrl}
+                                version={qRow.practice_drawing_updated}
+                                caption="Your first attempt (handwritten)"
+                            />
                         )}
 
                         <div>
@@ -534,7 +565,7 @@ app.get('/past-papers/attempt/:id', async (c) => {
     if (c.req.query('partial')) return c.html(<>{content}</>);
 
     return c.html(
-        <Layout title={`Question - ${subjectLabel(q.subject)}`} user={user} latex={true} pdfCrop={true}>
+        <Layout title={`Question - ${subjectLabel(q.subject)}`} user={user} latex={true} pdfCrop={true} drawing={true}>
             <div class="w-full h-[calc(100vh-3rem)] flex flex-col p-2 max-w-[120rem] mx-auto">
                 <div id="attempt-root" class="flex-1 min-h-0 flex flex-col">
                     {content}
@@ -764,15 +795,30 @@ const ATTEMPT_CLIENT_SCRIPT = `
         prefetch();
     }
 
+    // A drawing autosaves on its own timer, so before its question is swapped out, wait for that save.
+    // Resolves false when it could not save and the student chose to stay.
+    function flushDrawings(askToLeave) {
+        var drawings = window.HighHelpDrawing;
+        if (!drawings) return Promise.resolve(true);
+        return drawings.flushAll().then(function(saved) {
+            return saved || !askToLeave || window.confirm('Your drawing has not been saved yet. Leave this question anyway?');
+        });
+    }
+
+    // Resolves false if the move was called off.
     function navigate(url, push) {
-        var id = idFromUrl(url);
-        if (!id) {
-            window.location.href = url;
-            return;
-        }
-        loadPartial(id).then(function(html) {
-            if (html) swap(html, url, push);
-            else window.location.href = url;
+        return flushDrawings(true).then(function(proceed) {
+            if (!proceed) return false;
+            var id = idFromUrl(url);
+            if (!id) {
+                window.location.href = url;
+                return true;
+            }
+            return loadPartial(id).then(function(html) {
+                if (html) swap(html, url, push);
+                else window.location.href = url;
+                return true;
+            });
         });
     }
 
@@ -868,6 +914,11 @@ const ATTEMPT_CLIENT_SCRIPT = `
     root.addEventListener('mouseleave', hideTip);
     window.addEventListener('scroll', hideTip, { passive: true });
 
+    // Saving a drawing changes this question's preview, so the cached copy of its fragment is stale.
+    root.addEventListener('drawing-saved', function() {
+        if (state) delete cache[state.id];
+    });
+
     // Saving posts in the background and follows the redirect as a fragment, so marking a
     // question and continuing no longer reloads the page.
     root.addEventListener('submit', function(e) {
@@ -883,45 +934,54 @@ const ATTEMPT_CLIENT_SCRIPT = `
             if (pending) data.set('action', pending.value);
         }
 
-        form.classList.add('opacity-60', 'pointer-events-none');
+        // Settle the drawing first, so a save that can't land is raised before the form locks up.
+        flushDrawings(true).then(function(proceed) {
+            if (!proceed) return;
+            form.classList.add('opacity-60', 'pointer-events-none');
 
-        fetch(form.action, { method: 'POST', body: data })
-            .then(function(res) {
-                if (!res.ok || !res.redirected) throw new Error('save failed');
-                return res.url;
-            })
-            .then(function(url) {
-                var id = idFromUrl(url);
-                if (!id) {
-                    window.location.href = url;
-                    return;
-                }
-                // The question just saved may differ from the prefetched copy, so refetch it.
-                delete cache[id];
-                navigate(url, true);
-            })
-            .catch(function() {
-                form.classList.remove('opacity-60', 'pointer-events-none');
-                var input = document.createElement('input');
-                input.type = 'hidden';
-                if (submitter && submitter.name) {
-                    input.name = submitter.name;
-                    input.value = submitter.value;
-                } else {
-                    input.name = 'action';
-                    input.value = 'save';
-                }
-                form.appendChild(input);
-                form.submit();
-            });
+            fetch(form.action, { method: 'POST', body: data })
+                .then(function(res) {
+                    if (!res.ok || !res.redirected) throw new Error('save failed');
+                    return res.url;
+                })
+                .then(function(url) {
+                    var id = idFromUrl(url);
+                    if (!id) {
+                        window.location.href = url;
+                        return;
+                    }
+                    // The question just saved may differ from the prefetched copy, so refetch it.
+                    delete cache[id];
+                    return navigate(url, true).then(function(moved) {
+                        if (!moved) form.classList.remove('opacity-60', 'pointer-events-none');
+                    });
+                })
+                .catch(function() {
+                    form.classList.remove('opacity-60', 'pointer-events-none');
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    if (submitter && submitter.name) {
+                        input.name = submitter.name;
+                        input.value = submitter.value;
+                    } else {
+                        input.name = 'action';
+                        input.value = 'save';
+                    }
+                    form.appendChild(input);
+                    form.submit();
+                });
+        });
     });
 
     window.addEventListener('popstate', function() {
         var id = idFromUrl(window.location.pathname);
         if (!id || !state || String(state.id) === id) return;
-        loadPartial(id).then(function(html) {
-            if (html) swap(html, window.location.href, false);
-            else window.location.reload();
+        // Back can't be called off, but the drawing still gets its chance to save before it is swapped out.
+        flushDrawings(false).then(function() {
+            loadPartial(id).then(function(html) {
+                if (html) swap(html, window.location.href, false);
+                else window.location.reload();
+            });
         });
     });
 

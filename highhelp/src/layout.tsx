@@ -13,7 +13,7 @@ const containsPdfCrop = (node: any): boolean => {
 	return kids ? containsPdfCrop(kids) : false;
 };
 
-export const Layout = (props: { title: string; children: any; user?: any; hideFooter?: boolean; latex?: boolean; noScroll?: boolean; pdfCrop?: boolean }) => {
+export const Layout = (props: { title: string; children: any; user?: any; hideFooter?: boolean; latex?: boolean; noScroll?: boolean; pdfCrop?: boolean; drawing?: boolean }) => {
 	const needsPdfCrop = props.pdfCrop ?? containsPdfCrop(props.children);
 
 	// Timetable, Attendance and Points are all fed by the student portal. Accounts that
@@ -401,6 +401,7 @@ ${props.latex ? html`
                 html.glass .border-blue-500{border-color:rgba(95,123,140,.4)!important}
             </style>
             ${props.noScroll ? html`<style>html,body{overflow:hidden!important;height:100%}</style>` : ''}
+            ${props.drawing ? html`<script src="/drawing-editor.js" defer></script>` : ''}
           </head>
       <body class="bg-background dark:bg-neutral-900 text-gray-800 dark:text-gray-200 min-h-screen flex flex-col transition-colors duration-300">
         <nav id="site-nav" class="bg-primary dark:bg-neutral-950 text-white shadow-lg">
