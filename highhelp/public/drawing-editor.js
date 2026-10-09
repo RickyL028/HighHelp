@@ -30,15 +30,54 @@
   // Type or Draw, whichever the student last picked on this device.
   const MODE_KEY = 'answerInputMode';
 
-  // js-draw follows the OS colour scheme by default; the site has its own theme switch, so pin the
-  // editor's colours to html.dark instead. The page itself stays white paper in both themes.
-  const THEME_CSS =
-    'html:not(.dark) .imageEditorContainer.imageEditorContainer{--background-color-1:#fff;--background-color-2:#f5f5f5;--background-color-3:#e5e5e5;' +
-    '--foreground-color-1:#111827;--foreground-color-2:#1f2937;--foreground-color-3:#111827;--selection-background-color:#bfdbfe;' +
-    '--selection-foreground-color:#1e3a8a;--primary-action-foreground-color:#2563eb;--shadow-color:rgba(0,0,0,.3)}' +
-    'html.dark .imageEditorContainer.imageEditorContainer{--background-color-1:#171717;--background-color-2:#262626;--background-color-3:#404040;' +
-    '--foreground-color-1:#f5f5f5;--foreground-color-2:#e5e5e5;--foreground-color-3:#d4d4d4;--selection-background-color:#1e3a8a;' +
-    '--selection-foreground-color:#fff;--primary-action-foreground-color:#60a5fa;--shadow-color:rgba(0,0,0,.6)}';
+  // js-draw's own look is a chunky two-tone grey toolbar that follows the OS colour scheme. Restyle it to
+  // match the site: one slim flat bar in the site's blue, following html.dark, with the white page sitting
+  // on a soft grey desk so its edges read without js-draw's heavy outline.
+  const THEME_CSS = `
+    .imageEditorContainer.imageEditorContainer {
+      --background-color-1: #fff; --background-color-2: #fff; --background-color-3: #f3f4f6;
+      --foreground-color-1: #111827; --foreground-color-2: #374151; --foreground-color-3: #111827;
+      --selection-background-color: #e3f2fd; --selection-foreground-color: #1565c0;
+      --primary-action-foreground-color: #1e88e5; --shadow-color: rgba(15, 23, 42, 0.12);
+      background-color: #eef0f3;
+    }
+    html.dark .imageEditorContainer.imageEditorContainer {
+      --background-color-1: #171717; --background-color-2: #171717; --background-color-3: #262626;
+      --foreground-color-1: #f5f5f5; --foreground-color-2: #d4d4d4; --foreground-color-3: #e5e5e5;
+      --selection-background-color: rgba(30, 136, 229, 0.25); --selection-foreground-color: #bbdefb;
+      --primary-action-foreground-color: #64b5f6; --shadow-color: rgba(0, 0, 0, 0.5);
+      background-color: #0a0a0a;
+    }
+    .imageEditorContainer .toolbar-edge-toolbar.toolbar-edge-toolbar {
+      --toolbar-button-height: 40px;
+      box-shadow: 0 1px 0 rgba(15, 23, 42, 0.08);
+    }
+    html.dark .imageEditorContainer .toolbar-edge-toolbar.toolbar-edge-toolbar { box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08); }
+    .imageEditorContainer .toolbar-edge-toolbar > div.toolbar-element.toolbar-element { background-color: var(--background-color-1); }
+    /* js-draw's stylesheet is added after this one, so these selectors are doubled up to win the ties. */
+    .imageEditorContainer.imageEditorContainer .toolbar-toolContainer.toolbar-toolContainer > .toolbar-button.toolbar-button {
+      border-radius: 8px; margin: 3px 1px; height: calc(var(--toolbar-button-height) - 6px);
+    }
+    .imageEditorContainer.imageEditorContainer .toolbar-toolContainer > .toolbar-button > .toolbar-showHideDropdownIcon.toolbar-showHideDropdownIcon {
+      height: 8px; opacity: 0.45;
+    }
+  `;
+
+  // Kept in step with StatusLine in src/components/DrawingField.tsx; data-tone colours the dot.
+  const STATUS_HTML =
+    '<span data-drawing-status data-tone="idle" class="group inline-flex items-center gap-1.5 min-w-0 text-xs text-gray-500 dark:text-neutral-400" aria-live="polite">' +
+    '<span class="shrink-0 w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-neutral-600 group-data-[tone=ok]:bg-green-500 group-data-[tone=busy]:bg-amber-400 group-data-[tone=dirty]:bg-amber-400 group-data-[tone=error]:bg-red-500 group-data-[tone=idle]:hidden"></span>' +
+    '<span data-drawing-status-text class="truncate"></span></span>';
+  const CHECK_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  // tone: 'ok' saved, 'busy' loading or saving, 'dirty' changes not saved yet, 'error' failed, 'idle' just a note.
+  function showStatus(el, text, tone) {
+    if (!el) return;
+    el.dataset.tone = tone || 'idle';
+    const label = el.querySelector('[data-drawing-status-text]');
+    (label || el).textContent = text;
+  }
 
   let jsDrawLoading = null;
   let themeStyle = null;
@@ -122,7 +161,7 @@
     if (s.closed) return;
     s.dirty = true;
     if (!s.dirtySince) s.dirtySince = Date.now();
-    if (!s.saving) s.setStatus('Unsaved changes');
+    if (!s.saving) s.setStatus('Editing', 'dirty');
     scheduleSave(s, Math.max(0, Math.min(SAVE_DELAY_MS, s.dirtySince + SAVE_MAX_WAIT_MS - Date.now())));
   }
 
@@ -130,7 +169,7 @@
   function saveOnce(s) {
     s.dirty = false;
     s.dirtySince = 0;
-    s.setStatus('Saving…');
+    s.setStatus('Saving…', 'busy');
     s.saving = (async () => {
       try {
         const svg = await serialize(s.editor);
@@ -142,7 +181,8 @@
         const result = await send(s, svg);
         s.failures = 0;
         s.blocked = false;
-        s.setStatus(s.dirty ? 'Unsaved changes' : 'Saved');
+        if (s.dirty) s.setStatus('Editing', 'dirty');
+        else s.setStatus('Saved', 'ok');
         s.onSaved(result);
         return true;
       } catch (error) {
@@ -151,12 +191,12 @@
         const status = error && error.status;
         if (status === 413) {
           s.blocked = true;
-          s.setStatus('Not saved: this drawing is too large. Remove a pasted image and it will save.');
+          s.setStatus('Not saved: too large. Remove a pasted image and it will save.', 'error');
         } else if (status === 401) {
           s.blocked = true;
-          s.setStatus('Not saved: you have been signed out. Sign in again in another tab, then draw to retry.');
+          s.setStatus('Not saved: you have been signed out. Sign in again in another tab.', 'error');
         } else {
-          s.setStatus('Not saved: retrying…');
+          s.setStatus('Not saved: retrying…', 'error');
           scheduleSave(s, RETRY_DELAYS_MS[Math.min(s.failures - 1, RETRY_DELAYS_MS.length - 1)]);
         }
         return false;
@@ -219,6 +259,10 @@
   function createEditor(host, jsdraw) {
     const editor = new jsdraw.Editor(host, { wheelEventsEnabled: 'only-if-focused' });
     editor.getRootElement().style.height = '100%';
+    // js-draw outlines the area that will be saved with a heavy grey frame. The white page on the grey desk
+    // already shows where it ends, so render without it (js-draw's own calls are all plain rerender()).
+    const rerender = editor.rerender.bind(editor);
+    editor.rerender = () => rerender(false);
     // js-draw's default pens are purple and clay; answers read better in black and blue.
     const pens = editor.toolController.getMatchingTools(jsdraw.PenTool);
     if (pens[0]) pens[0].setColor(jsdraw.Color4.fromHex('#111827'));
@@ -239,12 +283,12 @@
   // Mounts an editor inside `host` with the saved drawing loaded. Resolves to the session, or null if the
   // tools or the drawing could not be loaded (`setStatus` has said why).
   async function openSession({ host, svgUrl, saveUrl, setStatus, onSaved }) {
-    setStatus('Loading…');
+    setStatus('Loading…', 'busy');
     let jsdraw;
     try {
       jsdraw = await loadJsDraw();
     } catch (e) {
-      setStatus("Couldn't load the drawing tools. Check your connection and try again.");
+      setStatus("Couldn't load the drawing tools. Check your connection and try again.", 'error');
       return null;
     }
     const s = {
@@ -281,14 +325,15 @@
     } catch (e) {
       // An editor opened now would save a blank page over the stored drawing, so don't open one at all.
       s.editor.remove();
-      setStatus("Couldn't open your saved drawing. Try again in a moment.");
+      setStatus("Couldn't open your saved drawing. Try again in a moment.", 'error');
       return null;
     }
     requestAnimationFrame(() => {
       s.fitted = fitPageWidth(s.editor);
     });
     s.editor.setReadOnly(false);
-    setStatus(existed ? 'Saved' : 'Draw your answer. It saves automatically.');
+    if (existed) setStatus('Saved', 'ok');
+    else setStatus('Saves automatically', 'idle');
 
     // Fired only for changes that enter the undo history (ink, erasing, moving, text, images), never for
     // panning, zooming or the page resizes above, so looking around does not trigger a save.
@@ -364,13 +409,15 @@
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.innerHTML =
-      '<div class="shrink-0 flex items-center gap-3 px-3 py-2 border-b border-gray-200 dark:border-neutral-800">' +
-      '<button type="button" data-drawing-done class="shrink-0 px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition-colors">Done</button>' +
+      '<div class="shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">' +
       '<div class="min-w-0 flex-1">' +
-      '<div data-drawing-title class="text-sm font-bold text-gray-900 dark:text-neutral-100 truncate"></div>' +
-      '<div data-drawing-status class="text-xs text-gray-500 dark:text-neutral-400 truncate" aria-live="polite"></div>' +
+      '<div data-drawing-title class="text-sm font-semibold text-gray-900 dark:text-neutral-100 truncate"></div>' +
+      STATUS_HTML +
       '</div>' +
-      '<button type="button" data-drawing-question-toggle aria-expanded="false" class="shrink-0 hidden text-sm font-semibold text-blue-700 dark:text-blue-400 hover:underline">Show question</button>' +
+      '<button type="button" data-drawing-question-toggle aria-expanded="false" class="shrink-0 hidden px-3 py-1.5 rounded text-sm font-semibold text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors">Show question</button>' +
+      '<button type="button" data-drawing-done class="shrink-0 inline-flex items-center gap-1.5 px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-colors">' +
+      CHECK_ICON +
+      'Done</button>' +
       '</div>' +
       '<div data-drawing-question class="shrink-0 hidden max-h-[40vh] overflow-y-auto p-4 border-b border-gray-200 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900"></div>' +
       '<div data-drawing-surface class="relative flex-1 min-h-0"></div>';
@@ -407,7 +454,7 @@
         if (state !== 'open') return;
         state = 'closing';
         if (session) {
-          statusEl.textContent = 'Saving…';
+          showStatus(statusEl, 'Saving…', 'busy');
           const ok = await flush(session);
           if (!ok && !window.confirm('Your latest changes have not been saved. Close the drawing anyway?')) {
             state = 'open';
@@ -452,9 +499,7 @@
         host: overlay.querySelector('[data-drawing-surface]'),
         svgUrl,
         saveUrl,
-        setStatus: (text) => {
-          statusEl.textContent = text;
-        },
+        setStatus: (text, tone) => showStatus(statusEl, text, tone),
         onSaved,
       }).then((s) => {
         if (!s) return;
@@ -478,7 +523,12 @@
   const farAway = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
-        if (!entry.isIntersecting && entry.target === activeTapField) entry.target.deactivate();
+        if (entry.isIntersecting || entry.target !== activeTapField) return;
+        // An entry can arrive after the fact (say, a scroll that ended just as the field was tapped), so
+        // only put the editor away if the field really is well off screen now.
+        const box = entry.target.getBoundingClientRect();
+        const margin = window.innerHeight / 2;
+        if (box.bottom < -margin || box.top > window.innerHeight + margin) entry.target.deactivate();
       });
     },
     { rootMargin: '50% 0px' },
@@ -511,14 +561,14 @@
       return this.querySelector('[data-drawing-' + name + ']');
     }
 
-    status(text) {
-      const el = this.part('status');
-      if (el) el.textContent = text;
+    status(text, tone) {
+      showStatus(this.part('status'), text, tone);
     }
 
-    // While an editor is mounted it fills the box. Otherwise the box shows the saved drawing as a picture
-    // and, for 'tap' fields, the button to start writing.
-    showEditor(live) {
+    // While an editor is mounted (or loading) the box is full height. Otherwise it shows the saved drawing as
+    // a picture and, for 'tap' fields, a prompt to start writing, sized to what it is showing.
+    showEditor(live, loading) {
+      this.part('host').dataset.state = live || loading || !this.tap ? 'live' : this.version ? 'preview' : 'empty';
       let preview = this.part('preview');
       if (!live && this.version) {
         if (!preview) {
@@ -534,7 +584,7 @@
       }
       if (preview) preview.classList.toggle('hidden', live || !this.version);
       const activate = this.part('activate');
-      if (activate) activate.classList.toggle('hidden', live);
+      if (activate) activate.classList.toggle('hidden', live || !!loading);
       const deactivate = this.part('deactivate');
       if (deactivate) deactivate.classList.toggle('hidden', !live);
     }
@@ -605,16 +655,20 @@
       if (this.session || this.mounting || this.inFullScreen) return false;
       this.mounting = true;
       const ticket = (this.ticket = (this.ticket || 0) + 1);
-      this.showEditor(false);
+      // Full height before the editor is created, so it measures the box it will actually draw in.
+      this.showEditor(false, true);
       const s = await openSession({
         host: this.part('host'),
         svgUrl: this.dataset.svgUrl,
         saveUrl: this.dataset.saveUrl,
-        setStatus: (text) => this.status(text),
+        setStatus: (text, tone) => this.status(text, tone),
         onSaved: (result) => this.saved(result),
       });
       this.mounting = false;
-      if (!s) return false;
+      if (!s) {
+        this.showEditor(false);
+        return false;
+      }
       // Removed from the page, or put away, while it was still loading.
       if (!this.isConnected || ticket !== this.ticket) {
         closeSession(s);
@@ -655,7 +709,7 @@
     async fullScreen() {
       if (this.inFullScreen || this.mounting) return;
       if (this.session) {
-        this.status('Saving…');
+        this.status('Saving…', 'busy');
         const ok = await flush(this.session);
         if (!ok && !window.confirm('Your latest changes have not been saved. Open full screen anyway?')) return;
         destroySession(this.session);
@@ -664,7 +718,7 @@
       if (activeTapField === this) activeTapField = null;
       this.inFullScreen = true;
       this.showEditor(false);
-      this.status('Open in full screen');
+      this.status('Open in full screen', 'idle');
       await openFullScreen({
         svgUrl: this.dataset.svgUrl,
         saveUrl: this.dataset.saveUrl,
@@ -673,7 +727,7 @@
         onSaved: (result) => this.saved(result),
       });
       this.inFullScreen = false;
-      this.status('');
+      this.status('', 'idle');
       if (!this.isConnected) return;
       this.showEditor(false);
       if (this.mode === 'draw' && !this.tap) this.mount();
