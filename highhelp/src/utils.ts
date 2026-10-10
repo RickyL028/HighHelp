@@ -409,26 +409,26 @@ export type TopicHierarchy = {
 
 export const normalizeTopicHierarchyLabel = (value: string) => value.trim().replace(/\s+/g, ' ');
 
+// Separator characters left at the seam of a split, e.g. the dash in "Calculus - 1.2 Differentiation".
+const trimTopicSeparators = (value: string) => normalizeTopicHierarchyLabel(value.replace(/^[\s\-–—:.,]+|[\s\-–—:.,]+$/g, ''));
+
+/**
+ * "Calculus 1.2 Differentiation" and "Calculus - Integration" are subtopics of "Calculus": a number
+ * starting a word, or a dash with a space before it (any en or em dash), splits a topic from its
+ * subtopic, whichever comes first. A hyphen inside a word is part of the name, so
+ * "Product-to-Sum Identities" and "Z-scores" stay whole topics.
+ */
 export function parseTopicHierarchy(name: string): TopicHierarchy {
     const value = normalizeTopicHierarchyLabel(name);
-    const numberIndex = value.search(/\d/);
+    const index = value.search(/\s\d|\s-|[–—]/);
 
-    if (numberIndex > 0) {
-        return {
-            topic: normalizeTopicHierarchyLabel(value.slice(0, numberIndex)),
-            subtopic: normalizeTopicHierarchyLabel(value.slice(numberIndex))
-        };
+    if (index > 0) {
+        const topic = trimTopicSeparators(value.slice(0, index));
+        const subtopic = trimTopicSeparators(value.slice(index));
+        if (topic && subtopic) return { topic, subtopic };
     }
 
-    const dashIndex = value.search(/[-–—]/);
-    if (dashIndex > 0) {
-        return {
-            topic: normalizeTopicHierarchyLabel(value.slice(0, dashIndex)),
-            subtopic: normalizeTopicHierarchyLabel(value.slice(dashIndex + 1))
-        };
-    }
-
-    return { topic: value, subtopic: null };
+    return { topic: trimTopicSeparators(value) || value, subtopic: null };
 }
 
 export const topicHierarchyKey = (value: string) => normalizeTopicHierarchyLabel(value).toLowerCase();

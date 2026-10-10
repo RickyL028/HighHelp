@@ -21,7 +21,7 @@ npx wrangler d1 migrations apply highhelp-db  # apply migrations (add --remote f
 
 `tsc` currently reports 2 pre-existing errors (`src/routes/atar.tsx`, `src/routes/pastPapers/view.tsx`). Don't count those as regressions.
 
-Tests run inside the Workers runtime via `@cloudflare/vitest-pool-workers` (config reads `wrangler.jsonc`). They cover pure helpers only: `practiceQuery.ts`, `practiceExport.ts` and the login-redirect helpers in `utils.ts`. No test touches D1. New query logic is easiest to test when written the same way: as pure SQL/param builders kept separate from the route handler.
+Tests run inside the Workers runtime via `@cloudflare/vitest-pool-workers` (config reads `wrangler.jsonc`). They cover pure helpers: `practiceQuery.ts`, `practiceExport.ts`, `statsQuery.ts` (the past-papers Statistics tab) and the login-redirect helpers in `utils.ts`. No migrations are applied to the test D1; the suites that run SQL (`practiceQuery.test.ts`'s search tests, `statsQuery.test.ts`) create and seed their own tables. New query logic is easiest to test when written the same way: as pure SQL/param builders kept separate from the route handler.
 
 Local secrets go in `highhelp/.dev.vars` (gitignored): `SESSION_SECRET`, `PORTAL_API_CLIENT_SECRET`, `PORTAL_API_CLIENT_SECRET_full`, `GEMINI_API_KEY`, and `LOCAL_DEV=true`.
 
