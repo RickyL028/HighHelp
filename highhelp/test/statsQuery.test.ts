@@ -2,34 +2,43 @@ import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import { buildReviewQueueQuery } from '../src/routes/pastPapers/practiceQuery';
 import {
+	DEFAULT_STATS_FILTERS,
 	MIN_TOPIC_MARKS,
 	activityHeatmap,
 	activitySummary,
 	buildActivityQuery,
 	buildBreakdownQuery,
+	buildMockListQuery,
 	buildMockStatsQuery,
-	buildPaperQuery,
+	buildPaperListQuery,
+	buildPaperResultsQuery,
 	buildReviewStatsQuery,
 	buildTopicGroups,
-	buildTopicPaperQuery,
 	buildTopicStatsQuery,
+	buildTopicUnitQuery,
 	dailyActivity,
-	defaultWeightBasis,
+	daysWithin,
 	examWeights,
 	focusTopics,
-	hscTopicMap,
-	isWeightBasis,
+	readStatsFilters,
+	statsFilterParams,
+	statsScope,
 	summarizeBreakdown,
 	summarizeMocks,
 	summarizePapers,
 	summarizeTopics,
 	sydneyDate,
+	sydneyMidnight,
 	topicGroupsJson,
+	topicUnitMap,
+	weeksSpanned,
 	type ActivityRow,
 	type BreakdownRow,
 	type MockRow,
+	type PaperResultRow,
 	type PaperRow,
-	type TopicPaperRow,
+	type StatsScope,
+	type TopicUnitRow,
 	type TopicSummary
 } from '../src/routes/pastPapers/statsQuery';
 
@@ -40,8 +49,6 @@ const paper = (id: number, kind: PaperRow['kind'], year: number, extra: Partial<
 	paper_type: kind === 'hsc' ? 'HSC Examination' : kind === 'trial' ? 'Trial Paper' : 'Half Yearly',
 	kind,
 	questions: 10,
-	marks: 100,
-	attempted: 0,
 	...extra
 });
 
@@ -103,6 +110,24 @@ describe('buildTopicGroups', () => {
 		expect(rest.map(group => group.key)).toEqual(['product-to-sum identities']);
 	});
 
+	it('groups section codes run into the topic name, as Browse does', () => {
+		expect(buildTopicGroups([
+			{ id: 1, name: 'M1.1 - Vectors' },
+			{ id: 2, name: 'M1.2 Forces' },
+			{ id: 3, name: 'M - Vectors' }
+		])).toEqual([
+			{
+				key: 'm',
+				name: 'M',
+				topicIds: [1, 2, 3],
+				subtopics: [
+					{ key: 'vectors', name: '1.1 - Vectors', topicIds: [1, 3] },
+					{ key: 'forces', name: '1.2 Forces', topicIds: [2] }
+				]
+			}
+		]);
+	});
+
 	it('serialises an {id, g, s} entry per topic for json_each, s being null for the topic itself', () => {
 		const json = topicGroupsJson([
 			{ key: 'calculus', name: 'Calculus', topicIds: [1, 2], subtopics: [{ key: 'integration', name: 'Integration', topicIds: [2] }] }
@@ -115,59 +140,126 @@ describe('buildTopicGroups', () => {
 	});
 });
 
-describe('isWeightBasis', () => {
-	it('only accepts the two bases', () => {
-		expect(isWeightBasis('hsc')).toBe(true);
-		expect(isWeightBasis('all')).toBe(true);
-		expect(isWeightBasis('trial')).toBe(false);
-		expect(isWeightBasis(undefined)).toBe(false);
+describe('readStatsFilters', () => {
+	const read = (params: Record<string, string>, options: Partial<{ today: string; mockIds: number[]; topicKeys: string[] }> = {}) =>
+		readStatsFilters(key => params[key], { today: '2026-10-10', mockIds: [3, 4], topicKeys: ['calculus', 'vectors'], ...options });
+
+	it('defaults to every paper, every topic and all time', () => {
+		expect(read({})).toEqual(DEFAULT_STATS_FILTERS);
+	});
+
+	it('maps each paper source to its kinds, and a mock source to the mocks', () => {
+		expect(read({ source: 'hsc-trial' })).toMatchObject({ source: 'hsc-trial', kinds: ['hsc', 'trial'], mock: null });
+		expect(read({ source: 'other' })).toMatchObject({ kinds: ['other'] });
+		expect(read({ source: 'mocks' })).toMatchObject({ source: 'mocks', kinds: [], mock: 'all' });
+		expect(read({ source: 'mock-4' })).toMatchObject({ source: 'mock-4', mock: 4 });
+	});
+
+	it("falls back to every paper for a mock that isn't the student's, or when they have none", () => {
+		expect(read({ source: 'mock-9' })).toMatchObject({ source: 'all', mock: null });
+		expect(read({ source: 'mocks' }, { mockIds: [] })).toMatchObject({ source: 'all', mock: null });
+		expect(read({ source: 'bogus' })).toMatchObject({ source: 'all', kinds: [] });
+	});
+
+	it('accepts a topic by key or by name, and drops one the subject does not use', () => {
+		expect(read({ topic: 'calculus' }).topic).toBe('calculus');
+		expect(read({ topic: '  Calculus ' }).topic).toBe('calculus');
+		expect(read({ topic: 'Mechanics' }).topic).toBe('');
+	});
+
+	it('turns a preset period into Sydney dates ending today', () => {
+		expect(read({ period: '7d' })).toMatchObject({ period: '7d', from: '2026-10-04', to: '2026-10-10' });
+		expect(read({ period: '30d' })).toMatchObject({ from: '2026-09-11', to: '2026-10-10' });
+		expect(read({ period: 'year' })).toMatchObject({ from: '2026-01-01', to: '2026-10-10' });
+		// A preset ignores any dates passed with it.
+		expect(read({ period: '7d', from: '2020-01-01' })).toMatchObject({ from: '2026-10-04' });
+	});
+
+	it('takes custom dates, swapping them when reversed and dropping invalid ones', () => {
+		expect(read({ period: 'custom', from: '2026-09-30', to: '2026-09-01' })).toMatchObject({ period: 'custom', from: '2026-09-01', to: '2026-09-30' });
+		expect(read({ period: 'custom', from: '2026-02-30', to: '2026-03-01' })).toMatchObject({ period: 'custom', from: null, to: '2026-03-01' });
+		expect(read({ from: '2026-09-01' })).toMatchObject({ period: 'custom', from: '2026-09-01', to: null });
+		expect(read({ period: 'custom' })).toMatchObject({ period: 'all', from: null, to: null });
+	});
+});
+
+describe('statsFilterParams', () => {
+	it('leaves out defaults, and keeps dates for a custom period only', () => {
+		expect(statsFilterParams(DEFAULT_STATS_FILTERS)).toEqual([]);
+		expect(statsFilterParams({ ...DEFAULT_STATS_FILTERS, source: 'mock-3', mock: 3, topic: 'calculus', period: '30d', from: '2026-09-11', to: '2026-10-10' })).toEqual([
+			['source', 'mock-3'],
+			['topic', 'calculus'],
+			['period', '30d']
+		]);
+		expect(statsFilterParams({ ...DEFAULT_STATS_FILTERS, period: 'custom', from: '2026-09-01', to: null })).toEqual([
+			['period', 'custom'],
+			['from', '2026-09-01']
+		]);
+	});
+});
+
+describe('sydneyMidnight and statsScope', () => {
+	it('finds the UTC instant each Sydney day starts, either side of daylight saving', () => {
+		// AEST (UTC+10) until 2am on 4 October 2026, AEDT (UTC+11) until 3am on 5 April 2026.
+		expect(sydneyMidnight('2026-10-04')).toBe('2026-10-03 14:00:00');
+		expect(sydneyMidnight('2026-10-05')).toBe('2026-10-04 13:00:00');
+		expect(sydneyMidnight('2026-04-05')).toBe('2026-04-04 13:00:00');
+		expect(sydneyMidnight('2026-04-06')).toBe('2026-04-05 14:00:00');
+	});
+
+	it('bounds attempts from the start of the first day to the start of the day after the last', () => {
+		const filters = { ...DEFAULT_STATS_FILTERS, topic: 'calculus', period: 'custom' as const, from: '2026-10-05', to: '2026-10-05' };
+		expect(statsScope(7, 'Maths', filters, [1, 2])).toEqual({
+			userId: 7,
+			subject: 'Maths',
+			kinds: [],
+			mock: null,
+			topicIds: [1, 2],
+			since: '2026-10-04 13:00:00',
+			until: '2026-10-05 13:00:00'
+		});
+		// No topic chosen, so the ids passed in are ignored; no period, so no bounds.
+		expect(statsScope(7, 'Maths', DEFAULT_STATS_FILTERS, [1, 2])).toMatchObject({ topicIds: null, since: null, until: null });
 	});
 });
 
 describe('examWeights', () => {
-	const papers = [paper(1, 'hsc', 2024), paper(2, 'hsc', 2023), paper(3, 'trial', 2024), paper(4, 'hsc', 2022)];
-	const topicPapers: TopicPaperRow[] = [
-		{ grp: 'calculus', paper_id: 1, questions: 3, marks: 30 },
-		{ grp: 'calculus', paper_id: 2, questions: 2, marks: 10 },
-		{ grp: 'calculus', paper_id: 3, questions: 4, marks: 50 },
-		{ grp: 'vectors', paper_id: 1, questions: 1, marks: 6 }
+	const topicUnits: TopicUnitRow[] = [
+		{ grp: 'calculus', unit_id: 1, questions: 3, marks: 30 },
+		{ grp: 'calculus', unit_id: 2, questions: 2, marks: 10 },
+		{ grp: 'calculus', unit_id: 3, questions: 4, marks: 50 },
+		{ grp: 'vectors', unit_id: 1, questions: 1, marks: 6 }
 	];
 
-	it('averages over the HSC papers that have tagged questions, oldest first', () => {
-		const weights = examWeights(topicPapers, papers, 'hsc');
-		// Paper 4 has no tagged question, so it is left out rather than averaged in as zero.
-		expect(weights.papers.map(p => p.id)).toEqual([2, 1]);
+	it('averages over the exams in scope that have tagged questions, in the order given', () => {
+		const weights = examWeights(topicUnits, [4, 2, 1]);
+		// Exam 4 has no tagged question, so it is left out rather than averaged in as zero; exam 3
+		// isn't in scope.
+		expect(weights.units).toEqual([2, 1]);
 		expect(weights.byGroup.get('calculus')).toEqual({ avgMarks: 20, papers: 2 });
 		expect(weights.byGroup.get('vectors')).toEqual({ avgMarks: 3, papers: 1 });
 	});
 
-	it('takes in every paper for the "all" basis', () => {
-		const weights = examWeights(topicPapers, papers, 'all');
-		expect(weights.papers.map(p => p.id)).toEqual([2, 1, 3]);
+	it('takes in every exam in scope', () => {
+		const weights = examWeights(topicUnits, [1, 2, 3]);
+		expect(weights.units).toEqual([1, 2, 3]);
 		expect(weights.byGroup.get('calculus')).toEqual({ avgMarks: 30, papers: 3 });
 		expect(weights.byGroup.get('vectors')).toEqual({ avgMarks: 2, papers: 1 });
 	});
 
-	it('weighs subtopics over the same papers as their topics', () => {
+	it('weighs subtopics over the same exams as their topics', () => {
 		const weights = examWeights(
 			[
-				...topicPapers,
-				{ grp: 'calculus', sub: 'integration', paper_id: 1, questions: 1, marks: 12 },
-				{ grp: 'calculus', sub: 'integration', paper_id: 3, questions: 1, marks: 9 }
+				...topicUnits,
+				{ grp: 'calculus', sub: 'integration', unit_id: 1, questions: 1, marks: 12 },
+				{ grp: 'calculus', sub: 'integration', unit_id: 3, questions: 1, marks: 9 }
 			],
-			papers,
-			'hsc'
+			[2, 1]
 		);
-		// Two tagged HSC papers, so 12 marks in one of them averages to 6.
+		// Two tagged exams, so 12 marks in one of them averages to 6.
 		expect(weights.bySubtopic.get('calculus')?.get('integration')).toEqual({ avgMarks: 6, papers: 1 });
 		// Subtopic rows don't count towards their topic twice.
 		expect(weights.byGroup.get('calculus')).toEqual({ avgMarks: 20, papers: 2 });
-	});
-
-	it('defaults to HSC papers only when one is tagged', () => {
-		expect(defaultWeightBasis(topicPapers, papers)).toBe('hsc');
-		expect(defaultWeightBasis([{ grp: 'calculus', paper_id: 3, questions: 1, marks: 5 }], papers)).toBe('all');
-		expect(defaultWeightBasis([], [])).toBe('all');
 	});
 });
 
@@ -185,11 +277,10 @@ describe('summarizeTopics', () => {
 	it('derives accuracy and coverage, heaviest topic first, skipping topics without questions', () => {
 		const weights = examWeights(
 			[
-				{ grp: 'vectors', paper_id: 1, questions: 1, marks: 8 },
-				{ grp: 'calculus', paper_id: 1, questions: 1, marks: 25 }
+				{ grp: 'vectors', unit_id: 1, questions: 1, marks: 8 },
+				{ grp: 'calculus', unit_id: 1, questions: 1, marks: 25 }
 			],
-			[paper(1, 'hsc', 2024)],
-			'hsc'
+			[1]
 		);
 		const topics = summarizeTopics(groups, rows, weights);
 		expect(topics.map(t => t.key)).toEqual(['calculus', 'vectors']);
@@ -197,8 +288,8 @@ describe('summarizeTopics', () => {
 		expect(topics[1]).toMatchObject({ accuracy: 0.5, coverage: 0.25, avgMarks: 8 });
 	});
 
-	it('leaves weights null when no paper in the basis is tagged, and orders by question count', () => {
-		const topics = summarizeTopics(groups, rows, examWeights([], [], 'hsc'));
+	it('leaves weights null when no exam in scope is tagged, and orders by question count', () => {
+		const topics = summarizeTopics(groups, rows, examWeights([], []));
 		expect(topics.map(t => t.key)).toEqual(['calculus', 'vectors']);
 		expect(topics.every(t => t.avgMarks === null && t.papers === 0)).toBe(true);
 	});
@@ -218,12 +309,11 @@ describe('summarizeTopics', () => {
 		];
 		const weights = examWeights(
 			[
-				{ grp: 'calculus', sub: '', paper_id: 1, questions: 3, marks: 20 },
-				{ grp: 'calculus', sub: 'integration', paper_id: 1, questions: 2, marks: 9 },
-				{ grp: 'calculus', sub: 'differentiation', paper_id: 1, questions: 2, marks: 14 }
+				{ grp: 'calculus', sub: '', unit_id: 1, questions: 3, marks: 20 },
+				{ grp: 'calculus', sub: 'integration', unit_id: 1, questions: 2, marks: 9 },
+				{ grp: 'calculus', sub: 'differentiation', unit_id: 1, questions: 2, marks: 14 }
 			],
-			[paper(1, 'hsc', 2024)],
-			'hsc'
+			[1]
 		);
 		const [calculus] = summarizeTopics(
 			nested,
@@ -289,10 +379,9 @@ describe('focusTopics', () => {
 });
 
 describe('summarizeBreakdown', () => {
-	const row = (question_type: string, marks_bucket: number, kind: BreakdownRow['kind'], counts: Partial<BreakdownRow> = {}): BreakdownRow => ({
+	const row = (question_type: string, marks_bucket: number, counts: Partial<BreakdownRow> = {}): BreakdownRow => ({
 		question_type,
 		marks_bucket,
-		kind,
 		questions: 1,
 		attempted: 1,
 		marks_attempted: marks_bucket,
@@ -304,10 +393,10 @@ describe('summarizeBreakdown', () => {
 
 	it('sums every dimension from the one cube, in a fixed order', () => {
 		const summary = summarizeBreakdown([
-			row('short_answer', 3, 'trial', { marks_earned: 1, full_marks: 0 }),
-			row('multiple_choice', 1, 'hsc'),
-			row('essay', 5, 'other', { questions: 2, attempted: 0, marks_attempted: 0, marks_earned: 0, scored: 0, full_marks: 0 }),
-			row('short_answer', 0, 'hsc', { attempted: 0, marks_attempted: 0, marks_earned: 0, scored: 0, full_marks: 0 })
+			row('short_answer', 3, { marks_earned: 1, full_marks: 0 }),
+			row('multiple_choice', 1),
+			row('essay', 5, { questions: 2, attempted: 0, marks_attempted: 0, marks_earned: 0, scored: 0, full_marks: 0 }),
+			row('short_answer', 0, { attempted: 0, marks_attempted: 0, marks_earned: 0, scored: 0, full_marks: 0 })
 		]);
 		expect(summary.total).toEqual({ questions: 5, attempted: 2, marksAttempted: 4, marksEarned: 2, scored: 2, fullMarks: 1 });
 		// An unknown type joins the untyped bucket rather than getting a row of its own.
@@ -318,49 +407,74 @@ describe('summarizeBreakdown', () => {
 		]);
 		// Bucket 0 is unscorable and has no row.
 		expect(summary.byMarks.map(e => e.label)).toEqual(['1 mark', '3 marks', '5+ marks']);
-		expect(summary.byKind.map(e => [e.key, e.questions])).toEqual([
-			['hsc', 2],
-			['trial', 1],
-			['other', 2]
-		]);
 	});
 });
 
 describe('summarizePapers', () => {
-	it('counts fully attempted and started papers, ignoring empty ones', () => {
-		expect(
-			summarizePapers([
-				paper(1, 'hsc', 2024, { questions: 4, attempted: 4 }),
-				paper(2, 'hsc', 2023, { questions: 4, attempted: 1 }),
-				paper(3, 'trial', 2024, { questions: 4, attempted: 0 }),
-				paper(4, 'trial', 2024, { questions: 0, attempted: 0 })
-			])
-		).toEqual({ total: 3, complete: 1, started: 1 });
+	const result = (id: number, questions: number, attempted: number, marks_attempted = 0, marks_earned = 0): PaperResultRow => ({
+		id,
+		questions,
+		attempted,
+		marks_attempted,
+		marks_earned
+	});
+
+	it('counts finished and started papers, newest first, skipping papers with nothing in scope', () => {
+		const summary = summarizePapers(
+			[paper(1, 'hsc', 2023), paper(2, 'hsc', 2024), paper(3, 'trial', 2024), paper(4, 'trial', 2022)],
+			[result(1, 4, 4, 10, 5), result(2, 4, 1, 2, 2), result(3, 4, 0), result(4, 0, 0), result(9, 3, 3)]
+		);
+		expect(summary).toMatchObject({ total: 3, complete: 1, started: 1 });
+		// Paper 4 has no questions in scope and paper 9 isn't in the subject.
+		expect(summary.results.map(r => [r.paper.id, r.attempted, r.accuracy])).toEqual([
+			[3, 0, null],
+			[2, 1, 1],
+			[1, 4, 0.5]
+		]);
 	});
 });
 
-describe('hscTopicMap', () => {
-	it('lays out one column per tagged HSC paper and sorts topics by total marks', () => {
-		const map = hscTopicMap(
-			[
-				{ grp: 'vectors', paper_id: 2, questions: 1, marks: 6 },
-				{ grp: 'calculus', paper_id: 1, questions: 2, marks: 20 },
-				{ grp: 'calculus', paper_id: 2, questions: 1, marks: 12 },
-				{ grp: 'calculus', paper_id: 3, questions: 9, marks: 99 },
-				{ grp: 'calculus', sub: 'integration', paper_id: 1, questions: 1, marks: 5 }
-			],
-			[paper(1, 'hsc', 2024), paper(2, 'hsc', 2021), paper(3, 'trial', 2024)],
-			[
-				{ key: 'calculus', name: 'Calculus', topicIds: [1], subtopics: [] },
-				{ key: 'vectors', name: 'Vectors', topicIds: [2], subtopics: [] }
-			]
-		);
-		expect(map.papers.map(p => p.academic_year)).toEqual([2021, 2024]);
+describe('topicUnitMap', () => {
+	const topicUnits: TopicUnitRow[] = [
+		{ grp: 'vectors', unit_id: 2, questions: 1, marks: 6 },
+		{ grp: 'calculus', unit_id: 1, questions: 2, marks: 20 },
+		{ grp: 'calculus', unit_id: 2, questions: 1, marks: 12 },
+		{ grp: 'calculus', unit_id: 3, questions: 9, marks: 99 },
+		{ grp: 'calculus', sub: 'integration', unit_id: 1, questions: 1, marks: 5 },
+		{ grp: 'calculus', sub: 'integration', unit_id: 2, questions: 1, marks: 4 },
+		{ grp: 'calculus', sub: 'limits', unit_id: 2, questions: 1, marks: 8 }
+	];
+	const names = new Map([
+		['calculus', 'Calculus'],
+		['vectors', 'Vectors']
+	]);
+
+	it('lays out one column per tagged exam in scope and sorts topics by total marks', () => {
+		// Exam 3 isn't in scope.
+		const map = topicUnitMap(topicUnits, examWeights(topicUnits, [2, 1]), names);
+		expect(map.units).toEqual([2, 1]);
+		expect(map.unitCount).toBe(2);
 		expect(map.rows).toEqual([
-			{ key: 'calculus', name: 'Calculus', cells: [12, 20], total: 32 },
-			{ key: 'vectors', name: 'Vectors', cells: [6, 0], total: 6 }
+			{ key: 'calculus', name: 'Calculus', cells: [12, 20], avg: 16 },
+			{ key: 'vectors', name: 'Vectors', cells: [6, 0], avg: 3 }
 		]);
 		expect(map.max).toBe(20);
+	});
+
+	it("breaks one topic down into its subtopics", () => {
+		const map = topicUnitMap(topicUnits, examWeights(topicUnits, [1, 2]), new Map([['integration', 'Integration']]), { topic: 'calculus' });
+		expect(map.rows).toEqual([
+			{ key: 'integration', name: 'Integration', cells: [5, 4], avg: 4.5 },
+			{ key: 'limits', name: 'limits', cells: [0, 8], avg: 4 }
+		]);
+	});
+
+	it('shows only the latest exams when limited, but averages over all of them', () => {
+		const map = topicUnitMap(topicUnits, examWeights(topicUnits, [1, 2, 3]), names, { limit: 2 });
+		expect(map.units).toEqual([2, 3]);
+		expect(map.unitCount).toBe(3);
+		expect(map.rows[0]).toEqual({ key: 'calculus', name: 'Calculus', cells: [12, 99], avg: (20 + 12 + 99) / 3 });
+		expect(map.max).toBe(99);
 	});
 });
 
@@ -445,6 +559,7 @@ describe('activitySummary', () => {
 			lastWeek: 6,
 			current: 2,
 			longest: 4,
+			activeDays: 7,
 			activeLast30: 7,
 			lastActive: '2026-10-09'
 		});
@@ -464,6 +579,7 @@ describe('activitySummary', () => {
 			lastWeek: 0,
 			current: 0,
 			longest: 0,
+			activeDays: 0,
 			activeLast30: 0,
 			lastActive: null
 		});
@@ -479,6 +595,28 @@ describe('activityHeatmap', () => {
 		expect(heatmap.weeks[25].map(day => day.count)).toEqual([0, 3, 0, 0, 0, 0, null]);
 		expect(heatmap.weeks[25][6].date).toBe('2026-10-11');
 		expect(heatmap.max).toBe(3);
+	});
+
+	it('ends on the last day of a period and blanks the days before it', () => {
+		const days = daysWithin(new Map([['2026-09-01', 5], ['2026-09-10', 2], ['2026-09-20', 4]]), '2026-09-09', '2026-09-16');
+		expect([...days]).toEqual([['2026-09-10', 2]]);
+		// Wednesday 9 to Wednesday 16 September touches two Monday-to-Sunday weeks.
+		const weeks = weeksSpanned('2026-09-09', '2026-09-16');
+		expect(weeks).toBe(2);
+		const heatmap = activityHeatmap(days, '2026-09-16', weeks, '2026-09-09');
+		expect(heatmap.weeks.map(week => week.map(day => day.count))).toEqual([
+			[null, null, 0, 2, 0, 0, 0],
+			[0, 0, 0, null, null, null, null]
+		]);
+		expect(heatmap.max).toBe(2);
+	});
+});
+
+describe('weeksSpanned', () => {
+	it('counts the Monday-to-Sunday weeks a run of days touches', () => {
+		expect(weeksSpanned('2026-10-05', '2026-10-11')).toBe(1);
+		expect(weeksSpanned('2026-10-11', '2026-10-12')).toBe(2);
+		expect(weeksSpanned('2026-09-11', '2026-10-10')).toBe(5);
 	});
 });
 
@@ -578,25 +716,40 @@ describe('statistics queries against D1', () => {
 		]);
 	};
 
-	const run = async <T>(query: { sql: string; params: any[] }) =>
+	const run = async <T>(query: { sql: string; params: unknown[] }) =>
 		(await env.DB.prepare(query.sql).bind(...query.params).all<T>()).results;
 
-	const groupsJson = () =>
-		topicGroupsJson(
-			buildTopicGroups([
-				{ id: 1, name: 'Calculus' },
-				{ id: 2, name: 'Calculus 1.2 Differentiation' },
-				{ id: 3, name: 'Probability' },
-				{ id: 4, name: 'Vectors' },
-				{ id: 5, name: 'Calculus - Integration' },
-				{ id: 6, name: 'calculus – integration' },
-				{ id: 7, name: 'Z-scores' }
-			])
-		);
+	const groups = buildTopicGroups([
+		{ id: 1, name: 'Calculus' },
+		{ id: 2, name: 'Calculus 1.2 Differentiation' },
+		{ id: 3, name: 'Probability' },
+		{ id: 4, name: 'Vectors' },
+		{ id: 5, name: 'Calculus - Integration' },
+		{ id: 6, name: 'calculus – integration' },
+		{ id: 7, name: 'Z-scores' }
+	]);
+	const groupsJson = () => topicGroupsJson(groups);
+	const CALCULUS = groups.find(group => group.key === 'calculus')!.topicIds;
+
+	// Every paper, every topic, all time, unless overridden.
+	const scope = (overrides: Partial<StatsScope> = {}): StatsScope => ({
+		userId: USER,
+		subject: MATHS,
+		kinds: [],
+		mock: null,
+		topicIds: null,
+		since: null,
+		until: null,
+		...overrides
+	});
+	// Sydney's 5 October 2026 (AEDT), from statsScope as the page builds it.
+	const OCTOBER_5 = statsScope(USER, MATHS, { ...DEFAULT_STATS_FILTERS, period: 'custom', from: '2026-10-05', to: '2026-10-05' }, null);
+
+	const totalsOf = async (query: { sql: string; params: unknown[] }) => summarizeBreakdown(await run<BreakdownRow>(query)).total;
 
 	it('counts a question once per topic however many of its subtopics it carries', async () => {
 		await setup();
-		const rows = await run<Record<string, unknown>>(buildTopicStatsQuery(USER, MATHS, groupsJson()));
+		const rows = await run<Record<string, unknown>>(buildTopicStatsQuery(scope(), groupsJson()));
 		const byLevel = Object.fromEntries(rows.map(row => [row.sub ? `${row.grp}/${row.sub}` : row.grp, row]));
 		// Calculus: 101, 102, 104, 202, 301, each once, though 104 is in two subtopics and four
 		// questions also carry a subtopic. 301's 9 marks clamp to 4.
@@ -615,8 +768,8 @@ describe('statistics queries against D1', () => {
 
 	it('gives each paper its marks per topic and subtopic, within the subject', async () => {
 		await setup();
-		const rows = await run<TopicPaperRow>(buildTopicPaperQuery(MATHS, groupsJson()));
-		const cells = rows.map(row => `${row.grp}${row.sub ? `/${row.sub}` : ''}:${row.paper_id}=${row.marks}/${row.questions}`).sort();
+		const rows = await run<TopicUnitRow>(buildTopicUnitQuery(scope(), groupsJson()));
+		const cells = rows.map(row => `${row.grp}${row.sub ? `/${row.sub}` : ''}:${row.unit_id}=${row.marks}/${row.questions}`).sort();
 		expect(cells).toEqual([
 			'calculus/differentiation:1=9/2',
 			'calculus/integration:1=6/1',
@@ -633,21 +786,21 @@ describe('statistics queries against D1', () => {
 		]);
 	});
 
-	it('classifies papers and counts attempts per paper', async () => {
+	it('classifies papers, and weighs topics over the kinds of paper in scope', async () => {
 		await setup();
-		const papers = await run<PaperRow>(buildPaperQuery(USER, MATHS));
-		expect(papers.map(p => [p.id, p.kind, p.questions, p.marks, p.attempted])).toEqual([
-			[1, 'hsc', 5, 14, 4],
-			[2, 'hsc', 2, 3, 1],
-			[3, 'trial', 2, 6, 2],
-			[4, 'other', 1, 3, 0]
+		const papers = await run<PaperRow>(buildPaperListQuery(MATHS));
+		// Paper 2 is filed as a trial but under the HSC school, so it is an HSC paper.
+		expect(papers.map(p => [p.id, p.kind, p.questions])).toEqual([
+			[1, 'hsc', 5],
+			[2, 'hsc', 2],
+			[3, 'trial', 2],
+			[4, 'other', 1]
 		]);
-		expect(summarizePapers(papers)).toEqual({ total: 4, complete: 1, started: 2 });
+		const order = papers.map(p => p.id);
 
-		const topicPapers = await run<TopicPaperRow>(buildTopicPaperQuery(MATHS, groupsJson()));
-		const weights = examWeights(topicPapers, papers, defaultWeightBasis(topicPapers, papers));
-		expect(weights.basis).toBe('hsc');
-		expect(weights.papers.map(p => p.id)).toEqual([1, 2]);
+		const hsc = scope({ kinds: ['hsc'] });
+		const weights = examWeights(await run<TopicUnitRow>(buildTopicUnitQuery(hsc, groupsJson())), order);
+		expect(weights.units).toEqual([1, 2]);
 		expect(Object.fromEntries(weights.byGroup)).toEqual({
 			calculus: { avgMarks: 6, papers: 2 },
 			probability: { avgMarks: 5, papers: 1 },
@@ -658,11 +811,38 @@ describe('statistics queries against D1', () => {
 			differentiation: { avgMarks: 4.5, papers: 1 },
 			integration: { avgMarks: 4, papers: 2 }
 		});
+
+		// Every paper: calculus has 10 + 2 + 4 marks over four tagged papers.
+		const all = examWeights(await run<TopicUnitRow>(buildTopicUnitQuery(scope(), groupsJson())), order);
+		expect(all.units).toEqual([1, 2, 3, 4]);
+		expect(all.byGroup.get('calculus')).toEqual({ avgMarks: 4, papers: 3 });
+	});
+
+	it('scores each paper over its questions in scope', async () => {
+		await setup();
+		const papers = await run<PaperRow>(buildPaperListQuery(MATHS));
+		const summary = summarizePapers(papers, await run<PaperResultRow>(buildPaperResultsQuery(scope())));
+		expect(summary).toMatchObject({ total: 4, complete: 1, started: 2 });
+		expect(summary.results.map(r => [r.paper.id, r.questions, r.attempted, r.marksAttempted, r.marksEarned])).toEqual([
+			[4, 1, 0, 0, 0],
+			[3, 2, 2, 6, 4],
+			[2, 2, 1, 1, 1],
+			[1, 5, 4, 14, 8]
+		]);
+
+		// Only the Calculus questions: paper 4 has none, and paper 1 is finished on 101, 102 and 104.
+		const calculus = summarizePapers(papers, await run<PaperResultRow>(buildPaperResultsQuery(scope({ topicIds: CALCULUS }))));
+		expect(calculus).toMatchObject({ total: 3, complete: 2, started: 0 });
+		expect(calculus.results.map(r => [r.paper.id, r.questions, r.attempted])).toEqual([
+			[3, 1, 1],
+			[2, 1, 0],
+			[1, 3, 3]
+		]);
 	});
 
 	it('sums the breakdown cube to the subject totals', async () => {
 		await setup();
-		const summary = summarizeBreakdown(await run<BreakdownRow>(buildBreakdownQuery(USER, MATHS)));
+		const summary = summarizeBreakdown(await run<BreakdownRow>(buildBreakdownQuery(scope())));
 		expect(summary.total).toEqual({ questions: 10, attempted: 7, marksAttempted: 21, marksEarned: 13, scored: 7, fullMarks: 4 });
 		expect(summary.byType.map(e => [e.key, e.questions, e.attempted, e.marksAttempted, e.marksEarned])).toEqual([
 			['multiple_choice', 2, 2, 2, 2],
@@ -676,26 +856,58 @@ describe('statistics queries against D1', () => {
 			['4', 2],
 			['5', 1]
 		]);
-		expect(summary.byKind.map(e => [e.key, e.questions, e.attempted])).toEqual([
-			['hsc', 7, 5],
-			['trial', 2, 2],
-			['other', 1, 0]
-		]);
 	});
 
-	it('matches the Review tab queue and scores retries from the latest review attempt', async () => {
+	it('narrows every total to the kinds of paper chosen', async () => {
 		await setup();
-		const [stats] = await run<Record<string, number>>(buildReviewStatsQuery(USER, MATHS));
-		const queue = await run<{ id: number }>(buildReviewQueueQuery(USER, MATHS));
-		expect(stats.queued).toBe(queue.length);
-		// Queued: 102 (1/3), 104 (2/6 with a note), 302 (0/2). Retried: 102 and 104. Fixed: 104, whose
-		// latest retry is 6/6 (its older 3/6 doesn't count). Recovered: (6 - 2) + (2 - 1).
-		expect(stats).toEqual({ queued: 3, dropped: 3, retried: 2, fixed: 1, recovered: 5 });
+		// 301 (over-awarded, so full marks) and 302.
+		expect(await totalsOf(buildBreakdownQuery(scope({ kinds: ['trial'] })))).toEqual({
+			questions: 2, attempted: 2, marksAttempted: 6, marksEarned: 4, scored: 2, fullMarks: 1
+		});
+		expect((await totalsOf(buildBreakdownQuery(scope({ kinds: ['hsc', 'trial'] })))).questions).toBe(9);
+		expect((await totalsOf(buildBreakdownQuery(scope({ kinds: ['other'] })))).questions).toBe(1);
 	});
 
-	it('scores only finished mocks, from marks saved after they were finished', async () => {
+	it("narrows the totals to one topic, matching that topic's row", async () => {
 		await setup();
-		const rows = await run<MockRow>(buildMockStatsQuery(USER, MATHS));
+		const totals = await totalsOf(buildBreakdownQuery(scope({ topicIds: CALCULUS })));
+		expect(totals).toMatchObject({ questions: 5, attempted: 4, marksAttempted: 14, marksEarned: 8 });
+	});
+
+	it('counts only attempts saved in the period, by Sydney date', async () => {
+		await setup();
+		expect(OCTOBER_5).toMatchObject({ since: '2026-10-04 13:00:00', until: '2026-10-05 13:00:00' });
+		// 101, 103, 104 and 201 were saved on 5 October in Sydney, and so was 102 (23:00 UTC on the 4th).
+		// 301 and 302 were saved on the 6th. Every question still counts towards the total.
+		expect(await totalsOf(buildBreakdownQuery(OCTOBER_5))).toEqual({
+			questions: 10, attempted: 5, marksAttempted: 15, marksEarned: 9, scored: 5, fullMarks: 3
+		});
+		const rows = await run<Record<string, unknown>>(buildTopicStatsQuery(OCTOBER_5, groupsJson()));
+		expect(rows.find(row => row.grp === 'calculus' && !row.sub)).toMatchObject({ questions: 5, attempted: 3, marks_attempted: 10, marks_earned: 4 });
+	});
+
+	it('scopes to the questions in finished mocks, marked once each mock was finished', async () => {
+		await setup();
+		// 101, 102, 103 (mock 1), 301, 302 (mock 2) and 202 (mock 3); the unfinished mock 4 is out. 102
+		// was last saved before mock 1 was finished, and 202 was never attempted.
+		expect(await totalsOf(buildBreakdownQuery(scope({ mock: 'all' })))).toMatchObject({ questions: 6, attempted: 4, marksAttempted: 11, marksEarned: 9 });
+		expect(await totalsOf(buildBreakdownQuery(scope({ mock: 2 })))).toMatchObject({ questions: 2, attempted: 2, marksAttempted: 6, marksEarned: 4 });
+
+		const rows = await run<Record<string, unknown>>(buildTopicStatsQuery(scope({ mock: 'all' }), groupsJson()));
+		expect(rows.find(row => row.grp === 'calculus' && !row.sub)).toMatchObject({ questions: 4, attempted: 2, marks_attempted: 5, marks_earned: 5 });
+
+		// In mock scope each mock is an exam, so topic marks are per mock.
+		const units = await run<TopicUnitRow>(buildTopicUnitQuery(scope({ mock: 'all' }), groupsJson()));
+		const calculus = units.filter(row => row.grp === 'calculus' && !row.sub).map(row => `${row.unit_id}=${row.marks}/${row.questions}`).sort();
+		expect(calculus).toEqual(['1=4/2', '2=4/1', '3=2/1']);
+		expect(examWeights(units, [1, 2, 3]).byGroup.get('calculus')?.avgMarks).toBeCloseTo(10 / 3);
+	});
+
+	it('lists finished mocks and scores each from marks saved after it was finished', async () => {
+		await setup();
+		expect((await run<{ id: number }>(buildMockListQuery(USER, MATHS))).map(row => row.id)).toEqual([1, 2, 3]);
+
+		const rows = await run<MockRow>(buildMockStatsQuery(scope({ mock: 'all' })));
 		expect(rows.map(row => [row.id, row.total_marks, row.marks_awarded, row.marked])).toEqual([
 			// 102 was last saved before the mock was finished, so only 101 and 103 count.
 			[1, 8, 5, 2],
@@ -707,11 +919,35 @@ describe('statistics queries against D1', () => {
 		expect(summary.count).toBe(2);
 		expect(summary.average).toBeCloseTo((5 / 8 + 4 / 6) / 2);
 		expect(summary.pace).toBeCloseTo(30 / 8);
+
+		expect((await run<MockRow>(buildMockStatsQuery(scope({ mock: 2 })))).map(row => row.id)).toEqual([2]);
+		// Only mocks finished in the period, scored on their Calculus questions alone: 301 in mock 2, 202 in mock 3.
+		const later = await run<MockRow>(buildMockStatsQuery(scope({ mock: 'all', since: '2026-10-05 13:00:00', topicIds: CALCULUS })));
+		expect(later.map(row => [row.id, row.total_marks, row.marks_awarded, row.marked])).toEqual([
+			[2, 4, 4, 1],
+			[3, 2, 0, 0]
+		]);
+	});
+
+	it('matches the Review tab queue and scores retries from the latest review attempt', async () => {
+		await setup();
+		const [stats] = await run<Record<string, number>>(buildReviewStatsQuery(scope()));
+		const queue = await run<{ id: number }>(buildReviewQueueQuery(USER, MATHS));
+		expect(stats.queued).toBe(queue.length);
+		// Queued: 102 (1/3), 104 (2/6 with a note), 302 (0/2). Retried: 102 and 104. Fixed: 104, whose
+		// latest retry is 6/6 (its older 3/6 doesn't count). Recovered: (6 - 2) + (2 - 1).
+		expect(stats).toEqual({ queued: 3, dropped: 3, retried: 2, fixed: 1, recovered: 5 });
+
+		// Calculus leaves out 302; the mocks leave out 104 (in none) and 102 (marked before mock 1 was finished).
+		const [calculus] = await run<Record<string, number>>(buildReviewStatsQuery(scope({ topicIds: CALCULUS })));
+		expect(calculus).toEqual({ queued: 2, dropped: 2, retried: 2, fixed: 1, recovered: 5 });
+		const [mocks] = await run<Record<string, number>>(buildReviewStatsQuery(scope({ mock: 'all' })));
+		expect(mocks).toEqual({ queued: 1, dropped: 1, retried: 0, fixed: 0, recovered: 0 });
 	});
 
 	it('buckets first attempts and review attempts into Sydney days', async () => {
 		await setup();
-		const days = dailyActivity(await run<ActivityRow>(buildActivityQuery(USER, MATHS)));
+		const days = dailyActivity(await run<ActivityRow>(buildActivityQuery(scope())));
 		expect([...days]).toEqual([
 			['2026-10-03', 1],
 			['2026-10-04', 1],
@@ -726,8 +962,12 @@ describe('statistics queries against D1', () => {
 			lastWeek: 2,
 			current: 2,
 			longest: 4,
+			activeDays: 6,
 			activeLast30: 6,
 			lastActive: '2026-10-09'
 		});
+
+		// Trial papers only: 301 and 302, both first tried on 6 October.
+		expect([...dailyActivity(await run<ActivityRow>(buildActivityQuery(scope({ kinds: ['trial'] }))))]).toEqual([['2026-10-06', 2]]);
 	});
 });

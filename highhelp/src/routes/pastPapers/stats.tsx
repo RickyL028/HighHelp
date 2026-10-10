@@ -1,50 +1,64 @@
 import type { Child } from 'hono/jsx'
 import { subjectLabel } from '../../constants'
 import {
+    DEFAULT_STATS_FILTERS,
     HSC_MINUTES_PER_MARK,
     MIN_TOPIC_MARKS,
+    PAPER_SOURCES,
+    PERIODS,
     accuracyOf,
     activityHeatmap,
     activitySummary,
     buildActivityQuery,
     buildBreakdownQuery,
+    buildMockListQuery,
     buildMockStatsQuery,
-    buildPaperQuery,
+    buildPaperListQuery,
+    buildPaperResultsQuery,
     buildReviewStatsQuery,
     buildTopicGroups,
-    buildTopicPaperQuery,
     buildTopicStatsQuery,
+    buildTopicUnitQuery,
     dailyActivity,
-    defaultWeightBasis,
+    daysWithin,
     examWeights,
     focusTopics,
-    hscTopicMap,
-    isWeightBasis,
+    readStatsFilters,
+    statsFilterParams,
+    statsScope,
     summarizeBreakdown,
     summarizeMocks,
     summarizePapers,
     summarizeTopics,
     sydneyDate,
     topicGroupsJson,
+    topicUnitMap,
+    weeksSpanned,
     type ActivityRow,
     type BreakdownEntry,
     type BreakdownRow,
-    type ExamWeights,
     type FocusItem,
     type HeatmapDay,
+    type MockListRow,
     type MockResult,
     type MockRow,
+    type PaperKind,
+    type PaperResult,
+    type PaperResultRow,
     type PaperRow,
-    type TopicPaperMap,
-    type TopicPaperRow,
+    type StatsFilters,
     type TopicStatRow,
     type TopicSummary,
-    type WeightBasis
+    type TopicUnitMap,
+    type TopicUnitRow
 } from './statsQuery'
 
 // Rows shown before "Show all"; the rest are rendered too and folded away by the page script.
 const TOPIC_ROWS = 12;
 const MAP_ROWS = 12;
+const RESULT_ROWS = 8;
+// The topic map shows the latest exams in scope; the averages still cover every one.
+const MAP_COLUMNS = 20;
 // A year of activity on wide screens; narrower screens drop the oldest weeks rather than scroll.
 const HEATMAP_WEEKS = 53;
 const HEATMAP_WEEKS_MEDIUM = 26;
@@ -61,14 +75,19 @@ const NAME_LINK = 'text-gray-900 dark:text-white hover:text-blue-700 dark:hover:
 // The header and row rules the Practice and Review tables use.
 const TABLE_HEAD = 'text-left text-[11px] uppercase tracking-wider text-gray-500 dark:text-neutral-400 border-b-2 border-gray-200 dark:border-neutral-700';
 const TABLE_ROW = 'border-b border-gray-100 dark:border-neutral-800';
+const FIELD_LABEL = 'text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-neutral-400';
+// The underlined fields of the Practice tab's filter bar.
+const FIELD = 'bg-transparent border-b border-gray-300 dark:border-neutral-600 focus:outline-none focus:border-blue-500 dark:bg-transparent dark:text-white dark:[color-scheme:dark] py-0.5 pr-1 text-sm';
 
 const formatCount = (value: number) => Math.round(value).toLocaleString('en-AU');
 const formatMarks = (value: number) => (Math.round(value * 10) / 10).toLocaleString('en-AU');
 // A score just short of perfect must not round up to 100%.
 const formatPercent = (value: number | null) => (value == null ? '—' : `${value >= 1 ? 100 : Math.min(99, Math.round(value * 100))}%`);
 const plural = (count: number, word: string, many = `${word}s`) => `${formatCount(count)} ${count === 1 ? word : many}`;
+// A mark figure that may be fractional, such as an average: "1 mark", "1.5 marks".
+const pluralMarks = (value: number) => `${formatMarks(value)} ${formatMarks(value) === '1' ? 'mark' : 'marks'}`;
 
-// Mock timestamps are UTC text ("2026-10-05 00:10:00"); heatmap dates are already Sydney days.
+// Mock timestamps are UTC text ("2026-10-05 00:10:00"); heatmap and filter dates are already Sydney days.
 const formatTimestamp = (timestamp: string | null) => {
     const instant = timestamp ? new Date(`${timestamp.replace(' ', 'T')}Z`) : null;
     return instant && !Number.isNaN(instant.getTime())
@@ -78,9 +97,14 @@ const formatTimestamp = (timestamp: string | null) => {
 const formatDay = (date: string, options: Intl.DateTimeFormatOptions) =>
     new Date(`${date}T00:00:00Z`).toLocaleDateString('en-AU', { ...options, timeZone: 'UTC' });
 
-const statsUrl = (subject: string, basis: WeightBasis) => `/past-papers?${new URLSearchParams({ subject, tab: 'stats', basis }).toString()}`;
+const statsUrl = (subject: string, filters: StatsFilters) =>
+    `/past-papers?${new URLSearchParams([['subject', subject], ['tab', 'stats'], ...statsFilterParams(filters)]).toString()}`;
 // Subtopics link by topic id, as on the Browse tab. One that merges several spellings uses the first.
-const subtopicUrl = (subject: string, topicId: number) => `/past-papers?${new URLSearchParams({ subject, tab: 'practice', topic: String(topicId) }).toString()}`;
+const topicIdPracticeUrl = (subject: string, topicId: number, unattemptedOnly = false) => {
+    const params = new URLSearchParams({ subject, tab: 'practice', topic: String(topicId) });
+    if (unattemptedOnly) params.set('status', 'undone');
+    return `/past-papers?${params.toString()}`;
+};
 const practiceUrl = (subject: string, topicGroup: string, unattemptedOnly = false) => {
     const params = new URLSearchParams({ subject, tab: 'practice', topic_group: topicGroup });
     if (unattemptedOnly) params.set('status', 'undone');
@@ -112,6 +136,23 @@ const HEAT_STYLES = `
 `;
 
 const heatLevel = (value: number, max: number) => (value > 0 && max > 0 ? Math.min(4, Math.max(1, Math.ceil((value / max) * 4))) : 0);
+
+const mockName = (mock: { exam_name: string | null }) => (mock.exam_name || '').trim() || 'Untitled Exam';
+
+const paperName = (paper: PaperRow) =>
+    `${(paper.school_name || '').trim()} ${paper.academic_year ?? ''}${paper.kind === 'other' && paper.paper_type ? ` ${paper.paper_type}` : ''}`.trim();
+
+// A column-sized name for a school: "HSC", or the initials of the rest ("SBHS").
+const schoolCode = (school: string | null) => {
+    const name = (school || '').trim();
+    if (name.toLowerCase() === 'hsc') return 'HSC';
+    const initials = name.split(/\s+/).filter(word => /^[A-Za-z]/.test(word)).map(word => word[0].toUpperCase()).join('');
+    return initials.slice(0, 5) || name.slice(0, 4);
+};
+
+// What one exam in scope is called. "Marks per HSC paper" when only HSC papers are counted, and so on.
+const examNoun = (filters: StatsFilters) =>
+    filters.mock != null ? 'mock' : filters.source === 'hsc' ? 'HSC paper' : filters.source === 'trial' ? 'trial paper' : 'paper';
 
 // Open sections like the Practice tab's: a heading on a hairline rule, no box around the content.
 const Section = ({ title, action, children }: { title: string; action?: Child; children?: Child }) => (
@@ -149,24 +190,99 @@ const SortHeader = ({ sort, label, first, align, current, wide }: {
     </th>
 );
 
-const WeightLinks = ({ subject, basis, hscCount, allCount }: { subject: string; basis: WeightBasis; hscCount: number; allCount: number }) => {
-    const option = (value: WeightBasis, label: string) =>
-        basis === value
-            ? <span class="font-semibold text-gray-900 dark:text-white" aria-current="true">{label}</span>
-            : <a href={statsUrl(subject, value)} class="text-blue-600 dark:text-blue-400 hover:underline">{label}</a>;
+// One GET form, so every filter is a plain link that can be bookmarked or shared. The page script
+// applies a menu choice at once and keeps defaults out of the URL.
+const FilterBar = ({ subject, filters, papers, mocks, topics, today }: {
+    subject: string
+    filters: StatsFilters
+    papers: PaperRow[]
+    mocks: MockListRow[]
+    topics: { key: string; name: string }[]
+    today: string
+}) => {
+    const countOf = (kinds: PaperKind[]) =>
+        papers.filter(paper => Number(paper.questions) > 0 && (kinds.length === 0 || kinds.includes(paper.kind))).length;
+    // A choice is offered only when it picks out some papers but not all of them, so none is a dead
+    // end or a copy of "All papers".
+    const everyPaper = countOf([]);
+    const sources = PAPER_SOURCES
+        .map(source => ({ ...source, count: countOf(source.kinds) }))
+        .filter(source => source.key === 'all' || source.key === filters.source || (source.count > 0 && source.count < everyPaper));
     return (
-        <p class={`text-sm ${MUTED}`}>
-            Weighted by {option('hsc', `HSC papers (${hscCount})`)} / {option('all', `all papers (${allCount})`)}
-        </p>
+        <form method="get" action="/past-papers" data-stats-filters class="flex flex-wrap items-end gap-x-6 gap-y-3 pb-4 border-b border-gray-200 dark:border-neutral-700">
+            <input type="hidden" name="subject" value={subject} />
+            <input type="hidden" name="tab" value="stats" />
+            <label class="flex flex-col gap-1 min-w-0">
+                <span class={FIELD_LABEL}>Questions from</span>
+                <select name="source" class={`${FIELD} max-w-[18rem]`}>
+                    <optgroup label="Past papers">
+                        {sources.map(source => (
+                            <option value={source.key} selected={filters.source === source.key}>{source.label} ({source.count})</option>
+                        ))}
+                    </optgroup>
+                    {mocks.length > 0 && (
+                        <optgroup label="Your mock exams">
+                            <option value="mocks" selected={filters.source === 'mocks'}>All mock exams ({mocks.length})</option>
+                            {[...mocks].reverse().map(mock => {
+                                const finished = formatTimestamp(mock.completed_at);
+                                return (
+                                    <option value={`mock-${mock.id}`} selected={filters.source === `mock-${mock.id}`}>
+                                        {mockName(mock)}{finished ? ` · ${finished}` : ''}
+                                    </option>
+                                );
+                            })}
+                        </optgroup>
+                    )}
+                </select>
+            </label>
+            <label class="flex flex-col gap-1 min-w-0">
+                <span class={FIELD_LABEL}>Topic</span>
+                <select name="topic" class={`${FIELD} max-w-[18rem]`}>
+                    <option value="">All topics</option>
+                    {topics.map(topic => <option value={topic.key} selected={filters.topic === topic.key}>{topic.name}</option>)}
+                </select>
+            </label>
+            <label class="flex flex-col gap-1">
+                <span class={FIELD_LABEL}>Period</span>
+                <select name="period" class={FIELD}>
+                    {PERIODS.map(period => <option value={period.key} selected={filters.period === period.key}>{period.label}</option>)}
+                </select>
+            </label>
+            <span data-custom-dates class={`${filters.period === 'custom' ? 'flex' : 'hidden'} flex-wrap items-end gap-x-3 gap-y-3`}>
+                <label class="flex flex-col gap-1">
+                    <span class={FIELD_LABEL}>From</span>
+                    <input type="date" name="from" value={filters.period === 'custom' ? filters.from ?? '' : ''} max={today} class={FIELD} />
+                </label>
+                <label class="flex flex-col gap-1">
+                    <span class={FIELD_LABEL}>To</span>
+                    <input type="date" name="to" value={filters.period === 'custom' ? filters.to ?? '' : ''} max={today} class={FIELD} />
+                </label>
+            </span>
+            <button type="submit" data-filters-apply class={`pb-0.5 ${ACTION_LINK}`}>Apply</button>
+            {statsFilterParams(filters).length > 0 && (
+                <a href={statsUrl(subject, DEFAULT_STATS_FILTERS)} class={`pb-0.5 text-sm ${MUTED} hover:text-gray-900 dark:hover:text-neutral-200 hover:underline`}>Reset</a>
+            )}
+        </form>
     );
 };
 
-const FocusList = ({ subject, title, items, empty, describe }: {
-    subject: string
+const Stat = ({ label, value, of, note, tone }: { label: string; value: string; of?: string; note?: string; tone?: string }) => (
+    <div>
+        <dt class={FIELD_LABEL}>{label}</dt>
+        <dd class={`mt-1 text-3xl font-bold tabular-nums ${tone || 'text-gray-900 dark:text-white'}`}>
+            {value}
+            {of != null && <span class={`text-lg font-semibold ${MUTED}`}>/{of}</span>}
+        </dd>
+        {note && <dd class={`mt-0.5 text-sm ${MUTED}`}>{note}</dd>}
+    </div>
+);
+
+const FocusList = ({ title, items, empty, describe, href }: {
     title: string
     items: FocusItem[]
     empty: string
     describe: (item: FocusItem) => string
+    href: (topic: TopicSummary) => string
 }) => (
     <div>
         <h3 class="mb-3 font-semibold text-gray-900 dark:text-white">{title}</h3>
@@ -176,7 +292,7 @@ const FocusList = ({ subject, title, items, empty, describe }: {
             <ol class="space-y-3">
                 {items.map(item => (
                     <li>
-                        <a href={practiceUrl(subject, item.topic.name, true)} title="Practise the questions you haven't tried" class={`font-semibold ${NAME_LINK}`}>
+                        <a href={href(item.topic)} title="Practise the questions you haven't tried" class={`font-semibold ${NAME_LINK}`}>
                             {item.topic.name}
                         </a>
                         <p class={`text-sm ${MUTED}`}>{describe(item)}</p>
@@ -187,20 +303,32 @@ const FocusList = ({ subject, title, items, empty, describe }: {
     </div>
 );
 
+type TopicColumns = {
+    weighted: boolean
+    /** Exams in scope with tagged questions; the Papers column is left out when there's only one. */
+    examCount: number
+    /** "paper" or "mock", for the column headings. */
+    per: string
+};
+
 // One row of the topic table, for a topic or (indented, quieter) one of its subtopics. Every row
 // carries its own sort keys, so subtopics can be ordered within their topic too.
-const TopicRow = ({ subject, topic, weights, subtopic }: { subject: string; topic: TopicSummary; weights: ExamWeights; subtopic?: boolean }) => {
-    const weighted = weights.papers.length > 0;
-    const strong = subtopic ? BODY : 'font-semibold text-gray-900 dark:text-white';
+const TopicRow = ({ topic, href, linkTitle, nested, columns }: {
+    topic: TopicSummary
+    href: string
+    linkTitle: string
+    nested?: boolean
+    columns: TopicColumns
+}) => {
+    const strong = nested ? BODY : 'font-semibold text-gray-900 dark:text-white';
     return (
         <tr class={`${TABLE_ROW} align-top`}
             data-sort-name={topic.name.toLowerCase()}
             data-sort-weight={String(topic.avgMarks ?? 0)}
             data-sort-done={String(topic.coverage)}
             data-sort-accuracy={topic.accuracy == null ? '' : String(topic.accuracy)}>
-            <td class={`py-2 pr-3 sm:pr-4 [overflow-wrap:anywhere]${subtopic ? ' pl-4 sm:pl-6' : ''}`}>
-                <a href={subtopic ? subtopicUrl(subject, topic.topicIds[0]) : practiceUrl(subject, topic.name)}
-                    class={subtopic ? `${BODY} hover:text-blue-700 dark:hover:text-blue-400 hover:underline` : NAME_LINK}>
+            <td class={`py-2 pr-3 sm:pr-4 [overflow-wrap:anywhere]${nested ? ' pl-4 sm:pl-6' : ''}`}>
+                <a href={href} title={linkTitle} class={nested ? `${BODY} hover:text-blue-700 dark:hover:text-blue-400 hover:underline` : NAME_LINK}>
                     {topic.name}
                 </a>
                 {topic.subtopics.length > 0 && (
@@ -210,13 +338,13 @@ const TopicRow = ({ subject, topic, weights, subtopic }: { subject: string; topi
                         {plural(topic.subtopics.length, 'subtopic')}
                     </button>
                 )}
-                {weighted && <div class={`sm:hidden text-xs tabular-nums ${MUTED}`}>{formatMarks(topic.avgMarks ?? 0)} marks a paper</div>}
+                {columns.weighted && <div class={`sm:hidden text-xs tabular-nums ${MUTED}`}>{pluralMarks(topic.avgMarks ?? 0)} a {columns.per}</div>}
             </td>
-            {weighted && (
+            {columns.weighted && (
                 <td class={`hidden sm:table-cell py-2 pr-4 text-right tabular-nums ${strong}`}>{formatMarks(topic.avgMarks ?? 0)}</td>
             )}
-            {weighted && (
-                <td class={`hidden sm:table-cell py-2 pr-4 text-right tabular-nums ${MUTED}`}>{topic.papers}/{weights.papers.length}</td>
+            {columns.weighted && columns.examCount > 1 && (
+                <td class={`hidden sm:table-cell py-2 pr-4 text-right tabular-nums ${MUTED}`}>{topic.papers}/{columns.examCount}</td>
             )}
             <td class="py-2 pr-3 sm:pr-4 text-right whitespace-nowrap tabular-nums">
                 <span class="hidden sm:inline-block align-middle mr-2 h-1 w-16 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-900/40" aria-hidden="true">
@@ -229,79 +357,100 @@ const TopicRow = ({ subject, topic, weights, subtopic }: { subject: string; topi
                 {topic.marksAttempted > 0 && (
                     <span class={`hidden sm:inline mr-2 ${MUTED}`}>{formatCount(topic.marksEarned)}/{formatCount(topic.marksAttempted)}</span>
                 )}
-                <span class={`${subtopic ? '' : 'font-semibold '}${scoreTone(topic.accuracy)}`}>{formatPercent(topic.accuracy)}</span>
+                <span class={`${nested ? '' : 'font-semibold '}${scoreTone(topic.accuracy)}`}>{formatPercent(topic.accuracy)}</span>
             </td>
         </tr>
     );
 };
 
 // A tbody per topic keeps its subtopic rows with it when the table is sorted or folded.
-const TopicTable = ({ subject, topics, weights }: { subject: string; topics: TopicSummary[]; weights: ExamWeights }) => {
-    const weighted = weights.papers.length > 0;
+const TopicTable = ({ topics, columns, label, rowLink, subtopicLink }: {
+    topics: TopicSummary[]
+    columns: TopicColumns
+    /** "Topic", or "Subtopic" when the table is one topic broken down. */
+    label: string
+    rowLink: (topic: TopicSummary) => { href: string; title: string }
+    subtopicLink: (subtopic: TopicSummary) => { href: string; title: string }
+}) => (
+    <>
+        <table class="w-full text-sm" data-stats-table="topics" data-stats-grouped data-limit={String(TOPIC_ROWS)}>
+            <thead>
+                <tr class={TABLE_HEAD}>
+                    <SortHeader sort="name" label={label} first="ascending" />
+                    {columns.weighted && <SortHeader sort="weight" label={`Marks / ${columns.per}`} first="descending" align="right" current wide />}
+                    {columns.weighted && columns.examCount > 1 && (
+                        <th class="hidden sm:table-cell py-2 pr-4 font-bold text-right">{columns.per === 'mock' ? 'Mocks' : 'Papers'}</th>
+                    )}
+                    <SortHeader sort="done" label="Attempted" first="ascending" align="right" />
+                    <SortHeader sort="accuracy" label="Accuracy" first="ascending" align="right" />
+                </tr>
+            </thead>
+            {topics.map(topic => {
+                const link = rowLink(topic);
+                return (
+                    <tbody>
+                        <TopicRow topic={topic} href={link.href} linkTitle={link.title} columns={columns} />
+                        {topic.subtopics.map(subtopic => {
+                            const subLink = subtopicLink(subtopic);
+                            return <TopicRow topic={subtopic} href={subLink.href} linkTitle={subLink.title} columns={columns} nested />;
+                        })}
+                    </tbody>
+                );
+            })}
+        </table>
+        {topics.length > TOPIC_ROWS && <ShowAllToggle target="topics" count={topics.length} noun={`${label.toLowerCase()}s`} />}
+    </>
+);
+
+type ExamColumn = { label: string; detail: string; title: string; href: string };
+
+const TopicMapTable = ({ map, columns }: { map: TopicUnitMap; columns: ExamColumn[] }) => {
+    // A second header line tells papers of the same year apart, when there are several schools.
+    const showDetail = columns.some(column => column.detail !== columns[0]?.detail);
     return (
         <>
-            <table class="w-full text-sm" data-stats-table="topics" data-stats-grouped data-limit={String(TOPIC_ROWS)}>
-                <thead>
-                    <tr class={TABLE_HEAD}>
-                        <SortHeader sort="name" label="Topic" first="ascending" />
-                        {weighted && <SortHeader sort="weight" label="Marks / paper" first="descending" align="right" current wide />}
-                        {weighted && <th class="hidden sm:table-cell py-2 pr-4 font-bold text-right">Papers</th>}
-                        <SortHeader sort="done" label="Attempted" first="ascending" align="right" />
-                        <SortHeader sort="accuracy" label="Accuracy" first="ascending" align="right" />
-                    </tr>
-                </thead>
-                {topics.map(topic => (
+            <div class="overflow-x-auto">
+                <table class="mx-auto text-sm" data-stats-table="topic-map" data-limit={String(MAP_ROWS)}>
+                    <thead>
+                        <tr class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-neutral-400">
+                            <th class="sticky left-0 z-10 bg-background dark:bg-neutral-900 py-2 pr-3 sm:pr-4 text-left font-bold align-bottom">Topic</th>
+                            {columns.map(column => (
+                                <th class="px-[1px] py-2 text-center font-bold tabular-nums align-bottom whitespace-nowrap">
+                                    <a href={column.href} title={column.title} class="hover:underline">
+                                        {showDetail && <span class="block font-normal">{column.detail}</span>}
+                                        {column.label}
+                                    </a>
+                                </th>
+                            ))}
+                            <th class="py-2 pl-3 text-right font-bold align-bottom">Avg</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        <TopicRow subject={subject} topic={topic} weights={weights} />
-                        {topic.subtopics.map(subtopic => <TopicRow subject={subject} topic={subtopic} weights={weights} subtopic />)}
+                        {map.rows.map(row => (
+                            <tr>
+                                <td class={`sticky left-0 z-10 bg-background dark:bg-neutral-900 py-[1px] pr-3 sm:pr-4 ${BODY}`}>
+                                    <span class="block max-w-[8.5rem] truncate sm:max-w-none" title={row.name}>{row.name}</span>
+                                </td>
+                                {row.cells.map((marks, index) => (
+                                    <td class="p-[1px]">
+                                        <span class={`hh-heat hh-heat-${heatLevel(marks, map.max)} block min-w-[2.5rem] px-1.5 py-1 text-center text-xs font-semibold tabular-nums`}
+                                            data-tip={`${row.name}, ${columns[index].title}: ${marks > 0 ? plural(marks, 'mark') : 'not tagged'}`}>
+                                            {marks > 0 ? formatMarks(marks) : ' '}
+                                        </span>
+                                    </td>
+                                ))}
+                                <td class={`py-[1px] pl-3 text-right tabular-nums ${MUTED}`}>{formatMarks(row.avg)}</td>
+                            </tr>
+                        ))}
                     </tbody>
-                ))}
-            </table>
-            {topics.length > TOPIC_ROWS && <ShowAllToggle target="topics" count={topics.length} noun="topics" />}
+                </table>
+            </div>
+            {map.rows.length > MAP_ROWS && <div class="text-center"><ShowAllToggle target="topic-map" count={map.rows.length} noun="rows" /></div>}
         </>
     );
 };
 
-const TopicMapTable = ({ map }: { map: TopicPaperMap }) => (
-    <>
-        <div class="overflow-x-auto">
-            <table class="text-sm" data-stats-table="hsc-map" data-limit={String(MAP_ROWS)}>
-                <thead>
-                    <tr class="text-[11px] uppercase tracking-wider text-gray-500 dark:text-neutral-400">
-                        <th class="sticky left-0 z-10 bg-background dark:bg-neutral-900 py-2 pr-3 sm:pr-4 text-left font-bold">Topic</th>
-                        {map.papers.map(paper => (
-                            <th class="px-[1px] py-2 text-center font-bold tabular-nums">
-                                <a href={`/past-papers/paper/${paper.id}`} title={`${paper.school_name} ${paper.academic_year}`} class="hover:underline">{paper.academic_year}</a>
-                            </th>
-                        ))}
-                        <th class="py-2 pl-3 text-right font-bold">Avg</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {map.rows.map(row => (
-                        <tr>
-                            <td class={`sticky left-0 z-10 bg-background dark:bg-neutral-900 py-[1px] pr-3 sm:pr-4 ${BODY}`}>
-                                <span class="block max-w-[8.5rem] truncate sm:max-w-none" title={row.name}>{row.name}</span>
-                            </td>
-                            {row.cells.map((marks, index) => (
-                                <td class="p-[1px]">
-                                    <span class={`hh-heat hh-heat-${heatLevel(marks, map.max)} block min-w-[2.5rem] px-1.5 py-1 text-center text-xs font-semibold tabular-nums`}
-                                        data-tip={`${row.name}, ${map.papers[index].academic_year}: ${marks > 0 ? plural(marks, 'mark') : 'not tagged'}`}>
-                                        {marks > 0 ? formatMarks(marks) : ' '}
-                                    </span>
-                                </td>
-                            ))}
-                            <td class={`py-[1px] pl-3 text-right tabular-nums ${MUTED}`}>{formatMarks(row.total / map.papers.length)}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-        {map.rows.length > MAP_ROWS && <ShowAllToggle target="hsc-map" count={map.rows.length} noun="topics" />}
-    </>
-);
-
-// The group name heads the first column, so each of the three small tables explains itself.
+// The group name heads the first column, so each of the small tables explains itself.
 const BreakdownTable = ({ title, entries }: { title: string; entries: BreakdownEntry[] }) => (
     <table class="w-full text-sm">
         <thead>
@@ -329,64 +478,95 @@ const BreakdownTable = ({ title, entries }: { title: string; entries: BreakdownE
     </table>
 );
 
-const MockTable = ({ results }: { results: MockResult[] }) => (
-    <table class="w-full text-sm">
-        <thead>
-            <tr class={TABLE_HEAD}>
-                <th class="py-2 pr-3 font-bold">Exam</th>
-                <th class="py-2 pr-3 font-bold">Finished</th>
-                <th class="py-2 pr-3 font-bold text-right">Marks</th>
-                <th class="hidden sm:table-cell py-2 pr-3 font-bold text-right">Time</th>
-                <th class="py-2 font-bold text-right">Score</th>
-            </tr>
-        </thead>
-        <tbody>
-            {results.map(result => (
-                <tr class={TABLE_ROW}>
-                    <td class="py-2 pr-3 [overflow-wrap:anywhere]">
-                        <a href={`/past-papers/mock-exams/${result.id}/mark`} class={NAME_LINK}>{result.name}</a>
-                    </td>
-                    <td class={`py-2 pr-3 whitespace-nowrap ${MUTED}`}>{formatTimestamp(result.completedAt)}</td>
-                    <td class={`py-2 pr-3 text-right whitespace-nowrap tabular-nums ${MUTED}`}>{formatMarks(result.marksAwarded)}/{formatMarks(result.totalMarks)}</td>
-                    <td class={`hidden sm:table-cell py-2 pr-3 text-right whitespace-nowrap tabular-nums ${MUTED}`}>
-                        {result.minutes == null
-                            ? 'untimed'
-                            : `${Math.round(result.minutes)}${result.allowedMinutes ? ` of ${Math.round(result.allowedMinutes)}` : ''} min`}
-                    </td>
-                    <td class={`py-2 text-right tabular-nums font-semibold ${scoreTone(result.score)}`}>{formatPercent(result.score)}</td>
+const PaperTable = ({ results }: { results: PaperResult[] }) => (
+    <>
+        <table class="w-full text-sm" data-stats-table="papers" data-limit={String(RESULT_ROWS)}>
+            <thead>
+                <tr class={TABLE_HEAD}>
+                    <th class="py-2 pr-3 font-bold">Paper</th>
+                    <th class="py-2 pr-3 font-bold text-right">Attempted</th>
+                    <th class="hidden sm:table-cell py-2 pr-3 font-bold text-right">Marks</th>
+                    <th class="py-2 font-bold text-right">Accuracy</th>
                 </tr>
-            ))}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {results.map(result => (
+                    <tr class={TABLE_ROW}>
+                        <td class="py-2 pr-3 [overflow-wrap:anywhere]">
+                            <a href={`/past-papers/paper/${result.paper.id}`} class={NAME_LINK}>{paperName(result.paper)}</a>
+                        </td>
+                        <td class={`py-2 pr-3 text-right whitespace-nowrap tabular-nums ${BODY}`}>{formatCount(result.attempted)}/{formatCount(result.questions)}</td>
+                        <td class={`hidden sm:table-cell py-2 pr-3 text-right whitespace-nowrap tabular-nums ${MUTED}`}>
+                            {result.marksAttempted > 0 ? `${formatMarks(result.marksEarned)}/${formatMarks(result.marksAttempted)}` : '—'}
+                        </td>
+                        <td class={`py-2 text-right tabular-nums font-semibold ${scoreTone(result.accuracy)}`}>{formatPercent(result.accuracy)}</td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+        {results.length > RESULT_ROWS && <ShowAllToggle target="papers" count={results.length} noun="papers" />}
+    </>
 );
 
-const mockSummary = (mocks: ReturnType<typeof summarizeMocks>) => {
-    const change = mocks.change == null ? 0 : Math.round(mocks.change * 100);
-    const trend = mocks.change == null
-        ? ''
-        : change === 0
-            ? ' Your latest scored the same as the one before.'
-            : ` Your latest was ${plural(Math.abs(change), 'point')} ${change > 0 ? 'up on' : 'down on'} the one before.`;
-    return mocks.count === 1
-        ? <>You've marked <strong class={STRONG}>1</strong> mock exam and scored <strong class={STRONG}>{formatPercent(mocks.average)}</strong> on it.</>
-        : <>You've marked <strong class={STRONG}>{formatCount(mocks.count)}</strong> mock exams, averaging <strong class={STRONG}>{formatPercent(mocks.average)}</strong> with a best of {formatPercent(mocks.best)}.{trend}</>;
-};
+const MockTable = ({ results }: { results: MockResult[] }) => (
+    <>
+        <table class="w-full text-sm" data-stats-table="mocks" data-limit={String(RESULT_ROWS)}>
+            <thead>
+                <tr class={TABLE_HEAD}>
+                    <th class="py-2 pr-3 font-bold">Exam</th>
+                    <th class="py-2 pr-3 font-bold">Finished</th>
+                    <th class="py-2 pr-3 font-bold text-right">Marks</th>
+                    <th class="hidden sm:table-cell py-2 pr-3 font-bold text-right">Time</th>
+                    <th class="py-2 font-bold text-right">Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {results.map(result => (
+                    <tr class={TABLE_ROW}>
+                        <td class="py-2 pr-3 [overflow-wrap:anywhere]">
+                            <a href={`/past-papers/mock-exams/${result.id}/mark`} class={NAME_LINK}>{result.name}</a>
+                        </td>
+                        <td class={`py-2 pr-3 whitespace-nowrap ${MUTED}`}>{formatTimestamp(result.completedAt)}</td>
+                        <td class={`py-2 pr-3 text-right whitespace-nowrap tabular-nums ${MUTED}`}>{formatMarks(result.marksAwarded)}/{formatMarks(result.totalMarks)}</td>
+                        <td class={`hidden sm:table-cell py-2 pr-3 text-right whitespace-nowrap tabular-nums ${MUTED}`}>
+                            {result.minutes == null
+                                ? 'untimed'
+                                : `${Math.round(result.minutes)}${result.allowedMinutes ? ` of ${Math.round(result.allowedMinutes)}` : ''} min`}
+                        </td>
+                        <td class={`py-2 text-right tabular-nums font-semibold ${scoreTone(result.score)}`}>{formatPercent(result.score)}</td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+        {results.length > RESULT_ROWS && <ShowAllToggle target="mocks" count={results.length} noun="mock exams" />}
+    </>
+);
 
-const paceSummary = (mocks: ReturnType<typeof summarizeMocks>) =>
-    mocks.pace == null
-        ? `${mocks.count === 1 ? "It wasn't timed" : 'None of them were timed'}. Set a timer next time to compare your pace with the HSC's ${HSC_MINUTES_PER_MARK} minutes a mark.`
-        : `In timed mocks you're taking about ${formatMarks(mocks.pace)} minutes a mark. A 3-hour, 100-mark HSC paper gives you ${HSC_MINUTES_PER_MARK}${mocks.pace > HSC_MINUTES_PER_MARK ? ', so speed is worth working on.' : '.'}`;
+// Short " · "-separated facts, the zero ones left out.
+const facts = (...parts: (string | false)[]) => parts.filter(Boolean).join(' · ');
 
-const reviewSummary = (review: ReviewStats) => {
-    if (review.queued === 0) return "Nothing to review right now. Questions you don't get full marks on, or leave a note on, end up here.";
-    const waiting = `${plural(review.queued, 'question')} ${review.queued === 1 ? 'is' : 'are'} waiting in Review.`;
-    if (review.dropped === 0) return waiting;
-    if (review.retried === 0) return `${waiting} You haven't retried any of the ${formatCount(review.dropped)} you dropped marks on yet.`;
-    const retried = `You've retried ${formatCount(review.retried)} of the ${formatCount(review.dropped)} you dropped marks on`;
-    return review.fixed === 0
-        ? `${waiting} ${retried}, but none at full marks yet.`
-        : `${waiting} ${retried} and fixed ${formatCount(review.fixed)}, winning back ${plural(review.recovered, 'mark')}.`;
-};
+const reviewSummary = (review: ReviewStats) =>
+    review.queued === 0
+        ? 'Nothing waiting.'
+        : facts(
+              `${formatCount(review.queued)} waiting`,
+              review.dropped > 0 && `${formatCount(review.retried)} of ${formatCount(review.dropped)} retried`,
+              review.fixed > 0 && `${formatCount(review.fixed)} fixed`,
+              review.recovered > 0 && `${plural(review.recovered, 'mark')} won back`
+          );
+
+const activityText = (activity: ReturnType<typeof activitySummary>, inPeriod: boolean) =>
+    activity.total === 0
+        ? 'Nothing yet.'
+        : inPeriod
+            ? facts(plural(activity.total, 'attempt'), `${plural(activity.activeDays, 'active day')}`, `longest streak ${plural(activity.longest, 'day')}`)
+            : facts(
+                  `${formatCount(activity.thisWeek)} this week`,
+                  `${formatCount(activity.lastWeek)} last week`,
+                  `${formatCount(activity.total)} in all`,
+                  activity.current > 0 && `${plural(activity.current, 'day')} streak`,
+                  `longest ${plural(activity.longest, 'day')}`
+              );
 
 // The grid's month row labels the week holding the 1st of each month.
 const monthLabel = (week: HeatmapDay[]) => {
@@ -401,7 +581,7 @@ const ActivityHeatmap = ({ heatmap }: { heatmap: ReturnType<typeof activityHeatm
     };
     return (
         <>
-            <div class="flex gap-[3px] text-[10px] leading-none text-gray-400 dark:text-neutral-500" role="img" aria-label="Attempts each day over the last year">
+            <div class="flex justify-center gap-[3px] text-[10px] leading-none text-gray-400 dark:text-neutral-500" role="img" aria-label="Attempts each day">
                 <div class="flex flex-col gap-[3px] pr-1" aria-hidden="true">
                     <span class="h-3"></span>
                     {['Mon', '', 'Wed', '', 'Fri', '', ''].map(day => <span class="h-[11px] leading-[11px]">{day}</span>)}
@@ -420,7 +600,7 @@ const ActivityHeatmap = ({ heatmap }: { heatmap: ReturnType<typeof activityHeatm
                     </div>
                 ))}
             </div>
-            <div class="mt-2 flex items-center gap-[3px] text-[11px] text-gray-400 dark:text-neutral-500" aria-hidden="true">
+            <div class="mt-2 flex items-center justify-center gap-[3px] text-[11px] text-gray-400 dark:text-neutral-500" aria-hidden="true">
                 Less
                 {[0, 1, 2, 3, 4].map(level => <span class={`hh-heat-${level} inline-block h-[11px] w-[11px] rounded-[2px]`}></span>)}
                 More
@@ -429,32 +609,70 @@ const ActivityHeatmap = ({ heatmap }: { heatmap: ReturnType<typeof activityHeatm
     );
 };
 
-const describeLeak = (weighted: boolean, paperNoun: string) => (item: FocusItem) =>
-    weighted
-        ? `${formatPercent(item.topic.accuracy)} so far. About ${formatMarks(item.score)} marks lost per ${paperNoun}.`
-        : `${formatPercent(item.topic.accuracy)} so far, on ${plural(item.topic.marksAttempted, 'mark')} attempted.`;
+const describeLeak = (weighted: boolean, noun: string) => (item: FocusItem) =>
+    facts(
+        `${formatPercent(item.topic.accuracy)} accuracy`,
+        weighted ? `~${pluralMarks(item.score)} lost a ${noun}` : `${plural(item.topic.marksAttempted, 'mark')} tried`
+    );
 
-const describeGap = (weighted: boolean, paperNoun: string) => (item: FocusItem) => {
-    const { topic } = item;
-    const practice = topic.attempted === 0
-        ? `Not started (${plural(topic.questions, 'question')}).`
-        : `${formatCount(topic.attempted)} of ${plural(topic.questions, 'question')} attempted.`;
-    return weighted ? `${practice} Worth about ${formatMarks(topic.avgMarks ?? 0)} marks per ${paperNoun}.` : practice;
+const describeGap = (weighted: boolean, noun: string) => (item: FocusItem) =>
+    facts(
+        `${formatCount(item.topic.attempted)}/${formatCount(item.topic.questions)} attempted`,
+        weighted && `~${pluralMarks(item.topic.avgMarks ?? 0)} a ${noun}`
+    );
+
+// The activity calendar covers the period when there is one (up to a year of it), else the last year.
+const activityFor = (rows: ActivityRow[], filters: StatsFilters, today: string) => {
+    const days = daysWithin(dailyActivity(rows), filters.from, filters.to);
+    const end = filters.to && filters.to < today ? filters.to : today;
+    const weeks = filters.from ? Math.max(1, Math.min(HEATMAP_WEEKS, weeksSpanned(filters.from, end))) : HEATMAP_WEEKS;
+    return { summary: activitySummary(days, today), heatmap: activityHeatmap(days, end, weeks, filters.from) };
 };
 
-const yearRange = (papers: PaperRow[]) => {
-    const years = papers.map(paper => Number(paper.academic_year)).filter(Number.isFinite);
-    if (years.length === 0) return '';
-    const low = Math.min(...years);
-    const high = Math.max(...years);
-    return low === high ? String(low) : `${low}–${high}`;
-};
-
-// Table sorting, "Show all" folding and the cell tooltip. Every row is in the HTML, so without
-// this script the tables are simply unfolded and unsorted.
+// The filter bar, then table sorting, "Show all" folding and the cell tooltip. Every row is in the
+// HTML and the filters are a plain form, so without this script the tables are simply unfolded and
+// unsorted, and filters apply with the Apply button.
 const STATS_SCRIPT = `
 (function () {
     var slice = function (list, from) { return Array.prototype.slice.call(list, from || 0); };
+
+    var form = document.querySelector('[data-stats-filters]');
+    if (form) {
+        var period = form.elements.namedItem('period');
+        var dates = form.querySelector('[data-custom-dates]');
+        var apply = form.querySelector('[data-filters-apply]');
+        var fields = slice(form.querySelectorAll('select, input[type=date]'));
+        var custom = function () { return period.value === 'custom'; };
+        var sync = function () {
+            dates.classList.toggle('hidden', !custom());
+            dates.classList.toggle('flex', custom());
+            // A menu choice applies at once. Dates wait for Apply, since typing one changes it part-way.
+            apply.hidden = !custom();
+        };
+        // Defaults stay out of the URL: a disabled field isn't submitted.
+        var strip = function () {
+            fields.forEach(function (field) {
+                field.disabled = field.type === 'date' ? !custom() || !field.value : field.value === '' || field.value === 'all';
+            });
+        };
+        form.addEventListener('change', function (event) {
+            if (!event.target || event.target.tagName !== 'SELECT') return;
+            sync();
+            if (event.target === period && custom()) {
+                form.elements.namedItem('from').focus();
+                return;
+            }
+            strip();
+            form.submit();
+        });
+        form.addEventListener('submit', strip);
+        // Going back can restore the page with the fields still disabled.
+        window.addEventListener('pageshow', function () {
+            fields.forEach(function (field) { field.disabled = false; });
+            sync();
+        });
+        sync();
+    }
 
     document.querySelectorAll('[data-stats-table]').forEach(function (table) {
         // A grouped table has a tbody per topic, its first row the topic and the rest its subtopics.
@@ -544,179 +762,247 @@ const STATS_SCRIPT = `
 })();
 `;
 
-/** Content of the Statistics tab: every figure is per subject, for the signed-in student. */
-export async function renderStatisticsTab(db: D1Database, userId: number, subject: string, requestedBasis?: string) {
-    const topicRows = await db.prepare('SELECT id, name FROM topics WHERE subject = ? ORDER BY name COLLATE NOCASE, id').bind(subject).all<{ id: number; name: string }>();
-    const groups = buildTopicGroups(topicRows.results);
-    const groupsJson = topicGroupsJson(groups);
-    const queries = [
-        buildTopicStatsQuery(userId, subject, groupsJson),
-        buildTopicPaperQuery(subject, groupsJson),
-        buildPaperQuery(userId, subject),
-        buildBreakdownQuery(userId, subject),
-        buildReviewStatsQuery(userId, subject),
-        buildMockStatsQuery(userId, subject),
-        buildActivityQuery(userId, subject)
-    ];
-    const [topicStats, topicPaperRows, paperRows, breakdownRows, reviewRows, mockRows, activityRows] = await db.batch(
-        queries.map(query => db.prepare(query.sql).bind(...query.params))
-    );
+/**
+ * Content of the Statistics tab: every figure is per subject, for the signed-in student, worked out
+ * over the filters in the query string (see readStatsFilters).
+ */
+export async function renderStatisticsTab(db: D1Database, userId: number, subject: string, query: (key: string) => string | undefined) {
+    const paperList = buildPaperListQuery(subject);
+    const mockList = buildMockListQuery(userId, subject);
+    const [topicRows, paperRows, mockRows] = await db.batch([
+        db.prepare('SELECT id, name FROM topics WHERE subject = ? ORDER BY name COLLATE NOCASE, id').bind(subject),
+        db.prepare(paperList.sql).bind(...paperList.params),
+        db.prepare(mockList.sql).bind(...mockList.params)
+    ]);
 
     const papers = paperRows.results as PaperRow[];
     if (!papers.some(paper => Number(paper.questions) > 0)) {
         return <div class={`text-center py-12 ${MUTED}`}>No papers found for {subjectLabel(subject)}, so there's nothing to measure yet.</div>;
     }
 
-    const topicPapers = topicPaperRows.results as TopicPaperRow[];
-    const hscWeights = examWeights(topicPapers, papers, 'hsc');
-    const allWeights = examWeights(topicPapers, papers, 'all');
-    // An HSC basis with no tagged HSC paper would weigh nothing, so it falls back to the default.
-    const basis: WeightBasis = isWeightBasis(requestedBasis) && (requestedBasis === 'all' || hscWeights.papers.length > 0)
-        ? requestedBasis
-        : defaultWeightBasis(topicPapers, papers);
-    const weights = basis === 'hsc' ? hscWeights : allWeights;
-    const weighted = weights.papers.length > 0;
-    const paperNoun = basis === 'hsc' ? 'HSC paper' : 'paper';
-    const aPaper = basis === 'hsc' ? 'an HSC paper' : 'a paper';
-
-    const topics = summarizeTopics(groups, topicStats.results as TopicStatRow[], weights);
-    const focus = focusTopics(topics);
-    const map = hscTopicMap(topicPapers, papers, groups);
-    const breakdown = summarizeBreakdown(breakdownRows.results as BreakdownRow[]);
-    const paperSummary = summarizePapers(papers);
-    const review = (reviewRows.results[0] as ReviewStats | undefined) ?? { queued: 0, dropped: 0, retried: 0, fixed: 0, recovered: 0 };
-    const mocks = summarizeMocks(mockRows.results as MockRow[]);
-    const days = dailyActivity(activityRows.results as ActivityRow[]);
+    const groups = buildTopicGroups(topicRows.results as { id: number; name: string }[]);
+    const mocks = mockRows.results as MockListRow[];
     const today = sydneyDate(new Date());
-    const activity = activitySummary(days, today);
-    const heatmap = activityHeatmap(days, today, HEATMAP_WEEKS);
+    const filters = readStatsFilters(query, { today, mockIds: mocks.map(mock => Number(mock.id)), topicKeys: groups.map(group => group.key) });
+    const group = groups.find(entry => entry.key === filters.topic) ?? null;
+    const scope = statsScope(userId, subject, filters, group?.topicIds ?? null);
+    const inMocks = filters.mock != null;
+    const singleMock = typeof filters.mock === 'number';
+    const groupsJson = topicGroupsJson(groups);
 
+    const queries = [
+        buildTopicStatsQuery(scope, groupsJson),
+        buildTopicUnitQuery(scope, groupsJson),
+        buildBreakdownQuery(scope),
+        buildReviewStatsQuery(scope),
+        inMocks ? buildMockStatsQuery(scope) : buildPaperResultsQuery(scope),
+        // Mock scope is about results, so it has no activity calendar.
+        ...(inMocks ? [] : [buildActivityQuery(scope)])
+    ];
+    const [topicStats, topicUnitRows, breakdownRows, reviewRows, resultRows, activityRows] = await db.batch(
+        queries.map(entry => db.prepare(entry.sql).bind(...entry.params))
+    );
+
+    // Exams are the papers in scope, or the mocks; the SQL has already left out any not in scope.
+    const topicUnits = topicUnitRows.results as TopicUnitRow[];
+    const weights = examWeights(topicUnits, inMocks ? mocks.map(mock => Number(mock.id)) : papers.map(paper => Number(paper.id)));
+    const weighted = weights.units.length > 0;
+    const allTopics = summarizeTopics(groups, topicStats.results as TopicStatRow[], weights);
+    // With a topic chosen, the topic analyses move down a level, to its subtopics.
+    const chosen = group ? allTopics.find(topic => topic.key === group.key) ?? null : null;
+    const tableTopics = group ? chosen?.subtopics ?? [] : allTopics;
+    const focus = focusTopics(tableTopics);
+    const rowNames = new Map(group ? group.subtopics.map(subtopic => [subtopic.key, subtopic.name] as const) : groups.map(entry => [entry.key, entry.name] as const));
+    const map = topicUnitMap(topicUnits, weights, rowNames, { topic: group?.key, limit: MAP_COLUMNS });
+
+    const breakdown = summarizeBreakdown(breakdownRows.results as BreakdownRow[]);
     const { total } = breakdown;
     const accuracy = accuracyOf(total);
+    const review = (reviewRows.results[0] as ReviewStats | undefined) ?? { queued: 0, dropped: 0, retried: 0, fixed: 0, recovered: 0 };
+    const paperResults = inMocks ? null : summarizePapers(papers, resultRows.results as PaperResultRow[]);
+    const mockResults = inMocks ? summarizeMocks(resultRows.results as MockRow[], resultRows.results.length) : null;
+    const activity = inMocks ? null : activityFor((activityRows?.results ?? []) as ActivityRow[], filters, today);
+
+    const noun = examNoun(filters);
+    const per = inMocks ? 'mock' : 'paper';
+    const paperById = new Map(papers.map(paper => [Number(paper.id), paper]));
+    const mockById = new Map(mocks.map(mock => [Number(mock.id), mock]));
+    const columns: ExamColumn[] = map.units.map(id => {
+        const mock = inMocks ? mockById.get(id) : undefined;
+        if (mock) {
+            const finished = formatTimestamp(mock.completed_at);
+            return { label: finished || '—', detail: '', title: `${mockName(mock)}${finished ? `, ${finished}` : ''}`, href: `/past-papers/mock-exams/${id}/mark` };
+        }
+        const paper = paperById.get(id);
+        return paper
+            ? { label: String(paper.academic_year ?? ''), detail: schoolCode(paper.school_name), title: paperName(paper), href: `/past-papers/paper/${id}` }
+            : { label: '?', detail: '', title: '', href: '#' };
+    });
+
+    // The Topic menu lists the topics with questions in scope, plus the chosen one whatever the scope.
+    const topicOptions = allTopics.map(topic => ({ key: topic.key, name: topic.name }));
+    if (group && !topicOptions.some(option => option.key === group.key)) topicOptions.push({ key: group.key, name: group.name });
+    topicOptions.sort((a, b) => a.name.localeCompare(b.name));
+
+    const topicsTitle = group ? `${group.name} subtopics` : 'Topics';
+    const topicsAction = group && (
+        <div class="flex flex-wrap gap-x-5">
+            <a href={statsUrl(subject, { ...filters, topic: '' })} class={ACTION_LINK}>All topics</a>
+            <a href={practiceUrl(subject, group.name)} class={ACTION_LINK}>Practise {group.name}</a>
+        </div>
+    );
 
     return (
         <div class="space-y-12" data-stats-root>
             <style dangerouslySetInnerHTML={{ __html: HEAT_STYLES }} />
 
-            <div>
+            <div class="space-y-6">
                 <h1 class="text-3xl font-bold dark:text-white">Statistics</h1>
-                <ul class={`mt-3 flex flex-wrap gap-x-8 gap-y-1 text-base sm:text-lg ${BODY}`}>
-                    <li>
-                        <strong class={STRONG}>{formatCount(total.attempted)}</strong> of {formatCount(total.questions)} questions attempted
-                        {paperSummary.complete > 0 ? ` (${plural(paperSummary.complete, 'full paper')})` : ''}
-                    </li>
-                    {accuracy != null && <li><strong class={STRONG}>{formatPercent(accuracy)}</strong> accuracy</li>}
-                    <li>{mocks.count > 0 ? <><strong class={STRONG}>{formatPercent(mocks.average)}</strong> mock average</> : 'no mocks marked yet'}</li>
-                    {activity.current > 0 ? (
-                        <li><strong class={STRONG}>{formatCount(activity.current)}</strong>-day streak</li>
-                    ) : activity.lastActive ? (
-                        <li>last practised {formatDay(activity.lastActive, { day: 'numeric', month: 'short' })}</li>
-                    ) : null}
-                </ul>
+                <FilterBar subject={subject} filters={filters} papers={papers} mocks={mocks} topics={topicOptions} today={today} />
+                {total.questions > 0 && (
+                    <>
+                        <dl class="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-6">
+                            <Stat label="Attempted" value={formatCount(total.attempted)} of={formatCount(total.questions)} />
+                            <Stat label="Accuracy" value={formatPercent(accuracy)} tone={accuracy == null ? undefined : scoreTone(accuracy)}
+                                note={total.marksAttempted > 0 ? `${formatMarks(total.marksEarned)} of ${plural(total.marksAttempted, 'mark')}` : undefined} />
+                            {total.scored > 0 ? (
+                                <Stat label="Full marks" value={formatCount(total.fullMarks)} of={formatCount(total.scored)} />
+                            ) : (
+                                <Stat label="Full marks" value="—" />
+                            )}
+                            {mockResults ? (
+                                <Stat label={singleMock ? 'Mock score' : 'Mock average'} value={formatPercent(mockResults.average)}
+                                    tone={mockResults.average == null ? undefined : scoreTone(mockResults.average)}
+                                    note={mockResults.count === 0
+                                        ? 'not marked yet'
+                                        : singleMock
+                                            ? `${formatMarks(mockResults.recent[0].marksAwarded)} of ${plural(mockResults.recent[0].totalMarks, 'mark')}`
+                                            : mockResults.count > 1 ? `best ${formatPercent(mockResults.best)}` : undefined} />
+                            ) : paperResults && (
+                                <Stat label="Papers finished" value={formatCount(paperResults.complete)} of={formatCount(paperResults.total)}
+                                    note={paperResults.started > 0 ? `${formatCount(paperResults.started)} started` : undefined} />
+                            )}
+                        </dl>
+                    </>
+                )}
             </div>
 
-            {topics.length === 0 ? (
-                <p class={MUTED}>No questions in {subjectLabel(subject)} are tagged with topics yet, so there are no topic statistics.</p>
+            {total.questions === 0 ? (
+                <p class={BODY}>
+                    No questions match these filters.{' '}
+                    <a href={statsUrl(subject, DEFAULT_STATS_FILTERS)} class={INLINE_LINK}>Show everything</a>
+                </p>
             ) : (
                 <>
-                    <Section title="What to work on">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-                            <FocusList
-                                subject={subject}
-                                title="Losing the most marks"
-                                items={focus.leaks}
-                                empty={total.attempted === 0
-                                    ? 'Once you mark a few questions, the topics costing you marks will show up here.'
-                                    : `Nothing stands out yet. A topic shows up here once you've tried ${MIN_TOPIC_MARKS} marks' worth of it and dropped some.`}
-                                describe={describeLeak(weighted, paperNoun)}
-                            />
-                            <FocusList
-                                subject={subject}
-                                title="Least practised"
-                                items={focus.gaps}
-                                empty="You've attempted every question in every topic the papers examine."
-                                describe={describeGap(weighted, paperNoun)}
-                            />
+                    <Section title={topicsTitle} action={topicsAction}>
+                        {tableTopics.length === 0 ? (
+                            <p class={BODY}>
+                                {group
+                                    ? `${group.name} has no subtopics here.`
+                                    : 'No topics tagged yet.'}
+                            </p>
+                        ) : (
+                            <>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 mb-10">
+                                    <FocusList
+                                        title="Losing the most marks"
+                                        items={focus.leaks}
+                                        empty="Nothing yet."
+                                        describe={describeLeak(weighted, noun)}
+                                        href={topic => (group ? topicIdPracticeUrl(subject, topic.topicIds[0], true) : practiceUrl(subject, topic.name, true))}
+                                    />
+                                    <FocusList
+                                        title="Least practised"
+                                        items={focus.gaps}
+                                        empty="Everything attempted."
+                                        describe={describeGap(weighted, noun)}
+                                        href={topic => (group ? topicIdPracticeUrl(subject, topic.topicIds[0], true) : practiceUrl(subject, topic.name, true))}
+                                    />
+                                </div>
+
+                                <TopicTable
+                                    topics={tableTopics}
+                                    columns={{ weighted, examCount: weights.units.length, per }}
+                                    label={group ? 'Subtopic' : 'Topic'}
+                                    rowLink={topic => (group
+                                        ? { href: topicIdPracticeUrl(subject, topic.topicIds[0]), title: 'Practise these questions' }
+                                        : { href: statsUrl(subject, { ...filters, topic: topic.key }), title: `Statistics for ${topic.name} and its subtopics` })}
+                                    subtopicLink={subtopic => ({ href: topicIdPracticeUrl(subject, subtopic.topicIds[0]), title: 'Practise these questions' })}
+                                />
+
+                                {map.unitCount > 1 && map.rows.length > 0 && (
+                                    <div class="mt-10">
+                                        <h3 class="mb-4 font-semibold text-gray-900 dark:text-white">Marks in each {per}</h3>
+                                        <TopicMapTable map={map} columns={columns} />
+                                        {map.units.length < map.unitCount && (
+                                            <p class={`mt-2 text-center text-xs ${MUTED}`}>Latest {map.units.length} of {plural(map.unitCount, noun)}; Avg covers all</p>
+                                        )}
+                                        <p class={`mt-2 text-center text-xs ${MUTED}`}>Note: Sum usually exceeds 100 due to cross-topic questions OR Options essay</p>
+                                    </div>
+                                    
+                                )}
+                            </>
+                        )}
+                    </Section>
+
+                    {mockResults ? (
+                        <Section title={singleMock ? 'Mock exam' : 'Mock exams'}
+                            action={<a href={`/past-papers/mock-exams?subject=${encodeURIComponent(subject)}`} class={ACTION_LINK}>All mock exams</a>}>
+                            {mockResults.count === 0 ? (
+                                <p class={BODY}>
+                                    Not marked yet.
+                                    {singleMock && <> <a href={`/past-papers/mock-exams/${filters.mock}/mark`} class={INLINE_LINK}>Mark it</a></>}
+                                </p>
+                            ) : (
+                                <>
+                                    {mockResults.pace != null && (
+                                        <p class={`mb-4 text-sm ${MUTED}`}>
+                                            Pace <span class={STRONG}>{formatMarks(mockResults.pace)}</span> min a mark (HSC {HSC_MINUTES_PER_MARK})
+                                        </p>
+                                    )}
+                                    <MockTable results={mockResults.recent} />
+                                </>
+                            )}
+                        </Section>
+                    ) : paperResults && (
+                        <Section title="Papers" action={<a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=browse`} class={ACTION_LINK}>Browse papers</a>}>
+                            {paperResults.complete + paperResults.started > 0 ? (
+                                <PaperTable results={paperResults.results.filter(result => result.attempted > 0)} />
+                            ) : (
+                                <p class={BODY}>None started yet.</p>
+                            )}
+                        </Section>
+                    )}
+
+                    <Section title="How you score">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 items-start gap-x-10 gap-y-8">
+                            <BreakdownTable title="Question type" entries={breakdown.byType} />
+                            <BreakdownTable title="Mark value" entries={breakdown.byMarks} />
                         </div>
                     </Section>
 
-                    <Section
-                        title="Topics"
-                        action={hscWeights.papers.length > 0 && (
-                            <WeightLinks subject={subject} basis={basis} hscCount={hscWeights.papers.length} allCount={allWeights.papers.length} />
-                        )}>
-                        <p class={`mb-4 text-sm ${MUTED}`}>
-                            {weighted
-                                ? `Marks per paper is the average ${aPaper} gives each topic, across ${plural(weights.papers.length, paperNoun)} from ${yearRange(weights.papers)}.`
-                                : "No paper has tagged questions yet, so topics can't be weighted."}
-                        </p>
-                        <TopicTable subject={subject} topics={topics} weights={weights} />
+                    <Section title="Review" action={<a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=review`} class={ACTION_LINK}>Open Review</a>}>
+                        <p class={BODY}>{reviewSummary(review)}</p>
                     </Section>
 
-                    {map.papers.length > 0 && map.rows.length > 0 && (
-                        <Section title="Topics in each HSC paper">
-                            <p class={`mb-4 text-sm ${MUTED}`}>Marks each HSC paper gave a topic. A blank means none of that year's questions were tagged with it.</p>
-                            <TopicMapTable map={map} />
+                    {activity && (
+                        <Section title="Activity">
+                            <p class={`mb-4 ${BODY}`}>{activityText(activity.summary, !!(filters.from || filters.to))}</p>
+                            <ActivityHeatmap heatmap={activity.heatmap} />
                         </Section>
                     )}
                 </>
             )}
 
-            <Section title="How you score">
-                <p class={`mb-5 ${BODY}`}>
-                    {total.scored > 0 ? (
-                        <>
-                            Overall you've scored <strong class={STRONG}>{formatCount(total.marksEarned)}</strong> of {formatCount(total.marksAttempted)} marks
-                            ({formatPercent(accuracy)}), with full marks on {formatCount(total.fullMarks)} of the {plural(total.scored, 'question')} you've attempted.
-                        </>
-                    ) : (
-                        "Once you've marked some questions, this shows where your marks come from."
-                    )}
-                </p>
-                <div class="grid grid-cols-1 sm:grid-cols-3 items-start gap-x-10 gap-y-8">
-                    <BreakdownTable title="Question type" entries={breakdown.byType} />
-                    <BreakdownTable title="Mark value" entries={breakdown.byMarks} />
-                    <BreakdownTable title="Paper" entries={breakdown.byKind} />
-                </div>
-            </Section>
-
-            <Section title="Mock exams" action={<a href={`/past-papers/mock-exams?subject=${encodeURIComponent(subject)}`} class={ACTION_LINK}>All mock exams</a>}>
-                {mocks.count === 0 ? (
-                    <p class={BODY}>
-                        You haven't marked a mock exam yet. A timed mock is the closest practice you'll get to the real exam.{' '}
-                        <a href={`/past-papers/mock-exams/create?subject=${encodeURIComponent(subject)}`} class={INLINE_LINK}>Create one</a>
-                    </p>
-                ) : (
-                    <>
-                        <p class={BODY}>{mockSummary(mocks)}</p>
-                        <p class={`mt-1 mb-5 ${BODY}`}>{paceSummary(mocks)}</p>
-                        <MockTable results={mocks.recent} />
-                    </>
-                )}
-            </Section>
-
-            <Section title="Review" action={<a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=review`} class={ACTION_LINK}>Open Review</a>}>
-                <p class={BODY}>{reviewSummary(review)}</p>
-            </Section>
-
-            <Section title="Activity">
-                <p class={`mb-4 ${BODY}`}>
-                    {activity.total === 0
-                        ? 'Nothing yet. Every question you attempt shows up here.'
-                        : `${plural(activity.thisWeek, 'attempt')} this week and ${formatCount(activity.lastWeek)} last week, ${formatCount(activity.total)} in all. ` +
-                          `Active on ${formatCount(activity.activeLast30)} of the last 30 days; your longest streak is ${plural(activity.longest, 'day')}.`}
-                </p>
-                <ActivityHeatmap heatmap={heatmap} />
-            </Section>
-
             <details class={`text-sm ${MUTED}`}>
                 <summary class="cursor-pointer font-bold text-gray-600 dark:text-neutral-300">How these numbers are worked out</summary>
                 <ul class="mt-3 space-y-2 list-disc pl-5">
+                    <li>Every figure on this page follows the filters. "Questions from" picks which questions count: papers of one kind, or the questions in your finished mock exams. "Topic" keeps only that topic's questions and breaks the topic tables down into its subtopics. "Period" keeps only the answers and marks you saved on those Sydney dates, so a question last marked before the period counts as not attempted.</li>
                     <li>A question counts as attempted once you've saved an answer or a mark for it, in Practice, Batch Mode or a marked mock exam. Accuracy is the marks you gave yourself out of the marks available on those questions.</li>
                     <li>Topics are grouped the way Browse groups them: "Calculus 1.2 Differentiation" and "Calculus - Integration" are subtopics of Calculus, and names that differ only in case, spacing or a syllabus number are merged. A question counts once towards a topic however many of its subtopics it's tagged with, so a topic's subtopics can add up to more than the topic.</li>
-                    <li>Marks per paper is how many marks a paper gives a topic on average. A question tagged with two topics counts towards both, so a paper's topics can add up to more than its total.</li>
+                    <li>Marks per paper is how many marks a paper in your chosen papers gives a topic on average, over the papers with tagged questions; with mock exams chosen, it's per mock instead. A question tagged with two topics counts towards both, so an exam's topics can add up to more than its total.</li>
                     <li>"Losing the most marks" multiplies a topic's marks per paper by the share you're dropping, once you've tried {MIN_TOPIC_MARKS} marks' worth of it. "Least practised" compares the marks you've attempted on a topic with what it's worth.</li>
-                    <li>Mock exams are scored from the marks you saved when you marked them, so a finished mock you haven't marked isn't counted.</li>
+                    <li>Mock exams are scored from the marks you saved when you marked them, so a finished mock you haven't marked isn't counted. With a period chosen, only mocks finished in it count.</li>
                     <li>Activity counts the first time you attempt each question, plus every review attempt, by Sydney date.</li>
                 </ul>
             </details>

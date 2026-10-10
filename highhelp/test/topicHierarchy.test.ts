@@ -20,14 +20,31 @@ describe('parseTopicHierarchy', () => {
 		expect(parseTopicHierarchy('Self-determination – Treaty')).toEqual({ topic: 'Self-determination', subtopic: 'Treaty' });
 	});
 
-	it('only treats a number as a section when it starts a word', () => {
-		expect(parseTopicHierarchy('3D Vectors')).toEqual({ topic: '3D Vectors', subtopic: null });
-		expect(parseTopicHierarchy('Vitamin B12')).toEqual({ topic: 'Vitamin B12', subtopic: null });
+	it('splits at the first number even inside a word, as Browse groups them', () => {
+		expect(parseTopicHierarchy('M1.1 - abc')).toEqual({ topic: 'M', subtopic: '1.1 - abc' });
+		expect(parseTopicHierarchy('M1.2 abc')).toEqual({ topic: 'M', subtopic: '1.2 abc' });
+		expect(parseTopicHierarchy('MA-C1 Differentiation')).toEqual({ topic: 'MA-C', subtopic: '1 Differentiation' });
+		expect(parseTopicHierarchy('Vitamin B12')).toEqual({ topic: 'Vitamin B', subtopic: '12' });
 	});
 
-	it('splits at whichever separator comes first, and drops the separator from both halves', () => {
+	it('ignores a number with nothing before it', () => {
+		expect(parseTopicHierarchy('3D Vectors')).toEqual({ topic: '3D Vectors', subtopic: null });
+		expect(parseTopicHierarchy('3D Vectors 2')).toEqual({ topic: '3D Vectors', subtopic: '2' });
+	});
+
+	it('makes everything before a section number the topic, even past a dash', () => {
+		expect(parseTopicHierarchy('Mechanics – Projectiles 2')).toEqual({ topic: 'Mechanics – Projectiles', subtopic: '2' });
+		expect(parseTopicHierarchy('Statistics - Bivariate 3.1 Correlation')).toEqual({ topic: 'Statistics - Bivariate', subtopic: '3.1 Correlation' });
+		// A separator left at the seam is dropped from both halves.
 		expect(parseTopicHierarchy('Calculus - 1.2 Differentiation')).toEqual({ topic: 'Calculus', subtopic: '1.2 Differentiation' });
-		expect(parseTopicHierarchy('Mechanics – Projectiles 2')).toEqual({ topic: 'Mechanics', subtopic: 'Projectiles 2' });
+		expect(parseTopicHierarchy('Calculus-1.2 Differentiation')).toEqual({ topic: 'Calculus', subtopic: '1.2 Differentiation' });
+		expect(parseTopicHierarchy('Calculus: 1.2 Differentiation')).toEqual({ topic: 'Calculus', subtopic: '1.2 Differentiation' });
+	});
+
+	it('only splits at a dash when there is no section number', () => {
+		expect(parseTopicHierarchy('Calculus – Integration')).toEqual({ topic: 'Calculus', subtopic: 'Integration' });
+		// A leading number can't start a subtopic, so the dash still splits.
+		expect(parseTopicHierarchy('3D Vectors - Lines')).toEqual({ topic: '3D Vectors', subtopic: 'Lines' });
 	});
 
 	it('leaves plain names alone and normalises spacing', () => {

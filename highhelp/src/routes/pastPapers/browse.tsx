@@ -1026,7 +1026,7 @@ app.get('/past-papers', async (c) => {
             </div>
         );
     } else if (tab === 'stats') {
-        content = await renderStatisticsTab(c.env.DB, user.id, subject, c.req.query('basis'));
+        content = await renderStatisticsTab(c.env.DB, user.id, subject, key => c.req.query(key));
     }
 
     return c.html(

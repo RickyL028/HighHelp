@@ -412,17 +412,25 @@ export const normalizeTopicHierarchyLabel = (value: string) => value.trim().repl
 // Separator characters left at the seam of a split, e.g. the dash in "Calculus - 1.2 Differentiation".
 const trimTopicSeparators = (value: string) => normalizeTopicHierarchyLabel(value.replace(/^[\s\-–—:.,]+|[\s\-–—:.,]+$/g, ''));
 
+// The first digit anywhere after the first character, even inside a word: "M1.1 - Vectors" and
+// "M1.2 Forces" are both under "M".
+const SECTION_NUMBER = /(?<=.)\d/;
+// A dash with a space before it, or any en or em dash. A hyphen inside a word ("Z-scores") is part of the name.
+const TOPIC_DASH = /\s-|[–—]/;
+
 /**
- * "Calculus 1.2 Differentiation" and "Calculus - Integration" are subtopics of "Calculus": a number
- * starting a word, or a dash with a space before it (any en or em dash), splits a topic from its
- * subtopic, whichever comes first. A hyphen inside a word is part of the name, so
- * "Product-to-Sum Identities" and "Z-scores" stay whole topics.
+ * Browse groups topics by the phrase before the first number: "Calculus 1.2 Differentiation" and
+ * "M1.1 - Vectors" are subtopics of "Calculus" and "M", the number starting the subtopic. The number
+ * decides first, so "Mechanics – Projectiles 2" is under "Mechanics – Projectiles". Only a name with no
+ * number is split at a dash, as "Calculus - Integration" is. "Product-to-Sum Identities" and
+ * "Z-scores" stay whole topics, and so does "3D Vectors", whose number has nothing before it.
  */
 export function parseTopicHierarchy(name: string): TopicHierarchy {
     const value = normalizeTopicHierarchyLabel(name);
-    const index = value.search(/\s\d|\s-|[–—]/);
 
-    if (index > 0) {
+    for (const separator of [SECTION_NUMBER, TOPIC_DASH]) {
+        const index = value.search(separator);
+        if (index <= 0) continue;
         const topic = trimTopicSeparators(value.slice(0, index));
         const subtopic = trimTopicSeparators(value.slice(index));
         if (topic && subtopic) return { topic, subtopic };
