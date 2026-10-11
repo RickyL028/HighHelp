@@ -4,7 +4,7 @@ export const PRACTICE_PAGE_SIZE = 50
 
 export type PracticeSort = 'year_asc' | 'year_desc' | 'question_asc' | 'question_desc'
 
-export const DEFAULT_PRACTICE_SORT: PracticeSort = 'year_asc'
+export const DEFAULT_PRACTICE_SORT: PracticeSort = 'question_asc'
 
 const PRACTICE_SORTS: readonly string[] = ['year_asc', 'year_desc', 'question_asc', 'question_desc']
 
@@ -244,15 +244,17 @@ export function buildPracticeWhere(userId: number, subject: string, filters: Pra
 }
 
 // `question_number` is free text ("1", "12", "32a", "A1", "b", "ii"), so ordering by it means
-// ordering by the number it starts with. The cast has to happen in SQL for the ORDER BY and in
-// JS for the keyset predicate, so both sides are pinned to the one expression and one mirror
-// function below; `questionNumberKey` is verified against SQLite in the test suite.
-const QUESTION_NUMBER_KEY = 'IFNULL(CAST(q.question_number AS INTEGER), 0)'
+// ordering by its number: the digits after any leading letters, so "A10" is 10 and sorts after "A2"
+// rather than as text. The key has to be worked out in SQL for the ORDER BY and in JS for the keyset
+// predicate, so both sides are pinned to the one expression and one mirror function below;
+// `questionNumberKey` is verified against SQLite in the test suite.
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+const QUESTION_NUMBER_KEY = `IFNULL(CAST(LTRIM(TRIM(q.question_number), '${LETTERS}') AS INTEGER), 0)`
 const QUESTION_NUMBER_TIEBREAK = 'q.question_number COLLATE NOCASE'
 
-/** JS mirror of `CAST(x AS INTEGER)`: leading integer, truncated at the first non-digit, 0 when there is none. */
+/** JS mirror of QUESTION_NUMBER_KEY: the integer after any leading letters, truncated at the next non-digit, 0 when there is none. */
 export const questionNumberKey = (value: string | null | undefined) => {
-    const parsed = parseInt(String(value ?? '').trim(), 10)
+    const parsed = parseInt(String(value ?? '').trim().replace(/^[A-Za-z]+/, ''), 10)
     return Number.isFinite(parsed) ? parsed : 0
 }
 

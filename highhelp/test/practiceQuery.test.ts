@@ -2,6 +2,7 @@ import { env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import {
 	BATCH_PAGE_LIMIT,
+	DEFAULT_PRACTICE_SORT,
 	UNSORTED_SECTION_LABEL,
 	buildBatchPracticeQuery,
 	buildNavigationPlan,
@@ -47,13 +48,13 @@ const baseFilters: PracticeFilters = {
 const rawFrom = (query: Record<string, string>) => readRawPracticeFilters(key => query[key]);
 
 describe('readRawPracticeFilters', () => {
-	it('defaults sort to year_asc and rejects unknown values', () => {
-		expect(rawFrom({}).sort).toBe('year_asc');
+	it('defaults sort to DEFAULT_PRACTICE_SORT and rejects unknown values', () => {
+		expect(rawFrom({}).sort).toBe(DEFAULT_PRACTICE_SORT);
 		for (const sort of ALL_SORTS) {
 			expect(rawFrom({ sort }).sort).toBe(sort);
 		}
-		expect(rawFrom({ sort: 'rm -rf' }).sort).toBe('year_asc');
-		expect(rawFrom({ sort: 'school_asc' }).sort).toBe('year_asc');
+		expect(rawFrom({ sort: 'rm -rf' }).sort).toBe(DEFAULT_PRACTICE_SORT);
+		expect(rawFrom({ sort: 'school_asc' }).sort).toBe(DEFAULT_PRACTICE_SORT);
 	});
 
 	it('only accepts known status and type values', () => {
@@ -216,7 +217,7 @@ describe('ordering', () => {
 
 	it('leads a question sort with the number, breaking ties by the raw label then the year', () => {
 		expect(practiceNeighborOrder('question_asc')).toEqual([
-			{ expression: 'IFNULL(CAST(q.question_number AS INTEGER), 0)', direction: 'ASC' },
+			{ expression: 'IFNULL(CAST(LTRIM(TRIM(q.question_number), \'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\') AS INTEGER), 0)', direction: 'ASC' },
 			{ expression: 'q.question_number COLLATE NOCASE', direction: 'ASC' },
 			{ expression: 'p.academic_year', direction: 'ASC' },
 			{ expression: 'q.id', direction: 'ASC' }
@@ -225,7 +226,7 @@ describe('ordering', () => {
 
 	it('reverses every key for the descending question sort so it is the exact mirror', () => {
 		expect(practiceOrder('question_desc')).toBe(
-			'IFNULL(CAST(q.question_number AS INTEGER), 0) DESC, q.question_number COLLATE NOCASE DESC, p.academic_year DESC, q.id DESC'
+			'IFNULL(CAST(LTRIM(TRIM(q.question_number), \'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\') AS INTEGER), 0) DESC, q.question_number COLLATE NOCASE DESC, p.academic_year DESC, q.id DESC'
 		);
 		expect(practiceNeighborOrder('question_desc').map(part => part.direction)).toEqual(['DESC', 'DESC', 'DESC', 'DESC']);
 	});
@@ -238,20 +239,32 @@ describe('ordering', () => {
 });
 
 describe('questionNumberKey', () => {
-	// The SQL side is CAST(q.question_number AS INTEGER); these expectations are the SQLite answers
-	// for the same inputs, so the keyset predicate cannot diverge from the ORDER BY.
-	it.each([
+	const CASES: [string | null, number][] = [
 		['1', 1],
 		['12', 12],
 		['32a', 32],
-		['A1', 0],
+		['A1', 1],
+		['A10', 10],
+		['e12', 12],
+		['12e(ii)', 12],
 		['b', 0],
 		['ii', 0],
 		[' 7 ', 7],
 		['', 0],
 		[null, 0]
-	])('reads %o as %i', (value, expected) => {
-		expect(questionNumberKey(value as string | null)).toBe(expected);
+	];
+
+	it.each(CASES)('reads %o as %i', (value, expected) => {
+		expect(questionNumberKey(value)).toBe(expected);
+	});
+
+	// The keyset predicate cannot diverge from the ORDER BY: SQLite must give the same answers.
+	it('matches the SQL key', async () => {
+		const sql = practiceOrder('question_asc').split(' ASC')[0].replace('q.question_number', '?');
+		for (const [value, expected] of CASES) {
+			const row = await env.DB.prepare(`SELECT ${sql} AS k`).bind(value).first<{ k: number }>();
+			expect(row?.k, String(value)).toBe(expected);
+		}
 	});
 });
 
@@ -402,17 +415,17 @@ describe('buildNeighborQueries', () => {
 	it('moves to a later question number by comparing the cast key, then falls back to id', () => {
 		const base = buildPracticeWhere(7, 'Mathematics', { ...baseFilters, sort: 'question_asc' });
 		const queries = buildNeighborQueries(base, practiceNeighborOrder('question_asc'), [12, '12a', 2024, 42], 42);
-		expect(queries.next.sql).toContain('IFNULL(CAST(q.question_number AS INTEGER), 0) > ?');
+		expect(queries.next.sql).toContain('IFNULL(CAST(LTRIM(TRIM(q.question_number), \'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\') AS INTEGER), 0) > ?');
 		// same number, so the tie is broken on the raw label, then the year, then the id
-		expect(queries.next.sql).toContain('IFNULL(CAST(q.question_number AS INTEGER), 0) = ? AND q.question_number COLLATE NOCASE > ?');
+		expect(queries.next.sql).toContain('IFNULL(CAST(LTRIM(TRIM(q.question_number), \'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\') AS INTEGER), 0) = ? AND q.question_number COLLATE NOCASE > ?');
 		expect(queries.next.params.slice(2)).toEqual([12, 12, '12a', 12, '12a', 2024, 12, '12a', 2024, 42]);
 	});
 
 	it('moves to an earlier question when the sort is descending', () => {
 		const base = buildPracticeWhere(7, 'Mathematics', { ...baseFilters, sort: 'question_desc' });
 		const queries = buildNeighborQueries(base, practiceNeighborOrder('question_desc'), [12, '12a', 2024, 42], 42);
-		expect(queries.next.sql).toContain('IFNULL(CAST(q.question_number AS INTEGER), 0) < ?');
-		expect(queries.previous.sql).toContain('IFNULL(CAST(q.question_number AS INTEGER), 0) > ?');
+		expect(queries.next.sql).toContain('IFNULL(CAST(LTRIM(TRIM(q.question_number), \'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\') AS INTEGER), 0) < ?');
+		expect(queries.previous.sql).toContain('IFNULL(CAST(LTRIM(TRIM(q.question_number), \'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\') AS INTEGER), 0) > ?');
 	});
 });
 
@@ -445,7 +458,7 @@ describe('buildNeighborWindowQuery', () => {
 		const base = buildPracticeWhere(7, 'Mathematics', { ...baseFilters, sort: 'question_asc' });
 		const query = buildNeighborWindowQuery(base, practiceNeighborOrder('question_asc'), [12, '12a', 2024, 42], 'after', 10);
 		expect(query.sql).toContain(
-			'ORDER BY IFNULL(CAST(q.question_number AS INTEGER), 0) ASC, q.question_number COLLATE NOCASE ASC, p.academic_year ASC, q.id ASC'
+			'ORDER BY IFNULL(CAST(LTRIM(TRIM(q.question_number), \'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\') AS INTEGER), 0) ASC, q.question_number COLLATE NOCASE ASC, p.academic_year ASC, q.id ASC'
 		);
 		expect(query.params[2]).toBe(12);
 		expect(query.params[query.params.length - 1]).toBe(10);
@@ -501,7 +514,7 @@ describe('buildNavigationPlan', () => {
 	// wrong column is detected instead of silently producing a wrong position.
 	const fieldFor = (expression: string): NeighborKeySource => {
 		if (expression.includes('academic_year')) return 'academic_year';
-		if (expression.includes('CAST(q.question_number')) return 'question_number_key';
+		if (expression.includes('AS INTEGER')) return 'question_number_key';
 		if (expression.includes('q.question_number')) return 'question_number';
 		if (expression.includes('ordering_index')) return 'ordering_index';
 		if (expression.endsWith('q.id')) return 'id';
