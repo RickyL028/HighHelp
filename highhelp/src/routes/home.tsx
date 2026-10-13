@@ -9,7 +9,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 // hasn't passed and rolls over by itself, so queue future events here ahead of time. Shown as
 // "Until <label>". Students can add their own on top of these; those live in their browser only.
 const SCHOOL_COUNTDOWNS: { label: string; date: string }[] = [
-    { label: 'Year 12! (Term 4)', date: '2026-10-13T09:00' },
+    { label: 'HSC Task 1', date: '2026-11-30T09:00' },
 ]
 
 const iconButton = 'w-8 h-8 flex items-center justify-center rounded-full text-lg leading-none text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-neutral-800 hover:text-gray-900 dark:hover:text-white'
