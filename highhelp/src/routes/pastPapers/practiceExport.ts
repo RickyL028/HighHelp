@@ -20,6 +20,7 @@ export type StimulusCoordinates = {
 }
 
 export type PracticeExportRow = {
+    id: number
     section_label: string | null
     segment_label: string | null
     question_number: string | null
@@ -35,6 +36,8 @@ export type PracticeExportRow = {
 }
 
 export type ExportedQuestion = {
+    // Not part of the AI import format (the importer ignores it); lets an exported list be turned back into a mock exam.
+    question_id: number
     section_label: string
     segment_label: string | null
     question_number: string
@@ -84,6 +87,7 @@ export function parseStimulusCoordinates(key: string | null): StimulusCoordinate
 
 export function toExportedQuestion(row: PracticeExportRow): ExportedQuestion {
     return {
+        question_id: row.id,
         section_label: (row.section_label || '').trim() || 'I',
         segment_label: trimmedOrNull(row.segment_label),
         question_number: (row.question_number || '').trim() || '?',
@@ -114,7 +118,7 @@ export function buildPracticeExportQueries(userId: number, subject: string, filt
     return {
         list: {
             sql: `
-                SELECT q.section_label, q.segment_label, q.question_number, q.question_type, q.marks,
+                SELECT q.id, q.section_label, q.segment_label, q.question_number, q.question_type, q.marks,
                        q.question_text, q.answer_text, q.mc_answer, q.stimulus_image_key,
                        p.academic_year, p.paper_type,
                        (SELECT GROUP_CONCAT(t.name, '${TOPIC_SEPARATOR}') FROM question_topics qt

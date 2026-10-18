@@ -9,7 +9,52 @@ import { subjectLabel } from '../../constants'
 import { AnswerInput, DrawingPreview, WorkingPad, type DrawingFieldProps } from '../../components/DrawingField'
 import { mockDrawingContext, mockDrawingUrls } from './drawingDoc'
 import { copyDrawing } from './drawings'
+import { MAX_MOCK_QUESTIONS, buildMockQuestionInserts, buildQuestionIdLookups, missingQuestionIds, parseQuestionIdList } from './mockIds'
 const app = new Hono<{ Bindings: Bindings }>()
+
+const inputClass = 'w-full rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500'
+
+const QuestionIdForm = ({ subject, error, values }: { subject: string; error?: string; values?: { examName?: string; timerMinutes?: string; idList?: string | null } }) => (
+    <form action="/past-papers/mock-exams/create-manual" method="post" class="space-y-6 bg-white dark:bg-neutral-800 p-6 rounded-xl border border-gray-200 dark:border-neutral-700 shadow-sm">
+        <input type="hidden" name="subject" value={subject} />
+        <div>
+            <h2 class="text-xl font-bold dark:text-white">Enter Question IDs</h2>
+            <p class="text-sm text-gray-500 dark:text-neutral-400 mt-1">
+                Use <strong>Export JSON</strong> on the{' '}
+                <a href={`/past-papers?subject=${encodeURIComponent(subject)}&tab=practice`} class="text-blue-600 dark:text-blue-400 hover:underline">Practice Questions</a>{' '}
+                tab (every question has a <code>question_id</code>), ask an AI to pick the ones you want, then paste its IDs here. Questions appear in the order you list them.
+            </p>
+        </div>
+
+        {error && (
+            <div class="text-sm rounded-md border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-3">{error}</div>
+        )}
+
+        <div>
+            <label class="block font-bold text-gray-700 dark:text-neutral-300 mb-2">Question IDs</label>
+            <textarea name="question_id_list" rows={4} required placeholder="e.g. 1, 4, 100, 49" class={`${inputClass} font-mono`}>{values?.idList || ''}</textarea>
+            <p class="text-xs text-gray-500 dark:text-neutral-400 mt-1">Separate with commas, spaces or new lines. Up to {MAX_MOCK_QUESTIONS} questions.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block font-bold text-gray-700 dark:text-neutral-300 mb-2">Exam Name</label>
+                <input type="text" name="exam_name" value={values?.examName || ''} placeholder="e.g. AI Picked Practice" class={inputClass} />
+            </div>
+            <div>
+                <label class="block font-bold text-gray-700 dark:text-neutral-300 mb-2">Timer (Optional)</label>
+                <div class="flex items-center gap-2">
+                    <input type="number" name="timer_minutes" min="0" value={values?.timerMinutes || ''} placeholder="Minutes" class="w-32 rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+                    <span class="text-gray-500 dark:text-neutral-400">minutes</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="pt-2">
+            <button class="w-full text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">Create Exam</button>
+        </div>
+    </form>
+)
 
 
 const getPage = (key?: string) => {
@@ -236,11 +281,14 @@ app.get('/mock-exams/create', async (c) => {
                     )}
 
                     {c.req.query('mode') === 'manual' && (
-                        <div class="bg-gray-50 dark:bg-neutral-800/50 p-6 rounded-xl border border-gray-200 dark:border-neutral-700 text-center">
-                            <p class="text-gray-600 dark:text-neutral-300 mb-4">To create a manual exam, please browse the <strong>Practice Questions</strong> tab and select the questions you want to add.</p>
-                            <a href={`/past-papers?subject=${encodeURIComponent(subject || '')}&tab=practice&mode=select`} class="inline-block text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
-                                Go to Question Selector →
-                            </a>
+                        <div class="space-y-6">
+                            <div class="bg-gray-50 dark:bg-neutral-800/50 p-6 rounded-xl border border-gray-200 dark:border-neutral-700 text-center">
+                                <p class="text-gray-600 dark:text-neutral-300 mb-4">To create a manual exam, please browse the <strong>Practice Questions</strong> tab and select the questions you want to add.</p>
+                                <a href={`/past-papers?subject=${encodeURIComponent(subject || '')}&tab=practice&mode=select`} class="inline-block text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors">
+                                    Go to Question Selector →
+                                </a>
+                            </div>
+                            <QuestionIdForm subject={subject || ''} />
                         </div>
                     )}
                 </div>
@@ -400,14 +448,9 @@ app.post('/mock-exams/create-auto', async (c) => {
     if (!examRes) return c.text("Failed to create exam", 500)
     const examId = examRes.id
 
-    const placeholders = finalQuestions.map(() => '(?, ?, ?)').join(', ')
-    const values: any[] = []
-    finalQuestions.forEach((q: any, index) => {
-        values.push(examId, q.id, index)
-    })
-
-    await c.env.DB.prepare(`INSERT INTO mock_exam_questions (mock_exam_id, question_id, ordering_index) VALUES ${placeholders}`)
-        .bind(...values).run()
+    await c.env.DB.batch(
+        buildMockQuestionInserts(examId, finalQuestions.map((q: any) => q.id)).map(q => c.env.DB.prepare(q.sql).bind(...q.params))
+    )
 
     return c.redirect(`/past-papers/mock-exams/${examId}`)
 })
@@ -421,17 +464,45 @@ app.post('/mock-exams/create-manual', async (c) => {
     const examName = body['exam_name'] as string || 'Custom Exam'
     const timerMinutes = parseInt(body['timer_minutes'] as string || '0')
 
-    let questionIdsRaw = body['question_ids']
-    if (!questionIdsRaw) return c.text("No questions selected", 400)
+    // Two sources: ticked checkboxes from the Practice selector, or a typed/pasted ID list from the create page.
+    const typedList = typeof body['question_id_list'] === 'string' ? (body['question_id_list'] as string) : null
+    const checked = body['question_ids']
+    const checkedText = (Array.isArray(checked) ? checked : checked ? [checked] : []).map(String).join(',')
+    const parsed = parseQuestionIdList(typedList ?? checkedText)
+    const questionIds = parsed.ids
 
-    let questionIds: string[] = []
-    if (Array.isArray(questionIdsRaw)) {
-        questionIds = (questionIdsRaw as string[]).map(String)
-    } else {
-        questionIds = [String(questionIdsRaw)]
+    const fail = (message: string) => {
+        if (typedList === null) return c.text(message, 400)
+        return c.html(
+            <Layout title={`Create Mock Exam - ${subjectLabel(subject || '')}`} user={user}>
+                <div class="max-w-3xl mx-auto">
+                    <div class="mb-6">
+                        <a href={`/past-papers/mock-exams/create?subject=${encodeURIComponent(subject || '')}&mode=manual`} class="text-gray-500 dark:text-neutral-400 hover:text-gray-700 dark:hover:text-neutral-200 text-sm">
+                            ← Back to Create Mock Exam
+                        </a>
+                    </div>
+                    <h1 class="text-3xl font-bold mb-8 dark:text-white">Create Mock Exam</h1>
+                    <QuestionIdForm subject={subject || ''} error={message} values={{ examName: body['exam_name'] as string, timerMinutes: body['timer_minutes'] as string, idList: typedList }} />
+                </div>
+            </Layout>,
+            400
+        )
     }
 
-    questionIds = [...new Set(questionIds)]
+    if (!subject) return fail('Missing subject.')
+    if (parsed.invalid.length > 0) {
+        return fail(`These aren't question IDs: ${parsed.invalid.slice(0, 10).join(', ')}${parsed.invalid.length > 10 ? '…' : ''}. Use whole numbers separated by commas, spaces or new lines.`)
+    }
+    if (questionIds.length === 0) return fail(typedList === null ? 'No questions selected' : 'Enter at least one question ID.')
+    if (questionIds.length > MAX_MOCK_QUESTIONS) return fail(`A mock exam can have at most ${MAX_MOCK_QUESTIONS} questions (you entered ${questionIds.length}).`)
+
+    const lookups = await c.env.DB.batch(
+        buildQuestionIdLookups(questionIds, subject).map(q => c.env.DB.prepare(q.sql).bind(...q.params))
+    )
+    const missing = missingQuestionIds(questionIds, lookups.flatMap(r => (r.results as { id: number }[]).map(row => row.id)))
+    if (missing.length > 0) {
+        return fail(`No ${subjectLabel(subject)} question with ID ${missing.slice(0, 20).join(', ')}${missing.length > 20 ? '…' : ''}. Check the IDs against your export.`)
+    }
 
     const examRes = await c.env.DB.prepare(`
                 INSERT INTO mock_exams (user_id, subject, exam_name, created_method, allowed_time_seconds, is_timed, status)
@@ -442,14 +513,9 @@ app.post('/mock-exams/create-manual', async (c) => {
     if (!examRes) return c.text("Failed to create exam", 500)
     const examId = examRes.id
 
-    const placeholders = questionIds.map(() => '(?, ?, ?)').join(', ')
-    const values: any[] = []
-    questionIds.forEach((qid, index) => {
-        values.push(examId, qid, index)
-    })
-
-    await c.env.DB.prepare(`INSERT INTO mock_exam_questions (mock_exam_id, question_id, ordering_index) VALUES ${placeholders}`)
-        .bind(...values).run()
+    await c.env.DB.batch(
+        buildMockQuestionInserts(examId, questionIds).map(q => c.env.DB.prepare(q.sql).bind(...q.params))
+    )
 
     return c.redirect(`/past-papers/mock-exams/${examId}`)
 })

@@ -29,6 +29,7 @@ const baseFilters: PracticeFilters = {
 };
 
 const baseRow: PracticeExportRow = {
+	id: 42,
 	section_label: 'II',
 	segment_label: 'A',
 	question_number: '1',
@@ -74,6 +75,7 @@ describe('parseStimulusCoordinates', () => {
 describe('toExportedQuestion', () => {
 	it('emits the import shape with the identifier in place of the full label', () => {
 		expect(toExportedQuestion(baseRow)).toEqual({
+			question_id: 42,
 			section_label: 'II',
 			segment_label: 'A',
 			question_number: '1',
@@ -154,6 +156,7 @@ describe('buildPracticeExportQueries', () => {
 		expect(list.sql).not.toContain('q.*');
 		expect(list.sql).toContain('GROUP_CONCAT(t.name,');
 		expect(list.sql).toContain('p.paper_type');
+		expect(list.sql).toContain('SELECT q.id,');
 	});
 
 	it('caps the export and orders it by the active sort', () => {
