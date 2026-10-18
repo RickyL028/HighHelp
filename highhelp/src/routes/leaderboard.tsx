@@ -28,7 +28,9 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 2,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Nicklas Li", rank: 1, percentage: "98"},
+            { name: "", rank: 2, percentage: "" },
+            { name: "", rank: 3, percentage: "" },
         ]
     },
     {
@@ -36,7 +38,9 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 3,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Daniel Zmak", rank: 1, percentage: "95" },
+            { name: "Lin Le", rank: 2, percentage: "94" },
+            { name: "Munjin CHOWDHURY", rank: 3, percentage: "94" },
         ]
     },
     {
@@ -44,7 +48,9 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 4,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Lin Le", rank: 1, percentage: "" },
+            { name: "", rank: 2, percentage: "" },
+            { name: "", rank: 3, percentage: "" },
         ]
     },
     {
@@ -52,7 +58,9 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 3,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Jiekai Miao", rank: 1, percentage: "" },
+            { name: "Joshua Kuo", rank: 2, percentage: "89" },
+            { name: "", rank: 3, percentage: "" },
         ]
     },
     {
@@ -60,7 +68,9 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 4,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Jiekai Miao", rank: 1, percentage: "" },
+            { name: "", rank: 2, percentage: "" },
+            { name: "", rank: 3, percentage: "" },
         ]
     },
     {
@@ -73,10 +83,11 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
     },
     {
         subject: "SOR",
-        displayLimit: 1,
+        displayLimit: 2,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Aryan Ghosh", rank: 1, percentage: "97" },
+            { name: "Joshua Kuo", rank: 2, percentage: "94" },
         ]
     },
     {
@@ -121,10 +132,11 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
     },
     {
         subject: "Engineering Studies",
-        displayLimit: 1,
+        displayLimit: 2,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Felix Tran", rank: 1, percentage: "95" },
+            { name: "Joshua Kuo", rank: 2, percentage: "95" },
         ]
     },
     {
@@ -156,15 +168,15 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 1,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Ricky Luo", rank: 1, percentage: "94" },
         ]
     },
     {
         subject: "Acc. Business Studies",
         displayLimit: 1,
-        showPercentage: true,
+        showPercentage: false,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Charlie Cheshire", rank: 1, percentage: ""},
         ]
     },
     {
@@ -172,7 +184,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 1,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "PRADYUM NUGGEHALLI", rank: 1, percentage: "" },
         ]
     },
     {
@@ -574,7 +586,7 @@ app.get('/leaderboard', async (c) => {
                         <summary class="cursor-pointer select-none px-4 py-3 font-bold uppercase text-sm">Submit a result</summary>
                         <div class="px-4 pb-4">
                             <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                                Submissions don't appear on the leaderboard automatically btw
+                                Up to top 5 each subject & Submissions don't appear on the leaderboard automatically btw
                             </p>
                             {!user ? (
                                 <a href={loginRedirect(c)} class="text-sm font-bold underline">Log in to submit</a>
