@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
+	buildMockAnswerUpdates,
 	buildMockQuestionInserts,
 	buildQuestionIdLookups,
 	missingQuestionIds,
@@ -88,5 +89,21 @@ describe('buildQuestionIdLookups', () => {
 		expect(lookups.length).toBe(2);
 		for (const lookup of lookups) expect(lookup.params.length).toBeLessThanOrEqual(100);
 		expect((await run(ids, 'Mathematics')).length).toBe(150);
+	});
+});
+
+describe('buildMockAnswerUpdates', () => {
+	it('writes each listed question from its form fields, clearing blanks', () => {
+		const updates = buildMockAnswerUpdates('12', [3, 8, 9], { response_3: 'x = 2', option_8: 'C', response_9: '', ignored_field: 'z' });
+		expect(updates.map(u => u.params)).toEqual([
+			['x = 2', null, '12', 3],
+			[null, 'C', '12', 8],
+			[null, null, '12', 9]
+		]);
+		expect(updates[0].sql).toContain('WHERE mock_exam_id = ? AND question_id = ?');
+	});
+
+	it('ignores non-string values such as uploaded files', () => {
+		expect(buildMockAnswerUpdates(1, [4], { response_4: ['a', 'b'] })[0].params[0]).toBeNull();
 	});
 });

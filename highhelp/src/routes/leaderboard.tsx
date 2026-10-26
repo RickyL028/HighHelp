@@ -29,7 +29,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         showPercentage: true,
         entries: [
             { name: "Nicklas Li", rank: 1, percentage: "98"},
-            { name: "", rank: 2, percentage: "" },
+            { name: "Aryan Ghosh", rank: 2, percentage: "97" },
             { name: "", rank: 3, percentage: "" },
         ]
     },
@@ -48,9 +48,9 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 4,
         showPercentage: true,
         entries: [
-            { name: "Lin Le", rank: 1, percentage: "" },
-            { name: "", rank: 2, percentage: "" },
-            { name: "", rank: 3, percentage: "" },
+            { name: "Lin Le", rank: 1, percentage: "86" },
+            { name: "JIEKAI MIAO", rank: 2, percentage: "85" },
+            { name: "DANIEL ZMAK", rank: 3, percentage: "84" },
         ]
     },
     {
@@ -58,8 +58,9 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 3,
         showPercentage: true,
         entries: [
-            { name: "Jiekai Miao", rank: 1, percentage: "" },
-            { name: "Joshua Kuo", rank: 2, percentage: "89" },
+            { name: "Joshua Kuo", rank: 1, percentage: "89" },
+            { name: "Jiekai Miao", rank: 2, percentage: "" },
+            
             { name: "", rank: 3, percentage: "" },
         ]
     },
@@ -95,7 +96,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 2,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Nicklas Li", rank: 1, percentage: "" },
         ]
     },
     {
@@ -111,7 +112,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 1,
         showPercentage: false,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "(Year 10)", rank: 1, percentage: "" },
         ]
     },
     {
@@ -119,7 +120,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 1,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "AARAV SHAH", rank: 1, percentage: "" },
         ]
     },
     {
@@ -132,11 +133,12 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
     },
     {
         subject: "Engineering Studies",
-        displayLimit: 2,
+        displayLimit: 3,
         showPercentage: true,
         entries: [
             { name: "Felix Tran", rank: 1, percentage: "95" },
             { name: "Joshua Kuo", rank: 2, percentage: "95" },
+            { name: "Hayden Nguyen", rank: 3, percentage: "93" },
         ]
     },
     {
@@ -144,7 +146,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 1,
         showPercentage: false,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Adam BOURKE", rank: 1, percentage: "" },
         ]
     },
     {
@@ -152,7 +154,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 1,
         showPercentage: false,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Barry Zhang (Year 10)", rank: 1, percentage: "" },
         ]
     },
     {
@@ -182,7 +184,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
     {
         subject: "Acc. Geography",
         displayLimit: 1,
-        showPercentage: true,
+        showPercentage: false,
         entries: [
             { name: "PRADYUM NUGGEHALLI", rank: 1, percentage: "" },
         ]
@@ -192,7 +194,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 1,
         showPercentage: false,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "(Year 10)", rank: 1, percentage: "" },
         ]
     },
 ]

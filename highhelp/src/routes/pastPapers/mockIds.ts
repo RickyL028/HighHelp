@@ -1,5 +1,5 @@
-// Helpers for building a mock exam from a typed/pasted list of question IDs
-// (e.g. IDs an AI picked out of the practice JSON export).
+// Mock exam helpers: building an exam from a typed/pasted list of question IDs (e.g. IDs an AI
+// picked out of the practice JSON export), and saving a sitting's answers.
 
 export const MAX_MOCK_QUESTIONS = 200
 
@@ -67,5 +67,18 @@ export function buildMockQuestionInserts(examId: number, ids: number[]) {
     return chunk(ids, INSERT_CHUNK).map((part, chunkIndex) => ({
         sql: `INSERT INTO mock_exam_questions (mock_exam_id, question_id, ordering_index) VALUES ${part.map(() => '(?, ?, ?)').join(', ')}`,
         params: part.flatMap((id, i) => [examId, id, chunkIndex * INSERT_CHUNK + i])
+    }))
+}
+
+// Answers arrive as the exam form's fields: `response_<id>` (typed) and `option_<id>` (multiple choice).
+// Every listed question is written, so a blank field clears its stored answer, same as finishing does.
+export function buildMockAnswerUpdates(examId: number | string, questionIds: number[], body: Record<string, unknown>) {
+    const field = (name: string) => {
+        const value = body[name]
+        return typeof value === 'string' && value !== '' ? value : null
+    }
+    return questionIds.map(id => ({
+        sql: 'UPDATE mock_exam_questions SET response_content = ?, selected_option = ? WHERE mock_exam_id = ? AND question_id = ?',
+        params: [field(`response_${id}`), field(`option_${id}`), examId, id] as (string | number | null)[]
     }))
 }

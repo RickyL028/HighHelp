@@ -33,9 +33,12 @@ app.get('/', async (c) => {
                         <div id="home-countdown" class="mb-6 text-center text-5xl md:text-7xl font-mono font-black text-gray-900 dark:text-white tracking-tight">
                             --:--:--:--
                         </div>
-                        <h2 id="home-countdown-label" class="text-xl md:text-1xl font-bold text-secondary tracking-widest flex items-center justify-center dark:text-white gap-2">
-                            &nbsp;
-                        </h2>
+                        <div class="flex flex-col items-center gap-1">
+                            <h2 id="home-countdown-label" class="text-xl md:text-1xl font-bold text-secondary tracking-widest flex items-center justify-center dark:text-white gap-2">
+                                &nbsp;
+                            </h2>
+                            <p id="home-countdown-date" class="text-xs font-semibold tracking-widest text-secondary dark:text-white opacity-50 text-center">&nbsp;</p>
+                        </div>
 
                         <div class="flex items-center justify-center gap-1 transition-opacity [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-within:opacity-100">
                             <button type="button" id="countdown-prev" class={`${iconButton} hidden`} title="Previous event" aria-label="Previous event">&lsaquo;</button>
@@ -58,7 +61,7 @@ app.get('/', async (c) => {
                 </div>
 
                 {/* Homepage logo */}
-                <div class="flex flex-col items-center justify-center space-y-4 py-4 mt-6 ">
+                <div class="flex flex-col items-center justify-center space-y-4 py-4">
                     <img
                         src="https://assets.schools.nsw.gov.au/content/dam/doe/sws/schools/s/sydneyboys-h/logo.png"
                         alt="Sydney Boys High School Logo"
@@ -93,6 +96,7 @@ app.get('/', async (c) => {
 
                         var countdownEl = document.getElementById('home-countdown');
                         var labelEl = document.getElementById('home-countdown-label');
+                        var dateEl = document.getElementById('home-countdown-date');
                         var prevBtn = document.getElementById('countdown-prev');
                         var nextBtn = document.getElementById('countdown-next');
                         var addBtn = document.getElementById('countdown-add');
@@ -125,6 +129,13 @@ app.get('/', async (c) => {
 
                         var pad = function(n) { return n.toString().padStart(2, '0'); };
 
+                        // e.g. "Monday, 30 November 2026 at 9:00 am"
+                        function formatDate(at) {
+                            return new Date(at).toLocaleString('en-AU', {
+                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit'
+                            });
+                        }
+
                         // Continuous Countdown Timer
                         function render() {
                             var now = Date.now();
@@ -132,6 +143,7 @@ app.get('/', async (c) => {
                             if (!current) {
                                 countdownEl.innerText = '/';
                                 labelEl.innerText = 'No upcoming events';
+                                dateEl.innerHTML = '&nbsp;';
                             } else {
                                 var distance = current.at - now;
                                 var days = Math.floor(distance / (1000 * 60 * 60 * 24));
@@ -141,6 +153,7 @@ app.get('/', async (c) => {
                                 // Zero padding keeps the width stable in the mono font
                                 countdownEl.innerText = days + 'd ' + pad(hours) + 'h ' + pad(minutes) + 'm ' + pad(seconds) + 's';
                                 labelEl.innerText = 'Until ' + current.label;
+                                dateEl.innerText = formatDate(current.at);
                             }
                             prevBtn.classList.toggle('hidden', list.length < 2);
                             nextBtn.classList.toggle('hidden', list.length < 2);

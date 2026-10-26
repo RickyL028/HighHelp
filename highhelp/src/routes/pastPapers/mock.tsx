@@ -9,7 +9,7 @@ import { subjectLabel } from '../../constants'
 import { AnswerInput, DrawingPreview, WorkingPad, type DrawingFieldProps } from '../../components/DrawingField'
 import { mockDrawingContext, mockDrawingUrls } from './drawingDoc'
 import { copyDrawing } from './drawings'
-import { MAX_MOCK_QUESTIONS, buildMockQuestionInserts, buildQuestionIdLookups, missingQuestionIds, parseQuestionIdList } from './mockIds'
+import { MAX_MOCK_QUESTIONS, buildMockAnswerUpdates, buildMockQuestionInserts, buildQuestionIdLookups, missingQuestionIds, parseQuestionIdList } from './mockIds'
 const app = new Hono<{ Bindings: Bindings }>()
 
 const inputClass = 'w-full rounded-md border-gray-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500'
@@ -538,9 +538,10 @@ app.get('/mock-exams/:id', async (c) => {
     const totalMarks = stats?.total_marks || 0;
     const isOwner = user && user.id === exam.user_id;
 
-    // Handwritten answers belong to whoever sat the exam: only they can draw, and only until it is finished.
+    // Answers (typed or handwritten) belong to whoever sat the exam: only they can change them, and only until it is finished.
     const mockContext = mockDrawingContext(Number(exam.id))
-    const canDraw = isOwner && exam.status !== 'completed'
+    const canAnswer = isOwner && exam.status !== 'completed'
+    const canDraw = canAnswer
 
     const questions = await c.env.DB.prepare(`
                 SELECT q.*, mq.ordering_index, mq.response_content, mq.selected_option, p.school_name, p.academic_year, p.paper_type,
@@ -578,7 +579,12 @@ app.get('/mock-exams/:id', async (c) => {
                     </div>
                 )}
 
-                <div class="flex gap-4">
+                <div class="flex gap-4 items-center">
+                    {canAnswer && (
+                        <button type="button" id="save-all-btn" onclick="saveMockAnswers()" title="Save every answer without finishing the exam" class="text-gray-700 dark:text-neutral-300 font-bold hover:underline">
+                            Save
+                        </button>
+                    )}
                     {isOwner && (
                         <button type="submit" form="exam-form" onclick="return confirm('Are you sure you want to finish the exam? Answers will be saved.');" class="text-blue-600 dark:text-blue-400 font-bold hover:underline">
                             Finish Exam
@@ -671,6 +677,16 @@ app.get('/mock-exams/:id', async (c) => {
                                     {isOwner && <DrawingPreview svgUrl={drawing.svgUrl} version={drawing.version} caption="Handwritten answer" />}
                                 </>
                             )}
+
+                            {canAnswer && (
+                                <div class="flex justify-end">
+                                    <button type="button" id={`save-btn-${q.id}`} data-mock-save={q.id} onclick={`saveMockAnswers(${q.id})`}
+                                        class="px-4 py-1.5 text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline transition-colors"
+                                    >
+                                        Save
+                                    </button>
+                                </div>
+                            )}
                         </QuestionShell>
                     )
                 })}
@@ -722,6 +738,73 @@ app.get('/mock-exams/:id', async (c) => {
                     });
                  `}} />
             )}
+
+            {canAnswer && (
+                // Typed answers and MC picks only reach the server on Save or Finish; warn before leaving with unsaved ones.
+                <script dangerouslySetInnerHTML={{
+                    __html: `
+                    (function () {
+                        var form = document.getElementById('exam-form');
+                        var dirty = new Set();
+                        var finishing = false;
+                        var idle = 'px-4 py-1.5 text-blue-600 dark:text-blue-400 text-sm font-bold hover:underline transition-colors';
+                        var done = 'px-4 py-1.5 text-green-600 dark:text-green-400 text-sm font-bold';
+
+                        function markDirty(event) {
+                            var m = (event.target.name || '').match(/^(?:response|option)_(\\d+)$/);
+                            if (m) dirty.add(m[1]);
+                        }
+                        form.addEventListener('input', markDirty);
+                        form.addEventListener('change', markDirty);
+                        form.addEventListener('submit', function () { finishing = true; });
+                        window.addEventListener('beforeunload', function (event) {
+                            if (finishing || dirty.size === 0) return;
+                            event.preventDefault();
+                            event.returnValue = '';
+                        });
+
+                        function flash(btn, text, cls) {
+                            if (!btn) return;
+                            btn.textContent = text;
+                            if (cls) btn.className = cls;
+                            btn.disabled = false;
+                            setTimeout(function () {
+                                btn.textContent = 'Save';
+                                if (cls) btn.className = idle;
+                            }, 2000);
+                        }
+
+                        // Saves one question, or every question when called with no ID.
+                        window.saveMockAnswers = async function (qid) {
+                            var ids = qid ? [String(qid)] : Array.from(document.querySelectorAll('[data-mock-save]'), function (b) { return b.dataset.mockSave; });
+                            var btn = document.getElementById(qid ? 'save-btn-' + qid : 'save-all-btn');
+                            var data = new FormData();
+                            ids.forEach(function (id) {
+                                data.append('question_ids', id);
+                                var resp = form.elements['response_' + id];
+                                if (resp) data.append('response_' + id, resp.value);
+                                var opt = form.querySelector('input[name="option_' + id + '"]:checked');
+                                if (opt) data.append('option_' + id, opt.value);
+                            });
+                            var pending = ids.filter(function (id) { return dirty.has(id); });
+                            pending.forEach(function (id) { dirty.delete(id); });
+
+                            if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+                            try {
+                                var drawingsSaved = window.HighHelpDrawing ? await window.HighHelpDrawing.flushAll() : true;
+                                var r = await fetch('/past-papers/mock-exams/${Number(exam.id)}/save', { method: 'POST', body: data });
+                                var d = await r.json().catch(function () { return {}; });
+                                if (!r.ok || !d.success) throw new Error(d.error || 'Save failed');
+                                if (drawingsSaved) flash(btn, '✓ Saved', done);
+                                else flash(btn, 'Drawing not saved');
+                            } catch (e) {
+                                pending.forEach(function (id) { dirty.add(id); });
+                                if (btn) { btn.textContent = 'Error! Retry'; btn.title = e.message || ''; btn.disabled = false; }
+                            }
+                        };
+                    })();
+                 `}} />
+            )}
         </Layout>
     )
 })
@@ -738,23 +821,39 @@ app.post('/mock-exams/:id/finish', async (c) => {
 
     const body = await c.req.parseBody()
 
-    const examQuestions = await c.env.DB.prepare(`SELECT question_id FROM mock_exam_questions WHERE mock_exam_id = ?`).bind(examId).all()
+    const examQuestions = await c.env.DB.prepare(`SELECT question_id FROM mock_exam_questions WHERE mock_exam_id = ?`).bind(examId).all<{ question_id: number }>()
 
-    for (const q of examQuestions.results) {
-        const response = (body[`response_${q.question_id}`] as string) || null;
-        const option = (body[`option_${q.question_id}`] as string) || null;
-
-        await c.env.DB.prepare(`
-            UPDATE mock_exam_questions
-            SET response_content = ?, selected_option = ?
-            WHERE mock_exam_id = ? AND question_id = ?
-        `).bind(response, option, examId, q.question_id).run();
-    }
-
-    await c.env.DB.prepare(`UPDATE mock_exams SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`)
-        .bind(examId, user.id).run()
+    await c.env.DB.batch([
+        ...buildMockAnswerUpdates(examId, examQuestions.results.map(q => q.question_id), body).map(q => c.env.DB.prepare(q.sql).bind(...q.params)),
+        c.env.DB.prepare(`UPDATE mock_exams SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?`).bind(examId, user.id)
+    ])
 
     return c.redirect(`/past-papers/mock-exams/${examId}/mark`)
+})
+
+// Saves answers mid-exam without finishing it, so a reload or closed tab doesn't lose them.
+app.post('/mock-exams/:id/save', async (c) => {
+    const user = await getUser(c)
+    if (!user) return c.json({ error: 'Unauthorized' }, 401)
+    const examId = c.req.param('id')
+
+    const exam = await c.env.DB.prepare('SELECT user_id, status FROM mock_exams WHERE id = ?').bind(examId).first<{ user_id: number; status: string }>()
+    if (!exam) return c.json({ error: 'Not found' }, 404)
+    if (exam.user_id !== user.id) return c.json({ error: 'Unauthorised' }, 403)
+    if (exam.status === 'completed') return c.json({ error: 'This exam has already been finished.' }, 409)
+
+    const body = await c.req.parseBody({ all: true })
+    const raw = body['question_ids']
+    const requested = new Set((Array.isArray(raw) ? raw : raw ? [raw] : []).map(Number))
+
+    // Only questions that belong to this exam are written, whatever IDs the client sends.
+    const examQuestions = await c.env.DB.prepare('SELECT question_id FROM mock_exam_questions WHERE mock_exam_id = ?').bind(examId).all<{ question_id: number }>()
+    const questionIds = examQuestions.results.map(q => q.question_id).filter(id => requested.has(id))
+    if (questionIds.length === 0) return c.json({ error: 'No questions to save' }, 400)
+
+    await c.env.DB.batch(buildMockAnswerUpdates(examId, questionIds, body).map(q => c.env.DB.prepare(q.sql).bind(...q.params)))
+
+    return c.json({ success: true, saved: questionIds })
 })
 
 app.post('/mock-exams/:id/progress', async (c) => {
