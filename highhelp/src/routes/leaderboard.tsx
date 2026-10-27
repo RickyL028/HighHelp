@@ -20,7 +20,11 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 5,
         showPercentage: false,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Jiekai Miao", rank: 1, percentage: "99.95" },
+            { name: "Ricky Luo", rank: 2, percentage: "99.9" },
+            { name: "", rank: 3, percentage: "" },
+            { name: "Nicklas Li", rank: 4, percentage: "99.85" },
+            { name: "PRADYUM NUGGEHALLI", rank: 5, percentage: "" },
         ]
     },
     {
@@ -35,12 +39,14 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
     },
     {
         subject: "Mathematics",
-        displayLimit: 3,
+        displayLimit: 5,
         showPercentage: true,
         entries: [
             { name: "Daniel Zmak", rank: 1, percentage: "95" },
             { name: "Lin Le", rank: 2, percentage: "94" },
             { name: "Munjin CHOWDHURY", rank: 3, percentage: "94" },
+            { name: "Jinda Zhu", rank:4, percentage: "90" },
+            { name: "Jiekai Miao", rank: 5, percentage: "90" },
         ]
     },
     {
@@ -60,8 +66,9 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         entries: [
             { name: "Joshua Kuo", rank: 1, percentage: "89" },
             { name: "Jiekai Miao", rank: 2, percentage: "" },
+            { name: "Tom Ye", rank: 3, percentage: "87" },
             
-            { name: "", rank: 3, percentage: "" },
+            
         ]
     },
     {
@@ -104,7 +111,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 1,
         showPercentage: false,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "(Year 10)", rank: 1, percentage: "" },
         ]
     },
     {
@@ -128,7 +135,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 1,
         showPercentage: true,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "(Year 10)", rank: 1, percentage: "" },
         ]
     },
     {
@@ -194,7 +201,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 1,
         showPercentage: false,
         entries: [
-            { name: "(Year 10)", rank: 1, percentage: "" },
+            { name: "Sajan Thiagalingam", rank: 1, percentage: "" },
         ]
     },
 ]

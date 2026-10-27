@@ -18,16 +18,17 @@ const fieldClass = 'px-3 py-1.5 rounded-md border border-gray-300 dark:border-ne
 
 app.get('/', async (c) => {
     const user = await getUser(c)
+    const userCount = (await c.env.DB.prepare('SELECT COUNT(*) AS n FROM users').first<number>('n')) ?? 0
 
     return c.html(
         <Layout title="Home" user={user} noScroll>
-            <div class="space-y-12 px-4 md:px-0 pb-12 pt-12">
+            <div class="space-y-8 px-4 md:px-0 pb-12 pt-12">
 
                 {/* Timeline & Countdowns Section */}
                 <div class="flex flex-col gap-6 max-w-4xl mx-auto mb-12 ">
 
                     {/* Row 1: Countdown Banner. Controls show on hover (always on touch screens). */}
-                    <div class="group flex flex-col items-center justify-center gap-4 w-full mb-6">
+                    <div class="group flex flex-col items-center justify-center gap-4 w-full">
 
 
                         <div id="home-countdown" class="mb-6 text-center text-5xl md:text-7xl font-mono font-black text-gray-900 dark:text-white tracking-tight">
@@ -61,7 +62,7 @@ app.get('/', async (c) => {
                 </div>
 
                 {/* Homepage logo */}
-                <div class="flex flex-col items-center justify-center space-y-4 py-4">
+                <div class="flex flex-col items-center justify-center space-y-4 pb-4">
                     <img
                         src="https://assets.schools.nsw.gov.au/content/dam/doe/sws/schools/s/sydneyboys-h/logo.png"
                         alt="Sydney Boys High School Logo"
@@ -69,6 +70,7 @@ app.get('/', async (c) => {
                     />
                     <h1 class="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">HighHelp</h1>
                     <p class="text-lg text-gray-600 dark:text-gray-400 text-center">Designed and programmed specifically for, and by, class of 2027.</p>
+                    <p class="text-sm text-gray-400 dark:text-gray-600 text-center">User Count: {userCount.toLocaleString('en-AU')} :D</p>
                 </div>
 
                 <script dangerouslySetInnerHTML={{
