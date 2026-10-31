@@ -22,24 +22,24 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         entries: [
             { name: "Jiekai Miao", rank: 1, percentage: "99.95" },
             { name: "Ricky Luo", rank: 2, percentage: "99.9" },
-            { name: "", rank: 3, percentage: "" },
+            { name: "Aarav Mishra", rank: 3, percentage: "" },
             { name: "Nicklas Li", rank: 4, percentage: "99.85" },
             { name: "PRADYUM NUGGEHALLI", rank: 5, percentage: "" },
         ]
     },
     {
         subject: "English Advanced",
-        displayLimit: 2,
+        displayLimit: 3,
         showPercentage: true,
         entries: [
             { name: "Nicklas Li", rank: 1, percentage: "98"},
             { name: "Aryan Ghosh", rank: 2, percentage: "97" },
-            { name: "", rank: 3, percentage: "" },
+            { name: "AKSHOBHYA KUMAR", rank: 3, percentage: "94" },
         ]
     },
     {
         subject: "Mathematics",
-        displayLimit: 5,
+        displayLimit: 3,
         showPercentage: true,
         entries: [
             { name: "Daniel Zmak", rank: 1, percentage: "95" },
@@ -77,16 +77,17 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         showPercentage: true,
         entries: [
             { name: "Jiekai Miao", rank: 1, percentage: "" },
-            { name: "", rank: 2, percentage: "" },
-            { name: "", rank: 3, percentage: "" },
+            { name: "YUHAI WANG", rank: 2, percentage: "90" },
+            { name: "MAHIR PATEL", rank: 3, percentage: "" },
         ]
     },
     {
         subject: "English Extension",
-        displayLimit: 1,
-        showPercentage: true,
+        displayLimit: 2,
+        showPercentage: false,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "AKSHOBHYA KUMAR", rank: 1, percentage: "" },
+            { name: "Franklin Huang", rank: 2, percentage: 98 },
         ]
     },
     {
@@ -100,10 +101,13 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
     },
     {
         subject: "Economics",
-        displayLimit: 2,
-        showPercentage: true,
+        displayLimit: 3,
+        showPercentage: false,
         entries: [
             { name: "Nicklas Li", rank: 1, percentage: "" },
+            { name: "CHARLIE CHESHIRE", rank: 2, percentage: "" },
+            { name: "RYAN PARK", rank:2, percentage: "" },
+            
         ]
     },
     {
@@ -125,7 +129,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
     {
         subject: "Legal Studies",
         displayLimit: 1,
-        showPercentage: true,
+        showPercentage: false,
         entries: [
             { name: "AARAV SHAH", rank: 1, percentage: "" },
         ]
@@ -285,10 +289,10 @@ const LEADERBOARD_DATA: LeaderboardSubject[] = [
     {
         subject: "English Extension",
         displayLimit: 1,
-        showPercentage: true,
+        showPercentage: false,
         entries: [
-            { name: "Akshobhya KUMAR", rank: 1, percentage: 100 },
-            { name: "?", rank: 2, percentage: 98 },
+            { name: "Akshobhya KUMAR", rank: 1, percentage: 94 },
+            { name: "Franklin Huang", rank: 2, percentage: 98 },
             { name: "?", rank: 3, percentage: 98 },
             { name: "?", rank: 4, percentage: 98 },
             { name: "?", rank: 5, percentage: 98 },

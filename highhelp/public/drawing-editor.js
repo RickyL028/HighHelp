@@ -267,6 +267,18 @@
     const pens = editor.toolController.getMatchingTools(jsdraw.PenTool);
     if (pens[0]) pens[0].setColor(jsdraw.Color4.fromHex('#111827'));
     if (pens[1]) pens[1].setColor(jsdraw.Color4.fromHex('#1d4ed8'));
+    // Pen 1 responds to pressure. Its default "Round" type draws a whole stroke at its running-average pressure,
+    // so the stroke swells or thins all at once as you press. The pressure-sensitive type ("Flat" in the
+    // toolbar) varies along the line.
+    if (pens[0]) pens[0].setStrokeFactory(jsdraw.makePressureSensitiveFreehandLineBuilder);
+    // Pen 2 draws exactly where the nib goes, without the stabiliser js-draw gives its second pen, which makes
+    // the line trail behind. "Polyline" in the toolbar joins the points as they come instead of fitting curves
+    // through them, and draws each stroke at its average pressure: pressing harder still writes bolder, but the
+    // light touch at either end doesn't taper the tips to a point.
+    if (pens[1]) {
+      pens[1].setStrokeFactory(jsdraw.makePolylineBuilder || jsdraw.makeFreehandLineBuilder);
+      pens[1].setHasStabilization(false);
+    }
     if (readSetting(PEN_SEEN_KEY) === '1') enableFingerPanning(editor);
     editor.addToolbar();
     return editor;
