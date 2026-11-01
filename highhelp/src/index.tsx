@@ -17,7 +17,9 @@ import clipboardRoutes from './components/timetable/TimetableClipboard'
 import atarRoutes from './routes/atar'
 import atarExplainedRoutes from './routes/atar-explained'
 import attendanceRoutes from './routes/attendance'
+import pushRoutes from './routes/push'
 import { processAIImportJob, AIImportJob } from './routes/pastPapers/aiQueueWorker'
+import { TIMETABLE_PUSH_QUEUE, TimetableCheckJob, processTimetableCheckBatch, scheduleTimetableChecks } from './timetablePush'
 import { getUser } from './utils'
 import { PermissionLevel } from './permissions'
 
@@ -226,6 +228,7 @@ app.get('/api/proxy/pre-explained-absences', async (c) => {
 app.route('/', homeRoutes)
 app.route('/home', homeRoutes)
 app.route('/', authRoutes)
+app.route('/', pushRoutes)
 app.route('/', profileRoutes)
 app.route('/', resourcesRoutes)
 app.route('/', pastPapersRoutes)
@@ -251,7 +254,15 @@ function isTransientError(err: unknown): boolean {
 
 export default {
   fetch: app.fetch,
+  // Timetable change alerts: every 15 minutes, see timetablePush.ts
+  async scheduled(controller: ScheduledController, env: Bindings, ctx: ExecutionContext) {
+    ctx.waitUntil(scheduleTimetableChecks(env, new Date(controller.scheduledTime)))
+  },
   async queue(batch: MessageBatch<AIImportJob>, env: Bindings) {
+    if (batch.queue === TIMETABLE_PUSH_QUEUE) {
+      await processTimetableCheckBatch(batch as unknown as MessageBatch<TimetableCheckJob>, env)
+      return
+    }
     // max_retries: 1 in wrangler.jsonc => 2 total attempts
     const MAX_ATTEMPTS = 2;
     for (const message of batch.messages) {

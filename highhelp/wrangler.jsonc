@@ -15,11 +15,19 @@
 	],
 	"workers_dev": true,
 	"preview_urls": true,
+	// Timetable change alerts (src/timetablePush.ts). Sydney hours are worked out in code, so DST needs no edits here.
+	"triggers": {
+		"crons": ["*/15 * * * *"]
+	},
 	"queues": {
 		"producers": [
 			{
 				"binding": "AI_QUEUE",
 				"queue": "paper-ai-queue"
+			},
+			{
+				"binding": "PUSH_QUEUE",
+				"queue": "timetable-push-queue"
 			}
 		],
 		"consumers": [
@@ -29,6 +37,12 @@
 				"max_batch_timeout": 0, 
 				"max_retries": 1,
 				"dead_letter_queue": "paper-ai-dlq"
+			},
+			{
+				"queue": "timetable-push-queue",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 1
 			}
 		]
 	},

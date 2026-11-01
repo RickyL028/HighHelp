@@ -3,6 +3,19 @@ import { html } from 'hono/html'
 export const TimetableConfig = html`
 <div id="config-container" class="hidden">
     <div class="divide-y divide-gray-100 dark:divide-neutral-800">
+        <!-- Timetable Change Alerts (Web Push, see src/timetablePush.ts). Hidden until the server says push is set up. -->
+        <div id="push-section" class="py-5 hidden">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-sm font-bold text-gray-900 dark:text-neutral-100">Class Change Notification</h2>
+                    <p class="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">Get a notification on this device when a class has a sub, no cover or a room change. This is enabled when it is installed as a PWA app on your device.</p>
+                    <p class="text-xs text-red-400 dark:text-red-500 mt-0.5">Your school API token WILL be stored if you enable this. </p>
+                </div>
+                <button id="push-toggle" type="button" class="hidden flex-shrink-0 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors"></button>
+            </div>
+            <p id="push-status" class="hidden text-[11px] mt-2"></p>
+        </div>
+
         <!-- Appearance Theme -->
         <div class="py-5">
             <div class="flex items-start justify-between mb-3">
@@ -222,6 +235,153 @@ export const TimetableConfig = html`
         }
 
         initThemeButtons();
+    })();
+
+    // Change alerts: subscribes this browser to Web Push and registers it at /api/auth/push/*.
+    (function() {
+        const section = document.getElementById('push-section');
+        const toggle = document.getElementById('push-toggle');
+        const status = document.getElementById('push-status');
+        if (!section || !toggle || !status) return;
+
+        const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        const ON_STYLE = ['border', 'border-gray-200', 'dark:border-neutral-700', 'text-gray-600', 'dark:text-neutral-300', 'hover:bg-gray-50', 'dark:hover:bg-neutral-800'];
+        const OFF_STYLE = ['bg-red-500', 'hover:bg-red-600', 'text-white'];
+        let publicKey = null;
+        let isOn = false;
+        let busy = false;
+
+        function setButton(state) {
+            isOn = state === 'on';
+            toggle.classList.toggle('hidden', state === 'hidden');
+            toggle.textContent = isOn ? 'Turn off' : 'Turn on';
+            ON_STYLE.forEach(c => toggle.classList.toggle(c, isOn));
+            OFF_STYLE.forEach(c => toggle.classList.toggle(c, !isOn));
+        }
+
+        function showStatus(text, isError) {
+            status.textContent = text;
+            status.classList.remove('hidden');
+            status.classList.toggle('text-red-500', !!isError);
+            status.classList.toggle('text-gray-400', !isError);
+            status.classList.toggle('dark:text-neutral-500', !isError);
+        }
+
+        function showReauth() {
+            showStatus('', true);
+            status.innerHTML = 'Your school login has expired. <a href="/api/auth/login?next=/timetable" class="underline">Log in again</a> to keep getting alerts.';
+        }
+
+        function hasPortalLogin() {
+            try {
+                const sd = JSON.parse(localStorage.getItem('studentData') || 'null');
+                return !!(sd && sd.accessToken);
+            } catch (e) { return false; }
+        }
+
+        function keyBytes(b64) {
+            const s = b64.replace(/-/g, '+').replace(/_/g, '/');
+            const bin = atob(s + '='.repeat((4 - s.length % 4) % 4));
+            const out = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+            return out;
+        }
+
+        async function post(path, body) {
+            const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            let data = {};
+            try { data = await res.json(); } catch (e) {}
+            return { ok: res.ok, error: data.error };
+        }
+
+        async function currentSubscription() {
+            const reg = await navigator.serviceWorker.ready;
+            return { reg, sub: await reg.pushManager.getSubscription() };
+        }
+
+        async function enable() {
+            // Ask first: Safari only shows the prompt in direct response to the tap.
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                showStatus(permission === 'denied' ? 'Notifications are blocked for this site. Allow them in your browser settings first.' : 'Alerts stay off until you allow notifications.', permission === 'denied');
+                return;
+            }
+            const { reg } = await currentSubscription();
+            const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) });
+            const res = await post('/api/auth/push/subscribe', { subscription: sub.toJSON() });
+            if (!res.ok) {
+                await sub.unsubscribe().catch(() => {});
+                if (res.error === 'reauth') showReauth();
+                else showStatus(res.error === 'login' ? 'Log in to HighHelp to turn on alerts.' : 'Could not turn on alerts. Try again later.', true);
+                return;
+            }
+            setButton('on');
+            showStatus('Alerts are on for this device. Your timetable is checked through the school day and the evening before.', false);
+        }
+
+        async function disable() {
+            const { sub } = await currentSubscription();
+            if (sub) {
+                await post('/api/auth/push/unsubscribe', { endpoint: sub.endpoint }).catch(() => {});
+                await sub.unsubscribe().catch(() => {});
+            }
+            setButton('off');
+            showStatus('Alerts are off for this device.', false);
+        }
+
+        toggle.addEventListener('click', async () => {
+            if (busy) return;
+            busy = true;
+            toggle.disabled = true;
+            try {
+                if (isOn) await disable();
+                else await enable();
+            } catch (e) {
+                console.error('[push] toggle failed', e);
+                showStatus('Something went wrong. Try again.', true);
+            } finally {
+                busy = false;
+                toggle.disabled = false;
+            }
+        });
+
+        async function init() {
+            try {
+                const res = await fetch('/api/auth/push/key');
+                if (!res.ok) return; // not set up on this deployment: keep the section hidden
+                publicKey = (await res.json()).publicKey;
+            } catch (e) { return; }
+            if (!publicKey) return;
+            section.classList.remove('hidden');
+
+            if (!supported) {
+                setButton('hidden');
+                showStatus(isIOS && !isStandalone
+                    ? 'On iPhone or iPad, tap Share, then Add to Home Screen, and open HighHelp from your Home Screen to turn alerts on.'
+                    : 'This browser does not support notifications.', false);
+                return;
+            }
+            if (!hasPortalLogin()) {
+                setButton('hidden');
+                showStatus('Log in with the Student Portal to turn on alerts.', false);
+                return;
+            }
+
+            const { sub } = await currentSubscription();
+            if (sub && Notification.permission === 'granted') {
+                setButton('on');
+                // Re-sent on every visit, so the server's copy stays current and a fresh login resumes paused alerts.
+                const res = await post('/api/auth/push/subscribe', { subscription: sub.toJSON() });
+                if (!res.ok && res.error === 'reauth') showReauth();
+            } else {
+                setButton('off');
+                if (Notification.permission === 'denied') showStatus('Notifications are blocked for this site. Allow them in your browser settings to turn on alerts.', true);
+            }
+        }
+
+        init().catch(e => console.error('[push] init failed', e));
     })();
 </script>
 `

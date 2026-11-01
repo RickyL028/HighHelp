@@ -229,3 +229,39 @@ CREATE TABLE leaderboard_submissions (
 );
 
 CREATE INDEX idx_leaderboard_submissions_subject ON leaderboard_submissions (is_deleted, subject, rank);
+
+-- Timetable change alerts (Web Push), see src/timetablePush.ts. One row per device that turned alerts on.
+CREATE TABLE push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_push_subscriptions_user ON push_subscriptions (user_id);
+
+-- Encrypted portal tokens, held only while the user has a push subscription (src/portalTokens.ts).
+CREATE TABLE portal_tokens (
+    user_id INTEGER PRIMARY KEY,
+    client TEXT NOT NULL, -- 'full' | 'basic'
+    refresh_token TEXT NOT NULL,
+    access_token TEXT,
+    access_expires_at INTEGER, -- unix seconds
+    version INTEGER NOT NULL DEFAULT 1,
+    status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'dead'
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Last alerted changes per user and date, so each change is pushed once.
+CREATE TABLE timetable_snapshots (
+    user_id INTEGER NOT NULL,
+    date TEXT NOT NULL, -- YYYY-MM-DD
+    changes TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, date),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);

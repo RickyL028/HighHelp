@@ -82,4 +82,10 @@ export type Bindings = Env & {
     APP_REDIRECT_URI_full: string;
     GEMINI_API_KEY: string;
     LOCAL_DEV?: boolean | string;
+    // Timetable change alerts (src/timetablePush.ts). All three are secrets; generate them with
+    // `node scripts/generate-push-keys.mjs`. The feature switches itself off while any is missing.
+    PUSH_QUEUE: Queue;
+    VAPID_PUBLIC_KEY?: string;
+    VAPID_PRIVATE_KEY?: string;
+    TOKEN_ENC_KEY?: string;
 }

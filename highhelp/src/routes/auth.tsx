@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie'
 import { Layout } from '../layout'
 import { Bindings } from '../types'
-import { createSessionCookie, buildUserTags, extractTimetableSubjects, safeNext, refererTarget, isExternalUser, updatePoints } from '../utils'
+import { createSessionCookie, getSessionUserId, buildUserTags, extractTimetableSubjects, safeNext, refererTarget, isExternalUser, updatePoints } from '../utils'
+import { REFRESH_COOKIE, heldAccessToken, portalClient, portalCredsFor, replaceHeldTokens, requestTokenRefresh, setRefreshCookie } from '../portalTokens'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -48,19 +49,7 @@ function loginHref(target: string): string {
 }
 
 function portalCreds(c: any) {
-    const host = c.req.header('host') || '';
-    if (!isLocalDev(c) && host.includes('highhelp.org')) {
-        return {
-            clientId: c.env.PORTAL_API_CLIENT_ID_full,
-            clientSecret: c.env.PORTAL_API_CLIENT_SECRET_full,
-            redirectUri: c.env.APP_REDIRECT_URI_full,
-        };
-    }
-    return {
-        clientId: c.env.PORTAL_API_CLIENT_ID,
-        clientSecret: c.env.PORTAL_API_CLIENT_SECRET,
-        redirectUri: c.env.APP_REDIRECT_URI,
-    };
+    return portalCredsFor(c.env, portalClient(c));
 }
 
 app.get('/api/auth/login', (c) => {
@@ -141,14 +130,8 @@ app.get('/api/auth/callback', async (c) => {
         const refreshToken = tokenData.refresh_token;
 
         if (refreshToken) {
-            // Store refresh token in a secure, HTTP-only cookie for 30 days
-            setCookie(c, 'sbhs_refresh_token', refreshToken, {
-                path: '/api/auth', // Only send this cookie to auth endpoints
-                httpOnly: true,    // JavaScript cannot read this (prevents XSS theft)
-                secure: !isLocalDev(c),
-                maxAge: 60 * 60 * 24 * 90, // 90 Days
-                sameSite: 'Lax'
-            });
+            // Store refresh token in a secure, HTTP-only cookie for 90 days
+            setRefreshCookie(c, refreshToken);
         }
 
         const userResponse = await fetch('https://student.sbhs.net.au/api/details/userinfo.json', {
@@ -180,6 +163,20 @@ app.get('/api/auth/callback', async (c) => {
         }
 
         if (!user) return c.text('Database Error: Failed to create user', 500);
+
+        // Students with timetable alerts on have their token held server-side; move that copy onto this
+        // newest login, which also resumes alerts that paused when the old token expired.
+        if (refreshToken) {
+            try {
+                await replaceHeldTokens(c.env, Number(user.id), portalClient(c), {
+                    accessToken,
+                    refreshToken,
+                    expiresIn: Number(tokenData.expires_in) || undefined
+                });
+            } catch (e: any) {
+                console.error('[auth] could not update held portal tokens', e?.message);
+            }
+        }
 
         // Fetch Timetable Data
         const timetableResponse = await fetch('https://student.sbhs.net.au/api/timetable/timetable.json', {
@@ -400,46 +397,63 @@ app.post('/code-login', async (c) => {
 
 app.get('/logout', (c) => {
     deleteCookie(c, 'user_id')
-    return c.redirect('/')
+    // Also switch off timetable alerts on this device, so a shared computer doesn't keep showing the
+    // last student's timetable changes. Unsubscribing only needs the endpoint, not the session.
+    return c.html(`<!DOCTYPE html>
+        <html><head><title>Logging out...</title></head><body>
+        <script>
+            (function () {
+                var done = function () { location.replace('/'); };
+                setTimeout(done, 3000);
+                if (!('serviceWorker' in navigator)) return done();
+                navigator.serviceWorker.getRegistration().then(function (reg) {
+                    return reg && reg.pushManager ? reg.pushManager.getSubscription() : null;
+                }).then(function (sub) {
+                    if (!sub) return;
+                    return fetch('/api/auth/push/unsubscribe', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ endpoint: sub.endpoint })
+                    }).catch(function () {}).then(function () { return sub.unsubscribe(); });
+                }).catch(function () {}).then(done);
+            })();
+        </script>
+        </body></html>`)
 })
 app.get('/api/auth/refresh', async (c) => {
-    const refreshToken = getCookie(c, 'sbhs_refresh_token');
+    const refreshToken = getCookie(c, REFRESH_COOKIE);
 
     if (!refreshToken) {
         return c.json({ success: false, error: 'No refresh token' }, 401);
     }
 
-    // Determine credentials based on env/host (reuse existing logic)
-    const { clientId, clientSecret } = portalCreds(c);
+    // With timetable alerts on, the server holds this user's token and the cron may have rotated it since
+    // this cookie was set, so the held copy wins. The cookie is still required: a session alone never
+    // yields a portal token.
+    const userId = await getSessionUserId(c);
+    if (userId) {
+        try {
+            const held = await heldAccessToken(c.env, userId, true);
+            if (held.status === 'ok') {
+                if (held.refreshToken && held.refreshToken !== refreshToken) setRefreshCookie(c, held.refreshToken);
+                return c.json({ success: true, accessToken: held.accessToken });
+            }
+        } catch (e: any) {
+            console.error('[auth] held token refresh failed', e?.message);
+        }
+    }
 
     try {
         // Ask SBHS for a new access token
-        const response = await fetch('https://student.sbhs.net.au/api/token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                grant_type: 'refresh_token',
-                refresh_token: refreshToken,
-                client_id: clientId,
-                client_secret: clientSecret
-            })
-        });
+        const result = await requestTokenRefresh(c.env, portalClient(c), refreshToken);
 
-        const data: any = await response.json();
-
-        if (data.access_token) {
+        if (result.ok) {
             // If we got a new refresh token (rotation), update the cookie
-            if (data.refresh_token) {
-                setCookie(c, 'sbhs_refresh_token', data.refresh_token, {
-                    path: '/api/auth',
-                    httpOnly: true,
-                    secure: !isLocalDev(c),
-                    maxAge: 60 * 60 * 24 * 90,
-                    sameSite: 'Lax'
-                });
+            if (result.refreshToken) {
+                setRefreshCookie(c, result.refreshToken);
             }
 
-            return c.json({ success: true, accessToken: data.access_token });
+            return c.json({ success: true, accessToken: result.accessToken });
         } else {
             return c.json({ success: false, error: 'Failed to refresh' }, 401);
         }
