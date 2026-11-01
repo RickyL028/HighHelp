@@ -173,7 +173,7 @@ const OVERALL_LEADERBOARD_DATA: LeaderboardSubject[] = [
         displayLimit: 1,
         showPercentage: false,
         entries: [
-            { name: "", rank: 1, percentage: "" },
+            { name: "Thomas Zheng", rank: 1, percentage: "" },
         ]
     },
     {
