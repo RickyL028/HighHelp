@@ -15,9 +15,9 @@
 	],
 	"workers_dev": true,
 	"preview_urls": true,
-	// Timetable change alerts (src/timetablePush.ts). Sydney hours are worked out in code, so DST needs no edits here.
+	// Timetable change alerts and scan-on reminders (src/timetablePush.ts). Sydney hours are worked out in code, so DST needs no edits here.
 	"triggers": {
-		"crons": ["*/15 * * * *"]
+		"crons": ["*/5 * * * *"]
 	},
 	"queues": {
 		"producers": [

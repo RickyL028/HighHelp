@@ -1,7 +1,7 @@
 import { env, fetchMock } from 'cloudflare:test';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { storePortalTokens } from '../src/portalTokens';
-import { TIMETABLE_PUSH_QUEUE, processTimetableCheckBatch, scheduleTimetableChecks } from '../src/timetablePush';
+import { TIMETABLE_PUSH_QUEUE, TimetableCheckJob, processTimetableCheckBatch, scheduleTimetableChecks } from '../src/timetablePush';
 import { b64urlDecode, b64urlEncode } from '../src/webPush';
 
 const USER = 3;
@@ -61,15 +61,17 @@ function mockDay(data: unknown, status = 200) {
 
 // Push requests are caught by a fetch stub rather than fetchMock, which turns binary bodies into strings.
 let pushed: { headers: Headers; body: Uint8Array }[] = [];
-let pushStatus: number | null = null;
+let pushStatuses: number[] = [];
 const realFetch = globalThis.fetch;
+// Each call expects one more push, answered with `status`.
 function mockPushService(status = 201) {
-	pushStatus = status;
+	pushStatuses.push(status);
 }
 
-function batch(userIds: number[]) {
+function batch(userIds: number[], job: Partial<TimetableCheckJob> = {}) {
 	let acked = 0;
-	const messages = [{ body: { userIds, date: DATE, label: 'today' as const }, ack: () => acked++, retry: () => {} }];
+	const body: TimetableCheckJob = { userIds, checks: [{ date: DATE, label: 'today' }], scan: null, ...job };
+	const messages = [{ body, ack: () => acked++, retry: () => {} }];
 	return { batch: { queue: TIMETABLE_PUSH_QUEUE, messages } as any, acked: () => acked };
 }
 
@@ -83,9 +85,8 @@ beforeAll(() => {
 		const url = input instanceof Request ? input.url : String(input);
 		if (!url.startsWith('https://fcm.googleapis.com/fcm/send/dev1')) return realFetch(input, init);
 		pushed.push({ headers: new Headers(init?.headers), body: new Uint8Array(init?.body as Uint8Array) });
-		if (pushStatus === null) throw new Error('Unexpected push');
-		const status = pushStatus;
-		pushStatus = null;
+		const status = pushStatuses.shift();
+		if (status === undefined) throw new Error('Unexpected push');
 		return new Response(null, { status });
 	}) as typeof fetch;
 });
@@ -96,9 +97,14 @@ afterAll(() => {
 
 beforeEach(async () => {
 	await env.DB.batch(
-		['push_subscriptions', 'portal_tokens', 'timetable_snapshots'].map((t) => env.DB.prepare(`DROP TABLE IF EXISTS ${t}`))
+		['users', 'push_subscriptions', 'portal_tokens', 'timetable_snapshots', 'scan_reminders'].map((t) => env.DB.prepare(`DROP TABLE IF EXISTS ${t}`))
 	);
 	await env.DB.batch([
+		env.DB.prepare('CREATE TABLE users (id INTEGER PRIMARY KEY, student_id TEXT NOT NULL)'),
+		env.DB.prepare(`INSERT INTO users (id, student_id) VALUES (${USER}, '441234567')`),
+		env.DB.prepare(
+			'CREATE TABLE scan_reminders (user_id INTEGER NOT NULL, date TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, date))'
+		),
 		env.DB.prepare(
 			'CREATE TABLE push_subscriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'
 		),
@@ -117,12 +123,12 @@ beforeEach(async () => {
 		.bind(USER, 'https://fcm.googleapis.com/fcm/send/dev1', dev.p256dh, dev.auth)
 		.run();
 	pushed = [];
-	pushStatus = null;
+	pushStatuses = [];
 });
 
 afterEach(() => {
 	fetchMock.assertNoPendingInterceptors();
-	expect(pushStatus).toBeNull(); // every expected push was sent
+	expect(pushStatuses).toEqual([]); // every expected push was sent
 });
 
 describe('timetable check consumer', () => {
@@ -192,10 +198,91 @@ describe('scheduleTimetableChecks', () => {
 		const queueEnv = { ...testEnv, PUSH_QUEUE: { sendBatch: async (m: unknown[]) => queued.push(...m) } };
 
 		await scheduleTimetableChecks(queueEnv, new Date('2026-11-01T21:30:00Z')); // Mon 8:30am
-		expect(queued).toEqual([{ body: { userIds: [USER], date: DATE, label: 'today' } }]);
+		await scheduleTimetableChecks(queueEnv, new Date('2026-11-01T21:50:00Z')); // Mon 8:50am
+		expect(queued).toEqual([
+			{
+				body: {
+					userIds: [USER],
+					checks: [
+						{ date: DATE, label: 'today' },
+						{ date: '2026-11-03', label: 'tomorrow' },
+					],
+					scan: null,
+				},
+			},
+			{ body: { userIds: [USER], checks: [], scan: { group: 'p1', time: '8:50am', date: DATE } } },
+		]);
 
 		await scheduleTimetableChecks(queueEnv, new Date('2026-11-01T12:00:00Z')); // Sun 11pm
 		await scheduleTimetableChecks({ ...queueEnv, TOKEN_ENC_KEY: undefined }, new Date('2026-11-01T21:30:00Z'));
-		expect(queued).toHaveLength(1);
+		expect(queued).toHaveLength(2);
+	});
+});
+
+describe('scan-on reminders', () => {
+	const at850 = { scan: { group: 'p1' as const, time: '8:50am', date: DATE }, checks: [] };
+	const at750 = { scan: { group: 'p0' as const, time: '7:50am', date: DATE }, checks: [] };
+	const dayWithP0 = { status: 'OK', timetable: { timetable: { periods: { '0': { title: 'MUS' }, '1': { title: 'ENG' } } } } };
+
+	function mockScanIns(member: unknown[]) {
+		fetchMock
+			.get('https://api.sbhs.net.au')
+			.intercept({ path: '/api/core/students/441234567/attendance/scan-ins', method: 'GET', headers: { Authorization: 'Bearer A0' } })
+			.reply(200, { member });
+	}
+
+	it('reminds a student with no scan-in by the deadline, once a day', async () => {
+		mockDay(dayWithSub);
+		mockScanIns([{ date: '2026-10-30' }]);
+		mockPushService();
+		await processTimetableCheckBatch(batch([USER], at850).batch, testEnv);
+		expect(pushed).toHaveLength(1);
+		expect(await dev.decrypt(pushed[0].body)).toEqual({
+			title: 'You have not scanned on as of 8:50am',
+			body: '',
+			url: `/timetable?date=${DATE}#day`,
+			tag: `scan-${DATE}`,
+		});
+
+		// A redelivered message doesn't remind twice.
+		mockDay(dayWithSub);
+		mockScanIns([]);
+		await processTimetableCheckBatch(batch([USER], at850).batch, testEnv);
+		expect(pushed).toHaveLength(1);
+	});
+
+	it('stays quiet once the student has scanned on', async () => {
+		mockDay(dayWithSub);
+		mockScanIns([{ date: DATE, timestamp: `${DATE}T08:41:00+11:00` }]);
+		await processTimetableCheckBatch(batch([USER], at850).batch, testEnv);
+		expect(pushed).toHaveLength(0);
+	});
+
+	it('reminds students with period 0 at 7:50, not 8:50', async () => {
+		mockDay(dayWithP0);
+		await processTimetableCheckBatch(batch([USER], at850).batch, testEnv);
+		expect(pushed).toHaveLength(0);
+
+		mockDay(dayWithP0);
+		mockScanIns([]);
+		mockPushService();
+		await processTimetableCheckBatch(batch([USER], at750).batch, testEnv);
+		expect((await dev.decrypt(pushed[0].body)).title).toBe('You have not scanned on as of 7:50am');
+	});
+
+	it('skips days without classes', async () => {
+		mockDay({ status: 'OK', timetable: { timetable: { periods: {} } } });
+		await processTimetableCheckBatch(batch([USER], at850).batch, testEnv);
+		expect(pushed).toHaveLength(0);
+	});
+
+	it('reuses the day already fetched for a change check', async () => {
+		mockDay(dayWithSub); // fetched once for both
+		mockScanIns([]);
+		mockPushService();
+		mockPushService();
+		await processTimetableCheckBatch(batch([USER], { checks: [{ date: DATE, label: 'today' }], scan: at850.scan }).batch, testEnv);
+		const titles = await Promise.all(pushed.map(async (p) => (await dev.decrypt(p.body)).title));
+		expect(titles).toEqual(['Timetable change today', 'You have not scanned on as of 8:50am']);
 	});
 });

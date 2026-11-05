@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, extractChanges, formatChangeNotification, newChanges, parseSnapshot, planCheck, sydneyClock } from '../src/timetableChanges';
+import {
+	addDays,
+	extractChanges,
+	firstClassGroup,
+	formatChangeNotification,
+	newChanges,
+	parseSnapshot,
+	planTick,
+	scannedOn,
+	sydneyClock,
+} from '../src/timetableChanges';
 
 // Shaped like student.sbhs.net.au/api/timetable/daytimetable.json
 const day = {
@@ -107,18 +117,82 @@ describe('scheduling', () => {
 		expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
 	});
 
-	it('checks today during school hours on weekdays', () => {
-		expect(planCheck(at('2026-11-01T21:30:00Z'))).toEqual({ date: '2026-11-02', label: 'today' }); // Mon 8:30am
-		expect(planCheck(at('2026-11-02T04:00:00Z'))).toEqual({ date: '2026-11-02', label: 'today' }); // Mon 3:00pm
-		expect(planCheck(at('2026-10-31T21:30:00Z'))).toBeNull(); // Sun 8:30am
-		expect(planCheck(at('2026-11-01T18:45:00Z'))).toBeNull(); // Mon 5:45am
+	const dates = (iso: string) => planTick(at(iso)).checks.map((c) => `${c.date} ${c.label}`);
+
+	it('checks the rest of the school week, nearer days more often', () => {
+		// Mon 2 Nov 2026, 9:00am: every day to Friday is due on the hour
+		expect(dates('2026-11-01T22:00:00Z')).toEqual([
+			'2026-11-02 today',
+			'2026-11-03 tomorrow',
+			'2026-11-04 on Wednesday',
+			'2026-11-05 on Thursday',
+			'2026-11-06 on Friday',
+		]);
+		expect(dates('2026-11-01T21:30:00Z')).toEqual(['2026-11-02 today', '2026-11-03 tomorrow']); // 8:30am
+		expect(dates('2026-11-01T21:45:00Z')).toEqual(['2026-11-02 today']); // 8:45am
+		expect(dates('2026-11-01T21:50:00Z')).toEqual([]); // 8:50am
 	});
 
-	it('looks ahead to tomorrow on Sunday to Thursday evenings, every half hour', () => {
-		expect(planCheck(at('2026-11-02T05:30:00Z'))).toEqual({ date: '2026-11-03', label: 'tomorrow' }); // Mon 4:30pm
-		expect(planCheck(at('2026-11-02T05:45:00Z'))).toBeNull(); // Mon 4:45pm
-		expect(planCheck(at('2026-11-01T09:00:00Z'))).toEqual({ date: '2026-11-02', label: 'tomorrow' }); // Sun 8:00pm
-		expect(planCheck(at('2026-11-06T09:00:00Z'))).toBeNull(); // Fri 8:00pm
-		expect(planCheck(at('2026-11-02T10:00:00Z'))).toBeNull(); // Mon 9:00pm
+	it('drops today after period 5, and stops at Friday', () => {
+		expect(dates('2026-11-02T05:00:00Z')).toEqual([
+			'2026-11-03 tomorrow',
+			'2026-11-04 on Wednesday',
+			'2026-11-05 on Thursday',
+			'2026-11-06 on Friday',
+		]); // Mon 4:00pm
+		expect(dates('2026-11-05T21:00:00Z')).toEqual(['2026-11-06 today']); // Fri 8:00am
+		expect(dates('2026-11-06T05:00:00Z')).toEqual([]); // Fri 4:00pm
+	});
+
+	it('looks at next week on Saturday and Sunday', () => {
+		expect(dates('2026-11-06T22:00:00Z')).toEqual([
+			'2026-11-09 on Monday',
+			'2026-11-10 on Tuesday',
+			'2026-11-11 on Wednesday',
+			'2026-11-12 on Thursday',
+			'2026-11-13 on Friday',
+		]); // Sat 9:00am
+		expect(dates('2026-11-07T22:00:00Z')).toEqual([
+			'2026-11-09 tomorrow',
+			'2026-11-10 on Tuesday',
+			'2026-11-11 on Wednesday',
+			'2026-11-12 on Thursday',
+			'2026-11-13 on Friday',
+		]); // Sun 9:00am
+	});
+
+	it('stays quiet overnight', () => {
+		expect(dates('2026-11-01T18:45:00Z')).toEqual([]); // Mon 5:45am
+		expect(dates('2026-11-02T10:00:00Z')).toEqual([]); // Mon 9:00pm
+	});
+
+	it('marks scan-on deadlines ten minutes before the first class', () => {
+		const scan = (iso: string) => planTick(at(iso)).scan;
+		expect(scan('2026-11-01T20:50:00Z')).toEqual({ group: 'p0', time: '7:50am' }); // Mon
+		expect(scan('2026-11-01T21:50:00Z')).toEqual({ group: 'p1', time: '8:50am' }); // Mon
+		expect(scan('2026-11-05T20:50:00Z')).toEqual({ group: 'p0', time: '7:50am' }); // Fri
+		expect(scan('2026-11-05T21:50:00Z')).toBeNull(); // Fri 8:50, period 1 starts at 9:25
+		expect(scan('2026-11-05T22:15:00Z')).toEqual({ group: 'p1', time: '9:15am' }); // Fri
+		expect(scan('2026-11-06T21:50:00Z')).toBeNull(); // Sat
+		expect(scan('2026-11-01T21:55:00Z')).toBeNull(); // Mon 8:55
+		expect(scan('2026-06-01T21:50:00Z')).toEqual({ group: 'p0', time: '7:50am' }); // Tue in winter (AEST)
+	});
+});
+
+describe('scan-on helpers', () => {
+	const withPeriods = (periods: Record<string, unknown>) => ({ status: 'OK', timetable: { timetable: { periods } } });
+
+	it('groups students by their first class', () => {
+		expect(firstClassGroup(withPeriods({ '0': { title: 'MUS' }, '1': { title: 'ENG' } }))).toBe('p0');
+		expect(firstClassGroup(withPeriods({ RC: { title: 'RC' }, '2': { title: 'ENG' } }))).toBe('p1');
+		expect(firstClassGroup(withPeriods({ RC: { title: 'RC' }, '0': {} }))).toBeNull();
+		expect(firstClassGroup({ status: 'OK' })).toBeNull();
+	});
+
+	it('finds a scan-in for the day', () => {
+		const scans = { member: [{ date: '2026-11-03', timestamp: '2026-11-03T08:41:00+11:00' }] };
+		expect(scannedOn(scans, '2026-11-03')).toBe(true);
+		expect(scannedOn(scans, '2026-11-04')).toBe(false);
+		expect(scannedOn(null, '2026-11-04')).toBe(false);
 	});
 });

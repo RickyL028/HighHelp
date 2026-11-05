@@ -254,7 +254,7 @@ function isTransientError(err: unknown): boolean {
 
 export default {
   fetch: app.fetch,
-  // Timetable change alerts: every 15 minutes, see timetablePush.ts
+  // Timetable change alerts and scan-on reminders: every 5 minutes, see timetablePush.ts
   async scheduled(controller: ScheduledController, env: Bindings, ctx: ExecutionContext) {
     ctx.waitUntil(scheduleTimetableChecks(env, new Date(controller.scheduledTime)))
   },

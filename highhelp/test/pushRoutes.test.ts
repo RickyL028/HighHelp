@@ -65,7 +65,9 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-	await env.DB.batch(['users', 'push_subscriptions', 'portal_tokens', 'timetable_snapshots'].map((t) => env.DB.prepare(`DROP TABLE IF EXISTS ${t}`)));
+	await env.DB.batch(
+		['users', 'push_subscriptions', 'portal_tokens', 'timetable_snapshots', 'scan_reminders'].map((t) => env.DB.prepare(`DROP TABLE IF EXISTS ${t}`))
+	);
 	await env.DB.batch([
 		env.DB.prepare('CREATE TABLE users (id INTEGER PRIMARY KEY, student_id TEXT NOT NULL, permission_level INTEGER DEFAULT 0)'),
 		env.DB.prepare("INSERT INTO users (id, student_id, permission_level) VALUES (1, '441234567', 0), (2, '449999999', -2)"),
@@ -78,6 +80,9 @@ beforeEach(async () => {
 		),
 		env.DB.prepare(
 			'CREATE TABLE timetable_snapshots (user_id INTEGER NOT NULL, date TEXT NOT NULL, changes TEXT NOT NULL, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, date))'
+		),
+		env.DB.prepare(
+			'CREATE TABLE scan_reminders (user_id INTEGER NOT NULL, date TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_id, date))'
 		),
 	]);
 

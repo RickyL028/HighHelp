@@ -1,12 +1,27 @@
 import { Bindings } from './types';
-import { heldAccessToken } from './portalTokens';
-import { addDays, extractChanges, formatChangeNotification, newChanges, parseSnapshot, planCheck, sydneyClock } from './timetableChanges';
+import { HeldAccess, heldAccessToken } from './portalTokens';
+import {
+    CheckPlan,
+    ScanDeadline,
+    addDays,
+    extractChanges,
+    firstClassGroup,
+    formatChangeNotification,
+    newChanges,
+    parseSnapshot,
+    planTick,
+    scannedOn,
+    sydneyClock,
+} from './timetableChanges';
 import { PushOptions, PushTarget, VapidKeys, sendWebPush } from './webPush';
 
-// Timetable change alerts. A cron tick every 15 minutes (wrangler.jsonc `triggers`) works out which
-// date to check (planCheck) and queues every subscribed user in chunks. The queue consumer reads each
-// user's day timetable with their held portal token (portalTokens.ts), compares it with the last
-// alerted snapshot, and pushes any new subs, no-cover periods or room changes to all their devices.
+// Timetable change alerts and scan-on reminders. A cron tick every 5 minutes (wrangler.jsonc
+// `triggers`) works out what to check (planTick) and queues every subscribed user in chunks. The queue
+// consumer reads each user's timetable with their held portal token (portalTokens.ts), then:
+// - for each planned date, compares the day with the last alerted snapshot and pushes any new subs,
+//   no-cover periods or room changes to all their devices;
+// - at a scan-on deadline, reminds students whose first class is in that group and who have no scan-in
+//   for today yet.
 
 export const TIMETABLE_PUSH_QUEUE = 'timetable-push-queue';
 const USERS_PER_MESSAGE = 10;
@@ -14,8 +29,8 @@ const MAX_DEVICES_PER_USER = 10;
 
 export interface TimetableCheckJob {
     userIds: number[];
-    date: string;
-    label: 'today' | 'tomorrow';
+    checks: CheckPlan[];
+    scan: (ScanDeadline & { date: string }) | null;
 }
 
 export interface PushMessage {
@@ -89,11 +104,11 @@ export const ALERTS_PAUSED: PushMessage = {
 
 export async function scheduleTimetableChecks(env: Bindings, now: Date) {
     const { date, minutes } = sydneyClock(now);
-    // Once a night, around 3am.
-    if (minutes >= 3 * 60 && minutes < 3 * 60 + 15) await sweepPushData(env, date);
+    // Once a night, at 3am.
+    if (minutes >= 3 * 60 && minutes < 3 * 60 + 5) await sweepPushData(env, date);
 
-    const plan = planCheck(now);
-    if (!plan) return;
+    const { checks, scan } = planTick(now);
+    if (checks.length === 0 && !scan) return;
     if (!pushConfigured(env)) {
         console.warn('[timetable-push] VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / TOKEN_ENC_KEY not set; skipping');
         return;
@@ -104,19 +119,23 @@ export async function scheduleTimetableChecks(env: Bindings, now: Date) {
     ).all<{ user_id: number }>();
     const jobs: { body: TimetableCheckJob }[] = [];
     for (let i = 0; i < results.length; i += USERS_PER_MESSAGE) {
-        jobs.push({ body: { userIds: results.slice(i, i + USERS_PER_MESSAGE).map((r) => r.user_id), ...plan } });
+        const userIds = results.slice(i, i + USERS_PER_MESSAGE).map((r) => r.user_id);
+        jobs.push({ body: { userIds, checks, scan: scan ? { ...scan, date } : null } });
     }
     // sendBatch takes at most 100 messages.
     for (let i = 0; i < jobs.length; i += 100) await env.PUSH_QUEUE.sendBatch(jobs.slice(i, i + 100));
 }
 
-// Drops week-old snapshots, and held tokens of users with no devices left (e.g. every subscription
-// expired), so tokens are only ever held for students actively receiving alerts.
+// Drops week-old snapshots and reminders, and held tokens of users with no devices left (e.g. every
+// subscription expired), so tokens are only ever held for students actively receiving alerts.
 async function sweepPushData(env: Bindings, today: string) {
+    const cutoff = addDays(today, -7);
     await env.DB.batch([
-        env.DB.prepare('DELETE FROM timetable_snapshots WHERE date < ?').bind(addDays(today, -7)),
+        env.DB.prepare('DELETE FROM timetable_snapshots WHERE date < ?').bind(cutoff),
+        env.DB.prepare('DELETE FROM scan_reminders WHERE date < ?').bind(cutoff),
         env.DB.prepare('DELETE FROM portal_tokens WHERE user_id NOT IN (SELECT user_id FROM push_subscriptions)'),
         env.DB.prepare('DELETE FROM timetable_snapshots WHERE user_id NOT IN (SELECT user_id FROM push_subscriptions)'),
+        env.DB.prepare('DELETE FROM scan_reminders WHERE user_id NOT IN (SELECT user_id FROM push_subscriptions)'),
     ]);
 }
 
@@ -124,50 +143,83 @@ async function sweepPushData(env: Bindings, today: string) {
 
 export async function processTimetableCheckBatch(batch: MessageBatch<TimetableCheckJob>, env: Bindings) {
     for (const message of batch.messages) {
-        const { userIds, date, label } = message.body;
+        const job = message.body;
         // A failure for one user is logged and left for the next tick rather than retrying the whole chunk.
-        const results = await Promise.allSettled(userIds.map((userId) => checkUser(env, userId, date, label)));
+        const results = await Promise.allSettled(job.userIds.map((userId) => checkUser(env, userId, job)));
         results.forEach((r, i) => {
-            if (r.status === 'rejected') console.error('[timetable-push] check failed', { userId: userIds[i], error: errorMessage(r.reason) });
+            if (r.status === 'rejected') console.error('[timetable-push] check failed', { userId: job.userIds[i], error: errorMessage(r.reason) });
         });
         message.ack();
     }
 }
 
-function fetchDay(accessToken: string, date: string) {
-    return fetch(`https://student.sbhs.net.au/api/timetable/daytimetable.json?date=${date}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-    });
+// Portal GETs for one user with their held token, refreshing it once if the portal rejects it.
+// `get` returns null when there is no usable token; `revoked` says the portal refused it just now.
+function portalSession(env: Bindings, userId: number) {
+    let held: HeldAccess | null = null;
+    let refreshed = false;
+    const session = {
+        revoked: false,
+        async get(url: string): Promise<any> {
+            held ??= await heldAccessToken(env, userId);
+            while (true) {
+                if (held.status !== 'ok') {
+                    if (held.status === 'revoked') session.revoked = true;
+                    return null;
+                }
+                const res = await fetch(url, { headers: { Authorization: `Bearer ${held.accessToken}` } });
+                if ((res.status === 401 || res.status === 403) && !refreshed) {
+                    await res.body?.cancel();
+                    refreshed = true;
+                    held = await heldAccessToken(env, userId, true);
+                    continue;
+                }
+                if (!res.ok) {
+                    await res.body?.cancel();
+                    throw new Error(`${new URL(url).pathname} returned ${res.status}`);
+                }
+                return res.json();
+            }
+        },
+    };
+    return session;
 }
 
-async function checkUser(env: Bindings, userId: number, date: string, label: TimetableCheckJob['label']) {
+function isSchoolDayData(day: any): boolean {
+    return !!day && (!day.status || day.status === 'OK');
+}
+
+async function checkUser(env: Bindings, userId: number, job: TimetableCheckJob) {
     const subs = (await userDevices(env, userId)).results;
     if (subs.length === 0) return;
 
-    let held = await heldAccessToken(env, userId);
-    let res: Response | null = null;
-    if (held.status === 'ok') {
-        res = await fetchDay(held.accessToken, date);
-        if (res.status === 401 || res.status === 403) {
-            await res.body?.cancel();
-            held = await heldAccessToken(env, userId, true);
-            res = held.status === 'ok' ? await fetchDay(held.accessToken, date) : null;
-        }
-    }
-    if (held.status === 'revoked') {
-        await pushToDevices(env, subs, ALERTS_PAUSED, { ttl: 7 * 24 * 60 * 60, urgency: 'normal', topic: 'timetable-alerts' });
-        return;
-    }
-    if (!res) return;
-    if (!res.ok) {
-        await res.body?.cancel();
-        throw new Error(`daytimetable.json returned ${res.status}`);
+    const portal = portalSession(env, userId);
+    const days = new Map<string, any>();
+    async function day(date: string) {
+        if (!days.has(date)) days.set(date, await portal.get(`https://student.sbhs.net.au/api/timetable/daytimetable.json?date=${date}`));
+        return days.get(date);
     }
 
-    const day: any = await res.json();
-    if (day?.status && day.status !== 'OK') return;
+    for (const check of job.checks) {
+        const data = await day(check.date);
+        if (portal.revoked) return alertsPaused(env, subs);
+        if (!data) return;
+        if (isSchoolDayData(data)) await alertChanges(env, userId, subs, check, data);
+    }
+
+    if (job.scan) {
+        const data = await day(job.scan.date);
+        if (portal.revoked) return alertsPaused(env, subs);
+        if (isSchoolDayData(data) && firstClassGroup(data) === job.scan.group) await remindScan(env, userId, subs, portal, job.scan);
+    }
+}
+
+async function alertsPaused(env: Bindings, subs: SubscriptionRow[]) {
+    await pushToDevices(env, subs, ALERTS_PAUSED, { ttl: 7 * 24 * 60 * 60, urgency: 'normal', topic: 'timetable-alerts' });
+}
+
+async function alertChanges(env: Bindings, userId: number, subs: SubscriptionRow[], { date, label }: CheckPlan, day: any) {
     const changes = extractChanges(day);
-
     const snapshot = await env.DB.prepare('SELECT changes FROM timetable_snapshots WHERE user_id = ? AND date = ?')
         .bind(userId, date)
         .first<{ changes: string }>();
@@ -179,8 +231,8 @@ async function checkUser(env: Bindings, userId: number, date: string, label: Tim
             env,
             subs,
             { title, body, url: `/timetable?date=${date}#day`, tag: `timetable-${date}` },
-            // Worthless once the day is over, and a newer alert for the same date replaces an undelivered one.
-            { ttl: 12 * 60 * 60, urgency: 'high', topic: `timetable-${date}` }
+            // A newer alert for the same date replaces an undelivered one.
+            { ttl: (label === 'today' ? 12 : 24) * 60 * 60, urgency: 'high', topic: `timetable-${date}` }
         );
         // Leave the snapshot alone so the next tick tries again.
         if (delivered === 0) return;
@@ -195,4 +247,27 @@ async function checkUser(env: Bindings, userId: number, date: string, label: Tim
             .bind(userId, date, serialized)
             .run();
     }
+}
+
+async function remindScan(
+    env: Bindings,
+    userId: number,
+    subs: SubscriptionRow[],
+    portal: ReturnType<typeof portalSession>,
+    scan: NonNullable<TimetableCheckJob['scan']>
+) {
+    const user = await env.DB.prepare('SELECT student_id FROM users WHERE id = ?').bind(userId).first<{ student_id: string }>();
+    if (!user?.student_id) return;
+    const scanIns = await portal.get(`https://api.sbhs.net.au/api/core/students/${encodeURIComponent(user.student_id)}/attendance/scan-ins`);
+    if (!scanIns || scannedOn(scanIns, scan.date)) return;
+
+    // At most one reminder per student per day, even if the queue redelivers this message.
+    const claimed = await env.DB.prepare('INSERT OR IGNORE INTO scan_reminders (user_id, date) VALUES (?, ?)').bind(userId, scan.date).run();
+    if (!claimed.meta.changes) return;
+    await pushToDevices(
+        env,
+        subs,
+        { title: `You have not scanned on as of ${scan.time}`, body: '', url: `/timetable?date=${scan.date}#day`, tag: `scan-${scan.date}` },
+        { ttl: 2 * 60 * 60, urgency: 'high', topic: `scan-${scan.date}` }
+    );
 }

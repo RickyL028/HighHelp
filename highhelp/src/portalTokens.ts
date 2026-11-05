@@ -197,6 +197,7 @@ export async function dropPortalTokens(env: Bindings, userId: number) {
     await env.DB.batch([
         env.DB.prepare('DELETE FROM portal_tokens WHERE user_id = ?').bind(userId),
         env.DB.prepare('DELETE FROM timetable_snapshots WHERE user_id = ?').bind(userId),
+        env.DB.prepare('DELETE FROM scan_reminders WHERE user_id = ?').bind(userId),
     ]);
 }
 

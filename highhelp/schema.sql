@@ -265,3 +265,12 @@ CREATE TABLE timetable_snapshots (
     PRIMARY KEY (user_id, date),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+-- Scan-on reminders already sent, at most one per student per day.
+CREATE TABLE scan_reminders (
+    user_id INTEGER NOT NULL,
+    date TEXT NOT NULL, -- YYYY-MM-DD
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, date),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);

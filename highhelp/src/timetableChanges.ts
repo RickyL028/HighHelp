@@ -139,21 +139,71 @@ export function addDays(date: string, days: number): string {
 
 export interface CheckPlan {
     date: string;
-    label: 'today' | 'tomorrow';
+    label: string; // 'today', 'tomorrow' or 'on Wednesday', as used in the notification title
+}
+
+// A scan-on deadline: students whose first class is in `group` get reminded if they haven't scanned on.
+export interface ScanDeadline {
+    group: 'p0' | 'p1';
+    time: string; // shown in the reminder, e.g. '8:50am'
+}
+
+export interface TickPlan {
+    checks: CheckPlan[];
+    scan: ScanDeadline | null;
 }
 
 const DAY_START = 6 * 60; // 6:00am
 const SCHOOL_END = 15 * 60 + 15; // 3:15pm, just after period 5
 const DAY_END = 21 * 60; // 9:00pm
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// Which date a cron tick (every 15 minutes) should check, or null to skip it. School days are checked
-// for "today" until the end of period 5. After that, Sunday to Thursday evenings look ahead to
-// tomorrow at half the rate (on the hour and half hour), when next-day subs tend to appear.
-export function planCheck(now: Date): CheckPlan | null {
+// Ten minutes before the first class: P0 starts at 8:00, P1 at 9:00, or 9:25 on Fridays.
+function scanDeadline(weekday: number, minutes: number): ScanDeadline | null {
+    if (weekday < 1 || weekday > 5) return null;
+    if (minutes === 7 * 60 + 50) return { group: 'p0', time: '7:50am' };
+    if (weekday !== 5 && minutes === 8 * 60 + 50) return { group: 'p1', time: '8:50am' };
+    if (weekday === 5 && minutes === 9 * 60 + 15) return { group: 'p1', time: '9:15am' };
+    return null;
+}
+
+// What a cron tick (every 5 minutes) should do. Change checks cover the rest of the school week:
+// from today (or tomorrow once period 5 is over) to Friday, or next week's Monday to Friday on
+// Saturday and Sunday. Nearer days are checked more often: today every 15 minutes, tomorrow every
+// 30, later days hourly, all between 6am and 9pm.
+export function planTick(now: Date): TickPlan {
     const { date, weekday, minutes } = sydneyClock(now);
-    if (minutes < DAY_START || minutes >= DAY_END) return null;
-    if (minutes < SCHOOL_END) return weekday >= 1 && weekday <= 5 ? { date, label: 'today' } : null;
-    if (weekday === 5 || weekday === 6) return null;
-    if (Math.floor(minutes / 15) % 2 !== 0) return null;
-    return { date: addDays(date, 1), label: 'tomorrow' };
+    const plan: TickPlan = { checks: [], scan: scanDeadline(weekday, minutes) };
+    if (minutes < DAY_START || minutes >= DAY_END) return plan;
+
+    let first: number; // days from today
+    if (weekday === 6) first = 2;
+    else if (weekday === 0) first = 1;
+    else first = minutes < SCHOOL_END ? 0 : 1;
+    const last = weekday === 6 ? 6 : weekday === 0 ? 5 : 5 - weekday; // up to Friday
+
+    for (let offset = first; offset <= last; offset++) {
+        const every = offset === 0 ? 15 : offset === 1 ? 30 : 60;
+        if (minutes % every !== 0) continue;
+        const label = offset === 0 ? 'today' : offset === 1 ? 'tomorrow' : `on ${WEEKDAYS[(weekday + offset) % 7]}`;
+        plan.checks.push({ date: addDays(date, offset), label });
+    }
+    return plan;
+}
+
+const NON_CLASS_PERIODS = new Set(['RC', 'R', 'L1', 'L2', 'EoD']);
+
+// Which scan-on group a student's day puts them in: 'p0' if they have period 0, 'p1' for any other
+// day with classes, or null when there are no classes (holidays, pupil-free days).
+export function firstClassGroup(day: any): 'p0' | 'p1' | null {
+    const periods = byPeriod(day?.timetable?.timetable?.periods);
+    const classes = Object.entries(periods).filter(([period, p]) => !NON_CLASS_PERIODS.has(period) && p && (p.title || p.subject));
+    if (classes.length === 0) return null;
+    return classes.some(([period]) => period === '0') ? 'p0' : 'p1';
+}
+
+// Whether the portal's scan-ins list (attendance/scan-ins) has an entry for `date`.
+export function scannedOn(scanIns: any, date: string): boolean {
+    const members = Array.isArray(scanIns?.member) ? scanIns.member : [];
+    return members.some((m: any) => m?.date === date);
 }

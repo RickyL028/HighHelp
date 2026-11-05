@@ -188,7 +188,7 @@ export const TimetableCore = html`
             banner.id = 'reauth-banner';
             banner.className = 'mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 text-sm flex items-center gap-3';
             banner.innerHTML = '<svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
-                + '<span class="flex-1">Your session has expired. Please re-login to sync timetable data.</span>'
+                + '<span class="flex-1">The new school API is down if you see this, should be fixed in a bit just the scan-in status wont appear for a bit</span>'
                 + '<a href="/api/auth/login" class="flex-shrink-0 px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs transition-colors">Re-login</a>'
                 + '<button onclick="this.parentElement.remove()" class="flex-shrink-0 p-1 rounded hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>';
             container.insertBefore(banner, container.firstChild);

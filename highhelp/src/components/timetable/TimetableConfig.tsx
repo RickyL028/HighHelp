@@ -8,7 +8,7 @@ export const TimetableConfig = html`
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <h2 class="text-sm font-bold text-gray-900 dark:text-neutral-100">Class Change Notification</h2>
-                    <p class="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">Get a notification on this device when a class has a sub, no cover or a room change. This is enabled when it is installed as a PWA app on your device.</p>
+                    <p class="text-xs text-gray-400 dark:text-neutral-500 mt-0.5">Get a notification on this device when a class this week has a sub, no cover or a room change, and a reminder if you haven't scanned on before your first class. This is enabled when it is installed as a PWA app on your device.</p>
                     <p class="text-xs text-red-400 dark:text-red-500 mt-0.5">Your school API token WILL be stored if you enable this. </p>
                 </div>
                 <button id="push-toggle" type="button" class="hidden flex-shrink-0 px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors"></button>
@@ -318,7 +318,7 @@ export const TimetableConfig = html`
                 return;
             }
             setButton('on');
-            showStatus('Alerts are on for this device. Your timetable is checked through the school day and the evening before.', false);
+            showStatus('Alerts are on for this device. Your timetable is checked for the rest of the week (next week on weekends).', false);
         }
 
         async function disable() {

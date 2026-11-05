@@ -25,7 +25,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 
 const ALERTS_ON: PushMessage = {
     title: 'Timetable alerts are on',
-    body: "You'll get a notification here when a class has a sub, no cover or a room change.",
+    body: "You'll get a notification here when a class this week has a sub, no cover or a room change, and if you haven't scanned on before your first class.",
     url: '/timetable',
     tag: 'timetable-alerts',
 }
