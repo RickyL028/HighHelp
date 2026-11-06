@@ -360,7 +360,7 @@ app.get('/about', async (c) => {
                             <li>Aiden Ton-That,</li>
                             
 
-                            <li>Yuhai Wang,</li>
+                            <li>Andrew Walker,</li>
 
                             <li>Terry Zhang,</li>
                             <li>Henrik Zhang,</li>
