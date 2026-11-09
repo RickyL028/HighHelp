@@ -70,7 +70,7 @@ app.get('/', async (c) => {
                     />
                     <h1 class="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">HighHelp</h1>
                     <p class="text-lg text-gray-600 dark:text-gray-400 text-center">Designed and programmed specifically for, and by, class of 2027.</p>
-                    <p class="text-sm text-gray-400 dark:text-gray-600 text-center">User Count: {userCount.toLocaleString('en-AU')} :D</p>
+                    <a class="text-sm text-gray-400 dark:text-gray-600 text-center underline" href="/info">User Count: {userCount.toLocaleString('en-AU')} - Check this out!</a>
                 </div>
 
                 <script dangerouslySetInnerHTML={{

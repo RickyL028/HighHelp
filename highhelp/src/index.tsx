@@ -18,6 +18,7 @@ import atarRoutes from './routes/atar'
 import atarExplainedRoutes from './routes/atar-explained'
 import attendanceRoutes from './routes/attendance'
 import pushRoutes from './routes/push'
+import infoRoutes from './routes/info'
 import { processAIImportJob, AIImportJob } from './routes/pastPapers/aiQueueWorker'
 import { TIMETABLE_PUSH_QUEUE, TimetableCheckJob, processTimetableCheckBatch, scheduleTimetableChecks } from './timetablePush'
 import { getUser } from './utils'
@@ -239,6 +240,7 @@ app.route('/timetable', classesRoutes)
 app.route('/attendance', attendanceRoutes)
 app.route('/', feedbackRoutes)
 app.route('/', aboutRoutes)
+app.route('/', infoRoutes)
 app.route('/', leaderboardRoutes)
 app.route('/', pointsRoutes)
 app.route('/', atarRoutes)
