@@ -700,6 +700,15 @@ export const TimetableCore = html`
         return now > check;
     }
 
+    // Inline CSS variables for a card's subject colour, so themes can tint or fill the card (src/themes.ts).
+    function stripVars(hexColor) {
+        const m = /^#?([0-9a-f]{6})$/i.exec(hexColor || '');
+        if (!m) return '';
+        const n = parseInt(m[1], 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+        const ink = (r * 299 + g * 587 + b * 114) / 1000 > 150 ? '#111111' : '#ffffff';
+        return '--strip-color:#' + m[1] + ';--strip-rgb:' + r + ',' + g + ',' + b + ';--strip-ink:' + ink + ';';
+    }
+
     function attachHoverEffects() {
         const cards = document.querySelectorAll('.period-card');
         cards.forEach(card => {

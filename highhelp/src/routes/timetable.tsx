@@ -46,67 +46,15 @@ app.get('/', async (c) => {
                     window.currentUserPermission = ${user.permission_level || 0};
                     window.currentUserId = ${user.id};
                     (function() {
-                        function isNight() {
-                            return document.documentElement.classList.contains('night');
-                        }
-
-                        function isPaper() {
-                            return document.documentElement.classList.contains('paper');
-                        }
-
-                        function isGlass() {
-                            return document.documentElement.classList.contains('glass');
-                        }
-
-                        function getThemeAccent() {
-                            if (isNight()) return 'purple';
-                            if (isGlass()) return 'glass';
-                            return 'red';
-                        }
-
-                        function applyTimetableTheme(theme) {
-                            document.documentElement.classList.remove('night', 'paper', 'glass');
-                            if (theme === 'night') {
-                                document.documentElement.classList.add('night', 'dark');
-                                localStorage.setItem('theme', 'dark');
-                            } else if (theme === 'paper') {
-                                document.documentElement.classList.add('paper');
-                                document.documentElement.classList.remove('dark');
-                                localStorage.setItem('theme', 'light');
-                            } else if (theme === 'glass') {
-                                document.documentElement.classList.add('glass', 'dark');
-                                localStorage.setItem('theme', 'dark');
-                            } else {
-                                const saved = localStorage.getItem('theme') || 'light';
-                                if (saved === 'dark') {
-                                    document.documentElement.classList.add('dark');
-                                } else {
-                                    document.documentElement.classList.remove('dark');
-                                }
-                            }
-                            const themeToggleDark = document.getElementById('theme-toggle-dark-icon');
-                            const themeToggleLight = document.getElementById('theme-toggle-light-icon');
-                            const mobileThemeText = document.getElementById('mobile-theme-text');
-                            const isDark = document.documentElement.classList.contains('dark');
-                            if (isDark) {
-                                themeToggleDark?.classList.add('hidden');
-                                themeToggleLight?.classList.remove('hidden');
-                                if (mobileThemeText) mobileThemeText.textContent = 'Dark';
-                            } else {
-                                themeToggleLight?.classList.add('hidden');
-                                themeToggleDark?.classList.remove('hidden');
-                                if (mobileThemeText) mobileThemeText.textContent = 'Light';
-                            }
-                            if (window.render) window.render();
-                        }
-
+                        // Themes are applied by window.__ttAppearance (src/themes.ts); the views only need a redraw.
                         window.setTimetableTheme = function(theme) {
                             localStorage.setItem('timetableTheme', theme);
-                            applyTimetableTheme(theme);
+                            window.__ttAppearance.apply();
+                            window.dispatchEvent(new CustomEvent('timetableThemeChanged'));
                         };
 
-                        window.addEventListener('timetableThemeChanged', (e) => {
-                            applyTimetableTheme(e.detail.theme);
+                        window.addEventListener('timetableThemeChanged', () => {
+                            if (window.render) window.render();
                         });
 
                         function render() {
@@ -121,17 +69,16 @@ app.get('/', async (c) => {
                             const tabCalendar = document.getElementById('tab-calendar');
                             const tabHighNotes = document.getElementById('tab-highnotes');
                             const tabConfig = document.getElementById('tab-config');
-                            const headerControls = document.querySelector('#content > .flex.items-center.gap-2.mb-6') || document.querySelector('#content > .flex.items-center.gap-2.mb-3');
+                            const headerControls = document.getElementById('date-controls');
                             const configContainer = document.getElementById('config-container');
                             const timetableList = document.getElementById('timetable-list');
                             const cycleContainer = document.getElementById('cycle-view');
 
-                            // Reset tabs
-                            const themeAccent = getThemeAccent();
-                            const accentColors = themeAccent === 'purple' ? ['border-purple-500', 'text-purple-500'] : themeAccent === 'glass' ? ['border-[#5F7B8C]', 'text-[#5F7B8C]'] : ['border-red-500', 'text-red-500'];
+                            // Reset tabs. The active tab is always marked with the red classes; themes recolour them in CSS.
+                            const accentColors = ['border-red-500', 'text-red-500'];
                             [tabDay, tabCycle, tabNotices, tabEvents, tabCalendar, tabHighNotes, tabConfig].forEach(t => {
                                 if(t) {
-                                    t.classList.remove('border-red-500', 'text-red-500', 'border-purple-500', 'text-purple-500', 'border-[#5F7B8C]', 'text-[#5F7B8C]');
+                                    t.classList.remove('border-red-500', 'text-red-500');
                                     t.classList.add('border-transparent', 'text-gray-500');
                                 }
                             });

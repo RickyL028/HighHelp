@@ -11,7 +11,7 @@ export const TimetableLayout = ({ children }: { children: Child }) => (
         </div>
 
         <div id="content" class="hidden">
-            <div class="flex overflakruow-x-auto overflow-y-hidden border-b border-gray-200 dark:border-neutral-700 mb-3 scrollbar-hide">
+            <div id="tt-tabs" class="flex overflow-x-auto overflow-y-hidden border-b border-gray-200 dark:border-neutral-700 mb-3 scrollbar-hide">
                 <button id="tab-day" class="flex items-center gap-1.5 px-3 sm:px-4 py-2 border-b-2 border-red-500 text-red-500 font-medium text-xs sm:text-sm whitespace-nowrap focus:outline-none transition-colors flex-shrink-0">
                     <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     Day
@@ -60,7 +60,7 @@ export const TimetableLayout = ({ children }: { children: Child }) => (
                 </div>
             </div>
 
-            <div class="flex items-center gap-1.5 sm:gap-2 mb-3">
+            <div id="date-controls" class="flex items-center gap-1.5 sm:gap-2 mb-3">
                 <button id="btn-prev" class="w-8 sm:w-10 h-7 flex items-center justify-center rounded-lg border border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex-shrink-0">
                     <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 </button>
