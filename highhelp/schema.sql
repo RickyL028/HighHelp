@@ -20,17 +20,80 @@ CREATE TABLE users (
   notify_questions INTEGER NOT NULL DEFAULT 0
 );
 
+-- Resources are a folder tree (src/resourceFolders.ts, src/routes/resources.tsx):
+--
+--   subject folder            kind 'subject'  one per subject, parent_id NULL
+--     Task 1 … HSC, Unfiled   kind 'section'  seven per subject
+--       user folders          kind 'folder'   any depth
+--         notes               resources.folder_id
+--           attached files    resource_files
+--   Removed                   kind 'trash'    parent_id NULL, admins only
+--
+-- 'subject', 'section' and 'trash' rows are root folders: never renamed, moved or removed. The
+-- routes create any that are missing (a subject added to src/constants.ts), so they need no seed.
+-- Removing a note or folder moves it into the Removed folder and remembers where it came from, so
+-- "is this removed?" is always "is the top of its folder chain the trash folder?".
+CREATE TABLE resource_folders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  parent_id INTEGER, -- NULL for subject folders and the Removed folder
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'folder', -- 'subject' | 'section' | 'folder' | 'trash'
+  subject TEXT, -- subject key; set on 'subject' rows only
+  access TEXT NOT NULL DEFAULT 'everyone', -- who may add to it: 'everyone' | 'owner'
+  creator_id INTEGER, -- NULL for root folders
+  position INTEGER NOT NULL DEFAULT 0, -- order of the seven sections
+  removed_from_id INTEGER, -- the parent it was removed from, while it sits in Removed
+  removed_by INTEGER,
+  removed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (parent_id) REFERENCES resource_folders(id),
+  FOREIGN KEY (creator_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_resource_folders_parent ON resource_folders (parent_id);
+CREATE INDEX idx_resource_folders_creator ON resource_folders (creator_id);
+-- These make the "create any missing root folder" inserts (INSERT OR IGNORE) idempotent.
+CREATE UNIQUE INDEX idx_resource_folders_subject ON resource_folders (subject) WHERE kind = 'subject';
+CREATE UNIQUE INDEX idx_resource_folders_section ON resource_folders (parent_id, name) WHERE kind = 'section';
+CREATE UNIQUE INDEX idx_resource_folders_trash ON resource_folders (kind) WHERE kind = 'trash';
+
+-- A note in the resources tree.
 CREATE TABLE resources (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL,
   description TEXT,
-  file_key TEXT NOT NULL, -- R2 object key
-  subject TEXT NOT NULL,
+  file_key TEXT NOT NULL, -- legacy single file; '' on new rows. The files live in resource_files.
+  subject TEXT NOT NULL, -- subject of the folder chain's root; kept in step when the note is moved
   type TEXT DEFAULT 'resource', -- 'resource' or 'past_paper'
   uploader_id INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_deleted BOOLEAN DEFAULT 0, -- legacy; removed notes now sit under the Removed folder
+  download_count INTEGER DEFAULT 0,
+  uploader_display TEXT DEFAULT 'initials', -- 'anonymous' | 'initials' | 'full'
+  folder_id INTEGER REFERENCES resource_folders(id),
+  removed_from_id INTEGER, -- the folder it was removed from, while it sits in Removed
+  removed_by INTEGER,
+  removed_at TIMESTAMP,
   FOREIGN KEY (uploader_id) REFERENCES users(id)
 );
+
+CREATE INDEX idx_resources_folder ON resources (folder_id);
+
+-- Files attached to a note. Removing one only sets is_deleted; the R2 object stays.
+CREATE TABLE resource_files (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  resource_id INTEGER NOT NULL,
+  file_key TEXT NOT NULL, -- R2 object key
+  file_name TEXT NOT NULL, -- name shown to users
+  size INTEGER, -- bytes; NULL for files migrated from resources.file_key
+  uploader_id INTEGER,
+  is_deleted BOOLEAN DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (resource_id) REFERENCES resources(id),
+  FOREIGN KEY (uploader_id) REFERENCES users(id)
+);
+
+CREATE INDEX idx_resource_files_resource ON resource_files (resource_id, is_deleted);
 
 CREATE TABLE announcements (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

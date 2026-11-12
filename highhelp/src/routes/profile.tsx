@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { Layout } from '../layout'
 import { getUser, loginRedirect, renderTags, getFruitPermission, formatDate, RESERVED_TAGS } from '../utils'
 import { subjectLabel } from '../constants'
+import { notesQuery } from '../resourceFolders'
 import { Bindings, User } from '../types'
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -198,7 +199,9 @@ app.get('/profile/contributions', async (c) => {
     const user = await getUser(c) as User | null
     if (!user) return c.redirect(loginRedirect(c))
 
-    const { results: myResources } = await c.env.DB.prepare('SELECT * FROM resources WHERE uploader_id = ? ORDER BY created_at DESC').bind(user.id).all();
+    // Notes the user uploaded that have not been removed (removed ones sit under the Removed folder).
+    const mine = notesQuery({ uploaderId: user.id, limit: 500 });
+    const { results: myResources } = await c.env.DB.prepare(mine.sql).bind(...mine.params).all();
     const { results: myAnnouncements } = await c.env.DB.prepare('SELECT * FROM announcements WHERE author_id = ? AND is_deleted = 0 ORDER BY created_at DESC').bind(user.id).all();
 
     return c.html(
@@ -228,7 +231,7 @@ app.get('/profile/contributions', async (c) => {
                                             <h3 class="font-bold text-gray-800 dark:text-neutral-100">{r.title}</h3>
                                             <p class="text-sm text-gray-500 dark:text-neutral-400">{subjectLabel(r.subject)} • {formatDate(r.created_at)}</p>
                                         </div>
-                                        <a href={`/download/${r.file_key}`} target="_blank" class="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">Download</a>
+                                        <a href={`/resources/view/${r.id}`} class="text-blue-600 dark:text-blue-400 text-sm font-medium hover:underline">View</a>
                                     </div>
                                 ))}
                             </div>
