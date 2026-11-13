@@ -28,6 +28,11 @@ export const SUBJECTS = [
     "Chemistry (HSC)",
     "Biology (HSC)",
     "Studies of Religion II (HSC)",
+    "Studies of Religion I (HSC)",
+    "English Extension 2 (HSC)",
+    "Chinese Continuers (HSC)",
+    "Latin (HSC)",
+    "Music Extension (HSC)",
     "Other",
 ] as const;
 

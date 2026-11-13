@@ -7,6 +7,7 @@ import {
 	MAX_FILES_PER_NOTE,
 	LIVE_FOLDERS_SQL,
 	LIVE_NOTES_SQL,
+	LIVE_TOP_NOTES_SQL,
 	ROOT_FOLDERS_SQL,
 	SECTION_NAMES,
 	SUBJECT_COUNTS_SQL,
@@ -550,6 +551,9 @@ describe('resource folder queries', () => {
 		expect(folders.find((f) => f.id === week1)).toMatchObject({ parent_id: nicklas, note_count: 1 });
 		const live = (await env.DB.prepare(LIVE_NOTES_SQL).all<any>()).results;
 		expect(live.map((n) => n.title)).toEqual(['Some Discrete note', 'Week 1', 'Week 2']);
+		// The diagram starts with student folders closed, so it only needs the notes filed in sections.
+		const top = (await env.DB.prepare(LIVE_TOP_NOTES_SQL).all<any>()).results;
+		expect(top.map((n) => n.title)).toEqual(['Some Discrete note']);
 	});
 
 	it('finds a user\'s empty folder, which blocks them creating another', async () => {

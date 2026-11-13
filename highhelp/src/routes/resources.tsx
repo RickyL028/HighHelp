@@ -21,7 +21,7 @@ import {
     MAX_FOLDER_NAME,
     MAX_NOTE_TITLE,
     LIVE_FOLDERS_SQL,
-    LIVE_NOTES_SQL,
+    LIVE_TOP_NOTES_SQL,
     ROOT_FOLDERS_SQL,
     SUBJECT_COUNTS_SQL,
     addToFolderError,
@@ -231,6 +231,9 @@ details.res-row[open] .res-chevron { transform: rotate(90deg); }
 .htree li:first-child::after { top: 50%; }
 .htree li:last-child::after { bottom: 50%; }
 .htree > li { padding-left: 0; }
+.htree ul[hidden] { display: none; }
+button[data-branch][aria-expanded="true"] .res-branch-chev { transform: rotate(90deg); }
+.res-branch-chev { transition: transform .12s; }
 .htree > li::before, .htree > li::after { display: none; }
 /* The front page's diagram is tall, so its root sits at the top instead of half-way down. */
 .htree-top > li { align-items: flex-start; }
@@ -733,34 +736,65 @@ const NoteResult = ({ r }: { r: any }) => (
 
 // The branch diagram: a folder and everything under it, drawn left to right, with its notes as the
 // leaves. At most BRANCH_NOTES notes are drawn per folder; the rest become one "+N more" leaf.
+// Subjects and sections are drawn open; student folders start closed (unless they lead to the
+// folder being viewed) and BRANCH_SCRIPT fetches their contents from /resources/branch/:id.
 const BRANCH_NOTES = 6
 type BranchNode = FolderBranch<any> & { notes: { id: number; title: string }[]; more: number; weight: number }
+type BranchView = { pathIds: Set<number>; currentId: number; treeLinks: boolean }
 
 // Hang each folder's notes on it and weigh it: how many notes and student-made folders it holds.
+// A folder's own note count comes from its row's note_count when the query gave one, so a closed
+// folder is weighed right even though its notes were not loaded.
 function growBranches(node: FolderBranch<any>, notes: { id: number; folder_id: number; title: string }[]): BranchNode {
     const byFolder = new Map<number, { id: number; title: string }[]>()
     for (const n of notes) byFolder.set(n.folder_id, [...(byFolder.get(n.folder_id) || []), n])
     const grow = (f: FolderBranch<any>): BranchNode => {
         const own = byFolder.get(f.id) || []
+        const ownCount = typeof f.note_count === 'number' ? f.note_count : own.length
         const children = f.children.map(grow)
         return {
             ...f,
             children,
             notes: own.slice(0, BRANCH_NOTES),
-            more: Math.max(0, own.length - BRANCH_NOTES),
-            weight: own.length + (f.kind === 'folder' ? 1 : 0) + children.reduce((sum: number, c: BranchNode) => sum + c.weight, 0),
+            more: Math.max(0, ownCount - BRANCH_NOTES),
+            weight: ownCount + (f.kind === 'folder' ? 1 : 0) + children.reduce((sum: number, c: BranchNode) => sum + c.weight, 0),
         }
     }
     return grow(node)
 }
 
-const Branch = ({ node, pathIds, currentId, hrefFor }: { node: BranchNode; pathIds: Set<number>; currentId: number; hrefFor: (id: number) => string }) => {
-    const here = node.id === currentId
-    const onPath = pathIds.has(node.id)
+const branchHref = (id: number, view: BranchView) => (view.treeLinks ? `${folderHref(id)}?view=tree` : folderHref(id))
+// What a folder holds, not counting itself.
+const branchItems = (node: BranchNode) => node.weight - (node.kind === 'folder' ? 1 : 0)
+const branchOpen = (node: BranchNode, view: BranchView) => node.kind !== 'folder' || view.pathIds.has(node.id)
+
+// A folder's contents: its sub-folders, then its notes.
+const BranchChildren = ({ node, view }: { node: BranchNode; view: BranchView }) => (
+    <ul>
+        {node.children.map((child: BranchNode) => <Branch node={child} view={view} />)}
+        {node.notes.map((n: { id: number; title: string }) => (
+            <li>
+                <a href={noteHref(n.id)} class="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-xs whitespace-nowrap text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors">
+                    <NoteIcon cls="w-3.5 h-3.5" />
+                    <span class="max-w-[14rem] truncate">{n.title}</span>
+                </a>
+            </li>
+        ))}
+        {node.more > 0 && (
+            <li><a href={folderHref(node.id)} class="inline-flex items-center h-7 px-2 rounded-md text-xs whitespace-nowrap text-blue-600 dark:text-blue-400 hover:underline">+{node.more} more</a></li>
+        )}
+    </ul>
+)
+
+const Branch = ({ node, view }: { node: BranchNode; view: BranchView }) => {
+    const here = node.id === view.currentId
+    const onPath = view.pathIds.has(node.id)
     const empty = node.weight === 0 && node.kind !== 'root'
+    const items = branchItems(node)
+    const open = branchOpen(node, view)
     return (
         <li>
-            <a href={node.kind === 'root' ? '/resources' : hrefFor(node.id)} title={node.kind === 'folder' && node.access === 'owner' ? 'Only the owner can add to this folder' : undefined}
+            <a href={node.kind === 'root' ? '/resources' : branchHref(node.id, view)} title={node.kind === 'folder' && node.access === 'owner' ? 'Only the owner can add to this folder' : undefined}
                 class={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-sm whitespace-nowrap transition-colors ${here
                     ? 'bg-blue-50 dark:bg-blue-900/30 font-semibold text-gray-900 dark:text-white'
                     : onPath
@@ -770,25 +804,67 @@ const Branch = ({ node, pathIds, currentId, hrefFor }: { node: BranchNode; pathI
                 <span>{folderLabel(node)}</span>
                 {node.kind === 'folder' && node.access === 'owner' && <span class="text-gray-400"><Icon name="lock" cls="w-3 h-3" /></span>}
             </a>
-            {(node.children.length > 0 || node.notes.length > 0) && (
-                <ul>
-                    {node.children.map((child: BranchNode) => <Branch node={child} pathIds={pathIds} currentId={currentId} hrefFor={hrefFor} />)}
-                    {node.notes.map((n: { id: number; title: string }) => (
-                        <li>
-                            <a href={noteHref(n.id)} class="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-xs whitespace-nowrap text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700 transition-colors">
-                                <NoteIcon cls="w-3.5 h-3.5" />
-                                <span class="max-w-[14rem] truncate">{n.title}</span>
-                            </a>
-                        </li>
-                    ))}
-                    {node.more > 0 && (
-                        <li><a href={folderHref(node.id)} class="inline-flex items-center h-7 px-2 rounded-md text-xs whitespace-nowrap text-blue-600 dark:text-blue-400 hover:underline">+{node.more} more</a></li>
-                    )}
-                </ul>
+            {!open && items > 0 && (
+                <button type="button" data-branch={node.id} data-tree={view.treeLinks ? '1' : undefined} aria-expanded="false"
+                    title={`Show what is in this folder (${plural(items, 'item')})`}
+                    class="relative z-10 inline-flex items-center gap-0.5 h-6 ml-0.5 px-1.5 rounded text-xs text-gray-500 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-700 hover:text-gray-800 dark:hover:text-neutral-200">
+                    <svg class="res-branch-chev w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" /></svg>
+                    {items}
+                </button>
             )}
+            {open && (node.children.length > 0 || node.notes.length > 0) && <BranchChildren node={node} view={view} />}
         </li>
     )
 }
+
+// Opens and closes student folders in a branch diagram, fetching a folder's contents the first time.
+const BRANCH_SCRIPT = `
+document.addEventListener('click', async (e) => {
+    const btn = e.target.closest && e.target.closest('button[data-branch]');
+    if (!btn) return;
+    e.preventDefault();
+    const li = btn.parentElement;
+    let list = li.querySelector(':scope > ul');
+    if (btn.getAttribute('aria-expanded') === 'true') {
+        if (list) list.hidden = true;
+        btn.setAttribute('aria-expanded', 'false');
+        return;
+    }
+    if (!list) {
+        if (btn.dataset.loading) return;
+        btn.dataset.loading = '1';
+        try {
+            const res = await fetch('/resources/branch/' + btn.dataset.branch + (btn.dataset.tree ? '?view=tree' : ''));
+            if (!res.ok) throw new Error(String(res.status));
+            li.insertAdjacentHTML('beforeend', await res.text());
+            list = li.querySelector(':scope > ul');
+        } catch (err) {
+            btn.title = 'Could not load this folder. Try again.';
+            return;
+        } finally {
+            delete btn.dataset.loading;
+        }
+    }
+    if (list) list.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+});
+`
+
+// What BRANCH_SCRIPT inserts when a closed folder is opened: that folder's contents, with its own
+// sub-folders closed.
+app.get('/resources/branch/:id{[0-9]+}', async (c) => {
+    const user = await getUser(c) as Viewer
+    const db = c.env.DB
+    const id = parseId(c.req.param('id'))
+    const chain = await loadChain(db, id)
+    if (chain.length === 0 || !canSeeChain(user, chain)) return c.text('That folder does not exist.', 404)
+    const [folders, notes] = await Promise.all([rows(db, subtreeFoldersQuery(id)), rows(db, treeNotesQuery([id]))])
+    const nested = buildFolderTree(folders, id)
+    if (!nested) return c.text('That folder does not exist.', 404)
+    const view: BranchView = { pathIds: new Set(), currentId: 0, treeLinks: c.req.query('view') === 'tree' }
+    c.header('cache-control', 'private, no-store')
+    return c.html(<BranchChildren node={growBranches(nested, notes)} view={view} />)
+})
 
 const viewTab = (on: boolean) => `inline-flex items-center gap-1.5 h-7 px-2.5 rounded text-xs font-medium transition-colors ${on
     ? 'bg-white dark:bg-neutral-800 text-gray-900 dark:text-white shadow-sm'
@@ -826,7 +902,7 @@ app.get('/resources', async (c) => {
             : null,
         treeData(db, user, [], 0, roots),
         treeView ? db.prepare(LIVE_FOLDERS_SQL).all<any>().then((r) => r.results) : Promise.resolve([] as any[]),
-        treeView ? db.prepare(LIVE_NOTES_SQL).all<any>().then((r) => r.results) : Promise.resolve([] as any[]),
+        treeView ? db.prepare(LIVE_TOP_NOTES_SQL).all<any>().then((r) => r.results) : Promise.resolve([] as any[]),
     ])
     const noteCount = new Map(counts.results.map((r) => [r.subject, r.notes]))
 
@@ -885,8 +961,9 @@ app.get('/resources', async (c) => {
                     {treeView && branches ? (
                         <div class="overflow-x-auto pb-3">
                             <ul class="htree htree-top w-max text-gray-300 dark:text-neutral-600">
-                                <Branch node={branches} pathIds={new Set([0])} currentId={0} hrefFor={folderHref} />
+                                <Branch node={branches} view={{ pathIds: new Set([0]), currentId: 0, treeLinks: false }} />
                             </ul>
+                            <script dangerouslySetInnerHTML={{ __html: BRANCH_SCRIPT }} />
                         </div>
                     ) : (
                     <div>
@@ -1026,8 +1103,9 @@ app.get('/resources/folder/:id{[0-9]+}', async (c) => {
             {treeView && branches ? (
                 <div class="overflow-x-auto pb-3">
                     <ul class="htree w-max text-gray-300 dark:text-neutral-600">
-                        <Branch node={branches} pathIds={new Set(chain.map((f) => f.id))} currentId={id} hrefFor={(folderId) => `${folderHref(folderId)}?view=tree`} />
+                        <Branch node={branches} view={{ pathIds: new Set(chain.map((f) => f.id)), currentId: id, treeLinks: true }} />
                     </ul>
+                    <script dangerouslySetInnerHTML={{ __html: BRANCH_SCRIPT }} />
                 </div>
             ) : count === 0 ? (
                 <div class="py-10 px-4 text-center text-sm text-gray-500 dark:text-neutral-400">

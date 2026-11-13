@@ -375,6 +375,15 @@ FROM resources r
 WHERE r.folder_id IS NOT NULL AND r.folder_id NOT IN (SELECT id FROM removed)
 ORDER BY r.title COLLATE NOCASE, r.id`;
 
+// Only the notes the front page's diagram draws straight away: those sitting directly in a subject
+// or a section. Student folders start closed there, and their notes are fetched when one is opened.
+export const LIVE_TOP_NOTES_SQL = `WITH RECURSIVE ${REMOVED_CTE}
+SELECT r.id, r.folder_id, r.title
+FROM resources r
+JOIN resource_folders f ON f.id = r.folder_id
+WHERE f.kind IN ('subject', 'section') AND r.folder_id NOT IN (SELECT id FROM removed)
+ORDER BY r.title COLLATE NOCASE, r.id`;
+
 export type FolderBranch<T> = T & { children: FolderBranch<T>[] };
 
 // Nest the rows of subtreeFoldersQuery under `rootId`, keeping their order. Rows whose parent is
