@@ -8,7 +8,7 @@ import { TimetableDay } from '../components/timetable/TimetableDay'
 import { TimetableCycle } from '../components/timetable/TimetableCycle'
 import { TimetableTicker } from '../components/timetable/TimetableTicker'
 import { TimetableConfig } from '../components/timetable/TimetableConfig'
-import { TimetableModal } from '../components/timetable/TimetableModal'
+import { TimetableModal, CLASS_NOTE_MAX_LENGTH } from '../components/timetable/TimetableModal'
 import { TimetableNotices } from '../components/timetable/TimetableNotices'
 import { TimetableEvents } from '../components/timetable/TimetableEvents'
 import { TimetableCalendar } from '../components/timetable/TimetableCalendar'
@@ -259,10 +259,18 @@ app.post('/notes', async (c) => {
 
     if (Number(user.permission_level) < 1) return c.json({ error: 'Forbidden' }, 403);
 
-    const body = await c.req.json();
-    const { class_name, date, content } = body;
+    const body = await c.req.json().catch(() => null);
+    const class_name = typeof body?.class_name === 'string' ? body.class_name.trim() : '';
+    const date = typeof body?.date === 'string' ? body.date.trim() : '';
+    const content = typeof body?.content === 'string' ? body.content.trim() : '';
 
     if (!class_name || !date || !content) return c.json({ error: 'Missing parameters' }, 400);
+    if (class_name.length > 50 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return c.json({ error: 'Invalid parameters' }, 400);
+    if (content.length > CLASS_NOTE_MAX_LENGTH) {
+        return c.json({ error: `Notes can be at most ${CLASS_NOTE_MAX_LENGTH} characters` }, 400);
+    }
+    // Notes are plain text. The client escapes them when rendering, but reject anything tag-shaped so no markup is stored.
+    if (/<\s*[a-zA-Z\/!?]/.test(content)) return c.json({ error: 'Notes cannot contain HTML' }, 400);
 
     try {
         const { results } = await c.env.DB.prepare(`

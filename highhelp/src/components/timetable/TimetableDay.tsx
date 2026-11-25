@@ -360,7 +360,7 @@ export const TimetableDay = html`
                 let notesPreviewHtml = '';
                 if (notesCount > 0) {
                     const firstNote = periodNotes[0];
-                    const previewText = firstNote.content.length > 40 ? firstNote.content.substring(0, 40) + '...' : firstNote.content;
+                    const previewText = firstNote.content.length > 40 ? esc(firstNote.content.substring(0, 40)) + '...' : esc(firstNote.content);
                     notesPreviewHtml = \`<div class="mt-2 text-xs bg-gray-700 dark:bg-neutral-900/50 p-2 rounded italic text-gray-300 dark:text-neutral-400 break-words">\${previewText}</div>\`;
                 }
                 let linkPreviewHtml = data?.link ? \`<div class="mt-1 text-[10px] text-blue-400 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg> Link Available (Cmd/Ctrl + K)</div>\` : '';
@@ -480,7 +480,7 @@ export const TimetableDay = html`
                 let eventNotesPreviewHtml = '';
                 if (notesCount > 0) {
                     const firstNote = eventNotes[0];
-                    const previewText = firstNote.content.length > 40 ? firstNote.content.substring(0, 40) + '...' : firstNote.content;
+                    const previewText = firstNote.content.length > 40 ? esc(firstNote.content.substring(0, 40)) + '...' : esc(firstNote.content);
                     eventNotesPreviewHtml = \`<div class="mt-2 text-xs bg-gray-700 dark:bg-neutral-900/50 p-2 rounded italic text-gray-300 dark:text-neutral-400 break-words">\${previewText}</div>\`;
                 }
 

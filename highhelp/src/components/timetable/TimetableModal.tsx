@@ -1,5 +1,8 @@
 import { html } from 'hono/html'
 
+// Shared with the POST /timetable/notes handler so the client and server limits stay in step.
+export const CLASS_NOTE_MAX_LENGTH = 100;
+
 export const TimetableModal = html`
 <div id="class-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity">
     <div class="bg-white dark:bg-neutral-900 rounded-2xl w-full max-w-lg mx-4 flex flex-col max-h-[90vh] shadow-2xl overflow-hidden transform transition-transform scale-95 opacity-0" id="class-modal-content">
@@ -35,8 +38,9 @@ export const TimetableModal = html`
 
             <!-- Add Note Section -->
             <div id="add-note-section" class="border-t border-gray-100 dark:border-neutral-800 pt-4 hidden">
-                <textarea id="new-note-content" class="w-full border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 rounded-xl p-3 text-sm dark:text-neutral-200 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all resize-none h-24 shadow-sm" placeholder="This message can be seen by your classmates!"></textarea>
-                <div class="mt-3 flex justify-end">
+                <textarea id="new-note-content" class="w-full border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 rounded-xl p-3 text-sm dark:text-neutral-200 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all resize-none h-24 shadow-sm" placeholder="This message can be seen by your classmates!" maxlength="${CLASS_NOTE_MAX_LENGTH}"></textarea>
+                <div class="mt-3 flex items-center justify-between">
+                    <span id="note-char-count" class="text-xs text-gray-400 dark:text-neutral-500">0/${CLASS_NOTE_MAX_LENGTH}</span>
                     <button id="btn-submit-note" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 shadow-sm">
                         <span>Post</span>
                     </button>
@@ -51,6 +55,29 @@ export const TimetableModal = html`
 
 <script>
     window.currentSubjectContext = null;
+    const NOTE_MAX_LENGTH = ${CLASS_NOTE_MAX_LENGTH};
+
+    // Note content and names are user-supplied: escape before putting them in innerHTML.
+    function escapeNoteHtml(s) {
+        return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // D1's CURRENT_TIMESTAMP is UTC with no zone ("YYYY-MM-DD HH:MM:SS"), which new Date() would read as local time.
+    // No backslashes here: hono's html helper would strip them from regexes.
+    function parseUtcTimestamp(ts) {
+        let s = String(ts ?? '').trim().replace(' ', 'T');
+        if (!/(Z|[+-][0-9][0-9]:?[0-9][0-9])$/i.test(s)) s += 'Z';
+        return new Date(s);
+    }
+
+    function updateNoteCharCount() {
+        const input = document.getElementById('new-note-content');
+        const counter = document.getElementById('note-char-count');
+        if (!input || !counter) return;
+        counter.textContent = input.value.length + '/' + NOTE_MAX_LENGTH;
+        counter.classList.toggle('text-red-500', input.value.length >= NOTE_MAX_LENGTH);
+    }
+    document.getElementById('new-note-content')?.addEventListener('input', updateNoteCharCount);
 
     function closeClassModal() {
         const modal = document.getElementById('class-modal');
@@ -82,19 +109,19 @@ export const TimetableModal = html`
                     const canDelete = window.currentUserId === note.user_id || window.currentUserPermission >= 5;
                     const deleteBtn = canDelete ? \`<button onclick="deleteNote(\${note.id})" class="text-gray-400 hover:text-red-500 transition-colors p-1" title="Delete note"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>\` : '';
                     
-                    const dt = new Date(note.created_at);
+                    const dt = parseUtcTimestamp(note.created_at);
                     const timeStr = dt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     
                     return \`
                         <div class="bg-gray-50 dark:bg-neutral-950/30 border border-gray-100 dark:border-neutral-800 rounded-xl p-3.5 group relative" id="note-\${note.id}">
                             <div class="flex justify-between items-start mb-1">
-                                <span class="font-semibold text-sm text-gray-800 dark:text-neutral-200">\${note.first_name ? note.first_name.charAt(0).toUpperCase() + '.' : 'Unknown'}</span>
+                                <span class="font-semibold text-sm text-gray-800 dark:text-neutral-200">\${note.first_name ? escapeNoteHtml(note.first_name.charAt(0).toUpperCase()) + '.' : 'Unknown'}</span>
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs text-gray-400 dark:text-neutral-500">\${timeStr}</span>
                                     \${deleteBtn}
                                 </div>
                             </div>
-                            <p class="text-gray-600 dark:text-neutral-300 text-sm whitespace-pre-wrap">\${note.content}</p>
+                            <p class="text-gray-600 dark:text-neutral-300 text-sm whitespace-pre-wrap break-words">\${escapeNoteHtml(note.content)}</p>
                         </div>
                     \`;
                 }).join('');
@@ -136,6 +163,10 @@ export const TimetableModal = html`
         const input = document.getElementById('new-note-content');
         const content = input.value.trim();
         if (!content || !window.currentSubjectContext) return;
+        if (content.length > NOTE_MAX_LENGTH) {
+            alert('Notes can be at most ' + NOTE_MAX_LENGTH + ' characters');
+            return;
+        }
         
         btn.disabled = true;
         btn.innerHTML = 'Posting...';
@@ -154,6 +185,7 @@ export const TimetableModal = html`
             const data = await res.json();
             if (data.success) {
                 input.value = '';
+                updateNoteCharCount();
                 loadNotes(window.currentSubjectContext.subjectCode, window.currentSubjectContext.date);
             } else {
                 alert(data.error || 'Failed to post note');
